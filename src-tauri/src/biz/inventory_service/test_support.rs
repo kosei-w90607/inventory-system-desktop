@@ -34,6 +34,10 @@ pub(super) fn create_test_product(conn: &DbConnection, code: &str, stock: i64) {
         },
     )
     .unwrap();
+    // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+    if stock != 0 {
+        crate::db::test_support::insert_initial_stock_movement(conn, code, stock, stock);
+    }
 }
 
 /// PLU登録済みの商品を作成するヘルパー（plu_dirty=false, plu_exported_at あり）
@@ -60,6 +64,10 @@ pub(super) fn create_plu_exported_product(conn: &DbConnection, code: &str, stock
         },
     )
     .unwrap();
+    // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+    if stock != 0 {
+        crate::db::test_support::insert_initial_stock_movement(conn, code, stock, stock);
+    }
 }
 
 pub(super) fn create_test_supplier(conn: &DbConnection) -> i64 {

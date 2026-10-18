@@ -1,8 +1,8 @@
 # タスク仕様（UI層）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-CNT-D3〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。新方式の操作の契約は [73](../function-design/73-ui-stocktake.md)（検索 → 数を入れて即保存、日付の表示と前の日の分、要再確認の一覧と入れ直し、完了の拒否の一覧と「0 にする」）、[55](../function-design/55-ui-csv-import.md)（Z004 の preview の拒否と知らせ、取込みの結果の要再確認の一覧）、[65](../function-design/65-inventory-record-traceability.md) / [66](../function-design/66-ui-stock-movements.md)（計数の行を履歴に混ぜる、今の数を入れ直す）を正とする。[51](../function-design/51-ui-product-form.md) / [58](../function-design/58-ui-stock-inquiry.md) は要再確認の在庫を範囲で出し、51 / [60](../function-design/60-ui-product-import.md) は共有 JAN と在庫連動を始めるときの拒否を示す。
+SPEC-STK-CNT-D3〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、整合性検証（[75](../function-design/75-ui-integrity-check.md)）と操作ログ（[74](../function-design/74-ui-operation-logs.md) UI-11c-D14）の表示だけで、以下の棚卸しの操作は (b)（proposed・未実装）。新方式の操作の契約は [73](../function-design/73-ui-stocktake.md)（検索 → 数を入れて即保存、日付の表示と前の日の分、要再確認の一覧と入れ直し、完了の拒否の一覧と「0 にする」）、[55](../function-design/55-ui-csv-import.md)（Z004 の preview の拒否と知らせ、取込みの結果の要再確認の一覧）、[65](../function-design/65-inventory-record-traceability.md) / [66](../function-design/66-ui-stock-movements.md)（計数の行を履歴に混ぜる、今の数を入れ直す）を正とする。[51](../function-design/51-ui-product-form.md) / [58](../function-design/58-ui-stock-inquiry.md) は要再確認の在庫を範囲で出し、51 / [60](../function-design/60-ui-product-import.md) は共有 JAN と在庫連動を始めるときの拒否を示す。
 
 未保存の入力だけを画面の状態に置き、保存済みの計数と写しは DB / query から取り直す。要再確認の理由を UI で推測せず、BIZ が返す型付きの理由と次の操作を示す。日本語と非色シグナルで表示する。既存の route / returnTo、IME、focus とページの器を保つ。実装・Windows L3 は未実施。旧 ADR（時点証拠）の begin・保留・準備照会・非連動化の未調整の案内は置き換えた。
 
@@ -400,16 +400,16 @@ REQ-403 / SP-403 の POS 部門別売上照合は別の deferred 要求であり
 
 **【CMD呼び出し】**
 - 「整合性チェック実行」ボタン → CMD-11 run_integrity_check
-- 差異検出時、選択行で「補正確定」→ CMD-11 fix_integrity（stock_quantity を movements_sum へ直接更新。inventory_movements への行追加なし、同一TX内 integrity_fix 操作ログ必須 — BIZ-07-D2/D3）
+- 差異検出時、選択行で「補正確定」→ CMD-11 fix_integrity（写しを記録から求め直した値へ直接更新。inventory_movements への行追加なし、同一TX内 integrity_fix 操作ログ必須 — BIZ-07-D2/D3）
 
 **【利用者操作フロー】**
 1. 画面表示時は idle 状態。「整合性チェック実行」ボタンのみ表示
 2. 実行中はプログレスバーと処理中メッセージ
 3. 差異なし → 緑色の成功メッセージ、「直近の確認日時」を記録
-4. 差異あり → 差異商品一覧（商品コード/名前/DBのstock_quantity/SUM(movements)/差異数）
+4. 差異あり → 差異商品一覧（商品コード/商品名/違う項目/保存している値/記録から求め直した値）
 5. 利用者が補正する商品を選択し「補正を確定」ボタン（文言正本は 75-ui-integrity-check.md 文言表）
-6. 確認ダイアログ（在庫数を入出庫の合計に合わせて補正し、操作ログに記録する旨。文言正本は 75-ui-integrity-check.md 文言表）
-7. 確定 → products.stock_quantity を movements_sum へ直接更新（inventory_movements への行追加なし）+ 同一TX内 integrity_fix 操作ログ必須記録（BIZ-07-D2/D3、D-051）
+6. 確認ダイアログ（在庫数を記録から求め直した値に合わせて補正し、操作ログに記録する旨。文言正本は 75-ui-integrity-check.md 文言表）
+7. 確定 → 写しを記録から求め直した値へ直接更新（inventory_movements への行追加なし）+ 同一TX内 integrity_fix 操作ログ必須記録（BIZ-07-D2/D3、D-051）
 
 **【制御構造】**
 - チェック実行は重い処理のため、UIは running 状態で他操作を受け付けない（画面内オーバーレイ）

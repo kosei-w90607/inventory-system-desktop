@@ -1,8 +1,8 @@
 # テーブル定義（トランザクション）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2）との接続。以下の入庫・返品交換・手動販売・廃棄の header / item の列と符号規約は変えない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2）との接続。以下の入庫・返品交換・手動販売・廃棄の header / item の列と符号規約は変えない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは全部の項目（2 つ目の窓の判定は求め直しの側にあり、計数を保存する経路が入るのは (b)。それまでは計数が無く、在庫と `stock_after` の値は和と同じ）。
 
 - 在庫を動かす TX は、header / item・inventory_movements（並びの鍵 `business_date` = header の日付〈`receiving_date`・`return_date`・`sale_date`・`disposal_date`〉、`phase` = 0）を書き、同じ TX で触れた商品を求め直して写し（`products.stock_quantity` ほか）を書く。どれかの失敗で TX 全体を戻す。
 - header の日付は業務の日付 D で、計数に入っているかは ADR D3 の窓の判定表で決まる（既定の計数と同じ日付なら決まらない、fresh な計数より先に保存したものは入っている、など）。日付を計数の日付より前にした入力は、計数のある商品の在庫に足されない（数えた数に入っているとみなす。ADR の Consequences）。

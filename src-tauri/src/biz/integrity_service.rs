@@ -1,14 +1,15 @@
 //! BIZ-07: 整合性チェックロジック
 //!
-//! products.stock_quantity と inventory_movements の集計値を突合し、不整合を検出・補正する。
-//! stock_quantity はキャッシュ値であり、movements の合計が真値。
+//! 商品の写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と、
+//! 記録から求め直した値（`biz::stock_ledger::derive_stock`）を突合し、違う商品を補正する。
+//! 写しは在庫を動かす全ての TX で求め直すので、違いは不具合か DB の外からの編集でだけ起きる。
 //!
-//! docs/function-design/36-biz-integrity-check.md に基づく実装。
+//! docs/function-design/36-biz-integrity-check.md と「計数の置き場と在庫の求め直しの契約」に基づく実装。
 
-use crate::biz::inventory_service::check_stock_range;
+use crate::biz::stock_ledger::{derive_stock, recompute_stock, DerivedStock};
 use crate::biz::BizError;
-use crate::db::product_repo::ProductStockUnit;
-use crate::db::{inventory_repo, product_repo, system_repo, DbConnection, NewOperationLog};
+use crate::db::product_repo::{ProductStockUnit, StockCopyRow};
+use crate::db::{product_repo, system_repo, DbConnection, NewOperationLog};
 use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,24 @@ pub struct IntegrityResult {
     pub checked_count: usize,
 }
 
+/// 写しの 4 項目（保存している値、または記録から求め直した値。36）
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+pub struct StockCopy {
+    pub stock_quantity: i64,
+    pub stock_recheck: bool,
+    pub stock_range_low: Option<i64>,
+    pub stock_range_high: Option<i64>,
+}
+
+/// 写しと求めた値で違う項目（重複なし、この順。36）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum IntegrityField {
+    Quantity,
+    Recheck,
+    Range,
+}
+
 /// 不整合アイテム
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct IntegrityMismatch {
@@ -30,9 +49,11 @@ pub struct IntegrityMismatch {
     pub name: String,
     /// 商品の単位。数量は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
     pub stock_unit: ProductStockUnit,
-    pub stock_quantity: i64,
-    pub movements_sum: i64,
-    pub difference: i64,
+    /// 保存している値
+    pub copy: StockCopy,
+    /// 記録から求め直した値
+    pub derived: StockCopy,
+    pub differing_fields: Vec<IntegrityField>,
 }
 
 /// 整合性補正結果
@@ -43,65 +64,90 @@ pub struct IntegrityFixResult {
     pub adjustments: Vec<StockAdjustment>,
 }
 
-/// 在庫補正詳細
+/// 在庫補正詳細（差は持たず、画面は before → after を並べる。75 §75.6）
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct StockAdjustment {
     pub product_code: String,
     /// 商品の単位（SPEC-UNIT-D3 の表の 11）
     pub stock_unit: ProductStockUnit,
-    pub old_stock: i64,
-    pub new_stock: i64,
-    pub adjustment: i64,
+    pub before: StockCopy,
+    pub after: StockCopy,
+}
+
+impl From<&StockCopyRow> for StockCopy {
+    fn from(row: &StockCopyRow) -> Self {
+        StockCopy {
+            stock_quantity: row.stock_quantity,
+            stock_recheck: row.stock_recheck,
+            stock_range_low: row.stock_range_low,
+            stock_range_high: row.stock_range_high,
+        }
+    }
+}
+
+impl From<&DerivedStock> for StockCopy {
+    fn from(derived: &DerivedStock) -> Self {
+        StockCopy {
+            stock_quantity: derived.stock,
+            stock_recheck: derived.range.is_some(),
+            stock_range_low: derived.range.map(|r| r.0),
+            stock_range_high: derived.range.map(|r| r.1),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // 関数
 // ---------------------------------------------------------------------------
 
-fn difference_overflow() -> BizError {
-    BizError::ValidationFailed("在庫数計算オーバーフロー".to_string())
+fn differing_fields(copy: &StockCopy, derived: &StockCopy) -> Vec<IntegrityField> {
+    [
+        (
+            IntegrityField::Quantity,
+            copy.stock_quantity != derived.stock_quantity,
+        ),
+        (
+            IntegrityField::Recheck,
+            copy.stock_recheck != derived.stock_recheck,
+        ),
+        (
+            IntegrityField::Range,
+            (copy.stock_range_low, copy.stock_range_high)
+                != (derived.stock_range_low, derived.stock_range_high),
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(field, differs)| differs.then_some(field))
+    .collect()
 }
 
 /// 全商品の整合性をチェックする（読み取り専用、TX不要）
 ///
 /// 36-biz-integrity-check.md §21.3
 pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizError> {
-    // 1. 全商品の movements 集計を HashMap に変換
-    let movements = inventory_repo::sum_movements_by_product(conn)?;
-    let movements_map: HashMap<String, i64> = movements
-        .into_iter()
-        .map(|m| (m.product_code, m.movements_sum))
-        .collect();
-
-    // 2. 全商品の現在在庫を取得
+    // 1. 全商品の写しを取得し、記録から求め直した値と比べる（読取りは範囲で拒まない）
     let products = product_repo::find_all_stock_quantities(conn)?;
     let checked_count = products.len();
-
-    // 3. 突合
     let mut mismatches = Vec::new();
-    for (product_code, name, stock_quantity, stock_unit) in &products {
-        let movements_sum = movements_map
-            .get(product_code.as_str())
-            .copied()
-            .unwrap_or(0);
-        let difference = stock_quantity
-            .checked_sub(movements_sum)
-            .ok_or_else(difference_overflow)?;
-        if difference != 0 {
+    for row in &products {
+        let copy = StockCopy::from(row);
+        let derived = StockCopy::from(&derive_stock(conn, &row.product_code)?);
+        let differing_fields = differing_fields(&copy, &derived);
+        if !differing_fields.is_empty() {
             mismatches.push(IntegrityMismatch {
-                product_code: product_code.clone(),
-                name: name.clone(),
-                stock_unit: *stock_unit,
-                stock_quantity: *stock_quantity,
-                movements_sum,
-                difference,
+                product_code: row.product_code.clone(),
+                name: row.name.clone(),
+                stock_unit: row.stock_unit,
+                copy,
+                derived,
+                differing_fields,
             });
         }
     }
 
     let mismatch_count = mismatches.len();
 
-    // 4. TX外: 操作ログ記録
+    // 2. TX外: 操作ログ記録（各 mismatch は応答と同じ key と入れ子。36）
     let detail = serde_json::json!({
         "checked_count": checked_count,
         "mismatch_count": mismatch_count,
@@ -109,9 +155,9 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
             serde_json::json!({
                 "product_code": m.product_code,
                 "stock_unit": m.stock_unit,
-                "stock_quantity": m.stock_quantity,
-                "movements_sum": m.movements_sum,
-                "difference": m.difference,
+                "copy": m.copy,
+                "derived": m.derived,
+                "differing_fields": m.differing_fields,
             })
         }).collect::<Vec<_>>(),
     })
@@ -135,7 +181,7 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
     })
 }
 
-/// 指定商品の在庫を movements_sum に合わせて補正する（TX）
+/// 指定商品の写しを記録から求め直した値へ補正する（TX。movement は作らない）
 ///
 /// 36-biz-integrity-check.md §21.4
 pub fn fix_integrity(
@@ -156,53 +202,36 @@ pub fn fix_integrity(
         .transaction()
         .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
 
-    // 3. 各商品について補正
-    let mut fixed_count = 0usize;
+    // 3. 各商品について、写しと求めた値が違えば recompute_stock の結果を書く。
+    //    写しの行は 1 回だけ消費し、同じ商品の 2 回目以降は skip に数える
+    let mut copies: HashMap<String, StockCopyRow> = product_repo::find_all_stock_quantities(&tx)?
+        .into_iter()
+        .map(|row| (row.product_code.clone(), row))
+        .collect();
     let mut skipped_count = 0usize;
     let mut adjustments = Vec::new();
-
     for product_code in product_codes {
-        // 3a. 個別 movements_sum 取得
-        let movements_sum = inventory_repo::sum_movements_for_product(&tx, product_code)?;
-
-        // 3b. 現在の商品を取得
-        let product = match product_repo::find_by_product_code(&tx, product_code)? {
-            Some(p) => p,
-            None => {
-                skipped_count += 1;
-                continue;
-            }
+        let Some(row) = copies.remove(product_code) else {
+            skipped_count += 1;
+            continue;
         };
-
-        // 3c. 差異計算
-        let stock_quantity = product.product.stock_quantity;
-        let difference = stock_quantity
-            .checked_sub(movements_sum)
-            .ok_or_else(difference_overflow)?;
-        if difference == 0 {
+        let before = StockCopy::from(&row);
+        if before == StockCopy::from(&derive_stock(&tx, product_code)?) {
             skipped_count += 1;
             continue;
         }
-
-        // 3e. D-051 / BIZ-07-D2: movement を追加せず、派生 cache を原本の合計へ直接補正する。
-        // 補正の後の在庫は上限の中（共通規則 (a)、X3）。外れたら TX 全体を戻す
-        let adjustment = movements_sum
-            .checked_sub(stock_quantity)
-            .ok_or_else(difference_overflow)?;
-        let new_stock = check_stock_range(movements_sum)?;
-        inventory_repo::update_stock_quantity(&tx, product_code, new_stock)?;
-
+        // D-051 / BIZ-07-D2: movement を追加しない。上限の外は TX 全体を戻す（recompute_stock）
+        let after = StockCopy::from(&recompute_stock(&tx, product_code)?);
         adjustments.push(StockAdjustment {
             product_code: product_code.clone(),
-            stock_unit: product.product.stock_unit,
-            old_stock: stock_quantity,
-            new_stock: movements_sum,
-            adjustment,
+            stock_unit: row.stock_unit,
+            before,
+            after,
         });
-        fixed_count += 1;
     }
+    let fixed_count = adjustments.len();
 
-    // 4. TX内: 操作ログ記録（BIZ-07-D3、失敗時は補正ごと rollback）
+    // 4. TX内: 操作ログ記録（BIZ-07-D3、失敗時は補正ごと rollback。trigger は書かない）
     let detail = serde_json::json!({
         "fixed_count": fixed_count,
         "skipped_count": skipped_count,
@@ -210,9 +239,8 @@ pub fn fix_integrity(
             serde_json::json!({
                 "product_code": a.product_code,
                 "stock_unit": a.stock_unit,
-                "old_stock": a.old_stock,
-                "new_stock": a.new_stock,
-                "adjustment": a.adjustment,
+                "before": a.before,
+                "after": a.after,
             })
         }).collect::<Vec<_>>(),
     })
@@ -243,7 +271,7 @@ pub fn fix_integrity(
 mod tests {
     use super::*;
     use crate::db::init_database;
-    use crate::db::inventory_repo::{MovementType, NewMovement};
+    use crate::db::inventory_repo::{self, MovementType, NewMovement};
     use crate::db::product_repo::{self, NewProduct};
 
     fn setup_test_db() -> (tempfile::TempDir, DbConnection) {
@@ -286,6 +314,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -302,6 +332,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -390,6 +422,25 @@ mod tests {
         )
     }
 
+    /// 印 0・範囲なしの写し
+    fn plain(stock_quantity: i64) -> StockCopy {
+        StockCopy {
+            stock_quantity,
+            stock_recheck: false,
+            stock_range_low: None,
+            stock_range_high: None,
+        }
+    }
+
+    fn plain_json(stock_quantity: i64) -> serde_json::Value {
+        serde_json::json!({
+            "stock_quantity": stock_quantity,
+            "stock_recheck": false,
+            "stock_range_low": null,
+            "stock_range_high": null,
+        })
+    }
+
     // ===== run_integrity_check テスト =====
 
     #[test]
@@ -418,22 +469,22 @@ mod tests {
         assert_eq!(result.mismatch_count, 1);
         let m = &result.mismatches[0];
         assert_eq!(m.product_code, "IM-001");
-        assert_eq!(m.stock_quantity, 10);
-        assert_eq!(m.movements_sum, 7);
-        assert_eq!(m.difference, 3);
+        assert_eq!(m.copy, plain(10));
+        assert_eq!(m.derived, plain(7));
+        assert_eq!(m.differing_fields, vec![IntegrityField::Quantity]);
     }
 
     #[test]
     fn test_run_integrity_check_req904_no_movements_product() {
         // REQ-904: 整合性チェック（在庫数突合/修復）
-        // BIZ-07 §21.3: movements 0件 → movements_sum=0として扱い
+        // BIZ-07 §21.3: movements 0件 → 記録から求め直した値 0 として扱い
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "NM-001", 5); // stock=5, movements=0
 
         let result = run_integrity_check(&conn).unwrap();
         assert_eq!(result.mismatch_count, 1);
-        assert_eq!(result.mismatches[0].movements_sum, 0);
-        assert_eq!(result.mismatches[0].difference, 5);
+        assert_eq!(result.mismatches[0].copy, plain(5));
+        assert_eq!(result.mismatches[0].derived, plain(0));
     }
 
     #[test]
@@ -543,10 +594,10 @@ mod tests {
         assert_eq!(
             detail["adjustments"],
             serde_json::json!([
-                {"product_code": "T2-DOWN", "stock_unit": "pcs", "old_stock": 10, "new_stock": 7, "adjustment": -3},
-                {"product_code": "T2-UP", "stock_unit": "pcs", "old_stock": 3, "new_stock": 8, "adjustment": 5},
-                {"product_code": "T2-VOID", "stock_unit": "pcs", "old_stock": 6, "new_stock": 4, "adjustment": -2},
-                {"product_code": "T2-ZERO", "stock_unit": "pcs", "old_stock": 5, "new_stock": 0, "adjustment": -5}
+                {"product_code": "T2-DOWN", "stock_unit": "pcs", "before": plain_json(10), "after": plain_json(7)},
+                {"product_code": "T2-UP", "stock_unit": "pcs", "before": plain_json(3), "after": plain_json(8)},
+                {"product_code": "T2-VOID", "stock_unit": "pcs", "before": plain_json(6), "after": plain_json(4)},
+                {"product_code": "T2-ZERO", "stock_unit": "pcs", "before": plain_json(5), "after": plain_json(0)}
             ])
         );
     }
@@ -628,7 +679,7 @@ mod tests {
         fix_integrity(&mut conn, &["T5-MOVED".to_string(), "T5-ZERO".to_string()]).unwrap();
 
         for product_code in ["T5-MOVED", "T5-ZERO"] {
-            let (stock, movements_sum): (i64, i64) = conn
+            let (stock, non_voided_sum): (i64, i64) = conn
                 .query_row(
                     "SELECT p.stock_quantity,
                             COALESCE((SELECT SUM(im.quantity)
@@ -640,7 +691,7 @@ mod tests {
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )
                 .unwrap();
-            assert_eq!(stock, movements_sum, "{product_code}");
+            assert_eq!(stock, non_voided_sum, "{product_code}");
         }
     }
 
@@ -654,10 +705,10 @@ mod tests {
 
         let result = fix_integrity(&mut conn, &["FI-001".to_string()]).unwrap();
         assert_eq!(result.fixed_count, 1);
-        assert_eq!(result.adjustments[0].old_stock, 10);
-        assert_eq!(result.adjustments[0].new_stock, 7);
+        assert_eq!(result.adjustments[0].before, plain(10));
+        assert_eq!(result.adjustments[0].after, plain(7));
 
-        // DB検証: stock_quantity = movements_sum
+        // DB検証: stock_quantity = 有効な movement の和
         let stock: i64 = conn
             .query_row(
                 "SELECT stock_quantity FROM products WHERE product_code = 'FI-001'",
@@ -758,9 +809,9 @@ mod tests {
     }
 
     #[test]
-    fn test_fix_integrity_req904_negative_movements_sum() {
+    fn test_fix_integrity_req904_negative_ledger_sum() {
         // REQ-904: 整合性チェック（在庫数突合/修復）
-        // BIZ-07 §21.4 P3-2: 負のmovements_sum → stock_quantityを負に補正（INV-3準拠）
+        // BIZ-07 §21.4 P3-2: 負の記録の和 → stock_quantityを負に補正（INV-3準拠）
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "FNG-001", 5);
         // movements: +10, -13 = -3
@@ -775,13 +826,15 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
 
         let result = fix_integrity(&mut conn, &["FNG-001".to_string()]).unwrap();
         assert_eq!(result.fixed_count, 1);
-        assert_eq!(result.adjustments[0].new_stock, -3);
+        assert_eq!(result.adjustments[0].after, plain(-3));
 
         let stock: i64 = conn
             .query_row(
@@ -790,7 +843,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(stock, -3, "負のmovements_sumに合わせる");
+        assert_eq!(stock, -3, "負の記録の和に合わせる");
     }
 
     #[test]
@@ -877,16 +930,23 @@ mod tests {
         add_movement(&conn, "IU-PCS", 8);
 
         let check = run_integrity_check(&conn).unwrap();
-        let units: Vec<(&str, ProductStockUnit, i64)> = check
+        let units: Vec<(&str, ProductStockUnit, i64, i64)> = check
             .mismatches
             .iter()
-            .map(|m| (m.product_code.as_str(), m.stock_unit, m.difference))
+            .map(|m| {
+                (
+                    m.product_code.as_str(),
+                    m.stock_unit,
+                    m.copy.stock_quantity,
+                    m.derived.stock_quantity,
+                )
+            })
             .collect();
         assert_eq!(
             units,
             vec![
-                ("IU-M", ProductStockUnit::M, 50),
-                ("IU-PCS", ProductStockUnit::Pcs, -3)
+                ("IU-M", ProductStockUnit::M, 2750, 2700),
+                ("IU-PCS", ProductStockUnit::Pcs, 5, 8)
             ]
         );
         // integrity_check の JSON は応答の DTO と別に組むので、JSON を直接確かめる
@@ -896,39 +956,257 @@ mod tests {
                 "checked_count": 2,
                 "mismatch_count": 2,
                 "mismatches": [
-                    {"product_code": "IU-M", "stock_unit": "m", "stock_quantity": 2750, "movements_sum": 2700, "difference": 50},
-                    {"product_code": "IU-PCS", "stock_unit": "pcs", "stock_quantity": 5, "movements_sum": 8, "difference": -3}
+                    {"product_code": "IU-M", "stock_unit": "m", "copy": plain_json(2750), "derived": plain_json(2700), "differing_fields": ["quantity"]},
+                    {"product_code": "IU-PCS", "stock_unit": "pcs", "copy": plain_json(5), "derived": plain_json(8), "differing_fields": ["quantity"]}
                 ]
             })
         );
 
         let fixed = fix_integrity(&mut conn, &["IU-M".to_string(), "IU-PCS".to_string()]).unwrap();
-        let adjustments: Vec<(&str, ProductStockUnit, i64, i64, i64)> = fixed
+        let adjustments: Vec<(&str, ProductStockUnit, i64, i64)> = fixed
             .adjustments
             .iter()
             .map(|a| {
                 (
                     a.product_code.as_str(),
                     a.stock_unit,
-                    a.old_stock,
-                    a.new_stock,
-                    a.adjustment,
+                    a.before.stock_quantity,
+                    a.after.stock_quantity,
                 )
             })
             .collect();
         assert_eq!(
             adjustments,
             vec![
-                ("IU-M", ProductStockUnit::M, 2750, 2700, -50),
-                ("IU-PCS", ProductStockUnit::Pcs, 5, 8, 3)
+                ("IU-M", ProductStockUnit::M, 2750, 2700),
+                ("IU-PCS", ProductStockUnit::Pcs, 5, 8)
             ]
         );
         assert_eq!(
             latest_log_detail(&conn, "integrity_fix")["adjustments"],
             serde_json::json!([
-                {"product_code": "IU-M", "stock_unit": "m", "old_stock": 2750, "new_stock": 2700, "adjustment": -50},
-                {"product_code": "IU-PCS", "stock_unit": "pcs", "old_stock": 5, "new_stock": 8, "adjustment": 3}
+                {"product_code": "IU-M", "stock_unit": "m", "before": plain_json(2750), "after": plain_json(2700)},
+                {"product_code": "IU-PCS", "stock_unit": "pcs", "before": plain_json(5), "after": plain_json(8)}
             ])
+        );
+    }
+
+    /// 計数を直に入れる（(a) には保存の経路が無い）
+    fn insert_count(conn: &DbConnection, code: &str, value: i64, date: &str) {
+        crate::biz::stock_ledger::test_support::insert_count(conn, code, value, date, None);
+    }
+
+    fn set_copy(conn: &DbConnection, code: &str, copy: &StockCopy) {
+        conn.execute(
+            "UPDATE products SET stock_quantity = ?1, stock_recheck = ?2, stock_range_low = ?3,
+                 stock_range_high = ?4 WHERE product_code = ?5",
+            rusqlite::params![
+                copy.stock_quantity,
+                copy.stock_recheck,
+                copy.stock_range_low,
+                copy.stock_range_high,
+                code
+            ],
+        )
+        .unwrap();
+    }
+
+    fn ranged(stock_quantity: i64, low: i64, high: i64) -> StockCopy {
+        StockCopy {
+            stock_quantity,
+            stock_recheck: true,
+            stock_range_low: Some(low),
+            stock_range_high: Some(high),
+        }
+    }
+
+    #[test]
+    fn test_integrity_req904_check_compares_copy_with_derived() {
+        // REQ-904 / 36（突合の相手は記録から求め直した値で、和ではない）/ Matrix I1
+        let (_dir, conn) = setup_test_db();
+        // 計数 6 のある商品: 和は 13 だが、写し 6 は求めた値と同じなので不一致に出ない
+        seed_product(&conn, "I1-SAME", 6);
+        add_movement(&conn, "I1-SAME", 13);
+        insert_count(&conn, "I1-SAME", 6, "2026-05-10");
+        // 写し 13（和と同じ）は求めた値 6 と違うので出る
+        seed_product(&conn, "I1-SUM", 13);
+        add_movement(&conn, "I1-SUM", 13);
+        insert_count(&conn, "I1-SUM", 6, "2026-05-10");
+
+        let result = run_integrity_check(&conn).unwrap();
+        let codes: Vec<(&str, i64, i64)> = result
+            .mismatches
+            .iter()
+            .map(|m| {
+                (
+                    m.product_code.as_str(),
+                    m.copy.stock_quantity,
+                    m.derived.stock_quantity,
+                )
+            })
+            .collect();
+        assert_eq!(codes, vec![("I1-SUM", 13, 6)]);
+        // 読取りは写しを書かない
+        assert_eq!(stock_quantity(&conn, "I1-SUM"), 13);
+    }
+
+    #[test]
+    fn test_integrity_req904_flag_or_range_only_difference_is_reported() {
+        // REQ-904 / 36（数が同じで印・範囲だけ違う商品も一覧に出す）/ Matrix I2
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "I2", 5);
+        add_movement(&conn, "I2", 5);
+        set_copy(&conn, "I2", &ranged(5, 4, 6));
+
+        let result = run_integrity_check(&conn).unwrap();
+        assert_eq!(result.mismatch_count, 1);
+        let m = &result.mismatches[0];
+        assert_eq!(
+            (m.copy.clone(), m.derived.clone()),
+            (ranged(5, 4, 6), plain(5))
+        );
+        assert_eq!(
+            m.differing_fields,
+            vec![IntegrityField::Recheck, IntegrityField::Range]
+        );
+
+        // 印は同じで範囲だけ違う: 計数の衝突（8 と 11）で求めた範囲 8〜11 に対し、写しは 7〜12
+        seed_product(&conn, "I2-RANGE", 8);
+        insert_count(&conn, "I2-RANGE", 8, "2026-05-10");
+        insert_count(&conn, "I2-RANGE", 11, "2026-05-10");
+        set_copy(&conn, "I2-RANGE", &ranged(8, 7, 12));
+        let result = run_integrity_check(&conn).unwrap();
+        let m = result
+            .mismatches
+            .iter()
+            .find(|m| m.product_code == "I2-RANGE")
+            .unwrap();
+        assert_eq!(m.derived, ranged(8, 8, 11));
+        assert_eq!(m.differing_fields, vec![IntegrityField::Range]);
+    }
+
+    #[test]
+    fn test_integrity_req904_differing_fields_order() {
+        // REQ-904 / 36（differing_fields は quantity・recheck・range の順で重複なし）/ Matrix I3
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "I3", 7);
+        add_movement(&conn, "I3", 5);
+        set_copy(&conn, "I3", &ranged(7, 6, 8));
+        let result = run_integrity_check(&conn).unwrap();
+        assert_eq!(
+            result.mismatches[0].differing_fields,
+            vec![
+                IntegrityField::Quantity,
+                IntegrityField::Recheck,
+                IntegrityField::Range
+            ]
+        );
+        assert_eq!(
+            serde_json::to_value(&result.mismatches[0].differing_fields).unwrap(),
+            serde_json::json!(["quantity", "recheck", "range"])
+        );
+    }
+
+    #[test]
+    fn test_integrity_req904_fix_writes_recompute_result_without_movement() {
+        // REQ-904 / 36・BIZ-07-D2（補正は求め直しの結果を書き、movement を作らない）/ Matrix I4
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "I4", 10);
+        add_movement(&conn, "I4", 10);
+        insert_count(&conn, "I4", 8, "2026-05-10");
+        insert_count(&conn, "I4", 11, "2026-05-10");
+        let movements_before = movement_count(&conn);
+
+        let result = fix_integrity(&mut conn, &["I4".to_string()]).unwrap();
+        assert_eq!((result.fixed_count, result.skipped_count), (1, 0));
+        assert_eq!(result.adjustments[0].before, plain(10));
+        assert_eq!(result.adjustments[0].after, ranged(8, 8, 11));
+        let derived = StockCopy::from(&derive_stock(&conn, "I4").unwrap());
+        let copy = StockCopy::from(
+            product_repo::find_all_stock_quantities(&conn)
+                .unwrap()
+                .iter()
+                .find(|row| row.product_code == "I4")
+                .unwrap(),
+        );
+        assert_eq!(copy, derived);
+        assert_eq!(movement_count(&conn), movements_before);
+
+        // 同じ商品をもう一度: 違いが無いので skip
+        let result = fix_integrity(&mut conn, &["I4".to_string()]).unwrap();
+        assert_eq!((result.fixed_count, result.skipped_count), (0, 1));
+    }
+
+    #[test]
+    fn test_integrity_req904_fix_log_before_after_shape() {
+        // REQ-904 / 36・74（integrity_fix の detail は before・after の 4 項目。trigger を書かない）/ Matrix I5
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "I5", 9);
+        add_movement(&conn, "I5", 4);
+        set_copy(&conn, "I5", &ranged(9, 3, 9));
+        fix_integrity(&mut conn, &["I5".to_string()]).unwrap();
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_fix"),
+            serde_json::json!({
+                "fixed_count": 1,
+                "skipped_count": 0,
+                "adjustments": [{
+                    "product_code": "I5",
+                    "stock_unit": "pcs",
+                    "before": {"stock_quantity": 9, "stock_recheck": true, "stock_range_low": 3, "stock_range_high": 9},
+                    "after": plain_json(4),
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn test_integrity_req904_fix_duplicate_code_fixes_once() {
+        // REQ-904 / 36（同じ商品が複数回来ても補正と明細は 1 回、2 回目以降は skip）
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "A", 7);
+        add_movement(&conn, "A", 5);
+
+        let result = fix_integrity(&mut conn, &["A".to_string(), "A".to_string()]).unwrap();
+        assert_eq!((result.fixed_count, result.skipped_count), (1, 1));
+        assert_eq!(result.adjustments.len(), 1);
+        assert_eq!(stock_quantity(&conn, "A"), 5);
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_fix"),
+            serde_json::json!({
+                "fixed_count": 1,
+                "skipped_count": 1,
+                "adjustments": [{
+                    "product_code": "A",
+                    "stock_unit": "pcs",
+                    "before": plain_json(7),
+                    "after": plain_json(5),
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn test_integrity_req904_check_log_copy_derived_shape() {
+        // REQ-904 / 36（integrity_check の各 mismatch は copy・derived・differing_fields）/ Matrix I6
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "I6", 5);
+        add_movement(&conn, "I6", 5);
+        set_copy(&conn, "I6", &ranged(5, 4, 6));
+        run_integrity_check(&conn).unwrap();
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_check"),
+            serde_json::json!({
+                "checked_count": 1,
+                "mismatch_count": 1,
+                "mismatches": [{
+                    "product_code": "I6",
+                    "stock_unit": "pcs",
+                    "copy": {"stock_quantity": 5, "stock_recheck": true, "stock_range_low": 4, "stock_range_high": 6},
+                    "derived": plain_json(5),
+                    "differing_fields": ["recheck", "range"],
+                }],
+            })
         );
     }
 }

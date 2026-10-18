@@ -654,6 +654,8 @@ fn test_commit_req401_stock_limit_rolls_back_whole_tx() {
     );
     assert_eq!(write_surface(&conn), before);
 
+    // 写しを記録から求め直すので、新しい値との差 +1 の movement を入れて写しと記録を揃える（Matrix T4）
+    crate::db::test_support::insert_initial_stock_movement(&conn, "X3-FULL", 1, -999_999_998);
     conn.execute(
         "UPDATE products SET stock_quantity = -999999998 WHERE product_code = 'X3-FULL'",
         [],

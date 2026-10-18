@@ -495,8 +495,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-SRC", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at) \
-             VALUES ('MV-SRC', 'receiving', 5, 15, 'receiving_record', 42, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-SRC', 'receiving', 5, 15, 'receiving_record', 42, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();
@@ -523,8 +523,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-NULL", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, is_voided, created_at) \
-             VALUES ('MV-NULL', 'receiving', 5, 15, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-NULL', 'receiving', 5, 15, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();

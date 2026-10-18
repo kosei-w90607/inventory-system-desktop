@@ -365,8 +365,8 @@ mod tests {
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at) \
-             VALUES ('MS-DET', 'sale_manual', -2, 3, 'manual_sale', ?1, '手動販売', 0, '2026-06-27T11:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase) \
+             VALUES ('MS-DET', 'sale_manual', -2, 3, 'manual_sale', ?1, '手動販売', 0, '2026-06-27T11:00:00', '2026-04-01', 0)",
             rusqlite::params![record_id],
         )
         .unwrap();

@@ -157,8 +157,26 @@ pub fn run_seed(conn: &mut Connection, reset: bool) -> Result<SeedSummary, SeedE
     let specs = seed_products(&tx, &mut summary)?;
     seed_initial_receiving(&tx, &specs, &mut summary)?;
     seed_sales(&tx, &specs, &mut summary)?;
+    recompute_all_stocks(&tx)?;
     tx.commit()?;
     Ok(summary)
+}
+
+/// 写しを記録へ揃える（seed は写しを `seed_products` の初期値で置き、sale_auto の movement で和だけを
+/// 減らすので、揃えないと最初の書込みで写しが和へ跳ぶ。D-118 (a)、Matrix T2）
+fn recompute_all_stocks(tx: &rusqlite::Transaction<'_>) -> Result<(), SeedError> {
+    let codes: Vec<String> = {
+        let mut stmt = tx.prepare("SELECT product_code FROM products ORDER BY product_code")?;
+        let rows = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        rows
+    };
+    for code in codes {
+        crate::biz::stock_ledger::recompute_stock(tx, &code)
+            .map_err(|e| SeedError::Db(DbError::QueryFailed(e.to_string())))?;
+    }
+    Ok(())
 }
 
 // -------- Phase 1: suppliers --------
@@ -397,8 +415,8 @@ fn seed_initial_receiving(
     let mut insert_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for spec in specs {
@@ -415,6 +433,7 @@ fn seed_initial_receiving(
             spec.stock_quantity,
             spec.stock_quantity,
             BASE_TIMESTAMP,
+            BASE_DATE,
         ])?;
         summary.receiving_movements_inserted += 1;
     }
@@ -461,8 +480,8 @@ fn seed_sales(
     let mut movement_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for _ in 0..SALES_RECORDS {
@@ -511,6 +530,7 @@ fn seed_sales(
             -quantity,
             new_stock,
             &created_at,
+            &sale_date,
         ])?;
         summary.sale_movements_inserted += 1;
     }

@@ -1,8 +1,8 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。以下の現行のタスク構成・依存関係を実装済みの新方式として読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。表のほかの責務は (b)（proposed・未実装）で、以下の現行のタスク構成・依存関係を (b) の実装済みとして読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
@@ -10,7 +10,7 @@
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
 | BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
 | IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | 列と表を足す migration（棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB の作り直しは別の承認）。[MNT task](architecture/mnt-task-specs.md) |
+| MNT | 列と表を足す migration（(a) の v9。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
 
@@ -181,7 +181,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | BIZ-04 | PLU書出しロジック | REQ-402 | 商品マスタ→PLU登録候補生成。plu_target=1商品の抽出（三分バケット: 対象/対象外/要修正）、全件/差分モード、同一JAN dedup、adapter提供のレジ制約警告、PLUファイル生成とapp-side書出し済み確認を分離したplu_dirty/plu_exported_at更新制御（D-028） |
 | BIZ-05 | 売上集計ロジック | REQ-501, 502 | 日次・月次の売上集計。商品別売上は sale_records、公式日報集計は daily_report_* を参照し、両者の意味を分けて返す |
 | BIZ-06 | 棚卸しロジック | REQ-205 | 棚卸し開始（全商品のstocktake_items生成）・カウント入力・確定（total_cost計算、valuation_cost_price記録、差異補正のinventory_movements記録）。進行中は1件まで制約。新規商品登録時の自動追加 |
-| BIZ-07 | 整合性チェックロジック | QR系 | stock_quantity突合（SUM(inventory_movements) vs products.stock_quantity）。差異発見時の利用者確認フロー |
+| BIZ-07 | 整合性チェックロジック | QR系 | 写しの 4 項目（`stock_quantity`・要再確認の印・範囲）と記録から求め直した値（BIZ-02 の `derive_stock`）の突合。補正は `recompute_stock` で写しを書く（D-118 の (a)）。差異発見時の利用者確認フロー |
 | BIZ-08 | 日報取込みロジック | REQ-401 | Z001/Z002/Z005 bundleのParse→Validate→Preview→Commit、日報テーブル保存、論理rollback。sale_records/inventory_movementsへ擬似展開しない |
 | BIZ-09 | システム設定・操作ログロジック | REQ-902, 905 | 設定一覧取得・設定upsert・操作ログ検索（日付validation所有）・operation_type一覧。system_repoを呼ぶBIZ境界（D-060。仕様詳細は38-biz-system-service.md） |
 

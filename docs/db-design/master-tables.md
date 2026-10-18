@@ -1,8 +1,8 @@
 # テーブル定義（マスタ）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1・2 つ目の項目（写しの 3 列は migration v9〈[22 §19](../function-design/22-mnt-migration.md)〉、写しを書くのは `biz::stock_ledger` の `recompute_stock` だけ）。3・4 つ目の項目（在庫連動を始める検査と共有 JAN の不変条件）は (b)（proposed・未実装）。
 
 - products へ写しの列を足す: `stock_recheck INTEGER NOT NULL DEFAULT 0`（0/1 の CHECK。要再確認なら 1）、`stock_range_low INTEGER NULL`・`stock_range_high INTEGER NULL`（`stock_recheck=1` なら両方 NOT NULL で low ≤ high、0 なら両方 NULL。table の CHECK）。`stock_quantity` と合わせて、BIZ の求め直しの関数だけが書く（[tracking](tracking-system-tables.md) の同名の契約）。
 - `stock_quantity` は記録から求め直した写しで、既存の行の更新は求め直しの関数だけを通す（`update_stock_quantity` の呼出し元はこの関数 1 つ）。新しい商品の INSERT の初期数量は、同じ TX で作る初期在庫の movement から求め直した値と等しい。
@@ -75,7 +75,7 @@
 - **plu_exported_atの理由**: plu_dirtyだけでは「未書出し」と「アプリ側では書出し済み」の区別がつかない。書出し済み確認日時を記録しておけば「最後にアプリでPLU TSVを作成・保存済みにしたのはいつか」が分かる。ただしPCツール受理やレジ側反映はこの値では証明しない（コードと名称の反映は次の締めの Z004 の照合で分かるが、単価などは分からない。D-117 (7)）。
 - **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。stock_unit='cm'だけで判定するとcm管理でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する
 - **plu_targetの理由（D-028、2026-07-03）**: 「レジでスキャン販売する商品か」は JAN の有無と相関するが一致しない（JANあり・使ってないグループコード商品、valid JAN でも PLU 枠を割かないスポット特売品が現場に実在する）。jan_code からの純導出では表現できないため、pos_stock_sync と同型の明示フラグにする。UI-01b が jan_code の 13 桁数字判定から初期値を提案し、利用者が変更できる。DB DEFAULT は安全側の 0（レジ登録は opt-in）。plu_target=0 の商品は PLU 書出し抽出と UI-00 PLU未反映通知の対象外になり、部門売り + 手動販売出庫（UI-04）で扱う。インデックスは追加しない（plu_dirty との複合検索は数千行規模のためフルスキャンで十分）
-- **stock_quantityを商品テーブルに持つ理由**: 毎回inventory_movementsを集計するより、現在の在庫数をここにキャッシュしておく方が画面表示が速い。inventory_movementsの合計と整合しているかは整合性チェックで担保
+- **stock_quantityを商品テーブルに持つ理由**: 毎回inventory_movementsを集計するより、現在の在庫数をここにキャッシュしておく方が画面表示が速い。写しの 4 項目（`stock_quantity`・要再確認の印・範囲）が記録から求め直した値と合っているかは整合性チェックで突合する（D-118 の (a)）
 
 ### 他の案と不採用理由
 - **INTEGER連番IDをPKにする案**: リレーションのJOINは速くなるが、8テーブルが参照するため毎回ID↔コード変換が必要。4000商品規模ではTEXT PKでも問題ないため不採用
