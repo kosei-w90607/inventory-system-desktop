@@ -24,7 +24,7 @@ mod test_support;
 pub(crate) use common::StockChangeOutcome;
 
 // apply_stock_change は pub(crate) を維持（BIZ-03 CSV取込みから呼び出し可）
-pub(crate) use common::{apply_stock_change, check_stock_range};
+pub(crate) use common::{apply_stock_change, check_stock_range, validate_business_date};
 pub(crate) use list::resolve_movement_source;
 
 // 入庫

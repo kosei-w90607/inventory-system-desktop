@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 
 use super::common::{
     apply_stock_change, compute_fingerprint, negative_stock_warning_message,
-    IDEMPOTENCY_KEY_MAX_LEN,
+    validate_business_date, IDEMPOTENCY_KEY_MAX_LEN,
 };
 
 /// 廃棄・破損記録リクエスト（31-biz-inventory-service.md §12.6）
@@ -89,6 +89,9 @@ pub fn create_disposal(
             "明細が1件以上必要です".to_string(),
         ));
     }
+
+    // 業務日の形と暦の検査（DB を見ない検証の段。冪等の再送の判定と TX より前。31）
+    validate_business_date(&req.disposal_date)?;
 
     // fingerprint（リクエストフィールドのみ使用、DB参照不要）
     let fingerprint = compute_disposal_fingerprint(&req);
@@ -368,7 +371,7 @@ mod tests {
 
         let (qty, mt): (i64, String) = conn
             .query_row(
-                "SELECT quantity, movement_type FROM inventory_movements WHERE product_code = 'DSP-002'",
+                "SELECT quantity, movement_type FROM inventory_movements WHERE product_code = 'DSP-002' AND reference_type = 'disposal_record'",
                 [],
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )
@@ -672,6 +675,24 @@ mod tests {
                 "W-M: 在庫がマイナスになりました（-0.3 m）".to_string(),
                 "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
             ]
+        );
+    }
+
+    #[test]
+    fn test_create_disposal_req204_rejects_noncanonical_date() {
+        // REQ-204 / Y1（4 業務の全部）/ Matrix W3
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W3-DSP", 3);
+        let before = write_surface(&conn, &DISPOSAL_TABLES);
+        let mut req = make_disposal_req("w3-dsp", vec![disposal_item("W3-DSP", 1, 100, "破損")]);
+        req.disposal_date = "2026-4-7".to_string();
+        let result = create_disposal(&mut conn, req);
+        assert_rejected_without_writes(
+            &conn,
+            &DISPOSAL_TABLES,
+            &before,
+            result,
+            "日付の形式が不正です（YYYY-MM-DD）",
         );
     }
 }

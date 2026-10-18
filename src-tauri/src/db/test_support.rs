@@ -45,6 +45,25 @@ pub fn seed_product(conn: &DbConnection, product_code: &str) {
     product_repo::insert_product(conn, &product).unwrap();
 }
 
+/// 在庫つきの商品の fixture が、写しと同じ値の初期在庫の movement を入れるヘルパー（Matrix T3・T4）
+///
+/// `movement_type` は `receiving`、`reference_type` は NULL、業務日は固定の `2026-04-01`。
+/// 写しを記録から求め直す経路（D-118 (a)）を通す test が、写しと記録を揃えるのに使う
+pub fn insert_initial_stock_movement(
+    conn: &DbConnection,
+    product_code: &str,
+    quantity: i64,
+    stock_after: i64,
+) {
+    conn.execute(
+        "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
+             note, created_at, business_date, phase)
+         VALUES (?1, 'receiving', ?2, ?3, '初期在庫投入', '2026-04-01T09:00:00', '2026-04-01', 0)",
+        rusqlite::params![product_code, quantity, stock_after],
+    )
+    .unwrap();
+}
+
 /// テスト用に取引先を作成するヘルパー
 pub fn seed_supplier(conn: &DbConnection) -> i64 {
     conn.execute(

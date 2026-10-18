@@ -3,15 +3,15 @@
 use crate::biz::csv_import_service::{
     CommitRequest, DuplicateStatus, ImportResult, StockCorrection,
 };
-use crate::biz::inventory_service::{apply_stock_change, check_stock_range};
+use crate::biz::inventory_service::apply_stock_change;
+use crate::biz::stock_ledger::recompute_stock;
 use crate::biz::BizError;
-use crate::db::inventory_repo;
 use crate::db::inventory_repo::{MovementType, ReferenceType};
 use crate::db::product_repo;
 use crate::db::sales_repo::{self, NewCsvImport, NewCsvImportError, NewSaleRecord, VoidedMovement};
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{DbConnection, DbError};
-use std::collections::HashMap;
+use std::collections::BTreeSet;
 
 /// BIZ-03 停止文言（32-biz-csv-import-service.md §15.0、SPEC-STOP-D2）
 const IMPORT_SUSPENDED_MESSAGE: &str =
@@ -241,44 +241,32 @@ fn execute_commit(
     })
 }
 
-/// voided_movements に基づく在庫補正（rollback 専用）
+/// voided_movements の商品を記録から求め直す在庫補正（rollback 専用）
 ///
-/// voided_movements を product_code でグループ化し、
-/// correction = -SUM(quantity) で在庫を補正する。
+/// 無効にした movement の商品を `recompute_stock` で求め直し、前後の写しを返す（補償の movement は
+/// 作らない。値は「写し − 無効にした数量」と同じ。ADR SPEC-STK-CNT-D7、31）。上限の外は呼び出し元の TX 全体を戻す。
 ///
 /// docs/function-design/32-biz-csv-import-service.md §15.5
 pub(super) fn apply_void_stock_corrections(
-    conn: &DbConnection,
+    tx: &rusqlite::Transaction<'_>,
     voided_movements: &[VoidedMovement],
 ) -> Result<Vec<StockCorrection>, BizError> {
-    if voided_movements.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // product_code でグループ化して quantity を合算
-    let mut corrections_map: HashMap<String, i64> = HashMap::with_capacity(voided_movements.len());
-    let overflow = || BizError::ValidationFailed("在庫数計算オーバーフロー".to_string());
-    for vm in voided_movements {
-        let sum = corrections_map.entry(vm.product_code.clone()).or_insert(0);
-        *sum = sum.checked_add(vm.quantity).ok_or_else(overflow)?;
-    }
-
-    let mut stock_corrections = Vec::new();
-    for (product_code, sum_quantity) in &corrections_map {
-        // correction = -SUM(voided.quantity)
-        let correction = sum_quantity.checked_neg().ok_or_else(overflow)?;
-        let product = product_repo::find_by_product_code(conn, product_code)?.ok_or_else(|| {
+    let product_codes: BTreeSet<&str> = voided_movements
+        .iter()
+        .map(|vm| vm.product_code.as_str())
+        .collect();
+    let mut stock_corrections = Vec::with_capacity(product_codes.len());
+    for product_code in product_codes {
+        let product = product_repo::find_by_product_code(tx, product_code)?.ok_or_else(|| {
             BizError::NotFound(format!(
                 "在庫補正対象の商品が見つかりません: {}",
                 product_code
             ))
         })?;
         let old_stock = product.product.stock_quantity;
-        // 補正の後の在庫も上限の中（共通規則 (a)、X3）。外れたら呼び出し元が TX 全体を戻す
-        let new_stock = check_stock_range(old_stock.checked_add(correction).ok_or_else(overflow)?)?;
-        inventory_repo::update_stock_quantity(conn, product_code, new_stock, None)?;
+        let new_stock = recompute_stock(tx, product_code)?.stock;
         stock_corrections.push(StockCorrection {
-            product_code: product_code.clone(),
+            product_code: product_code.to_string(),
             old_stock,
             new_stock,
         });
