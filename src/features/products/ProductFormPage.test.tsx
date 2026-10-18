@@ -250,6 +250,40 @@ describe("ProductFormPage (UI-01b)", () => {
     expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
+  it("UI-01b-D23: 単位を変えて保存すると stock_unit を送り、拒否は保存の error に出る", async () => {
+    const user = userEvent.setup();
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [makeMockDepartment()] });
+    mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "P-001", stock_unit: "pcs" }),
+    });
+    mockUpdateProduct.mockResolvedValue({
+      status: "error",
+      error: {
+        kind: "validation",
+        message: "在庫単位は個数の単位どうしでだけ変えられます",
+        field: null,
+        error_id: null,
+      },
+    });
+
+    renderWithClient(
+      <ProductFormPage mode="edit" productCode="P-001" onNavigateToList={vi.fn()} />,
+    );
+
+    await user.click(await screen.findByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "玉" }));
+    await user.click(screen.getByRole("button", { name: "保存する" }));
+
+    await waitFor(() => {
+      expect(mockUpdateProduct).toHaveBeenCalledWith("P-001", { stock_unit: "ball" });
+    });
+    expect(
+      await screen.findByText("在庫単位は個数の単位どうしでだけ変えられます"),
+    ).toBeInTheDocument();
+  });
+
   it("D-052-C2a update success invalidates the exact independent oracle set", async () => {
     const user = userEvent.setup();
     const onNavigateToList = vi.fn();

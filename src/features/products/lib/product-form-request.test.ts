@@ -157,6 +157,18 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
     expect(result.request).not.toHaveProperty("stock_unit");
   });
 
+  it("UI-01b-D23: 個数の単位の商品は単位を変えたときだけ stock_unit を送る", () => {
+    const original = makeMockProductWithRelations({ stock_unit: "pcs" });
+    const changed = buildUpdateProductRequest(
+      { ...productToFormValues(original), stockUnit: "ball" },
+      original,
+    );
+    expect(changed.request).toEqual({ stock_unit: "ball" });
+
+    const unchanged = buildUpdateProductRequest(productToFormValues(original), original);
+    expect(unchanged.request).not.toHaveProperty("stock_unit");
+  });
+
   it("UI-01b PRODUCT-PATCH-D1 sends ordinary and clearable values without unrelated fields", () => {
     const original = makeMockProductWithRelations({
       name: "変更前",

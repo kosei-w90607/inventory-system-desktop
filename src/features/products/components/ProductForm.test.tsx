@@ -65,7 +65,7 @@ describe("ProductForm (UI-01b)", () => {
     );
 
     expect(screen.getByLabelText("商品コード")).toHaveValue("P-001");
-    // UI-01b-D11: read-only 入力は readOnly 属性で示す（数量単位 select は disabled 維持）
+    // UI-01b-D11: read-only 入力は readOnly 属性で示す（長さの単位の商品の数量単位 select は disabled）
     expect(screen.getByLabelText("JANコード")).toHaveAttribute("readonly");
     expect(screen.getByLabelText("現在庫")).toHaveAttribute("readonly");
     expect(screen.getByLabelText("数量単位")).toBeDisabled();
@@ -77,6 +77,55 @@ describe("ProductForm (UI-01b)", () => {
     expect(screen.getByRole("heading", { name: "分類と取引先" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "価格" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "在庫" })).toBeInTheDocument();
+  });
+
+  function renderStockSection(mode: "create" | "edit", stockUnit: "pcs" | "m") {
+    const product = makeMockProductWithRelations({ stock_unit: stockUnit, stock_quantity: 12 });
+    render(
+      <ProductForm
+        mode={mode}
+        values={
+          mode === "edit"
+            ? productToFormValues(product)
+            : { ...createProductFormDefaults, stockUnit }
+        }
+        departments={[makeMockDepartment()]}
+        suppliers={[makeMockSupplier()]}
+        errors={{}}
+        saveError={null}
+        supplierWarning={null}
+        productCodeLabel={mode === "edit" ? product.product_code : "自動"}
+        isDiscontinued={false}
+        isSaving={false}
+        posSyncTouched={false}
+        onValuesChange={vi.fn()}
+        onPosSyncTouchedChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+  }
+
+  it("UI-01b-D23: edit の個数の単位の商品は数量単位 select が押せる", () => {
+    renderStockSection("edit", "pcs");
+    expect(screen.getByLabelText("数量単位")).toBeEnabled();
+    expect(screen.getByLabelText("現在庫")).toHaveAttribute("readonly");
+  });
+
+  it.each([
+    [
+      "create",
+      "pcs",
+      "初期在庫と数量単位を設定します。登録後は、数量単位を個数の単位どうし（例: 個 → 玉）でだけ変更できます。",
+    ],
+    ["edit", "pcs", "現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。"],
+    ["edit", "m", "現在庫と数量単位は登録後に変更できません。"],
+  ] as const)("UI-01b-D23: 在庫の節の説明文は mode と単位で 3 つ（%s・%s）", (mode, unit, text) => {
+    renderStockSection(mode, unit);
+    expect(screen.getByText(text)).toBeInTheDocument();
+    expect(
+      screen.queryByText("初期在庫と数量単位を設定します。登録後は数量単位を変更できません。"),
+    ).toBeNull();
   });
 
   it("discontinue requires confirmation and cancel keeps state", async () => {

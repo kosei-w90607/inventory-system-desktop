@@ -2,7 +2,7 @@
 //
 // UI-01b-D4〜D8: 商品登録・修正 form。
 // UI-01b-D10: 識別 / 分類と取引先 / 価格 / 在庫 の 4 セクションに分割する。
-// UI-01b-D11: read-only 入力は readOnly + bg-muted で示す（数量単位 select は disabled 維持）。
+// UI-01b-D11: read-only 入力は readOnly + bg-muted で示す（長さの単位の商品の数量単位 select は disabled）。
 // UI-01b-D12: 必須項目ラベルに（必須）を付ける（色符号化しない）。
 // UI-01b-D13: 「廃番にする」は確認ダイアログを通す（「表示に戻す」は直接実行）。
 
@@ -404,8 +404,10 @@ export function ProductForm({
         title="在庫"
         description={
           mode === "create"
-            ? "初期在庫と数量単位を設定します。登録後は数量単位を変更できません。"
-            : "現在庫と数量単位は登録後に変更できません。"
+            ? "初期在庫と数量単位を設定します。登録後は、数量単位を個数の単位どうし（例: 個 → 玉）でだけ変更できます。"
+            : isLengthUnit(values.stockUnit)
+              ? "現在庫と数量単位は登録後に変更できません。"
+              : "現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。"
         }
       >
         <div className="space-y-1 md:w-1/2">
@@ -428,7 +430,7 @@ export function ProductForm({
           stockUnit={values.stockUnit}
           posStockSync={values.posStockSync}
           posSyncTouched={posSyncTouched}
-          readOnly={mode === "edit"}
+          readOnly={mode === "edit" && isLengthUnit(values.stockUnit)}
           onStockUnitChange={(stockUnit) => {
             update("stockUnit", stockUnit);
           }}

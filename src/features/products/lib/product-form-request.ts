@@ -12,6 +12,7 @@ import type {
 } from "@/lib/bindings";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import {
+  isLengthUnit,
   MAX_COST_PRICE,
   MAX_SELLING_PRICE,
   MAX_STOCK_QUANTITY,
@@ -195,6 +196,10 @@ export function buildUpdateProductRequest(
   }
   if (values.pluTarget !== original.plu_target) {
     request.plu_target = values.pluTarget;
+  }
+  // UI-01b-D23: 送る判定は登録の単位で行う（登録の単位が長さの商品は送らない）
+  if (!isLengthUnit(original.stock_unit) && values.stockUnit !== original.stock_unit) {
+    request.stock_unit = values.stockUnit;
   }
 
   return { request, errors };
