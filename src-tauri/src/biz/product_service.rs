@@ -1904,14 +1904,13 @@ mod tests {
         assert_eq!(count, 1, "初期在庫の inventory_movement が記録されるべき");
     }
 
-    /// 写しの 4 項目と、初期在庫の movement（reference_type NULL）の (数量, 業務日, stock_after) の一覧
-    fn copy_and_initial_movements(
-        conn: &DbConnection,
-        code: &str,
-    ) -> (
+    type CopyAndInitialMovements = (
         (i64, bool, Option<i64>, Option<i64>),
         Vec<(i64, String, i64)>,
-    ) {
+    );
+
+    /// 写しの 4 項目と、初期在庫の movement（reference_type NULL）の (数量, 業務日, stock_after) の一覧
+    fn copy_and_initial_movements(conn: &DbConnection, code: &str) -> CopyAndInitialMovements {
         let copy = conn
             .query_row(
                 "SELECT stock_quantity, stock_recheck, stock_range_low, stock_range_high

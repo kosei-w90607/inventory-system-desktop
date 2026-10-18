@@ -1170,29 +1170,41 @@ pub fn list_price_history(
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// 全商品の product_code, name, stock_quantity, stock_unit を取得する（BIZ-07 整合性チェック用）
+/// 整合性の突合が読む商品の写しの 4 項目と単位・名前（BIZ-07、36）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StockCopyRow {
+    pub product_code: String,
+    pub name: String,
+    pub stock_unit: ProductStockUnit,
+    pub stock_quantity: i64,
+    pub stock_recheck: bool,
+    pub stock_range_low: Option<i64>,
+    pub stock_range_high: Option<i64>,
+}
+
+/// 全商品の写しの 4 項目と単位・名前を商品コードの順で取得する（BIZ-07 整合性チェック用）
 ///
 /// 20-io-product-repo.md §2.11
-pub fn find_all_stock_quantities(
-    conn: &DbConnection,
-) -> Result<Vec<(String, String, i64, ProductStockUnit)>, DbError> {
+pub fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<StockCopyRow>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT product_code, name, stock_quantity, stock_unit
+        "SELECT product_code, name, stock_unit, stock_quantity, stock_recheck,
+                stock_range_low, stock_range_high
          FROM products ORDER BY product_code ASC",
     )?;
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, i64>(2)?,
-            parse_stock_unit(row.get(3)?)?,
-        ))
-    })?;
-    let mut items = Vec::new();
-    for row in rows {
-        items.push(row?);
-    }
-    Ok(items)
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(StockCopyRow {
+                product_code: row.get(0)?,
+                name: row.get(1)?,
+                stock_unit: parse_stock_unit(row.get(2)?)?,
+                stock_quantity: row.get(3)?,
+                stock_recheck: row.get(4)?,
+                stock_range_low: row.get(5)?,
+                stock_range_high: row.get(6)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
 }
 
 // ---------------------------------------------------------------------------
@@ -2572,24 +2584,33 @@ mod tests {
 
         let result = find_all_stock_quantities(&conn).unwrap();
         assert_eq!(result.len(), 2);
-        // ORDER BY product_code ASC
-        assert_eq!(
-            result[0],
-            (
-                "ASQ-001".to_string(),
-                "商品A".to_string(),
-                0,
-                ProductStockUnit::Pcs
-            )
-        );
+        // ORDER BY product_code ASC。写しの 4 項目の行（Matrix T6。数と単位は前と同じ値）
+        let row = |code: &str, name: &str, stock: i64| StockCopyRow {
+            product_code: code.to_string(),
+            name: name.to_string(),
+            stock_unit: ProductStockUnit::Pcs,
+            stock_quantity: stock,
+            stock_recheck: false,
+            stock_range_low: None,
+            stock_range_high: None,
+        };
+        assert_eq!(result[0], row("ASQ-001", "商品A", 0));
+        assert_eq!(result[1], row("ASQ-002", "商品B", 15));
+        conn.execute(
+            "UPDATE products SET stock_recheck = 1, stock_range_low = 14, stock_range_high = 16
+             WHERE product_code = 'ASQ-002'",
+            [],
+        )
+        .unwrap();
+        let result = find_all_stock_quantities(&conn).unwrap();
         assert_eq!(
             result[1],
-            (
-                "ASQ-002".to_string(),
-                "商品B".to_string(),
-                15,
-                ProductStockUnit::Pcs
-            )
+            StockCopyRow {
+                stock_recheck: true,
+                stock_range_low: Some(14),
+                stock_range_high: Some(16),
+                ..row("ASQ-002", "商品B", 15)
+            }
         );
     }
 

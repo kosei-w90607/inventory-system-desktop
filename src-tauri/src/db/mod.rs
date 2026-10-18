@@ -46,8 +46,7 @@ pub use disposal_repo::{
 pub use inventory_common::ListQuery;
 #[allow(unused_imports)]
 pub use inventory_repo::{
-    MovementQuery, MovementRecord, MovementSourceLink, MovementType, NewMovement,
-    ProductMovementSum, ReferenceType,
+    MovementQuery, MovementRecord, MovementSourceLink, MovementType, NewMovement, ReferenceType,
 };
 #[allow(unused_imports)]
 pub use manual_sale_repo::{
