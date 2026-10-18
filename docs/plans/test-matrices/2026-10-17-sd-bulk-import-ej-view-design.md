@@ -38,7 +38,8 @@ Risk: R3
 - FM19: EJ の新しい控えが 0 件で、保留・conflict・読めない file だけがあるとき、ボタンが押せず、番号・file 名・直し方に届かない
 - FM20: 一括取込み・手で選ぶ EJ の取込みの後も控えの query が古いまま残り、控えの画面に新しい控えが出ない
 - FM21: 同じ日・同じ精算回数の 2 束、または同じ精算回数の 2 つの Z004（SD-23 が外れた場合）の順が決まらず、どちらの bytes が入るかが実行ごとに変わる
-- FM22: scan で読めなかった Z004 が一括取込みの結果に出ず、最新の精算の Z004 が入っていないことが黙って過ぎる（末尾の精算なので精算回数の欠けの知らせにも出ない）
+- FM22: scan で読めなかった Z004 が一括取込みの結果に出ず、最新の精算の Z004 が入っていないことが黙って過ぎる（末尾の精算なので精算回数の欠けの知らせにも出ない）。読めなかった Z004 だけの回（日報は全部取込み済み・EJ も 0）にボタンが押せず、scan の一覧にも出ない
+- FM23: 同じ bytes の Z004 が `XZ` と `XZ_BKUP` の両方にあり、2 本目が同じ hash の拒否で毎回「取り込みませんでした」と出る、または `z004_new_count` が 2 に数える
 
 ## Test Matrix
 
@@ -56,6 +57,7 @@ Risk: R3
 | BIZ-08-D7 | FM4・FM21 | unit（並べる関数） | `test_bulk_import_orders_by_report_date_then_settlement_no` | snapshot の束が新しい順で入っているとき、処理の順が (対象日, 精算回数) の昇順にならない。同じ対象日・同じ精算回数の `XZ` の束と `XZ_BKUP` の束で `XZ` が先にならない、同じ area の 2 束が `candidate_key` の辞書順にならない、または `files_by_candidate` への入れ順を変えると処理の順が変わる |
 | BIZ-08-D7 | FM21 | unit（並べる関数、(B)） | `test_bulk_import_orders_z004_by_settlement_no_independent_of_enumeration` | 同じ精算回数で bytes の違う 2 つの Z004（`XZ` と `XZ_BKUP`）と別の精算回数の 1 つを持つ snapshot で、`z004_files` の入れ順を反転すると処理の順（ImportedZ004 になる file）が変わる、`XZ` の file が先にならない、または精算回数でなく file 名の順で並ぶ |
 | BIZ-08-D7 | FM22 | integration（(B)） | `test_bulk_import_names_scan_unreadable_z004_files` | 日報と EJ は取り込め、最新の精算の Z004 だけが `z004_unreadable_files` にある snapshot で、その相対 path の `RegisterSdBulkSource::Z004`（`settlement_date` が None）の item が無い、outcome が §37.10 手順 3 の固定の文の Skipped でない、または以後の項目が NotAttempted になる |
+| BIZ-08-D7 | FM23 | unit（scan、(B)） | `test_scan_merges_same_bytes_z004_preferring_xz` | 同じ bytes の Z004 が `XZ` と `XZ_BKUP` にある SD で、`z004_files` が 2 件になる、残った 1 件の `sd_relative_path` が `XZ` のものでない、`z004_new_count` が 2 になる、または一括取込みの結果に 2 本目の Skipped が出る |
 | BIZ-08-D7 | FM2 | integration | `test_bulk_import_needs_confirmation_is_not_a_stop` | 同じ日に精算回数の NULL の取込みがある束が NeedsIndividualConfirmation 以外になる、または以後の項目が NotAttempted になる |
 | BIZ-08-D8 | FM6 | unit（§37.3） | `test_same_date_bundles_with_settlement_no_need_no_confirmation` | 同じ日に精算回数 41 の completed があり、精算回数 42 の束を preview したとき `NoDuplicate` でない |
 | BIZ-08-D8 | FM5 | unit | `test_same_date_with_null_settlement_import_still_needs_confirmation` | 同じ日に精算回数 NULL の completed（D-111 より前の形）があり、精算回数 42 の束で `AdditionalImportConfirmationRequired` でない |
@@ -88,6 +90,7 @@ Risk: R3
 | CMD-12-D2 | — | cmd | `test_bulk_item_source_copy_failed_message_is_fixed` | BIZ の `Failed(SourceCopyFailed)` の item が、wire で kind `internal` と §45.7 の固定の文にならない（io error の kind が message に出る） |
 | CMD-12-D2 | FM17 | wire（response の serialize 出力の固定、D-064 (iv)） | `test_ej_wire_enums_serialize_as_fixed_values` | `EjRecordKindCode`・`EjRecordModeCode` の各値の serialize が pos-tables の `ej_records.kind`・`mode` の CHECK の値と 1 対 1 で一致しない、`RegisterSdBulkOutcomeDto::Failed` の `kind` が `CmdErrorKind` の値でない（bindings で `string` になる）、DB の未知の kind・mode の値が `DbError` にならず読める |
 | UI-07-D17 | — | RTL | `bulk import button enabled by z004_new_count`（(B)） | 日報・EJ が 0 件で `z004_new_count` が 1 のとき「まとめて取り込む」が押せない |
+| UI-07-D17 | FM22 | RTL | `bulk import button enabled by z004_unreadable_count`（(B)） | 日報の `NotImported` 0 件・`ej` が None・`z004_new_count` 0 で `z004_unreadable_count` が 1 のとき、「まとめて取り込む」が押せない、または一覧の下に「読めない商品別の売上（Z004）のファイルが 1 本あります」が無い。`z004_unreadable_count` 0 でその文が出る |
 | UI-07-D17 | FM18 | RTL | `bulk result shows z004 partial with skipped rows and detail link`（(B)） | 正常の行 1 行と未登録の商品の行 1 行の Z004 の結果（`ImportedZ004`、`status` が `completed_partial`・`skipped_count` が 1）で、label が「一部を取り込みました」でない、「取り込まなかった行が 1 件あります」が無い、または `/csv-import/records/{csv_import_id}` へのリンクが無い |
 | UI-07-D17 | FM16 | RTL | `bulk result names gaps held unreadable conflicts with in-place action` | EJ の結果に欠けの区間と「EJ のファイルを選んで取り込む」、保留の件数と「次に SD を読んだときにもう一度確かめます」の文、読めない file 名、conflict の番号のどれかが出ない（TD-310）。`saved: false` の conflict に「前の控えを残しました」か控えの画面へのリンクが出る、`saved: true` にリンクが無い。件数 0 の項目に行が出る |
 | UI-07-D17 | FM19 | RTL | `bulk import button enabled only with importable items` | 日報の `NotImported` 0 件で `ej` の `new_count`・`held_count`・`conflict_count`・`unreadable_file_count` が全て 0 のとき「まとめて取り込む」が押せる、日報の `NotImported` か `new_count` の片方が 1 件で押せない、または `new_count` 0 で `held_count`・`conflict_count`・`unreadable_file_count` のどれか 1 つだけが 1 のとき押せない |
@@ -178,6 +181,7 @@ Risk: R3
 - conflict の `saved` を常に true にしたら: `test_ej_conflict_within_one_call_saves_neither` が red。
 - 暦の検査を外したら: `test_ej_invalid_calendar_datetime_file_is_unreadable` が red。
 - scan で読めなかった file 名を結果に足さなかったら: `test_bulk_import_names_scan_unreadable_ej_files` が red。Z004 の側は `test_bulk_import_names_scan_unreadable_z004_files` が red。
+- scan で同じ bytes の Z004 をまとめなかったら: `test_scan_merges_same_bytes_z004_preferring_xz` が red。ボタンの条件から `z004_unreadable_count` を外したら: `bulk import button enabled by z004_unreadable_count` が red。
 - Z004 の同じ精算回数の順から `XZ` の優先か `sd_relative_path` の順を外したら: `test_bulk_import_orders_z004_by_settlement_no_independent_of_enumeration` が red。
 - 欠けの区間を番号ごとにしたら・min より前を数えたら: `test_list_ej_number_gaps_returns_ranges` が red。
 - 写しの条件から「新しい記録を持つ」を外したら: `test_ej_copy_only_sd_files_with_new_records_before_tx` が red。
