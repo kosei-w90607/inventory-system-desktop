@@ -250,7 +250,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **状態**:
 - **error**: `FieldError` を入力直下に出す（`text-destructive` + `role="alert"`）
 - **read-only**: 編集不可で値を見せる入力は `readOnly` + `bg-muted`（例: 編集時の商品コード・JAN・現在庫）
-- **disabled**: 操作自体を不能化する入力は `disabled`（例: 編集時の数量単位 select）
+- **disabled**: 操作自体を不能化する入力は `disabled`（例: 編集時の長さの単位の商品の数量単位 select）
 - hover / focus / active: 入力 primitive の既定に従う
 
 **read-only と disabled の使い分け**: 値を見せて編集だけ不能にするなら `readOnly + bg-muted`、操作そのものを止めるなら `disabled`（DSR-05）。

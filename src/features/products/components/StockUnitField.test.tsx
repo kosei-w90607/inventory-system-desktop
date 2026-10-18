@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { isLengthUnit } from "@/lib/unit-quantity";
 import { StockUnitField } from "./StockUnitField";
 
 describe("StockUnitField (UI-01b-D6)", () => {
@@ -318,10 +319,48 @@ describe("StockUnitField (UI-01b-D22)", () => {
   ] as const)(
     "UI-01b-D22: 提案の案内は create の %s（%s）で出るか = %s",
     (stockUnit, mode, shown) => {
-      renderField({ stockUnit, mode, readOnly: mode === "edit" });
+      renderField({ stockUnit, mode, readOnly: mode === "edit" && isLengthUnit(stockUnit) });
       const note = screen.queryByText(/在庫同期しない設定を提案します/);
       if (shown) expect(note).toBeInTheDocument();
       else expect(note).toBeNull();
     },
   );
+
+  const RELABEL_NOTE =
+    "単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。";
+
+  it("UI-01b-D23: edit の個数の単位の商品は個数の単位だけを選べる", async () => {
+    const user = userEvent.setup();
+    const { onStockUnitChange, onPosStockSyncSuggest } = renderField({
+      mode: "edit",
+      stockUnit: "pcs",
+    });
+    expect(screen.getByLabelText("数量単位")).toBeEnabled();
+    expect(screen.getByText(RELABEL_NOTE)).toBeInTheDocument();
+    await user.click(screen.getByLabelText("数量単位"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "個",
+      "枚",
+      "本",
+      "袋",
+      "箱",
+      "巻",
+      "組",
+      "セット",
+      "玉",
+      "丁",
+    ]);
+    await user.click(screen.getByRole("option", { name: "玉" }));
+    expect(onStockUnitChange).toHaveBeenCalledWith("ball");
+    // 在庫連動の自動提案は create だけ
+    expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
+  });
+
+  it("UI-01b-D23: edit の長さの単位の商品は選べない", () => {
+    renderField({ mode: "edit", stockUnit: "m", readOnly: true });
+    expect(screen.getByLabelText("数量単位")).toBeDisabled();
+    expect(screen.getByLabelText("数量単位")).toHaveTextContent("m");
+    expect(screen.queryByText(RELABEL_NOTE)).toBeNull();
+  });
 });

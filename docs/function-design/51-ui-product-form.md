@@ -25,8 +25,8 @@
 | REQ-101 / REQ-102 | UI-01b-D2 | 保存成功後は商品一覧へ戻る。`returnTo` search param は `/products` 一覧 route とその search params だけ許可し、それ以外は `/products` に戻す。 | UI-01a の検索条件 URL state を保って戻れるようにする。一方でフォーム route、import route、外部 URL、他画面 route への遷移は不要で、保存後の循環や誤遷移を生むため許可しない。 |
 | CMD-01 / UI-01b | UI-01b-D3 | UI は tauri-specta で生成済みの `commands.createProduct` / `commands.updateProduct` / `commands.toggleDiscontinue` / `commands.listSuppliers` を使う。generated binding の正本は `src/lib/bindings.ts` とする。 | `typedInvoke` fallback は Phase 2 closeout で退役済み。UI-01b だけ ad hoc invoke に戻す案は contract drift のため不採用。 |
 | REQ-101 | UI-01b-D4 | create mode の商品コード入力は「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がある場合だけサーバー発番を使い、`code_prefix` がない部門では保存前 validation で止める。 | 現行 `ProductCreateRequest` は任意 `product_code` 手入力を受けない。UI が手入力欄を出しても backend に送れないため不採用。JANなし商品は独自コード発番対象部門を選ぶ。 |
-| REQ-102 / SP-102-04 | UI-01b-D5 | edit mode では `product_code` と `jan_code` を読取専用、`stock_quantity` と `stock_unit` も初回 UI-01b 実装では読取専用にする。 | `product_code` 変更不可は DB 設計と仕様で確定済み。`ProductUpdateRequest` は `stock_unit` / `stock_quantity` を更新しない。単位変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase。`stock_unit` の読取専用は UI-01b-D23（D-119）が個数の単位の商品について置き換える（UI-01b-D22 の末尾の「edit mode の単位は読取専用」も同じ）。 |
-| REQ-102 / D-119 | UI-01b-D23 | （proposed・未実装、単位の語の直しの lane。owner の決定 U2 = b）edit mode で、今の単位が個数の種類の商品は、数量単位の select を個数の単位だけ（D1 の表の順）で出して変えられる。長さの単位（`m`・`cm`）の商品は今どおり読取専用で、select に長さの単位を出さない。変えたときだけ `updateProduct` の `stock_unit` に値を入れる（変えていなければ送らない）。select の下に 1 文 `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。` を出す。BIZ が拒んだとき（`在庫単位は個数の単位どうしでだけ変えられます`）は保存の error として出す。 | 在庫 Excel から初期投入した毛糸が「個」で入り、「玉」に直せない（2026-10 の見直しの文書の食い違い）。個数の単位は価格の基準数量がどれも 1 で、数の意味が変わらない（[共通規則](10-common-rules.md) SPEC-UNIT-D2）。不採用: 在庫 0 なら種類をまたいで直せる（在庫 0 でも過去の明細の意味が変わる）。 |
+| REQ-102 / SP-102-04 | UI-01b-D5 | edit mode では `product_code` と `jan_code` を読取専用、`stock_quantity` と `stock_unit` も初回 UI-01b 実装では読取専用にする。 | `product_code` 変更不可は DB 設計と仕様で確定済み。`ProductUpdateRequest` は `stock_quantity` を更新しない（`stock_unit` は個数の単位どうしの変更だけ。BIZ-01-D8）。単位変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase。`stock_unit` の読取専用は UI-01b-D23（D-119）が個数の単位の商品について置き換える（UI-01b-D22 の末尾の「edit mode の単位は読取専用」も同じ）。 |
+| REQ-102 / D-119 | UI-01b-D23 | （owner の決定 U2 = b）edit mode で、今の単位が個数の種類の商品は、数量単位の select を個数の単位だけ（D1 の表の順）で出して変えられる。長さの単位（`m`・`cm`）の商品は今どおり読取専用（select は押せず、今の語が読める）。変えたときだけ `updateProduct` の `stock_unit` に値を入れる（変えていなければ送らない）。送る判定は登録の単位で行い、登録の単位が長さの商品は form の値によらず `stock_unit` を送らない（`buildUpdateProductRequest`。読取専用の select を経ない値を送らない）。select の下に 1 文 `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。` を出す（個数の単位の商品の edit mode だけ）。BIZ が拒んだとき（`在庫単位は個数の単位どうしでだけ変えられます`）は保存の error として出す。「現在庫」の欄は保存するまで登録の単位の語のまま出す（保存すると一覧へ戻る。UI-01b-D14）。在庫の節の説明文: create は `初期在庫と数量単位を設定します。登録後は、数量単位を個数の単位どうし（例: 個 → 玉）でだけ変更できます。`、edit の個数の単位の商品は `現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。`、edit の長さの単位の商品は今の `現在庫と数量単位は登録後に変更できません。` のまま。保存の後、productUpdate の無効化の範囲（[UI_TECH_STACK](../UI_TECH_STACK.md) の D-052）に無い画面（記録詳細・売上の画面）は次の再取得まで古い語で出ることがある（数は同じ。範囲を広げない）。 | 在庫 Excel から初期投入した毛糸が「個」で入り、「玉」に直せない（2026-10 の見直しの文書の食い違い）。個数の単位は価格の基準数量がどれも 1 で、数の意味が変わらない（[共通規則](10-common-rules.md) SPEC-UNIT-D2）。不採用: 在庫 0 なら種類をまたいで直せる（在庫 0 でも過去の明細の意味が変わる）。 |
 | REQ-101 / REQ-102 / D-119 | UI-01b-D24 | （proposed・未実装、原価の lane。owner の決定 U7 = b）選んでいる数量単位が個数の単位のときだけ、原価の欄の下に「袋の値段から出す」の補助を置く（長さの単位〈`m`〉では出さない。create mode で単位を長さの単位に変えたら補助を閉じて隠し、原価の欄は変えない）。開くと `袋の値段（円）` と `入り数` の 2 つの欄と「原価に入れる」が出て、押すと [共通規則](10-common-rules.md) SPEC-UNIT-D5 の入力の補助の値（1/100 円未満を四捨五入）を原価の欄に入れる。袋の値段は原価と同じ入力の規則、入り数は 1 以上 `9999999` 以下の整数で、外れれば `入り数は1以上の整数で入力してください`・原価の欄と同じ文を補助の欄に出し、原価の欄を変えない。2 つの欄の値は保存しない。 | 店はばらす商品の 1 個の原価を袋の値段 ÷ 入り数で手で出している（2026-09-29 の店主の回答）。原価の入力は原価の lane で変わるので同じ所に足し、持つ値は増やさない。不採用: 入り数を商品に持つ（SPEC-UNIT-D5 の不採用 (a)）。 |
 | REQ-101 / REQ-102 / D-122 | UI-01b-D25 | （proposed・未実装、JAN の別名の runtime の lane）商品フォームは前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）を出さない。edit mode の JAN は読取専用のまま（UI-01b-D11）で、JAN を直すのは商品 CSV の上書き（UI-01c-D17）だけ。create で入れた JAN がほかの商品の前の JAN の別名だったときは、DB の trigger が別名を消し、その番号の売上は新しい商品へ入る（警告は出さない）。edit で JAN を変えられるようにするときは、同じ問いと答えの運び方を足す（BIZ-01-D9 の Revisit）。 | create は `product_code = jan_code` なので、JAN を直した商品が商品フォームで登録された商品なら、同じ JAN の create は商品コードの重複で止まる。止まらないのは商品 CSV で別の商品コードを付けて登録した商品の前の JAN だけで、そのときの取り違えは商品の二重登録と同じ種類の誤りで別名に固有でない。create の結果の wire に警告の field を足さない（商品 CSV の取込みは既存の `warnings` で知らせる）。 |
 | REQ-101 / pos_stock_sync | UI-01b-D6 | create mode で `stock_unit='cm'` にした場合は `pos_stock_sync=false` を提案し、利用者は toggle で true に戻せる。BIZ は UI から受け取った値を尊重する。 | `stock_unit='cm'` だけで POS 在庫同期を決める案は、DB_DESIGN の `pos_stock_sync` 明示フラグ方針に反する。 |
@@ -35,7 +35,7 @@
 | REQ-101 / REQ-102 | UI-01b-D9 | 日本語入力を伴う form のため、実装 PR では Windows native L3 を計画する。 | Tauri 2 Linux WebView には IME 制約があり、商品名・メーカー品番・取引先名の入力品質は Linux だけでは判断できない。 |
 | REQ-102 | PRODUCT-PATCH-D1 | edit保存はgenerated `ProductUpdateRequest_Deserialize`を直接使う。通常fieldはomitted/null=no update・value=set、`supplier_id` / `maker_code`はomitted=no update・null=clear・value=setとする。 | `Partial<ProductUpdateRequest_Deserialize>` と保存時castはgenerated wire契約の誤りを隠すため不採用。 |
 | REQ-101 / REQ-102 | UI-01b-D10 | form を「商品の識別」「分類と取引先」「価格」「在庫」の基本 4 セクションに分割し、edit mode は第 5 セクション「価格履歴」（UI-01b-D20）を末尾に加える。各セクション見出しは h2 `text-xl font-semibold` + Separator + 1 行説明とし、メーカー品番は「商品の識別」に置く。 | 1 列のフラットな入力列は、非IT利用者が入力順を把握しづらい。意味の塊でグルーピングし、入力の流れを明示する。section ごとの説明で登録後変更できない項目を予告する。 |
-| REQ-102 | UI-01b-D11 | read-only 入力（商品コード / edit の JANコード・現在庫）は `readOnly` + `bg-muted` で示す。数量単位 select は `disabled` を維持する。 | `disabled` の opacity-50 は値が読みづらく、read-only と操作不能の意味が混ざる。表示専用の値は読める muted 背景にする。`<select>` は readOnly 属性が効かないため数量単位だけ `disabled` を残す。 |
+| REQ-102 | UI-01b-D11 | read-only 入力（商品コード / edit の JANコード・現在庫）は `readOnly` + `bg-muted` で示す。数量単位 select は、個数の単位の商品は個数の単位だけの候補で変更でき、長さの単位の商品は `disabled` で押せず今の語が読める（D-119。UI-01b-D23）。 | `disabled` の opacity-50 は値が読みづらく、read-only と操作不能の意味が混ざる。表示専用の値は読める muted 背景にする。`<select>` は readOnly 属性が効かないため数量単位だけ `disabled` を残す。 |
 | REQ-101 / REQ-102 | UI-01b-D12 | 必須項目（商品名・部門・売価・原価、create 時は初期在庫）のラベルに `（必須）` を付ける。色で必須を符号化しない。JANコードは対象外。 | 非IT利用者には必須項目が分かりやすい方がよい。色（赤 * 等）だけの符号化は [design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md) に反するため、テキストで明示する。JAN は任意（独自コード発番経路がある）ため必須にしない。 |
 | REQ-102 | UI-01b-D13 | 「廃番にする」操作は確認ダイアログ（`DiscontinueConfirmDialog`、shadcn AlertDialog）を通す。「表示に戻す」は確認なしで直接実行する。 | 廃番化は一覧の通常表示から外れる片方向の状態変更で、誤操作の影響が大きいため確認する。復帰は影響が小さく、戻す操作にさらに確認を挟むと操作が重くなるため直接実行する。共通判断は design-system DSR-07 / component catalog ⑧を参照する。 |
 | REQ-101 / REQ-102 | UI-01b-D14 | 保存成功は `toast.success`（`id: "product-save-success"`、`duration: 5000`）で示し、navigate より前に発火する。create は登録した商品コードを含め、edit は保存完了を伝える。 | 保存後すぐ一覧へ戻るため、成功は一覧に遷移してからでなく form 上の通知で確実に伝える。id 固定で連打時に通知が積み重ならないようにする。alert を画面内に残すと遷移と二重になるため toast を使う。 |
@@ -46,7 +46,7 @@
 | REQ-402 / D-117 | UI-01b-D19 | edit mode は memory No.（「レジメモリNo.」）を表示しない（D-117 (5) で撤去。runtime の lane が表示・DTO の `plu_memory_no`・test を外す）。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する（再対象化すると前と同じ PLU の枠を使う）。 | 店主が番号を見る場面が無い（売上は JAN で商品へたどる）。廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
 | REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションの取引先ピッカー dialog（DSR-24）内に「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
-| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | 数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は、長さの単位（m・cm）で `false`・個数の単位で `true`。（D-113 で予定した「`get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false`」の分岐は、D-118 で準備照会と `ej_unverified` を持たなくなったので作らない。）利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。`（`原価は小数 2 桁までの円` にするのは proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`）。売価・原価は `999999`、初期在庫は `999999999`（m の商品は cm にした値）を上限にする。edit mode の単位は読取専用（SPEC-UNIT-D2。単位の語の直しの lane の後は、個数の単位の商品について UI-01b-D23 が置き換える）で、現在庫は単位つきで出す（`27.5 m`・`20 個`。SPEC-UNIT-D3 の表示する所の表の 13）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。説明を `税抜の整数` と書くと master-tables の売価〈税込〉と食い違う。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
+| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | 数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は、長さの単位（m・cm）で `false`・個数の単位で `true`。（D-113 で予定した「`get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false`」の分岐は、D-118 で準備照会と `ej_unverified` を持たなくなったので作らない。）利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。`（`原価は小数 2 桁までの円` にするのは proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`）。売価・原価は `999999`、初期在庫は `999999999`（m の商品は cm にした値）を上限にする。edit mode の単位は、長さの単位の商品は読取専用、個数の単位の商品は個数の単位どうしで変えられ（SPEC-UNIT-D2、UI-01b-D23）、現在庫は単位つきで出す（`27.5 m`・`20 個`。SPEC-UNIT-D3 の表示する所の表の 13）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。説明を `税抜の整数` と書くと master-tables の売価〈税込〉と食い違う。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
 
 ## 7.2 Component / Route 構成
 
@@ -96,7 +96,7 @@ src/
 - search params:
   - `returnTo?: string`
 - 初回表示時に `commands.getProduct(code)` を呼ぶ。
-- `product_code`, `jan_code`, `stock_quantity`, `stock_unit`, `created_at`, `updated_at` は表示のみ。
+- `product_code`, `jan_code`, `stock_quantity`, `created_at`, `updated_at` は表示のみ。`stock_unit` は長さの単位の商品だけ表示のみ（個数の単位の商品は個数の単位どうしで変えられる。UI-01b-D23）。
 
 ## 7.4 Command / DTO Contract
 
@@ -145,12 +145,13 @@ UI-01b は以下の generated binding を使用する。
    - `maker_code`
    - `supplier_id`
    - `pos_stock_sync`
+   - `stock_unit`（個数の単位の商品だけ。候補は個数の単位だけ、UI-01b-D23）
    - `plu_target`（D-028。off→on に変更した場合、その商品は PLU 未反映（plu_dirty=1）扱いになり UI-08 の差分に現れることを補足文言で示す）
 3. read-only fields:
    - `product_code`
    - `jan_code`
    - `stock_quantity`
-   - `stock_unit`
+   - `stock_unit`（長さの単位の商品。UI-01b-D23）
 4. 保存時は変更されたfieldだけをgenerated `ProductUpdateRequest_Deserialize`へ入れる（PRODUCT-PATCH-D1）。
    - 通常field: unchangedはomitted、valueは設定。nullもbackendではno updateだが、unchangedの代わりにnullを送らない。
    - supplier未指定へ戻す: `supplier_id: null`（Rustの `Some(None)`、clear）。
@@ -178,7 +179,7 @@ Frontend validation:
 - `initial_stock`: create mode で 0 未満または整数でない → `初期在庫は0以上の整数で入力してください`
   - `m` の商品は m で小数 2 桁まで受けて cm に直す（0 は受ける、既定の `0` のまま登録できる）。error の文は [共通規則](10-common-rules.md) SPEC-UNIT-D3 の 0 を受ける欄の文 `数量は0以上で、小数は2桁までの m で入力してください`。個数と `cm` の商品は上の文。在庫の数量が `999999999` を越える → `在庫数が大きすぎます`
 - `tax_rate`: `"10" | "8" | "0"` 以外 → `税率を選択してください`
-- `stock_unit`: create mode で 12 個の code（UI-01b-D22）以外 → `数量単位を選択してください`
+- `stock_unit`: create mode で 12 個の code（UI-01b-D22）以外 → `数量単位を選択してください`。edit mode の個数の単位の商品は select が個数の単位だけを出す（UI-01b-D23。種類をまたぐ値は BIZ が拒み、保存の error に出す）
 - `jan_code` blank + `department.code_prefix == null` → `JANコードを入力するか、独自コード発番対象の部門を選択してください`
 - `jan_code` 非 null（create のみ、UI-01b-D17）: trim と正規化を適用した後の値が ASCII 数字 8 桁または 13 桁でない → `JANコードは13桁または8桁で入力してください`
 - `jan_code` 非 null（create のみ、UI-01b-D17）: 桁数を満たすがモジュラス 10 チェックディジット整合でない → `JANコードのチェックディジットが一致しません。入力値を確認してください`
@@ -199,7 +200,7 @@ Error recovery:
 ## 7.7 Non-scope / Follow-up
 
 - 商品コードの手入力登録。
-- edit mode での `stock_unit` / `stock_quantity` 変更。
+- edit mode での `stock_quantity` 変更。
 - cm / m 表示切替 UI。UI-01b では `cm` を入力・表示できるが、`m` 換算表示 toggle は別 Design Phase で扱う。
 - dedicated scanner UX / 連続スキャン検知。
 - supplier / department select の shared component 化。
@@ -211,12 +212,12 @@ Error recovery:
 - generated command: `createProduct` / `updateProduct` / `toggleDiscontinue` / `listSuppliers` が binding に存在する。
 - generated patch contract: `ProductUpdateRequest_Deserialize`の全propertyがoptionalで、builderの戻り値と`commands.updateProduct`入力がこの型へcastなしで直結する（PRODUCT-PATCH-D1）。
 - create payload: JANあり / JANなし自動発番 / prefixなし部門 validation。
-- edit payload: read-only fieldsを送らず、通常fieldのunchangedをomitし、`supplier_id` / `maker_code`のomitted/null/valueを区別できる。
+- edit payload: read-only fieldsを送らず、通常fieldのunchangedをomitし、`stock_unit` は登録の単位が個数の単位の商品で変えたときだけ送り（UI-01b-D23）、`supplier_id` / `maker_code`のomitted/null/valueを区別できる。
 - `stock_unit='cm'` 時の `pos_stock_sync=false` 提案と手動 override。
 - 部門取得失敗 / 取引先取得失敗 / `getProduct` not found / duplicate save error の復旧。
 - 廃番状態は日本語 badge + button label で示し、色だけにしない。
 - form は create で基本 4 セクション、edit で「価格履歴」を加えた 5 セクションに分かれ、h2 見出しを持つ（UI-01b-D10 / D20）。
-- read-only 入力（商品コード / edit の JANコード・現在庫）は `readonly` 属性を持ち、数量単位 select は `disabled` を維持する（UI-01b-D11）。
+- read-only 入力（商品コード / edit の JANコード・現在庫）は `readonly` 属性を持ち、数量単位 select は、個数の単位の商品は個数の単位だけの候補で変更でき、長さの単位の商品は `disabled` で押せず今の語が読める（UI-01b-D11・UI-01b-D23）。
 - 必須項目（商品名・部門・売価・原価、create 時は初期在庫）のラベルに `（必須）` が含まれる（UI-01b-D12）。
 - 「廃番にする」は確認ダイアログを出し、キャンセルで状態が変わらない。「表示に戻す」は確認なしで直接実行する（UI-01b-D13）。
 - 保存成功時に `toast.success`（`id: "product-save-success"`）が navigate より前に発火する（UI-01b-D14）。
@@ -229,6 +230,7 @@ Error recovery:
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-10-17 | JAN の別名の design lane（D-122） | UI-01b-D25（商品フォームは前の JAN の問いを出さず、edit の JAN は読取専用のまま、create で別名の JAN を入れたときの扱い）を追加。 |
+| 2026-10-17 | 単位の語の直しの lane の起票 | UI-01b-D23 に、送る判定を登録の単位で行うこと、在庫の節の説明文 3 つ、「現在庫」の欄の語、productUpdate の無効化の範囲の外の画面の語を足した（proposed・未実装、D-119。D-119 の Final Review の P3〈Fable #1〉の是正を含む）。Plan Review round 1 の是正で、長さの単位の商品の select の候補の文を外し（disabled の並びは決めない）、UI-01b-D11 と §7.8 の「数量単位 select は disabled を維持」に本 lane の後の規則を proposed で添えた。 |
 | 2026-10-17 | 単位・数量・原価の精度の見直しの design lane | UI-01b-D23（個数の単位の商品の単位の語を edit mode で直す）と UI-01b-D24（原価の「袋の値段から出す」の補助）を追加し、UI-01b-D5 の読取専用を D23 が置き換えると書いた（proposed・未実装、D-119）。 |
 | 2026-10-08 | 単位の拡張 design lane | UI-01b-D22 の `玉`・原価の小数を owner の決定（D-113 J1・J2、TD-195）に改めた。 |
 | 2026-10-07 | 単位の拡張 design lane | UI-01b-D22 を追加（proposed・未実装、D-113）: 数量単位 12 種、長さの単位の価格欄の `1 m あたり`、初期在庫の m 入力、価格の節の説明の文。 |

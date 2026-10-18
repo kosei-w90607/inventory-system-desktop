@@ -116,7 +116,7 @@ Keep it factual and stable.
 - Purchase orders are written on one sheet per wholesaler, grouped by wholesaler — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Owner already knows almost all discontinued items and defunct suppliers from memory — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Counting words differ by category: 毛糸=玉, 布=枚, ファスナー=本, はさみ=丁, スナップ=枚, 刺繍糸=本, otherwise mostly 個 — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
-  - 在庫計数 Excel では毛糸の単位が「個」になっているが、owner の入力の誤りで、数え方は「玉」。Excel は意味が通るのでそのままでよい — owner 2026-10-07。Excel から「個」で初期投入した毛糸は、登録の後に個数の単位どうしの変更で「玉」へ直せる（D-119。単位の語の直しの lane の後）
+  - 在庫計数 Excel では毛糸の単位が「個」になっているが、owner の入力の誤りで、数え方は「玉」。Excel は意味が通るのでそのままでよい — owner 2026-10-07。Excel から「個」で初期投入した毛糸は、登録の後に個数の単位どうしの変更で「玉」へ直せる（D-119）
 - The store never sources the same product from two different suppliers — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
   - 訂正: 発注書を分ける「取引先」は注文先（問屋・仕入先）。同じ商品を 2 つ以上の注文先から仕入れるのは緊急時だけ（お客様に約束した日に、通常の仕入れ先の納品が間に合わないとき）。上の行の「never」は「通常は 1 つの注文先だけ」の意味 — 店主回答（owner 経由の質問票）2026-09-29
   - この「取引先」は問屋・仕入先を指し、D-075 (6) が `suppliers` に持たせたメーカー/ブランドとは別の軸。見直しは `docs/backlog.md` の取引先の項目で扱い、決定はまだ変えていない

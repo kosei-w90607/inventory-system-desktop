@@ -202,6 +202,8 @@ pub struct ProductUpdates {
     pub cost_price: Option<i64>,
     pub tax_rate: Option<String>,
     pub maker_code: Option<Option<String>>,
+    /// 値を検査しない（個数の単位どうしの判定は BIZ、BIZ-01-D8）
+    pub stock_unit: Option<ProductStockUnit>,
     pub is_discontinued: Option<bool>,
     pub plu_dirty: Option<bool>,
     pub plu_exported_at: Option<Option<String>>,
@@ -1072,6 +1074,11 @@ pub fn update_product(
         set_clauses.push(format!("maker_code = ?{}", idx));
         let val: Option<String> = maker_code.clone();
         params.push(Box::new(val));
+        idx += 1;
+    }
+    if let Some(unit) = updates.stock_unit {
+        set_clauses.push(format!("stock_unit = ?{}", idx));
+        params.push(Box::new(unit.as_str()));
         idx += 1;
     }
     if let Some(disc) = updates.is_discontinued {
@@ -2215,6 +2222,29 @@ mod tests {
         assert_eq!(found.product.selling_price, 999);
         // 変更していないフィールドは元のまま
         assert_eq!(found.product.cost_price, 300);
+    }
+
+    #[test]
+    fn test_update_product_req102_sets_stock_unit() {
+        // REQ-102: 商品更新。20 §2.3: ProductUpdates.stock_unit を SET し、None なら変えない
+        let (_dir, conn) = setup_test_db();
+        insert_product(&conn, &create_test_product("UPD-UNIT", "単位", 1)).unwrap();
+
+        let none = ProductUpdates {
+            name: Some("単位そのまま".to_string()),
+            ..Default::default()
+        };
+        assert!(update_product(&conn, "UPD-UNIT", &none).unwrap());
+        let found = find_by_product_code(&conn, "UPD-UNIT").unwrap().unwrap();
+        assert_eq!(found.product.stock_unit, ProductStockUnit::Pcs);
+
+        let updates = ProductUpdates {
+            stock_unit: Some(ProductStockUnit::Ball),
+            ..Default::default()
+        };
+        assert!(update_product(&conn, "UPD-UNIT", &updates).unwrap());
+        let found = find_by_product_code(&conn, "UPD-UNIT").unwrap().unwrap();
+        assert_eq!(found.product.stock_unit, ProductStockUnit::Ball);
     }
 
     #[test]

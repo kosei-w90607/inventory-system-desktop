@@ -169,7 +169,7 @@ fn update_product(conn: &DbConnection, product_code: &str, updates: &ProductUpda
 - cost_price: Option\<i64\>
 - tax_rate: Option\<String\>
 - maker_code: Option\<Option\<String\>\>
-- stock_unit: Option\<String\>
+- stock_unit: Option\<ProductStockUnit\>（D-119。値の検査〈個数の単位どうし〉は BIZ-01-D8、repo は code の文字列で SET するだけ）
 - is_discontinued: Option\<bool\>
 - plu_dirty: Option\<bool\>
 - plu_exported_at: Option\<Option\<String\>\>

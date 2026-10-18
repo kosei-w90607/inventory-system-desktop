@@ -1311,6 +1311,8 @@ export type ProductUpdateRequest_Deserialize = {
 	maker_code?: string | null,
 	pos_stock_sync?: boolean | null,
 	plu_target?: boolean | null,
+	// 個数の単位どうしの変更だけを許す（SPEC-UNIT-D2・BIZ-01-D8）
+	stock_unit?: ProductStockUnit | null,
 };
 
 // 商品更新リクエスト（FUNC-4.4）
@@ -1324,6 +1326,8 @@ export type ProductUpdateRequest_Serialize = {
 	maker_code: string | null,
 	pos_stock_sync: boolean | null,
 	plu_target: boolean | null,
+	// 個数の単位どうしの変更だけを許す（SPEC-UNIT-D2・BIZ-01-D8）
+	stock_unit: ProductStockUnit | null,
 };
 
 // 商品更新結果（FUNC-4.4）

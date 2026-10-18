@@ -345,7 +345,7 @@
   - route は `/products/new`（新規）と `/products/$code/edit`（修正）を分ける。新規 / 修正を query param だけで切り替えない
   - UI は tauri-specta で生成済みの `commands.createProduct` / `commands.updateProduct` / `commands.toggleDiscontinue` / `commands.listSuppliers` を使う
   - create mode の商品コードは「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がない場合は保存前に止める
-  - edit mode では `product_code` / `jan_code` / `stock_quantity` / `stock_unit` を読取専用にする。`stock_unit` 変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase
+  - edit mode では `product_code` / `jan_code` / `stock_quantity` を読取専用にする。`stock_unit` は個数の単位の商品だけ個数の単位どうしで変えられ、長さの単位の商品は読取専用（D-119、UI-01b-D23）
   - 取引先候補は取引先マスタ全件を取得し、「新しい取引先を追加」からメーカー/ブランドを漸進追加できる（UI-01b-D7 / D21）。改名・統合は UI-15 取引先管理（[function-design/78-ui-supplier-management.md](function-design/78-ui-supplier-management.md)）で扱う
   - 保存成功後は商品一覧へ戻る。`returnTo` は `/products` 一覧 route とその search params だけを許可し、`/products/new`、`/products/$code/edit`、`/products/import`、外部 URL、他画面 route は `/products` に戻す
   - form は「商品の識別」「分類と取引先」「価格」「在庫」の 4 セクションに分割し、edit mode は末尾に第 5 セクション「価格履歴」を追加する（UI-01b-D10 / D20）。各セクションに h2 見出しと 1 行説明を付ける

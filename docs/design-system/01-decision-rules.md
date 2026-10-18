@@ -181,7 +181,7 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 └─ No（操作経路ごと閉じる）       → disabled
 ```
 
-実例: 編集時の商品コード・JAN・現在庫は `readOnly` + `bg-muted`（値は見せる）。編集時の数量単位 select は `disabled`（選択操作自体を止める）。
+実例: 編集時の商品コード・JAN・現在庫は `readOnly` + `bg-muted`（値は見せる）。編集時の長さの単位の商品の数量単位 select は `disabled`（選択操作自体を止める。D-119）。
 
 **関連**: パターン④フォームセクション。review-checklist カテゴリ 9 対応（主要テキスト・状態が読める設計か）。
 
