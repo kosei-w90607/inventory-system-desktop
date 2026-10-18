@@ -114,6 +114,13 @@ fn derive(
         .iter()
         .filter(|count| !counts.iter().any(|other| is_after(other, count)))
         .collect();
+    // 計数があるのに効く計数が無いのは前後が循環するとき（既定の日付 ≤ 保存の日 ≤ fresh の今日なので
+    // 保存の経路からは起きない）。和へ黙って倒さずに止める
+    if effective.is_empty() && !counts.is_empty() {
+        return Err(BizError::DatabaseError(DbError::QueryFailed(
+            "計数の前後を決められません".to_string(),
+        )));
+    }
     if effective.is_empty() {
         let mut stock = 0_i64;
         for movement in movements {
@@ -413,6 +420,21 @@ mod tests {
             derive_stock(&conn, "L7-SAME").unwrap(),
             derived(7, None, &[])
         );
+    }
+
+    #[test]
+    fn test_stock_ledger_req205_cyclic_counts_are_error_not_sum() {
+        // REQ-205 / SPEC-STK-CNT-D3（計数どうしの前後が循環する DB の直の編集は、和へ倒さず誤りで止める）
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "LC");
+        movement(&conn, "LC", 4, "2026-05-01");
+        insert_count(&conn, "LC", 1, "2026-05-12", None); // C0: fresh より先に保存（F が後）
+        insert_count(&conn, "LC", 2, D, Some(0)); // F（今日 D）
+        insert_count(&conn, "LC", 3, "2026-05-11", None); // C1: F の後で D より後（F より後）、C0 より前
+        assert!(matches!(
+            derive_stock(&conn, "LC"),
+            Err(BizError::DatabaseError(DbError::QueryFailed(message))) if message == "計数の前後を決められません"
+        ));
     }
 
     #[test]
