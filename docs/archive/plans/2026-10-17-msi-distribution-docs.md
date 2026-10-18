@@ -6,7 +6,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 85d9b45e7dce840f76caa067de958f84db008792
 - Amendments: none
@@ -252,7 +252,11 @@ R3 の Contract Probe（`DEV_WORKFLOW.md:63`）は、外部の前提に頼る計
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: MSI を作る・初回に入れる・更新の前に backup を取る・更新する・前の版へ戻す管理者の手順書 `docs/msi-distribution-runbook.md` を置き、`docs/PROJECT_HANDOFF.md` の案内から辿れるようにした。手順書は既存の契約（MNT-03-D11、22 §16 の回復、71・68 の backup）を引いて並べ、正本に無い店の DB の安全の判断（流れ 5 の場面と表、アプリが起動しないときの保全と前進、更新を始めない条件、起動の後の照合、保管の規則、初回の導入の条件〈TD-311〉、予行演習の退避と復帰）を足し、引く正本との組を Contract Ledger に置いた。実機の MSI の振舞いは M1〜M9 の未確認として手順書に書き、予行演習（backlog）へ送った。code・設定（`src-tauri/tauri.conf.json`）・設計正本は変えていない。
+- 既存の保護: アプリの振舞いと設定は変えていない。
+- 未検証: M1〜M8（開発用の Windows での予行演習）と M9（店の PC）。製品名と upgrade code の固定は後続の設定の lane で、owner への Q1（製品名）はその lane で聞く。
+- review・CI・merge（closeout、2026-10-18）: Plan Review は round 3（天井）の後に owner の決定で確認の round を 2 回行い（TD-315・TD-316）、2 回目の確認の残りを owner の決定（TD-318）で直して plan-approved。Final Review は broad 1 回と是正の後の closure（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由の squash merge。PR: [#170](https://github.com/kosei-w90607/inventory-system-desktop/pull/170)
+- 後続: `docs/backlog.md` の「MSI 配布手順 docs 化」の残りの 2 項目（製品名と upgrade code の固定、予行演習）と、v8 より後の migration を足す lane の義務（Final Review の是正で backlog に入った）。
 
 ## Review Response
 
@@ -331,3 +335,5 @@ Codex GPT-6.1 Sol（approve、P1 0・P2 0・P3 0。round 3 の 8 件と N1・N2 
 |---|---|---|---|---|
 | R30 | Claude R1（P2） | 採る | 照合の合わない新しい版で流れ 3 をし直すと、前の版と戻す先の backup がその版のもの（照合の合わなかった状態）に替わり、戻すと説明と食い違う | 「前の版と入力の基準」に、流れ 4 で入れた版のうち入力を始めてよいと 1 度も決まっていない版で流れ 3 をし直しても、前の版と戻す先の backup は変えない（そのとき作った backup は追加の写し）を足した。起草役は発注の「照合が 1 度も全部合っていない」を「入力を始めてよいと決まっていない」に、対象を「流れ 4 で入れた版」に変えた。Coordinator が、起動しない版で owner が入力を始めると決めた組と、戻した前の版で入力した組を追い、発注の文言では入力を要らずに失うことを確かめて起草役の形を採った |
 | R31 | Claude R2（P3） | 採る | 「より新しい版」で止まったときの MSI の候補が複数あるときの選び方が無い | 扱える DB の版がデータの版と同じで、照合が全部合ったことのある版から選び、入れ直した後に照合する、とした |
+
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= reject（P2 1）。是正は、戻した後の照合、WebView の保存の folder を未確認の M7 に入れたこと、upgrade code を公式の CLI で印字して固定する 1 句。Claude 側の O2 は公式の頁で事実誤認と確かめて取り下げ、O3 は packet の判断を保ち、後続の migration の lane の義務として `docs/backlog.md` の「MSI 配布手順 docs 化」の項目に是正で入れた。是正の closure（Codex Sol）は approve（指摘なし）で、main の取込みの差分は Sonnet 5.5 の delta の確認 = 可。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。packet の本文は書き換えず、merge の版との食い違いをここに記録する: (1) AC の実測の段の AC4 の見出しの行番号は、是正で「確かめる項目」が 138 行目から 141 行目に移った（merge の版の手順書で `141:## 確かめる項目`）。

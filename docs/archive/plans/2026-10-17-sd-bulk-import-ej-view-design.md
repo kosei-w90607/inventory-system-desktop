@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 8dd4ec52dc118a2f84213fa6b46cfd9821a5855d
 - Amendments: none
@@ -102,10 +102,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を足した・直した（全部 plan-first の commit）。
 
-1. 一括取込みの流れ（Scope 1）: [37](../function-design/37-biz-daily-report-import-service.md) §37.10 を足した（`commit_register_sd_bulk_import`、型、処理ステップ、BIZ-08-D7 の順・TX・失敗、§37.9 に後から足す snapshot と wire の field）。[32](../function-design/32-biz-csv-import-service.md) の D-118 の節の後に「SD の一括取込み」（Z004 は 32 の新契約をそのまま呼び、拒否は飛ばす、SD の file だけ写す）。
+1. 一括取込みの流れ（Scope 1）: [37](../../function-design/37-biz-daily-report-import-service.md) §37.10 を足した（`commit_register_sd_bulk_import`、型、処理ステップ、BIZ-08-D7 の順・TX・失敗、§37.9 に後から足す snapshot と wire の field）。[32](../../function-design/32-biz-csv-import-service.md) の D-118 の節の後に「SD の一括取込み」（Z004 は 32 の新契約をそのまま呼び、拒否は飛ばす、SD の file だけ写す）。
 2. 日報の同日追加の確認の置換え（backlog の要件）: 37 §37.10 BIZ-08-D8。直す所の一覧（§37.3 手順 8、pos-tables §12b、UI-07-D13、`parse.rs:159`、`tests.rs` の 3 か所）は runtime (A) の範囲として BIZ-08-D8 と backlog に書いた（本 lane は §37.3・§12b・UI-07-D13 の文を変えない。SD 直読みの runtime の所有）。decision-log の D-071 に Superseded in part の行。
-3. EJ の取込みの記録と閲覧の画面（Scope 2）: 37 §37.11（取込み・閲覧の関数、型、BIZ-08-D9。在庫に使わない理由）、[24](../function-design/24-io-csv-import-repo.md) §14.25（repo の関数と SQL の方針）、[pos-tables](../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」（`ej_records` のカラム定義）と [DB_DESIGN](../DB_DESIGN.md) の案内の 1 行、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の画面一覧の行と「レシートの控え画面」（UI-09c-D1〜D5）、[ui-task-specs](../architecture/ui-task-specs.md) の UI-09c、[29E](../function-design/29-io-ej-parser.md) IO-08.10 の D-121 の注記（何を引き継ぎ何を引き継がないか）。
-4. 一括取込みの画面と command: [55](../function-design/55-ui-csv-import.md) UI-07-D17、[45](../function-design/45-cmd-daily-report-import.md) §45.6c（CMD-12-D2 の 5 command と scan に後から足すもの）。
+3. EJ の取込みの記録と閲覧の画面（Scope 2）: 37 §37.11（取込み・閲覧の関数、型、BIZ-08-D9。在庫に使わない理由）、[24](../../function-design/24-io-csv-import-repo.md) §14.25（repo の関数と SQL の方針）、[pos-tables](../../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」（`ej_records` のカラム定義）と [DB_DESIGN](../../DB_DESIGN.md) の案内の 1 行、[SCREEN_DESIGN](../../SCREEN_DESIGN.md) の画面一覧の行と「レシートの控え画面」（UI-09c-D1〜D5）、[ui-task-specs](../../architecture/ui-task-specs.md) の UI-09c、[29E](../../function-design/29-io-ej-parser.md) IO-08.10 の D-121 の注記（何を引き継ぎ何を引き継がないか）。
+4. 一括取込みの画面と command: [55](../../function-design/55-ui-csv-import.md) UI-07-D17、[45](../../function-design/45-cmd-daily-report-import.md) §45.6c（CMD-12-D2 の 5 command と scan に後から足すもの）。
 5. CV17 との併存（Scope 3）: 37 §37.10 BIZ-08-D10 の表と `XZ_BKUP` へ移す lane への約束。backlog のその lane の項目に申し送りの sub-bullet。
 6. 後続の lane（Scope 4）: backlog に「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」と、本項目の起票の記録の sub-bullet。D-121 を decision-log の末尾に足した。
 7. 店の事実で決まらない所（Scope 5）: backlog に「店に聞く: レシートの控えの探し方と昔の控え」（答えが無い間の既定つき）。下の Open Questions。
@@ -382,7 +382,11 @@ owner に聞く設計の問い: 無し。
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 締めの SD の読取りで日報・Z004・EJ を一度に取り込む一括取込み（37 §37.10 BIZ-08-D7 の順・TX・失敗）、日報の同日追加の確認を同じ日の取込みが全て精算回数を持つときに精算回数の照合で置き換えること（BIZ-08-D8）、EJ の記録の番号を鍵に記録の文を保存してレシートの控えとして見せること（§37.11 BIZ-08-D9、pos-tables の `ej_records`、SCREEN_DESIGN の UI-09c）、CV17 との併存と `XZ_BKUP` へ移す lane への約束（BIZ-08-D10）を設計正本に置き、D-121 に記録した。D-071 は Superseded in part。Z004 と EJ の小数の数量は拾わない（D-121 (6)）。D-111 の正本の節（37 §37.3〜§37.9 ほか）は変えず、後から足すものを 37 §37.10 の「§37.9 に足すもの」と D-121 の Compatibility に書いた。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の (A)・(B)）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（日報は 1 件ずつ取り込み、EJ は取り込まない）。設計照合 test と traceability の検査は green のまま。
+- 未検証: Contract Probe の P5（SD-23）・P7（等幅の字形）・P8（書きかけの記録の書き方）は (A) の L3 とその前の確かめ。店に聞く 2 つの問い（控えの探し方・昔の控え）は既定のまま。
+- review・CI・merge（closeout、2026-10-18）: Plan Review は round 3（天井）までで、round 3 の残りは owner の決定（TD-317）で直して plan-approved。Final Review は broad 1 回と是正の後の closure 2 回（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由の squash merge。PR: [#175](https://github.com/kosei-w90607/inventory-system-desktop/pull/175)
+- 後続: `docs/backlog.md` の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」「店に聞く: レシートの控えの探し方と昔の控え」と、「取込み済みの Z・EJ を `XZ_BKUP` へ移す操作（(b) の lane）」の D-121 からの申し送り。
 
 ## Review Response
 
@@ -440,3 +444,5 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra
 | R28 | Claude #4（P3） | 採る | 番号の一周を再検討に挙げていない | BIZ-08-D9 の再検討に足した |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 保留をボタンの条件に入れると、締めのたびにボタンが押せる状態になる。雑音かは (A) の L3 で確かめ、雑音なら保留を文とボタンの条件の両方から外す形が正本にあるので、この形を採る。食い違いにその場で直す操作が無いことは owner に諮る候補のまま。
+
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 4）、Codex（Astra）= reject（P2 3）。是正 2 本の後の closure 1（Codex Sol）は reject（P2 1: 精算日を固定する Matrix の行）で、行を足した後の closure 2（Codex Sol）は approve（P3 1）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。Writer の残した問いは是正で閉じ、backlog の (A)・(B) の項目は是正で更新済み。packet の本文（Scope・Contract Ledger・AC）は書き換えず、merge の版との食い違いと正本の場所をここに記録する: (1) Contract Ledger の「§37.9 に足すもの」の行が `ej_unreadable_files` を落としている（Final Review の Claude 側 O2）。(2) Scope（型・関数の形の変更と「367 の契約に後から足すもの」）と Contract Ledger の「§37.9 に足すもの」の行に、Final Review の是正で 37 に足した `z004_unreadable_files`・`z004_unreadable_count`・`RegisterSdBulkSource::Z004` の `settlement_date` が載っていない。(1)(2) の正本は 37 §37.10 の「§37.9 に足すもの」と §37.10 の本文。(3) AC8・AC9 の逐語の条件（`f5d7aaf4` を起点に差分が空）は、main（#174・#173・#170）の取込みで外れた。main を除いた本 lane の不変条件は PASS（closure 2 の Codex が確かめた）。
