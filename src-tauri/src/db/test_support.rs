@@ -120,9 +120,9 @@ pub fn seed_legacy_fixture(conn: &DbConnection) {
             source_line_no, created_at) VALUES
          (1,'LG-MEAS','2026-03-20',1,100,'auto',3,'2026-03-20T20:00:00');
          INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, created_at) VALUES
-         ('LG-MEAS','stocktake',0,4,'stocktake',1,'2026-03-01T18:00:00'),
-         ('LG-MEAS','sale_auto',-1,3,'csv_import',1,'2026-03-20T20:00:00');",
+            reference_type, reference_id, created_at, business_date, phase) VALUES
+         ('LG-MEAS','stocktake',0,4,'stocktake',1,'2026-03-01T18:00:00', '2026-04-01', 0),
+         ('LG-MEAS','sale_auto',-1,3,'csv_import',1,'2026-03-20T20:00:00', '2026-04-01', 0);",
     )
     .unwrap();
 }

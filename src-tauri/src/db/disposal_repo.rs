@@ -807,8 +807,8 @@ mod tests {
     ) {
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES (?1, 'stocktake', 1, 1, 'stocktake', ?2, '差異', ?3, ?4)",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES (?1, 'stocktake', 1, 1, 'stocktake', ?2, '差異', ?3, ?4, '2026-04-01', 0)",
             rusqlite::params![product_code, stocktake_id, is_voided, created_at],
         )
         .unwrap();
@@ -1080,10 +1080,10 @@ mod tests {
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at) \
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase) \
              VALUES \
-             ('DSP-DET-1', 'disposal', -2, 8, 'disposal_record', ?1, '袋破れ', 0, '2026-06-27T10:00:00'), \
-             ('DSP-DET-2', 'disposal', -3, 4, 'disposal_record', ?1, '期限切れ', 0, '2026-06-27T10:01:00')",
+             ('DSP-DET-1', 'disposal', -2, 8, 'disposal_record', ?1, '袋破れ', 0, '2026-06-27T10:00:00', '2026-04-01', 0), \
+             ('DSP-DET-2', 'disposal', -3, 4, 'disposal_record', ?1, '期限切れ', 0, '2026-06-27T10:01:00', '2026-04-01', 0)",
             rusqlite::params![record_id],
         )
         .unwrap();
@@ -1607,8 +1607,8 @@ mod tests {
         );
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('ZZ-COLLISION-GHOST', 'disposal', -1, 0, 'disposal_record', ?1, '別種別', 0, '2026-08-06T17:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('ZZ-COLLISION-GHOST', 'disposal', -1, 0, 'disposal_record', ?1, '別種別', 0, '2026-08-06T17:00:00', '2026-04-01', 0)",
             rusqlite::params![disposal_id],
         )
         .unwrap();

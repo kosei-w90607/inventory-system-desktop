@@ -65,9 +65,13 @@ pub(crate) fn check_stock_range(stock: i64) -> Result<i64, BizError> {
 /// BIZ-03（CSV取込み）からも直接呼び出し可（pub(crate) は意図的）。
 ///
 /// 31-biz-inventory-service.md §12.2
+// 並びの鍵（業務日・精算回数）を足して 9 引数。(b) で Z004 の確定が settlement_no を渡す（31）
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_stock_change(
     conn: &rusqlite::Transaction<'_>,
     product_code: &str,
+    business_date: &str,
+    settlement_no: Option<i64>,
     quantity: i64,
     movement_type: MovementType,
     reference_type: ReferenceType,
@@ -90,7 +94,7 @@ pub(crate) fn apply_stock_change(
     let negative_stock_warning = stock_after < 0;
 
     // 4. 在庫数更新
-    let updated = inventory_repo::update_stock_quantity(conn, product_code, stock_after)?;
+    let updated = inventory_repo::update_stock_quantity(conn, product_code, stock_after, None)?;
     if !updated {
         return Err(BizError::NotFound(format!(
             "商品が見つかりません: {}",
@@ -109,6 +113,8 @@ pub(crate) fn apply_stock_change(
             reference_type: Some(reference_type),
             reference_id: Some(reference_id),
             note: note.map(|s| s.to_string()),
+            business_date: business_date.to_string(),
+            settlement_no,
         },
     )?;
 
@@ -176,6 +182,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-001",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -206,6 +214,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-002",
+            "2026-04-01",
+            None,
             -3,
             MovementType::SaleManual,
             ReferenceType::ManualSale,
@@ -230,6 +240,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-003",
+            "2026-04-01",
+            None,
             -5,
             MovementType::Disposal,
             ReferenceType::DisposalRecord,
@@ -259,6 +271,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "NONEXISTENT",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -281,6 +295,8 @@ mod tests {
         apply_stock_change(
             &tx,
             "ASC-005",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -328,6 +344,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "NO-SUCH-PRODUCT",
+            "2026-04-01",
+            None,
             1,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,

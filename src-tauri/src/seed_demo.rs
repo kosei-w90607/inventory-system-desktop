@@ -397,8 +397,8 @@ fn seed_initial_receiving(
     let mut insert_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for spec in specs {
@@ -415,6 +415,7 @@ fn seed_initial_receiving(
             spec.stock_quantity,
             spec.stock_quantity,
             BASE_TIMESTAMP,
+            BASE_DATE,
         ])?;
         summary.receiving_movements_inserted += 1;
     }
@@ -461,8 +462,8 @@ fn seed_sales(
     let mut movement_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for _ in 0..SALES_RECORDS {
@@ -511,6 +512,7 @@ fn seed_sales(
             -quantity,
             new_stock,
             &created_at,
+            &sale_date,
         ])?;
         summary.sale_movements_inserted += 1;
     }

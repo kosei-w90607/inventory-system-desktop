@@ -627,8 +627,8 @@ mod tests {
         for kind in ["completion", "rollback_compensation", "recount"] {
             conn.execute(
                 "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-                    created_at, stocktake_adjustment_kind)
-                 VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', ?1)",
+                    created_at, stocktake_adjustment_kind, business_date, phase)
+                 VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', ?1, '2026-04-01', 0)",
                 [kind],
             )
             .unwrap();
@@ -636,8 +636,8 @@ mod tests {
         assert!(fails(
             &conn,
             "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-                created_at, stocktake_adjustment_kind)
-             VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', 'other')"
+                created_at, stocktake_adjustment_kind, business_date, phase)
+             VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', 'other', '2026-04-01', 0)"
         )
         .contains("CHECK constraint failed"));
         // pos_sync_disabled_revision は stock_revision 以下

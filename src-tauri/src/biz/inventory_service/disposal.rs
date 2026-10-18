@@ -214,6 +214,8 @@ pub fn create_disposal(
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.disposal_date,
+            None,
             -item.quantity,
             MovementType::Disposal,
             ReferenceType::DisposalRecord,

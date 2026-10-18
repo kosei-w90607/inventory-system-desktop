@@ -222,6 +222,8 @@ pub fn create_receiving(
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.receiving_date,
+            None,
             item.quantity,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,

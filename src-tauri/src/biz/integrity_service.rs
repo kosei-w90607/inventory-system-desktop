@@ -190,7 +190,7 @@ pub fn fix_integrity(
             .checked_sub(stock_quantity)
             .ok_or_else(difference_overflow)?;
         let new_stock = check_stock_range(movements_sum)?;
-        inventory_repo::update_stock_quantity(&tx, product_code, new_stock)?;
+        inventory_repo::update_stock_quantity(&tx, product_code, new_stock, None)?;
 
         adjustments.push(StockAdjustment {
             product_code: product_code.clone(),
@@ -286,6 +286,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -302,6 +304,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -775,6 +779,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();

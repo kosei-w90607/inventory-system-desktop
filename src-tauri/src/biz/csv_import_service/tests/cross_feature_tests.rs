@@ -97,6 +97,8 @@ impl World {
                     reference_type: None,
                     reference_id: None,
                     note: Some("合成初期在庫".into()),
+                    business_date: "2026-04-01".to_string(),
+                    settlement_no: None,
                 },
             )
             .unwrap();
@@ -548,6 +550,8 @@ fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
             reference_type: None,
             reference_id: None,
             note: Some("合成mutation".into()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap();

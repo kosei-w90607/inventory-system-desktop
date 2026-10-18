@@ -109,6 +109,34 @@ pub struct NewMovement {
     pub reference_type: Option<ReferenceType>,
     pub reference_id: Option<i64>,
     pub note: Option<String>,
+    /// 並びの鍵の業務日（YYYY-MM-DD。形と暦の検査は書く側の BIZ。SPEC-STK-CNT-D1）
+    pub business_date: String,
+    /// 精算回数（Z004 だけ。`Some` なら phase 1、`None` なら phase 0 を `insert_movement` が書く）
+    pub settlement_no: Option<i64>,
+}
+
+/// 求め直しが読む計数の 1 行（21 `list_stock_counts_for_product`）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StockCountRow {
+    pub id: i64,
+    pub count_value: i64,
+    /// `true` なら fresh（「入れ直す」）、`false` なら default（「数を保存」「0 にする」）
+    pub fresh: bool,
+    pub business_date: String,
+    pub settlement_no: Option<i64>,
+    pub seen_movement_id: Option<i64>,
+}
+
+/// 求め直しが読む有効な movement の 1 行（21 `list_ledger_movements_for_product`）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LedgerMovementRow {
+    pub id: i64,
+    pub quantity: i64,
+    pub business_date: String,
+    pub phase: i64,
+    pub settlement_no: Option<i64>,
+    /// `reference_type IS NULL`（商品の登録・一括 import の初期在庫）
+    pub initial_stock: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -123,11 +151,14 @@ pub struct NewMovement {
 pub fn insert_movement(conn: &DbConnection, movement: &NewMovement) -> Result<i64, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     let ref_type_str = movement.reference_type.as_ref().map(|r| r.as_str());
+    // phase は settlement_no から決める（食い違いを型で作れないようにする。21、Y8）
+    let phase = i64::from(movement.settlement_no.is_some());
     conn.execute(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8)",
+            reference_type, reference_id, note, is_voided, created_at,
+            business_date, phase, settlement_no
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11)",
         rusqlite::params![
             movement.product_code,
             movement.movement_type.as_str(),
@@ -137,28 +168,109 @@ pub fn insert_movement(conn: &DbConnection, movement: &NewMovement) -> Result<i6
             movement.reference_id,
             movement.note,
             now,
+            movement.business_date,
+            phase,
+            movement.settlement_no,
         ],
     )?;
     Ok(conn.last_insert_rowid())
 }
 
-/// products.stock_quantity を指定値で上書き更新する
+/// 写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）を書く
 ///
-/// BIZ-02 の共通在庫変動関数から呼ばれる専用関数。
-/// product_repo::update_product は使わない（1カラムに ProductUpdates はオーバーヘッド）。
+/// 呼ぶのは BIZ の `recompute_stock` だけ（21、SPEC-STK-CNT-D2）。`range` が `Some` なら要再確認。
+/// 対象なしは false。
 ///
 /// 21-io-inventory-repo.md §10.6
 pub fn update_stock_quantity(
     conn: &DbConnection,
     product_code: &str,
-    new_quantity: i64,
+    stock: i64,
+    range: Option<(i64, i64)>,
 ) -> Result<bool, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     let affected = conn.execute(
-        "UPDATE products SET stock_quantity = ?1, updated_at = ?2 WHERE product_code = ?3",
-        rusqlite::params![new_quantity, now, product_code],
+        "UPDATE products SET stock_quantity = ?1, stock_recheck = ?2, stock_range_low = ?3,
+             stock_range_high = ?4, updated_at = ?5
+         WHERE product_code = ?6",
+        rusqlite::params![
+            stock,
+            range.is_some(),
+            range.map(|r| r.0),
+            range.map(|r| r.1),
+            now,
+            product_code
+        ],
     )?;
     Ok(affected == 1)
+}
+
+/// その TX で INSERT した movement 1 行の stock_after を書く。更新が 1 行でなければ QueryFailed
+///
+/// 21-io-inventory-repo.md（D-118 (a)）
+pub(crate) fn update_movement_stock_after(
+    conn: &DbConnection,
+    movement_id: i64,
+    stock_after: i64,
+) -> Result<(), DbError> {
+    let affected = conn.execute(
+        "UPDATE inventory_movements SET stock_after = ?1 WHERE id = ?2",
+        rusqlite::params![stock_after, movement_id],
+    )?;
+    if affected != 1 {
+        return Err(DbError::QueryFailed(format!(
+            "stock_after の更新対象が1行ではありません: movement_id={movement_id}, 件数={affected}"
+        )));
+    }
+    Ok(())
+}
+
+/// 商品の計数を id の順で返す（求め直しの読取り。21）
+pub(crate) fn list_stock_counts_for_product(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<Vec<StockCountRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, count_value, count_kind, business_date, settlement_no, seen_movement_id
+         FROM stock_counts WHERE product_code = ?1 ORDER BY id",
+    )?;
+    let rows = stmt
+        .query_map([product_code], |row| {
+            Ok(StockCountRow {
+                id: row.get(0)?,
+                count_value: row.get(1)?,
+                fresh: row.get::<_, String>(2)? == "fresh",
+                business_date: row.get(3)?,
+                settlement_no: row.get(4)?,
+                seen_movement_id: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 商品の `is_voided = 0` の movement を id の順で返す（求め直しの読取り。21）
+pub(crate) fn list_ledger_movements_for_product(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<Vec<LedgerMovementRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, quantity, business_date, phase, settlement_no, reference_type IS NULL
+         FROM inventory_movements WHERE product_code = ?1 AND is_voided = 0 ORDER BY id",
+    )?;
+    let rows = stmt
+        .query_map([product_code], |row| {
+            Ok(LedgerMovementRow {
+                id: row.get(0)?,
+                quantity: row.get(1)?,
+                business_date: row.get(2)?,
+                phase: row.get(3)?,
+                settlement_no: row.get(4)?,
+                initial_stock: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
 }
 
 /// 全商品の inventory_movements 合計値を一括取得する（BIZ-07 整合性チェック用）
@@ -420,8 +532,9 @@ pub(crate) mod time_evidence {
         conn.execute(
             "INSERT INTO inventory_movements (
                 product_code, movement_type, quantity, stock_after, reference_type, reference_id,
-                note, is_voided, created_at, stocktake_adjustment_kind, stocktake_recount_id
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10)",
+                note, is_voided, created_at, stocktake_adjustment_kind, stocktake_recount_id,
+                business_date, phase
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, 0)",
             rusqlite::params![
                 movement.product_code,
                 movement.movement_type.as_str(),
@@ -433,6 +546,7 @@ pub(crate) mod time_evidence {
                 now,
                 adjustment_kind,
                 recount_id,
+                movement.business_date,
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -459,6 +573,8 @@ pub(crate) mod time_evidence {
                 reference_type: Some(ReferenceType::Stocktake),
                 reference_id: Some(1),
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             };
             let id = insert_stocktake_movement(&conn, &movement("TE-1"), "recount", None).unwrap();
             conn.execute(
@@ -611,6 +727,8 @@ mod tests {
             reference_type: Some(ReferenceType::ReceivingRecord),
             reference_id: Some(1),
             note: Some("入庫テスト".to_string()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         };
         let id = insert_movement(&conn, &movement).unwrap();
         assert!(id > 0, "挿入されたIDは正の整数");
@@ -644,6 +762,8 @@ mod tests {
             reference_type: None,
             reference_id: None,
             note: Some("初期在庫投入".to_string()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         };
         let id = insert_movement(&conn, &movement).unwrap();
         assert!(id > 0);
@@ -672,6 +792,8 @@ mod tests {
             reference_type: None,
             reference_id: None,
             note: None,
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         };
         let result = insert_movement(&conn, &movement);
         assert!(
@@ -679,6 +801,79 @@ mod tests {
             "不正なproduct_codeで ForeignKeyViolation が返るべき: {:?}",
             result
         );
+    }
+
+    fn key_movement(code: &str, date: &str, settlement_no: Option<i64>) -> NewMovement {
+        NewMovement {
+            product_code: code.to_string(),
+            movement_type: MovementType::Receiving,
+            quantity: 2,
+            stock_after: 2,
+            reference_type: None,
+            reference_id: None,
+            note: None,
+            business_date: date.to_string(),
+            settlement_no,
+        }
+    }
+
+    #[test]
+    fn test_insert_movement_req201_writes_key_and_phase_from_settlement_no() {
+        // REQ-201 / 21（phase は settlement_no から決める）/ SPEC-STK-CNT-D1・Y8
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "KEY-1");
+        let key = |id: i64| -> (String, i64, Option<i64>) {
+            conn.query_row(
+                "SELECT business_date, phase, settlement_no FROM inventory_movements WHERE id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap()
+        };
+        let id = insert_movement(&conn, &key_movement("KEY-1", "2026-05-03", None)).unwrap();
+        assert_eq!(key(id), ("2026-05-03".to_string(), 0, None));
+        let id = insert_movement(&conn, &key_movement("KEY-1", "2026-05-04", Some(0))).unwrap();
+        assert_eq!(key(id), ("2026-05-04".to_string(), 1, Some(0)));
+    }
+
+    #[test]
+    fn test_inventory_repo_req201_business_date_check_rejects_noncanonical() {
+        // REQ-201 / Y1（DB の CHECK は形だけを見る）/ Matrix W4
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "KEY-2");
+        for date in ["2026-4-7", "2026/04/07", " 2026-04-07", "2026-04-07 ", ""] {
+            assert!(
+                insert_movement(&conn, &key_movement("KEY-2", date, None)).is_err(),
+                "{date:?}"
+            );
+        }
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM inventory_movements", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_update_movement_stock_after_req201_exactly_one_row() {
+        // REQ-201 / 21 update_movement_stock_after（1 行でなければ QueryFailed）
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "KEY-3");
+        let id = insert_movement(&conn, &key_movement("KEY-3", "2026-05-03", None)).unwrap();
+        update_movement_stock_after(&conn, id, 11).unwrap();
+        let stock_after: i64 = conn
+            .query_row(
+                "SELECT stock_after FROM inventory_movements WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stock_after, 11);
+        assert!(matches!(
+            update_movement_stock_after(&conn, id + 1, 11),
+            Err(DbError::QueryFailed(_))
+        ));
     }
 
     // -----------------------------------------------------------------------
@@ -765,7 +960,7 @@ mod tests {
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "TEST-UPD");
 
-        let updated = update_stock_quantity(&conn, "TEST-UPD", 42).unwrap();
+        let updated = update_stock_quantity(&conn, "TEST-UPD", 42, None).unwrap();
         assert!(updated);
 
         let qty: i64 = conn
@@ -779,11 +974,34 @@ mod tests {
     }
 
     #[test]
+    fn test_update_stock_quantity_req205_writes_flag_and_range() {
+        // REQ-205 / 21（写しの 4 項目を書く。SPEC-STK-CNT-D2）/ Matrix T6: 範囲つきの書込みと、範囲なしで 0・NULL へ戻す
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "TEST-RNG");
+        let copy = |conn: &DbConnection| -> (i64, bool, Option<i64>, Option<i64>) {
+            conn.query_row(
+                "SELECT stock_quantity, stock_recheck, stock_range_low, stock_range_high
+                 FROM products WHERE product_code = 'TEST-RNG'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap()
+        };
+        assert!(update_stock_quantity(&conn, "TEST-RNG", 5, Some((4, 6))).unwrap());
+        assert_eq!(copy(&conn), (5, true, Some(4), Some(6)));
+        assert!(update_stock_quantity(&conn, "TEST-RNG", 7, None).unwrap());
+        assert_eq!(copy(&conn), (7, false, None, None));
+        // DB の CHECK が low > high を拒む
+        assert!(update_stock_quantity(&conn, "TEST-RNG", 7, Some((8, 6))).is_err());
+        assert_eq!(copy(&conn), (7, false, None, None));
+    }
+
+    #[test]
     fn test_update_stock_quantity_req201_nonexistent() {
         // REQ-201: 在庫数更新（存在しない商品 → false）
         // FUNC-10.6: 存在しない商品 → false
         let (_dir, conn) = setup_test_db();
-        let updated = update_stock_quantity(&conn, "NONEXISTENT", 10).unwrap();
+        let updated = update_stock_quantity(&conn, "NONEXISTENT", 10, None).unwrap();
         assert!(!updated);
     }
 
@@ -804,7 +1022,7 @@ mod tests {
 
         // わずかに待って updated_at が変わることを確認
         std::thread::sleep(std::time::Duration::from_millis(10));
-        update_stock_quantity(&conn, "TEST-TS", 99).unwrap();
+        update_stock_quantity(&conn, "TEST-TS", 99, None).unwrap();
 
         let after: String = conn
             .query_row(
@@ -835,7 +1053,7 @@ mod tests {
             "INSERT INTO inventory_movements (
                 product_code, movement_type, quantity, stock_after,
                 is_voided, created_at
-            ) VALUES ('TEST-CHK', 'invalid_type', 1, 1, 0, '2026-04-04T00:00:00')",
+            , business_date, phase) VALUES ('TEST-CHK', 'invalid_type', 1, 1, 0, '2026-04-04T00:00:00', '2026-04-01', 0)",
             [],
         );
         assert!(
@@ -864,6 +1082,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -877,6 +1097,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -891,6 +1113,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -919,13 +1143,15 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
         // voided レコードを��接SQL挿入
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, is_voided, created_at)
-             VALUES ('SV-001', 'sale_auto', -5, 5, 1, '2026-04-01T00:00:00')",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, is_voided, created_at, business_date, phase)
+             VALUES ('SV-001', 'sale_auto', -5, 5, 1, '2026-04-01T00:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();
@@ -962,6 +1188,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -975,6 +1203,8 @@ mod tests {
                 reference_type: None,
                 reference_id: None,
                 note: None,
+                business_date: "2026-04-01".to_string(),
+                settlement_no: None,
             },
         )
         .unwrap();

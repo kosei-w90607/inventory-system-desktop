@@ -1984,8 +1984,8 @@ mod tests {
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-002', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic correction', 0, '2026-08-01T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-002', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic correction', 0, '2026-08-01T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
@@ -2025,15 +2025,15 @@ mod tests {
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
@@ -2073,8 +2073,8 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00')",
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00', '2026-04-01', 0)",
                 rusqlite::params![reference_type, reference_id, is_voided],
             )
             .unwrap();

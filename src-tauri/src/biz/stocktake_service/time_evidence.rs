@@ -552,6 +552,8 @@ pub(crate) fn save_stocktake_count(
                         note: Some(format!(
                             "棚卸しの再実測: 帳簿{system_stock} → 実数{actual_count}"
                         )),
+                        business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                        settlement_no: None,
                     },
                     "recount",
                     Some(recount_id),
@@ -666,6 +668,8 @@ pub(crate) fn complete_stocktake(
                                 "棚卸し補正: 実数{n} − 保存時の帳簿{}",
                                 item.system_stock
                             )),
+                            business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                            settlement_no: None,
                         },
                         "completion",
                         None,

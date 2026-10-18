@@ -202,7 +202,6 @@ pub struct ProductUpdates {
     pub cost_price: Option<i64>,
     pub tax_rate: Option<String>,
     pub maker_code: Option<Option<String>>,
-    pub stock_quantity: Option<i64>,
     pub is_discontinued: Option<bool>,
     pub plu_dirty: Option<bool>,
     pub plu_exported_at: Option<Option<String>>,
@@ -1073,11 +1072,6 @@ pub fn update_product(
         set_clauses.push(format!("maker_code = ?{}", idx));
         let val: Option<String> = maker_code.clone();
         params.push(Box::new(val));
-        idx += 1;
-    }
-    if let Some(qty) = updates.stock_quantity {
-        set_clauses.push(format!("stock_quantity = ?{}", idx));
-        params.push(Box::new(qty));
         idx += 1;
     }
     if let Some(disc) = updates.is_discontinued {

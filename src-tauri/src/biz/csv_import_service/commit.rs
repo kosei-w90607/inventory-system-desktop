@@ -157,6 +157,8 @@ fn execute_commit(
             apply_stock_change(
                 &tx,
                 &row.product_code,
+                settlement_date,
+                None,
                 inventory_quantity,
                 MovementType::SaleAuto,
                 ReferenceType::CsvImport,
@@ -274,7 +276,7 @@ pub(super) fn apply_void_stock_corrections(
         let old_stock = product.product.stock_quantity;
         // 補正の後の在庫も上限の中（共通規則 (a)、X3）。外れたら呼び出し元が TX 全体を戻す
         let new_stock = check_stock_range(old_stock.checked_add(correction).ok_or_else(overflow)?)?;
-        inventory_repo::update_stock_quantity(conn, product_code, new_stock)?;
+        inventory_repo::update_stock_quantity(conn, product_code, new_stock, None)?;
         stock_corrections.push(StockCorrection {
             product_code: product_code.clone(),
             old_stock,

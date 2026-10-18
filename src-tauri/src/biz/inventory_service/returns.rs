@@ -261,6 +261,8 @@ pub fn create_return(
             let outcome = apply_stock_change(
                 &tx,
                 &item.product_code,
+                &req.return_date,
+                None,
                 qty,
                 MovementType::Return,
                 ReferenceType::ReturnRecord,

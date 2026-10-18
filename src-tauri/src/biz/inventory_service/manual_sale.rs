@@ -277,6 +277,8 @@ pub fn create_manual_sale(
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.sale_date,
+            None,
             -item.quantity,
             MovementType::SaleManual,
             ReferenceType::ManualSale,

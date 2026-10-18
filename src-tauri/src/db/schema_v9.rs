@@ -925,6 +925,15 @@ mod tests {
             })
         );
 
+        // vL の後の全商品で、求め直し（BIZ の derive_stock）が写しと同じ
+        for row in dump(&conn, "SELECT product_code, stock_quantity FROM products") {
+            let (Value::Text(code), Value::Integer(stock)) = (&row[0], &row[1]) else {
+                panic!("{row:?}")
+            };
+            let derived = crate::biz::stock_ledger::derive_stock(&conn, code).unwrap();
+            assert_eq!((derived.stock, derived.range), (*stock, None), "{code}");
+        }
+
         // 写し＝和だけの DB では行を書かない
         let (_dir, conn) = setup_v8_db();
         seed_product(&conn, "VL-B", 3);

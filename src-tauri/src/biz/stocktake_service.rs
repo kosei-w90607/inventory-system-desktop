@@ -515,7 +515,12 @@ pub(crate) fn legacy_complete_stocktake(
         let difference = product.product.stock_quantity - item.actual_count;
         if difference != 0 {
             let adjustment_quantity = item.actual_count - product.product.stock_quantity;
-            inventory_repo::update_stock_quantity(&tx, &item.product_code, item.actual_count)?;
+            inventory_repo::update_stock_quantity(
+                &tx,
+                &item.product_code,
+                item.actual_count,
+                None,
+            )?;
             inventory_repo::insert_movement(
                 &tx,
                 &NewMovement {
@@ -529,6 +534,8 @@ pub(crate) fn legacy_complete_stocktake(
                         "棚卸し補正: システム在庫{} → 実カウント{}",
                         product.product.stock_quantity, item.actual_count
                     )),
+                    business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                    settlement_no: None,
                 },
             )?;
             adjusted_items.push(AdjustedItem {
@@ -1609,8 +1616,8 @@ mod tests {
         seed_stocktake_item(&conn, stocktake_id, "SRD-BIZ-UNCORRECTED", 0, Some(0));
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-             VALUES ('SRD-BIZ', 'stocktake', 1, 1, 'stocktake', ?1, 0, '2026-08-05T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-BIZ', 'stocktake', 1, 1, 'stocktake', ?1, 0, '2026-08-05T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();

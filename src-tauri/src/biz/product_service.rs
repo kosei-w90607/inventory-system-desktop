@@ -280,6 +280,8 @@ pub fn create_product(
             reference_type: None,
             reference_id: None,
             note: Some("初期在庫投入".to_string()),
+            business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+            settlement_no: None,
         };
         inventory_repo::insert_movement(&tx, &movement)?;
     }
@@ -1522,7 +1524,6 @@ pub fn commit_import(
                 maker_code: row.maker_code.clone().map(Some),
                 pos_stock_sync: row.pos_stock_sync,
                 plu_dirty: Some(true),
-                stock_quantity: None,
                 is_discontinued: None,
                 plu_exported_at: None,
                 plu_target: row.plu_target,
@@ -1583,6 +1584,8 @@ pub fn commit_import(
                         reference_type: None,
                         reference_id: None,
                         note: Some("一括インポートによる初期在庫".to_string()),
+                        business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                        settlement_no: None,
                     },
                 )?;
             }
