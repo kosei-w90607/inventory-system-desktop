@@ -1056,7 +1056,7 @@ Use concise ADR-style entries.
 
 ## D-123: 開発・試験 DB はリリースの前まで作り直してよい（作り直しを 1 回にまとめる順を外す）（2026-10-18）
 
-- Status: accepted（owner の決定、repo 外の回答台帳 TD-311、2026-10-17。棚卸しの数の置き場と在庫数の求め直しの runtime (a) の起票〈Plan Packet `docs/plans/2026-10-18-stocktake-count-runtime-a.md`〉で正本へ置いた）。
+- Status: accepted（owner の決定、repo 外の回答台帳 TD-311、2026-10-17。棚卸しの数の置き場と在庫数の求め直しの runtime (a) の起票〈Plan Packet `docs/archive/plans/2026-10-18-stocktake-count-runtime-a.md`〉で正本へ置いた）。
 - Context: D-119 (8) と [22 §16](function-design/22-mnt-migration.md) は、開発・試験 DB の作り直しを要する migration（原価の lane の vB と、D-118 の runtime の migration）で作り直しを 1 回にするため、原価の lane（店の答えを待つ）を D-118 の runtime の最初の配布の単位より先に入れる順を置いていた。D-118 (9)・[ADR](adr/2026-10-16-stocktake-count-placement.md) SPEC-STK-CNT-D10 は作り直しを「対象と保全の範囲を決めた別の承認」としていた（TD-261 の Q11 = b）。店の答えを待つ間、在庫の土台（D-118）の runtime が止まっていた。
 - Decision: (1) リリース（店の PC への初回の導入）の前は、開発・試験 DB を必要なだけ作り直してよく、必要で使える分なら schema を足してよい。作り直しの承認（TD-261 の Q11 = b、TD-297 の U4 = b の「別の承認」）はリリースの前まで包括で得たものとし、配布の単位ごとに owner に諮らない。(2) 作り直しの安全は変えない: [22 §16](function-design/22-mnt-migration.md) の作り直しの手順（アプリの data の folder を丸ごと消さずに移し、folder の外の 2 つの場所の物も移す）に従い、作り直しを伴う lane の packet が対象と保全の範囲を書く。(3) 作り直しを 1 回にまとめる順（D-119 (8)）を外す。D-118 の runtime は原価の lane を待たずに進め、後で原価の lane（vB）が入るときは 2 回目の作り直しになる。(4) 店の PC へ初めて入れる版は、それまでの作り直しの起点の migration（vB と D-118 の runtime の migration を含む）を全部含む版にする。(5) リリースの後は作り直さない（その後の schema の変更は、値のある DB を移す migration と、その守りを持つ）。
 - Why: 本番の DB は無く（owner 回答 2026-09-19、`docs/project-memory.md`）、作り直しで手放すのは開発・試験のデータだけで、古い file は消さずに移すので後から見られる。順の制約は、店の答え（原価の税）を待つ間、在庫の土台を止めていた。owner の手が使いにくい間（2026-10-20 から）に、作り直しのたびの承認の介入を増やさない（TD-296 の介入の上限）。

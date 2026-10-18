@@ -9,7 +9,7 @@ Risk: R4
 ## Contracts Under Test
 
 - SPEC-STK-CNT-D1（入出庫・初期在庫の業務日、計数の鍵）、D2（求め直しと写し・`stock_after`・上限は書く直前）、D3（入出庫・初期在庫・計数どうしの判定、理由 2・3、範囲）、D9（(a) の列と表）、D10（移行）、D12（停止の入口に触れない、(a) と (b) の境）。
-- MNT-03-D17（[22 §19](../../function-design/22-mnt-migration.md) の vL の手順 1〜10）、MNT-03-D1（共有の helper）。
+- MNT-03-D17（[22 §19](../../../function-design/22-mnt-migration.md) の vL の手順 1〜10）、MNT-03-D1（共有の helper）。
 - 21・31 の新契約（`NewMovement` の phase、`update_stock_quantity` の写し、`stock_after` は呼出しごと、業務日の検査、`phase = 1` は誤り）。
 - 20・30 の新契約（`ProductUpdates.stock_quantity` を除く、初期在庫の movement と求め直し）。
 - 36・75・74（整合性の 4 項目、型の形、補正は求め直し、操作ログの形と記録済みの形、移行の知らせ）。
