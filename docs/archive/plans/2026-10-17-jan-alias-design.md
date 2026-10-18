@@ -42,7 +42,7 @@ owner への確かめ（設計を止めない。答えが無い間は既定で�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（owner の改定、TD-296） | 0（起票の時点。TD-284・TD-286 は D-117 の lane の介入に数えた。TD-296 は起票の前の先取りの問い） | 3（Q1 の確かめ 1〈答えが無ければ既定で進むので 0 にもなる〉、Ready 1・merge 1。plan-approved は TD-296 の 4a で Coordinator が進める） | 6 | 9 = 0 + 3 + 6 |
+| 介入 | 9（owner の改定、TD-296） | 3（closeout 時点。Plan Review round 3 の天井の決定 1〈TD-317「直して進める」〉、Ready 1、merge 1。L3・manual は無し。plan-approved は TD-296 の 4a で Coordinator が進めた。Q1 は聞かず既定 a。TD-284・TD-286 は D-117 の lane の介入に数えた。TD-296 は起票の前の先取りの問い） | 0 | 6 | 9 = 3 + 0 + 6 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -335,4 +335,4 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol
 | R16 | Claude #2（P3） | 採る | 引き当ての関数の返す形が決まっていない | ヒットなし・単独（別名を含む）・複数（先頭と件数）を区別して返すと書いた |
 | R17 | Claude #3（P3） | 採る | 読む経路の一覧に warning と J5 が無い | 足した。あわせて、問いの判定は別名の表を読まないので一覧から外した（起草役が発注を越えて直し、Coordinator が問いの条件と J3・J4・J6・J7 が別名を読まないことを確かめて採った） |
 
-Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= approve（P3 1）。是正は無し。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。P3 4 件は全件 follow-up（Coordinator の裁定）で、`docs/backlog.md` の「JAN の別名の runtime」へ申し送った: Claude 側 1（22 §16 の `products` の作り直しの手順〈vU の手順 5・vB の手順 4・「作り直しを 1 回にまとめる順」〉に §18 の trigger の規則への参照が無い）、Claude 側 2（§18 の作り直しの規則が `PRAGMA foreign_keys = OFF` を前提にしていると書いていない）、Claude 側 3（Matrix の Main Wiring が `find_by_jan_code` の Z004 側の呼出しを `parse.rs` だけ挙げ、`time_evidence.rs` の test 専用の呼出し〈D-118 の runtime (b) で外す〉を除外と書いていない）、Codex 1（Matrix の wire type の行に旧形の `string[]` が残る。正しくは `old_jan_question: string | null` と `oldJanAliases: OldJanAliasAnswer[]`）。packet の本文で直す所は無い。
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= approve（P3 1）。是正は無し。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。P3 4 件は全件 follow-up（Coordinator の裁定）で、`docs/backlog.md` の「JAN の別名の runtime」へ申し送った: Claude 側 1（22 §16 の `products` の作り直しの手順〈vU の手順 5・vB の手順 4・「作り直しを 1 回にまとめる順」〉に §18 の trigger の規則への参照が無い）、Claude 側 2（§18 の作り直しの規則が `PRAGMA foreign_keys = OFF` を前提にしていると書いていない）、Claude 側 3（Matrix の Main Wiring が `find_by_jan_code` の Z004 側の呼出しを `parse.rs` だけ挙げ、`time_evidence.rs` の test 専用の呼出し〈D-118 の runtime (b) で外す〉を除外と書いていない）、Codex 1（Matrix の wire type の行に旧形の `string[]` が残る。正しくは `old_jan_question: string | null` と `oldJanAliases: OldJanAliasAnswer[]`）。packet の本文で直す所は無い。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 3）に直した。

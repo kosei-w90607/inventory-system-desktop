@@ -38,7 +38,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（owner の改定、TD-296） | 0（起票の時点。TD-264・TD-265・TD-277・TD-304 は起票の前の決定で、本 lane の介入に数えない） | 2（Ready 1・merge 1。plan-approved は TD-296 の 4a で Coordinator が進める） | 7 | 9 = 0 + 2 + 7 |
+| 介入 | 9（owner の改定、TD-296） | 3（closeout 時点。Plan Review round 3 の天井の決定 1〈TD-317「直して進める」〉、Ready 1、merge 1。L3・manual は無し。plan-approved は TD-296 の 4a で Coordinator が進めた。TD-264・TD-265・TD-277・TD-304 は起票の前の決定で、本 lane の介入に数えない） | 0 | 6 | 9 = 3 + 0 + 6 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -445,4 +445,4 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 保留をボタンの条件に入れると、締めのたびにボタンが押せる状態になる。雑音かは (A) の L3 で確かめ、雑音なら保留を文とボタンの条件の両方から外す形が正本にあるので、この形を採る。食い違いにその場で直す操作が無いことは owner に諮る候補のまま。
 
-Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 4）、Codex（Astra）= reject（P2 3）。是正 2 本の後の closure 1（Codex Sol）は reject（P2 1: 精算日を固定する Matrix の行）で、行を足した後の closure 2（Codex Sol）は approve（P3 1）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。Writer の残した問いは是正で閉じ、backlog の (A)・(B) の項目は是正で更新済み。packet の本文（Scope・Contract Ledger・AC）は書き換えず、merge の版との食い違いと正本の場所をここに記録する: (1) Contract Ledger の「§37.9 に足すもの」の行が `ej_unreadable_files` を落としている（Final Review の Claude 側 O2）。(2) Scope（型・関数の形の変更と「367 の契約に後から足すもの」）と Contract Ledger の「§37.9 に足すもの」の行に、Final Review の是正で 37 に足した `z004_unreadable_files`・`z004_unreadable_count`・`RegisterSdBulkSource::Z004` の `settlement_date` が載っていない。(1)(2) の正本は 37 §37.10 の「§37.9 に足すもの」と §37.10 の本文。(3) AC8・AC9 の逐語の条件（`f5d7aaf4` を起点に差分が空）は、main（#174・#173・#170）の取込みで外れた。main を除いた本 lane の不変条件は PASS（closure 2 の Codex が確かめた）。
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 4）、Codex（Astra）= reject（P2 3）。是正 2 本の後の closure 1（Codex Sol）は reject（P2 1: 精算日を固定する Matrix の行）で、行を足した後の closure 2（Codex Sol）は approve（P3 1）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。Writer の残した問いは是正で閉じ、backlog の (A)・(B) の項目は是正で更新済み。packet の本文（Scope・Contract Ledger・AC）は書き換えず、merge の版との食い違いと正本の場所をここに記録する: (1) Contract Ledger の「§37.9 に足すもの」の行が `ej_unreadable_files` を落としている（Final Review の Claude 側 O2）。(2) Scope（型・関数の形の変更と「367 の契約に後から足すもの」）と Contract Ledger の「§37.9 に足すもの」の行に、Final Review の是正で 37 に足した `z004_unreadable_files`・`z004_unreadable_count`・`RegisterSdBulkSource::Z004` の `settlement_date` が載っていない。(1)(2) の正本は 37 §37.10 の「§37.9 に足すもの」と §37.10 の本文。(3) AC8・AC9 の逐語の条件（`f5d7aaf4` を起点に差分が空）は、main（#174・#173・#170）の取込みで外れた。main を除いた本 lane の不変条件は PASS（closure 2 の Codex が確かめた）。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 3）に直した。

@@ -40,7 +40,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 0（2026-10-17、起票の時点） | 2（Ready 1・merge 1） | 7 | 9 = 0 + 2 + 7 |
+| 介入 | 9 | 5（closeout 時点。確認の round を足す決定 1〈TD-315〉、直して両方で確認する決定 1〈TD-316〉、直して進める決定 1〈TD-318〉、Ready 1、merge 1。L3・manual は無し） | 0 | 4 | 9 = 5 + 0 + 4 |
 
 Q1（製品名）は本 lane の完了に要らない（後続の設定の lane の問い）ので、本 lane の介入に数えない。予行演習（M1〜M8）と店の PC の M9 の L3 は後続の項目で、本 lane の介入に数えない。
 
@@ -336,4 +336,4 @@ Codex GPT-6.1 Sol（approve、P1 0・P2 0・P3 0。round 3 の 8 件と N1・N2 
 | R30 | Claude R1（P2） | 採る | 照合の合わない新しい版で流れ 3 をし直すと、前の版と戻す先の backup がその版のもの（照合の合わなかった状態）に替わり、戻すと説明と食い違う | 「前の版と入力の基準」に、流れ 4 で入れた版のうち入力を始めてよいと 1 度も決まっていない版で流れ 3 をし直しても、前の版と戻す先の backup は変えない（そのとき作った backup は追加の写し）を足した。起草役は発注の「照合が 1 度も全部合っていない」を「入力を始めてよいと決まっていない」に、対象を「流れ 4 で入れた版」に変えた。Coordinator が、起動しない版で owner が入力を始めると決めた組と、戻した前の版で入力した組を追い、発注の文言では入力を要らずに失うことを確かめて起草役の形を採った |
 | R31 | Claude R2（P3） | 採る | 「より新しい版」で止まったときの MSI の候補が複数あるときの選び方が無い | 扱える DB の版がデータの版と同じで、照合が全部合ったことのある版から選び、入れ直した後に照合する、とした |
 
-Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= reject（P2 1）。是正は、戻した後の照合、WebView の保存の folder を未確認の M7 に入れたこと、upgrade code を公式の CLI で印字して固定する 1 句。Claude 側の O2 は公式の頁で事実誤認と確かめて取り下げ、O3 は packet の判断を保ち、後続の migration の lane の義務として `docs/backlog.md` の「MSI 配布手順 docs 化」の項目に是正で入れた。是正の closure（Codex Sol）は approve（指摘なし）で、main の取込みの差分は Sonnet 5.5 の delta の確認 = 可。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。packet の本文は書き換えず、merge の版との食い違いをここに記録する: (1) AC の実測の段の AC4 の見出しの行番号は、是正で「確かめる項目」が 138 行目から 141 行目に移った（merge の版の手順書で `141:## 確かめる項目`）。
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= reject（P2 1）。是正は、戻した後の照合、WebView の保存の folder を未確認の M7 に入れたこと、upgrade code を公式の CLI で印字して固定する 1 句。Claude 側の O2 は公式の頁で事実誤認と確かめて取り下げ、O3 は packet の判断を保ち、後続の migration の lane の義務として `docs/backlog.md` の「MSI 配布手順 docs 化」の項目に是正で入れた。是正の closure（Codex Sol）は approve（指摘なし）で、main の取込みの差分は Sonnet 5.5 の delta の確認 = 可。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。packet の本文は書き換えず、merge の版との食い違いをここに記録する: (1) AC の実測の段の AC4 の見出しの行番号は、是正で「確かめる項目」が 138 行目から 141 行目に移った（merge の版の手順書で `141:## 確かめる項目`）。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 5）に直した。
