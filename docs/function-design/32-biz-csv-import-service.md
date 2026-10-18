@@ -38,6 +38,10 @@
 
 本節の確定と取消は、停止 ADR の 5 つの入口を外すのと同じ配布の単位で入れる（SPEC-STK-CNT-D12、§15.0）。preview の検査（上の表と知らせ）は停止中でも足してよい（売上・在庫を作らない）。
 
+#### SD の一括取込み（D-121、proposed・未実装）
+
+SD の締めの一括取込み（[37 §37.10](37-biz-daily-report-import-service.md)、BIZ-08-D7）は、SD から読んだ Z004 を精算回数の昇順に、本節の preview の検査と確定をそのまま呼んで取り込む（runtime は backlog の「Z004 を SD の一括取込みに入れる runtime（B）」。本節の確定を入れる配布の単位の後）。上の表の拒否は、その file を飛ばして続ける。SD から読んだ file だけ、確定の TX の前に IO-10 の写しを書く（BIZ-08-D5 の引継ぎ。書けなければ確定しない）。ファイルを選ぶ経路（Z004 タブ）は写さず、ほかは変わらない。
+
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
 ### 15.0 現行buildの一時停止
