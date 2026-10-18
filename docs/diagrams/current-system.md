@@ -185,14 +185,14 @@ flowchart TB
   DAILY[日報 rollback] --> LOGICAL[daily_report_importsをrolled_back / 在庫は変更しない]
 ```
 
-- `products.stock_quantity` と `SUM(inventory_movements.quantity WHERE is_voided=0)` の一致を検証する。`stock_after` は各記録時点の値であり、過去importのvoid後に全履歴を再計算する値ではない。
+- 写し（`products.stock_quantity` と要再確認の印・範囲）と、記録から求め直した値（計数の無い商品では無効でない movement の quantity の和と同じ）の一致を検証する（D-118 の (a)）。`stock_after` は各記録時点の値であり、過去importのvoid後に全履歴を再計算する値ではない。
 - 日報は商品別売上へ擬似展開しない。商品別売上と公式日報の総額も足し合わせない。
 - 共有JANは `product_code ASC` の先頭商品へ売上を割り当て、warningを表示する。JANから色・サイズの個別SKUは復元できない。[DATA-2](../research/2026-09-16-diagram-audit.md#data-2-共有janの売上は個別skuを識別できない)
 - `reference_type + reference_id` は業務記録への論理参照。初期在庫のような元記録を持たないmovementもある。
 - 通常業務記録の取消・訂正は将来設計。CSV rollbackの仕組みを入庫・廃棄等に実装済みとして流用描写しない。
 - 現行 build では、商品別CSV（Z004）の取込みの確定（図の `Z4`）と取消（図の `ROLLBACK`）は一時停止中で、BIZ の入口が最初の文で停止 error を返し DB を変えない。図は停止前の旧本体の動作である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)）。
 
-根拠: [入出庫BIZ](../../src-tauri/src/biz/inventory_service/mod.rs)、[商品別CSV BIZ](../../src-tauri/src/biz/csv_import_service/mod.rs)、[日報BIZ](../../src-tauri/src/biz/daily_report_import_service/mod.rs)、[記録追跡設計](../function-design/65-inventory-record-traceability.md)。整合性補正は例外として在庫数をmovement合計へ直接合わせ、movementを増やさず、old/newの操作ログを同一TXで必須保存する（[integrity_service](../../src-tauri/src/biz/integrity_service.rs)）。この一致は実在庫の正しさまで保証しない。
+根拠: [入出庫BIZ](../../src-tauri/src/biz/inventory_service/mod.rs)、[商品別CSV BIZ](../../src-tauri/src/biz/csv_import_service/mod.rs)、[日報BIZ](../../src-tauri/src/biz/daily_report_import_service/mod.rs)、[記録追跡設計](../function-design/65-inventory-record-traceability.md)。整合性補正は例外として写しを記録から求め直した値へ直接合わせ（`recompute_stock`）、movementを増やさず、before/afterの操作ログを同一TXで必須保存する（[integrity_service](../../src-tauri/src/biz/integrity_service.rs)）。この一致は実在庫の正しさまで保証しない。
 
 ## 棚卸しの時間と在庫
 
