@@ -4,9 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import dateTimeSource from "./IntegrityCheckPage.tsx?raw";
 
-import { commands, type IntegrityMismatch } from "@/lib/bindings";
+import { commands, type IntegrityMismatch, type StockCopy } from "@/lib/bindings";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
+import { renderWithRouter } from "@/test/render-with-router";
 import { IntegrityCheckPage } from "./IntegrityCheckPage";
 
 vi.mock("@/lib/bindings", () => ({
@@ -19,14 +20,24 @@ const fixIntegrity = vi.mocked(commands.fixIntegrity);
 const listLogs = vi.mocked(commands.listLogs);
 const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
-function mismatch(code: string, stock = 10, movements = 7): IntegrityMismatch {
+// 写しの 4 項目（36 の StockCopy）。範囲を渡すと要再確認
+function copy(stock: number, range: [number, number] | null = null): StockCopy {
+  return {
+    stock_quantity: stock,
+    stock_recheck: range !== null,
+    stock_range_low: range?.[0] ?? null,
+    stock_range_high: range?.[1] ?? null,
+  };
+}
+
+function mismatch(code: string, stock = 10, derived = 7): IntegrityMismatch {
   return {
     product_code: code,
     name: `合成商品 ${code}`,
     stock_unit: "pcs",
-    stock_quantity: stock,
-    movements_sum: movements,
-    difference: stock - movements,
+    copy: copy(stock),
+    derived: copy(derived),
+    differing_fields: ["quantity"],
   };
 }
 
@@ -59,9 +70,8 @@ function fixResult(
               {
                 product_code: code,
                 stock_unit: "pcs" as const,
-                old_stock: oldStock,
-                new_stock: newStock,
-                adjustment: newStock - oldStock,
+                before: copy(oldStock),
+                after: copy(newStock),
               },
             ]
           : [],
@@ -243,12 +253,12 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
 
     const dialog = screen.getByRole("alertdialog");
     const dialogTitle = within(dialog).getByRole("heading", {
-      name: "在庫数を入出庫の合計に合わせて補正します",
+      name: "在庫数を記録から求め直した値に合わせて補正します",
     });
     const warningTitle = within(dialog).getByText("補正すると元に戻せません");
     expect(warningTitle.closest('[data-slot="alert"]')).toHaveAttribute("data-variant", "warning");
     const warningDescription = within(dialog).getByText(
-      "選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。",
+      "選択した商品の保存している値を記録から求め直した値に合わせて更新し、操作ログに記録します。",
     );
     for (const visibleCopy of [dialogTitle, warningTitle, warningDescription]) {
       expect(visibleCopy).toBeVisible();
@@ -258,10 +268,12 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     }
     expect(
       within(dialog).getByText(
-        "補正すると元に戻せません。選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。",
+        "補正すると元に戻せません。選択した商品の保存している値を記録から求め直した値に合わせて更新し、操作ログに記録します。",
       ),
     ).toHaveClass("sr-only");
-    expect(within(dialog).getByText("補正する商品（システム在庫 → 入出庫の合計）")).toBeVisible();
+    expect(
+      within(dialog).getByText("補正する商品（保存している値 → 記録から求め直した値）"),
+    ).toBeVisible();
   });
 
   it("test_integrity_page_req904_no_select_all_and_disabled_when_none_selected", async () => {
@@ -493,7 +505,13 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SYN-001")]));
     renderPage();
     await runCheck();
-    for (const heading of ["商品コード", "名前", "システム在庫", "入出庫の合計", "差異"]) {
+    for (const heading of [
+      "商品コード",
+      "商品名",
+      "違う項目",
+      "保存している値",
+      "記録から求め直した値",
+    ]) {
       expect(screen.getByRole("columnheader", { name: heading })).toBeInTheDocument();
     }
   });
@@ -501,15 +519,18 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
   it("test_integrity_page_req904_state_labels_not_color_only", async () => {
     runIntegrityCheck
       .mockResolvedValueOnce(
-        checkResult([mismatch("SYN-PLUS", 10, 7), mismatch("SYN-MINUS", 3, 8)]),
+        checkResult([
+          mismatch("SYN-PLUS", 10, 7),
+          { ...mismatch("SYN-MINUS", 3, 3), differing_fields: ["recheck", "range"] },
+        ]),
       )
       .mockResolvedValueOnce(checkResult([]));
     fixIntegrity.mockResolvedValue(fixResult(1, 0, "SYN-PLUS"));
     renderPage();
     await runCheck();
     expect(await screen.findByText("差異が見つかりました")).toBeInTheDocument();
-    expect(screen.getByText("システム在庫が多い")).toBeInTheDocument();
-    expect(screen.getByText("入出庫の合計が多い")).toBeInTheDocument();
+    expect(screen.getByText("在庫数")).toBeInTheDocument();
+    expect(screen.getByText("要再確認・範囲")).toBeInTheDocument();
     await selectForFix("SYN-PLUS");
     await openFixDialog();
     await confirmFix();
@@ -572,23 +593,29 @@ describe("IntegrityCheckPage perPage scroll（UI-13）", () => {
   });
 });
 
-it.each([
-  [3, "+3", "text-success-strong", "システム在庫が多い"],
-  [-3, "-3", "text-destructive-strong", "入出庫の合計が多い"],
-  [0, "0", "text-muted-foreground", "差異なし"],
-] as const)(
-  "SC10 / REQ-904: difference %s colors the number without coloring its neutral badge",
-  async (diff, label, color, state) => {
-    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SC10", 10 + diff, 10)]));
-    renderPage();
-    await runCheck();
-    const row = (await screen.findByText("合成商品 SC10")).closest("tr");
+// UI-13 / REQ-904 / Matrix U5: 違う項目は Badge の色でなく文字の語で示す
+it("違う項目を文字で示す", async () => {
+  runIntegrityCheck.mockResolvedValue(
+    checkResult([
+      { ...mismatch("U5-Q"), differing_fields: ["quantity"] },
+      { ...mismatch("U5-RR", 5, 5), differing_fields: ["recheck", "range"] },
+      { ...mismatch("U5-R", 5, 5), differing_fields: ["range"] },
+    ]),
+  );
+  renderPage();
+  await runCheck();
+  for (const [code, label] of [
+    ["U5-Q", "在庫数"],
+    ["U5-RR", "要再確認・範囲"],
+    ["U5-R", "範囲"],
+  ] as const) {
+    const row = (await screen.findByText(`合成商品 ${code}`)).closest("tr");
     if (!row) throw new Error("difference row missing");
-    expect(within(row).getByText(label, { selector: "span" })).toHaveClass(color);
-    expect(within(row).getByText(state)).toHaveAttribute("data-variant", "outline");
-    expect(within(row).getByText(state)).not.toHaveAttribute("data-tone");
-  },
-);
+    const badge = within(row).getByText(label);
+    expect(badge).toHaveAttribute("data-variant", "outline");
+    expect(badge).not.toHaveAttribute("data-tone");
+  }
+});
 
 it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
   expect(dateTimeSource).toMatch(
@@ -622,7 +649,7 @@ it("SPEC-FILTER-LABEL-RT-1 D-RT6: 差異の見出し行の下に説明を全幅�
 });
 
 // UI-13-D3 / REQ-904 / SPEC-UNIT-D3 の表の 8・11: 長さの商品は m の形、個数の商品は今どおり語を付けない数
-it("UI-13-D3: m の商品の不一致は 27.5 m・27 m・+0.5 m、補正の結果は 27.5 m → 27 m", async () => {
+it("UI-13-D3: m の商品の不一致は 27.5 m・27 m、補正の結果は 27.5 m → 27 m", async () => {
   runIntegrityCheck.mockResolvedValue(
     checkResult([
       { ...mismatch("SYN-M", 2750, 2700), stock_unit: "m" },
@@ -636,20 +663,8 @@ it("UI-13-D3: m の商品の不一致は 27.5 m・27 m・+0.5 m、補正の結�
       fixed_count: 2,
       skipped_count: 0,
       adjustments: [
-        {
-          product_code: "SYN-M",
-          stock_unit: "m",
-          old_stock: 2750,
-          new_stock: 2700,
-          adjustment: -50,
-        },
-        {
-          product_code: "SYN-PCS",
-          stock_unit: "pcs",
-          old_stock: 1234,
-          new_stock: 1230,
-          adjustment: -4,
-        },
+        { product_code: "SYN-M", stock_unit: "m", before: copy(2750), after: copy(2700) },
+        { product_code: "SYN-PCS", stock_unit: "pcs", before: copy(1234), after: copy(1230) },
       ],
     },
   });
@@ -661,12 +676,10 @@ it("UI-13-D3: m の商品の不一致は 27.5 m・27 m・+0.5 m、補正の結�
       (cell) => cell.textContent,
     );
   await screen.findByText("合成商品 SYN-M");
-  expect(cells("SYN-M").slice(2, 4)).toEqual(["27.5 m", "27 m"]);
-  expect(cells("SYN-M")[4]).toContain("+0.5 m");
-  expect(cells("SYN-CM").slice(2, 4)).toEqual(["1 m", "1.5 m"]);
-  expect(cells("SYN-CM")[4]).toContain("-0.5 m");
-  expect(cells("SYN-PCS").slice(2, 4)).toEqual(["1,234", "1,230"]);
-  expect(cells("SYN-PCS")[4]).toContain("+4");
+  // 列は 商品コード・商品名・違う項目・保存している値・記録から求め直した値（75。差の列は無い）
+  expect(cells("SYN-M").slice(3, 5)).toEqual(["27.5 m", "27 m"]);
+  expect(cells("SYN-CM").slice(3, 5)).toEqual(["1 m", "1.5 m"]);
+  expect(cells("SYN-PCS").slice(3, 5)).toEqual(["1,234", "1,230"]);
 
   await selectForFix("SYN-M");
   await selectForFix("SYN-PCS");
@@ -677,4 +690,222 @@ it("UI-13-D3: m の商品の不一致は 27.5 m・27 m・+0.5 m、補正の結�
   await confirmFix();
   expect(await screen.findByText("27.5 m → 27 m")).toBeInTheDocument();
   expect(screen.getByText("1234 → 1230")).toBeInTheDocument();
+});
+
+// Matrix U1〜U8（75 の冒頭の注記・§75.4〜§75.7、36 の型の形）。値は 36 の例と違う合成の値
+describe("UI-13 REQ-904 写しの 4 項目と記録から求め直した値", () => {
+  function renderPageWithRouter() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return renderWithRouter(
+      <QueryClientProvider client={client}>
+        <IntegrityCheckPage />
+      </QueryClientProvider>,
+      "/settings/integrity",
+    );
+  }
+
+  function logsResult(items: { detail_json: string | null; created_at: string }[]) {
+    return {
+      status: "ok" as const,
+      data: {
+        items: items.map((item, index) => ({
+          id: 100 - index,
+          operation_type: "integrity_fix",
+          summary: "合成の補正",
+          ...item,
+        })),
+        total_count: items.length,
+        page: 1,
+        per_page: 100,
+      },
+    };
+  }
+
+  const migrationRow = {
+    detail_json: JSON.stringify({
+      fixed_count: 3,
+      skipped_count: 0,
+      adjustments: [],
+      trigger: "migration",
+    }),
+    created_at: "2026-10-19T08:30:00",
+  };
+  const ordinaryFixRow = {
+    detail_json: JSON.stringify({ fixed_count: 1, skipped_count: 0, adjustments: [] }),
+    created_at: "2026-10-20T10:00:00",
+  };
+  const noticeText =
+    "更新のときに在庫数を記録から求め直し、3商品の在庫数を直しました（2026-10-19 08:30:00）。直した前後は操作ログで見られます。";
+
+  function mockLogs(fixRows: { detail_json: string | null; created_at: string }[] | "error") {
+    listLogs.mockImplementation((query) => {
+      if (query.operation_type !== "integrity_fix") return Promise.resolve(logsResult([]));
+      if (fixRows === "error")
+        return Promise.resolve({
+          status: "error" as const,
+          error: { kind: "internal", message: "合成の読取りエラー", field: null, error_id: null },
+        });
+      return Promise.resolve(logsResult(fixRows));
+    });
+  }
+
+  it("違う項目と、保存している値・記録から求め直した値を並べる", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult([
+        {
+          ...mismatch("U1-001"),
+          copy: copy(6),
+          derived: copy(5, [4, 5]),
+          differing_fields: ["quantity", "recheck", "range"],
+        },
+      ]),
+    );
+    renderPage();
+    await runCheck();
+    for (const heading of ["違う項目", "保存している値", "記録から求め直した値"]) {
+      expect(screen.getByRole("columnheader", { name: heading })).toBeInTheDocument();
+    }
+    const row = (await screen.findByText("合成商品 U1-001")).closest("tr");
+    if (!row) throw new Error("difference row missing");
+    expect(within(row).getByText("在庫数・要再確認・範囲")).toBeInTheDocument();
+    expect(within(row).getByText("6")).toBeInTheDocument();
+    expect(within(row).getByText("5（要再確認 4〜5）")).toBeInTheDocument();
+    expect(screen.queryByText(/システム在庫が多い|入出庫の合計が多い|入出庫の合計/)).toBeNull();
+  });
+
+  it("数が同じで要再確認だけが違う商品も一覧に出す", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult([
+        {
+          ...mismatch("U2-001"),
+          copy: copy(8),
+          derived: copy(8, [7, 9]),
+          differing_fields: ["recheck", "range"],
+        },
+      ]),
+    );
+    renderPage();
+    await runCheck();
+    expect(await screen.findByText("差異が見つかりました")).toBeInTheDocument();
+    const row = screen.getByText("合成商品 U2-001").closest("tr");
+    if (!row) throw new Error("difference row missing");
+    expect(within(row).getByText("要再確認・範囲")).toBeInTheDocument();
+    expect(within(row).getByText("8（要再確認 7〜9）")).toBeInTheDocument();
+    expect(screen.queryByText("差異なし")).toBeNull();
+    expect(screen.queryByText("差異はありません")).toBeNull();
+  });
+
+  it("補正の確認で保存している値から記録から求め直した値への前後を出す", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult([
+        {
+          ...mismatch("U3-CM"),
+          stock_unit: "cm",
+          copy: copy(1250),
+          derived: copy(1200, [1150, 1300]),
+          differing_fields: ["quantity", "recheck", "range"],
+        },
+        mismatch("U3-PCS", 12, 9),
+      ]),
+    );
+    renderPage();
+    await runCheck();
+    await selectForFix("U3-CM");
+    await openFixDialog();
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("U3-CM")).toBeInTheDocument();
+    expect(within(dialog).getByText("12.5 m → 12 m（要再確認 11.5 m〜13 m）")).toBeInTheDocument();
+    expect(within(dialog).queryByText("U3-PCS")).toBeNull();
+  });
+
+  it("補正の結果を before と after から出す", async () => {
+    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("U4-001", 5, 6)]));
+    fixIntegrity.mockResolvedValue({
+      status: "ok",
+      data: {
+        fixed_count: 1,
+        skipped_count: 0,
+        adjustments: [
+          {
+            product_code: "U4-001",
+            stock_unit: "pcs",
+            before: copy(5, [4, 6]),
+            after: copy(6),
+          },
+        ],
+      },
+    });
+    renderPage();
+    await runCheck();
+    await selectForFix("U4-001");
+    await openFixDialog();
+    await confirmFix();
+    expect(await screen.findByText("1件を補正しました")).toBeInTheDocument();
+    const resultRow = screen.getByText("5（要再確認 4〜6） → 6").closest("li");
+    expect(resultRow).toHaveTextContent("U4-001");
+  });
+
+  it("run_integrity_check の copy と derived を表示に使う", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult([{ ...mismatch("U7-001"), copy: copy(13), derived: copy(21) }]),
+    );
+    renderPage();
+    await runCheck();
+    const row = (await screen.findByText("合成商品 U7-001")).closest("tr");
+    if (!row) throw new Error("difference row missing");
+    const cells = Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent);
+    expect(cells.slice(3, 5)).toEqual(["13", "21"]);
+  });
+
+  it("移行の integrity_fix があれば日時と商品の数と操作ログへの導線を出す", async () => {
+    mockLogs([migrationRow]);
+    renderPageWithRouter();
+    expect(await screen.findByText(noticeText)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "操作ログを開く" })).toHaveAttribute(
+      "href",
+      "/settings/logs",
+    );
+    expect(listLogs).toHaveBeenCalledWith({
+      page: 1,
+      per_page: 100,
+      operation_type: "integrity_fix",
+      start_date: null,
+      end_date: null,
+    });
+  });
+
+  it("移行の行の後に別の integrity_fix があっても知らせを出す", async () => {
+    mockLogs([ordinaryFixRow, migrationRow]);
+    const first = renderPageWithRouter();
+    expect(await screen.findByText(noticeText)).toBeInTheDocument();
+    first.unmount();
+
+    // trigger の無い行だけでは知らせを出さない
+    mockLogs([ordinaryFixRow]);
+    renderPageWithRouter();
+    expect(await screen.findByRole("button", { name: "整合性チェック実行" })).toBeEnabled();
+    await waitFor(() => {
+      expect(
+        listLogs.mock.calls.filter(([query]) => query.operation_type === "integrity_fix"),
+      ).toHaveLength(2);
+    });
+    expect(screen.queryByText(/更新のときに在庫数を記録から求め直し/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "操作ログを開く" })).toBeNull();
+  });
+
+  it("ログの読取りに失敗してもチェックを止めない", async () => {
+    mockLogs("error");
+    runIntegrityCheck.mockResolvedValue(checkResult([]));
+    renderPageWithRouter();
+    const button = await screen.findByRole("button", { name: "整合性チェック実行" });
+    await waitFor(() => {
+      expect(listLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ operation_type: "integrity_fix" }),
+      );
+    });
+    expect(button).toBeEnabled();
+    await userEvent.setup().click(button);
+    expect(await screen.findByText("差異はありません")).toBeInTheDocument();
+    expect(screen.queryByText(/更新のときに在庫数を記録から求め直し/)).toBeNull();
+  });
 });
