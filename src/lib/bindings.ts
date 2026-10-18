@@ -1563,7 +1563,7 @@ export type StartStocktakeResult = {
 	auto_filled_count: number,
 };
 
-// 在庫補正詳細（数の差は画面が before と after から求める）
+// 在庫補正詳細（差は持たず、画面は before → after を並べる。75 §75.6）
 export type StockAdjustment = {
 	product_code: string,
 	// 商品の単位（SPEC-UNIT-D3 の表の 11）
