@@ -8,6 +8,8 @@
 - Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
 - 並びの鍵（`business_date`・`phase`・`settlement_no`）・計数の表（`stock_counts`）・求め直し・棚卸し・移行: [tracking](db-design/tracking-system-tables.md)。
 
+EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）: [POS](db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」。
+
 `products.stock_quantity` は記録から求め直した写しで、書くのは BIZ の求め直しの関数だけ（D-051 の原則、D-118）。migration は棚卸しか Z004 の取込みを持つ DB では止まり（開発・試験 DB の作り直しは別の承認）、持たない DB では列と表を足して既存の movement の鍵を埋め、写しを求め直す。runtime の SQL・CHECK / FK / index・故障注入の試験は未実施。
 
 > **現行スキーマの入口**: [ER図](inventory_system_erd.html)、[業務データフロー](diagrams/current-system.md)。適用順序は `src-tauri/src/db/migration.rs` と `schema_v*.rs` を照合する。
@@ -20,6 +22,7 @@
 | # | テーブル名 | 種別 | 対応REQ | 役割 |
 |---|-----------|------|---------|------|
 | 1 | products | マスタ | REQ-101〜104 | 商品マスタ。システムの中心 |
+| 1a | product_jan_aliases | マスタ | REQ-104, 401 | 前の JAN の別名（JAN を直した商品の前の JAN の売上を同じ商品へたどる。proposed・未実装、D-122） |
 | 2 | departments | マスタ | REQ-103, 402 | 部門マスタ。Z005対応＋独自コード発番 |
 | 3 | suppliers | マスタ | REQ-201 | 取引先マスタ。サジェスト入力の元データ |
 | 4 | receiving_records | トランザクション | REQ-201 | 入庫記録ヘッダ |
@@ -53,7 +56,7 @@
 
 | グループ | ファイル | テーブル |
 |---------|---------|---------|
-| マスタ | [db-design/master-tables.md](db-design/master-tables.md) | products, departments, suppliers |
+| マスタ | [db-design/master-tables.md](db-design/master-tables.md) | products, product_jan_aliases（proposed、D-122）, departments, suppliers |
 | PLU slot | [db-design/plu-tables.md](db-design/plu-tables.md) | plu_slots、PLU snapshot 用 app_settings key |
 | トランザクション | [db-design/transaction-tables.md](db-design/transaction-tables.md) | receiving_records/items, return_records/items, manual_sales/items, disposal_records/items |
 | POS連携 | [db-design/pos-tables.md](db-design/pos-tables.md) | csv_imports, csv_import_errors, daily_report_imports, daily_report_summary_lines, daily_report_payment_lines, daily_report_department_lines, B-1/B-2パース仕様, sale_records |
