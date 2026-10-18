@@ -202,19 +202,20 @@ pub fn fix_integrity(
         .transaction()
         .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
 
-    // 3. 各商品について、写しと求めた値が違えば recompute_stock の結果を書く
-    let copies: HashMap<String, StockCopyRow> = product_repo::find_all_stock_quantities(&tx)?
+    // 3. 各商品について、写しと求めた値が違えば recompute_stock の結果を書く。
+    //    写しの行は 1 回だけ消費し、同じ商品の 2 回目以降は skip に数える
+    let mut copies: HashMap<String, StockCopyRow> = product_repo::find_all_stock_quantities(&tx)?
         .into_iter()
         .map(|row| (row.product_code.clone(), row))
         .collect();
     let mut skipped_count = 0usize;
     let mut adjustments = Vec::new();
     for product_code in product_codes {
-        let Some(row) = copies.get(product_code) else {
+        let Some(row) = copies.remove(product_code) else {
             skipped_count += 1;
             continue;
         };
-        let before = StockCopy::from(row);
+        let before = StockCopy::from(&row);
         if before == StockCopy::from(&derive_stock(&tx, product_code)?) {
             skipped_count += 1;
             continue;
@@ -1154,6 +1155,32 @@ mod tests {
                     "stock_unit": "pcs",
                     "before": {"stock_quantity": 9, "stock_recheck": true, "stock_range_low": 3, "stock_range_high": 9},
                     "after": plain_json(4),
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn test_integrity_req904_fix_duplicate_code_fixes_once() {
+        // REQ-904 / 36（同じ商品が複数回来ても補正と明細は 1 回、2 回目以降は skip）
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "A", 7);
+        add_movement(&conn, "A", 5);
+
+        let result = fix_integrity(&mut conn, &["A".to_string(), "A".to_string()]).unwrap();
+        assert_eq!((result.fixed_count, result.skipped_count), (1, 1));
+        assert_eq!(result.adjustments.len(), 1);
+        assert_eq!(stock_quantity(&conn, "A"), 5);
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_fix"),
+            serde_json::json!({
+                "fixed_count": 1,
+                "skipped_count": 1,
+                "adjustments": [{
+                    "product_code": "A",
+                    "stock_unit": "pcs",
+                    "before": plain_json(7),
+                    "after": plain_json(5),
                 }],
             })
         );
