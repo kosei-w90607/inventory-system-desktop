@@ -63,6 +63,8 @@ pub struct ProductUpdateRequest {
     pub maker_code: Option<Option<String>>,
     pub pos_stock_sync: Option<bool>,
     pub plu_target: Option<bool>,
+    /// 個数の単位どうしの変更だけを許す（SPEC-UNIT-D2・BIZ-01-D8）
+    pub stock_unit: Option<ProductStockUnit>,
 }
 
 /// 商品更新結果（FUNC-4.4）
@@ -333,7 +335,7 @@ pub fn update_product(
         .ok_or_else(|| BizError::NotFound("商品が見つかりません".to_string()))?;
 
     // 2. バリデーション
-    validate_update_request(req, conn)?;
+    validate_update_request(req, existing.product.stock_unit, conn)?;
 
     // 3. BEGIN
     let tx = conn
@@ -378,6 +380,10 @@ pub fn update_product(
         maker_code: req.maker_code.clone(),
         pos_stock_sync: req.pos_stock_sync,
         plu_target: req.plu_target,
+        // 同じ単位なら SET に出さない。単位は plu_dirty の理由にならない（BIZ-01-D8）
+        stock_unit: req
+            .stock_unit
+            .filter(|unit| *unit != existing.product.stock_unit),
         ..Default::default()
     };
     if selling_changed || plu_target_enabled {
@@ -446,6 +452,11 @@ pub fn update_product(
         "plu_target",
         json!(prev.plu_target),
         req.plu_target.map(|v| json!(v)),
+    );
+    record(
+        "stock_unit",
+        json!(prev.stock_unit.as_str()),
+        req.stock_unit.map(|v| json!(v.as_str())),
     );
     let detail = (!changes.is_empty()).then(|| serde_json::Value::Object(changes).to_string());
     let log = NewOperationLog {
@@ -991,12 +1002,61 @@ fn normalize_stock_unit(value: &str) -> Option<ProductStockUnit> {
     })
 }
 
+const MSG_STOCK_UNIT_KIND: &str = "在庫単位は個数の単位どうしでだけ変えられます";
+
+/// 単位を変えてよいか（SPEC-UNIT-D2・BIZ-01-D8）。同じか、どちらも個数の単位。商品修正・CSV の preview・commit が共有する
+fn stock_unit_change_allowed(existing: ProductStockUnit, new: ProductStockUnit) -> bool {
+    existing == new
+        || (stock_unit_kind(existing) == StockUnitKind::Count
+            && stock_unit_kind(new) == StockUnitKind::Count)
+}
+
 fn stock_unit_changed_message(existing: ProductStockUnit, csv_value: &str) -> String {
     format!(
-        "在庫単位は登録の後に変えられません（登録: {}、CSV: {}）",
+        "{MSG_STOCK_UNIT_KIND}（登録: {}、CSV: {}）",
         stock_unit_label(existing),
         csv_value
     )
+}
+
+/// 上書きが単位だけを変えるか（BIZ-01-D8 の上書きの `plu_dirty`）。
+/// UPDATE に渡す `Some` の列のうち単位と plu_dirty の他が全て既存と同じなら真（比べる列は UPDATE が書く列と同じ）
+fn overwrite_changes_unit_only(updates: &ProductUpdates, existing: &product_repo::Product) -> bool {
+    fn same<T: PartialEq>(new: &Option<T>, old: &T) -> bool {
+        new.as_ref().is_none_or(|new| new == old)
+    }
+    // field を足したら compile error で比べるかを決めさせるため `..` を置かない
+    let ProductUpdates {
+        jan_code,
+        name,
+        department_id,
+        supplier_id,
+        selling_price,
+        cost_price,
+        tax_rate,
+        maker_code,
+        stock_unit,
+        stock_quantity,
+        is_discontinued,
+        plu_dirty: _,
+        plu_exported_at,
+        plu_target,
+        pos_stock_sync,
+    } = updates;
+    stock_unit.is_some()
+        && same(jan_code, &existing.jan_code)
+        && same(name, &existing.name)
+        && same(department_id, &existing.department_id)
+        && same(supplier_id, &existing.supplier_id)
+        && same(selling_price, &existing.selling_price)
+        && same(cost_price, &existing.cost_price)
+        && same(&tax_rate.as_deref(), &existing.tax_rate.as_str())
+        && same(maker_code, &existing.maker_code)
+        && same(stock_quantity, &existing.stock_quantity)
+        && same(is_discontinued, &existing.is_discontinued)
+        && same(plu_exported_at, &existing.plu_exported_at)
+        && same(plu_target, &existing.plu_target)
+        && same(pos_stock_sync, &existing.pos_stock_sync)
 }
 
 /// m の数（`^[0-9]+(\.[0-9]{1,2})?$`）を cm の整数にする（SPEC-UNIT-D3。浮動小数を通さない）
@@ -1031,16 +1091,21 @@ fn import_row_commit_error(
     if let Some(message) = selling_and_cost_range_error(row.selling_price, row.cost_price) {
         return Some(message);
     }
-    match (existing_unit, row.stock_unit.as_deref()) {
-        // 上書きの行: 単位は登録の後に変えない。初期在庫は読まない
-        (Some(existing), Some(code)) if code != existing.as_str() => {
-            Some(stock_unit_changed_message(existing, code))
+    // 単位は 12 個の code（新規の行と上書きの行）
+    let unit = match row.stock_unit.as_deref() {
+        Some(code) => match ProductStockUnit::from_code(code) {
+            Some(unit) => Some(unit),
+            None => return Some(format!("在庫単位が正しくありません: {code}")),
+        },
+        None => None,
+    };
+    match (existing_unit, unit) {
+        // 上書きの行: 単位は個数の単位どうしでだけ変える。初期在庫は読まない
+        (Some(existing), Some(unit)) if !stock_unit_change_allowed(existing, unit) => {
+            Some(stock_unit_changed_message(existing, unit.as_str()))
         }
         (Some(_), _) => None,
-        // 新規の行: 単位は 12 個の code、初期在庫は 0 以上で上限まで
-        (None, Some(code)) if ProductStockUnit::from_code(code).is_none() => {
-            Some(format!("在庫単位が正しくありません: {code}"))
-        }
+        // 新規の行: 初期在庫は 0 以上で上限まで
         (None, _) => match row.initial_stock {
             Some(stock) if stock < 0 => Some(format!("初期在庫の値が不正です: '{stock}'")),
             Some(stock) if stock > MAX_STOCK_QUANTITY => Some(MSG_STOCK_TOO_LARGE.to_string()),
@@ -1091,6 +1156,7 @@ fn validate_create_request(
 
 fn validate_update_request(
     req: &ProductUpdateRequest,
+    existing_unit: ProductStockUnit,
     conn: &DbConnection,
 ) -> Result<(), BizError> {
     if let Some(ref name) = req.name {
@@ -1122,6 +1188,13 @@ fn validate_update_request(
                 "指定された取引先が存在しません".to_string(),
             ));
         }
+    }
+    // 単位は手順 2 の今の検査の後（BIZ-01-D8）
+    if req
+        .stock_unit
+        .is_some_and(|unit| !stock_unit_change_allowed(existing_unit, unit))
+    {
+        return Err(BizError::ValidationFailed(MSG_STOCK_UNIT_KIND.to_string()));
     }
     Ok(())
 }
@@ -1397,14 +1470,14 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
             }
         }
 
-        // 既存の商品の行（上書きの候補）は単位を変えられない（SPEC-UNIT-D2）
+        // 既存の商品の行（上書きの候補）は個数の単位どうしでだけ単位を変えられる（SPEC-UNIT-D2・BIZ-01-D8）
         let existing = if product_code.is_empty() {
             None
         } else {
             product_repo::find_by_product_code(conn, &product_code)?
         };
         if let (Some(existing), Some(unit)) = (&existing, unit) {
-            if unit != existing.product.stock_unit {
+            if !stock_unit_change_allowed(existing.product.stock_unit, unit) {
                 errors.push(stock_unit_changed_message(
                     existing.product.stock_unit,
                     raw_stock_unit,
@@ -1510,8 +1583,16 @@ pub fn commit_import(
             let was_plu_target = existing
                 .as_ref()
                 .is_some_and(|existing| existing.product.plu_target);
+            // 単位の変更（前, 後）。再検証を通った行なので個数の単位どうし（BIZ-01-D8）
+            let unit_change = existing.as_ref().and_then(|existing| {
+                let unit = row
+                    .stock_unit
+                    .as_deref()
+                    .and_then(ProductStockUnit::from_code)?;
+                (unit != existing.product.stock_unit).then_some((existing.product.stock_unit, unit))
+            });
             // UPDATE: ImportRow → ProductUpdates マッピング（R2-1 + R3-1修正）
-            let updates = ProductUpdates {
+            let mut updates = ProductUpdates {
                 jan_code: Some(row.jan_code.clone()),
                 name: Some(row.name.clone()),
                 department_id: Some(row.department_id),
@@ -1521,12 +1602,20 @@ pub fn commit_import(
                 supplier_id: row.supplier_id.map(Some),
                 maker_code: row.maker_code.clone().map(Some),
                 pos_stock_sync: row.pos_stock_sync,
+                stock_unit: unit_change.map(|(_, new)| new),
                 plu_dirty: Some(true),
                 stock_quantity: None,
                 is_discontinued: None,
                 plu_exported_at: None,
                 plu_target: row.plu_target,
             };
+            // 単位だけの上書きは plu_dirty を変えない（BIZ-01-D8）
+            if existing
+                .as_ref()
+                .is_some_and(|existing| overwrite_changes_unit_only(&updates, &existing.product))
+            {
+                updates.plu_dirty = None;
+            }
             // #4 (P2): 戻り値チェック。対象が存在しない場合はスキップ
             let updated = product_repo::update_product(&tx, &row.product_code, &updates)?;
             if updated {
@@ -1535,6 +1624,20 @@ pub fn commit_import(
                     if let Some(old_jan) = old_jan.as_deref() {
                         super::plu_export_service::release_plu_slot_for_jan(&tx, old_jan)?;
                     }
+                }
+                // 単位を変えた商品ごとに TX の中でログを書く。失敗すれば TX 全体を戻す（BIZ-01-D8）
+                if let Some((old, new)) = unit_change {
+                    let detail = serde_json::json!({
+                        "stock_unit": { "old": old.as_str(), "new": new.as_str() }
+                    });
+                    system_repo::insert_operation_log(
+                        &tx,
+                        &NewOperationLog {
+                            operation_type: "product_update".to_string(),
+                            summary: format!("商品を更新しました: {}", row.product_code),
+                            detail_json: Some(detail.to_string()),
+                        },
+                    )?;
                 }
                 updated_count += 1;
             } else {
@@ -2794,9 +2897,25 @@ mod tests {
             maker_code: Some(None),
             pos_stock_sync: Some(true),
             plu_target: Some(false),
+            stock_unit: Some(ProductStockUnit::Pcs),
         };
         update_product(&mut conn, "2000000000091", &req_ii).unwrap();
         assert_eq!(latest_update_detail(&conn), None, "変更が無ければ NULL");
+
+        // (ii-b) 同じ単位と新しい商品名 → 商品名は更新し、key は name だけ（BIZ-01-D8 の同じ単位）
+        let req_ii_b = ProductUpdateRequest {
+            name: Some("同じ単位で改名".to_string()),
+            stock_unit: Some(ProductStockUnit::Pcs),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &req_ii_b).unwrap();
+        let found = product_repo::find_by_product_code(&conn, "2000000000091")
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.product.name, "同じ単位で改名");
+        assert_eq!(found.product.stock_unit, ProductStockUnit::Pcs);
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(detail_keys(&detail), ["name"]);
 
         // (iii) 売価だけ → selling_price だけ（cost_price を書かない）
         let req_iii = ProductUpdateRequest {
@@ -2885,10 +3004,197 @@ mod tests {
         assert_eq!(count(&conn, log_sql), 0, "product_update のログが残らない");
     }
 
+    /// 商品を単位つきで登録し、plu_dirty を 0 にする（単位の変更の test 用）
+    fn create_unit_product(conn: &mut DbConnection, jan: &str, unit: ProductStockUnit) {
+        let mut req = default_create_request();
+        req.jan_code = Some(jan.to_string());
+        req.department_id = 3;
+        req.stock_unit = unit;
+        create_product(conn, req).unwrap();
+        product_repo::update_product(
+            conn,
+            jan,
+            &ProductUpdates {
+                plu_dirty: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+
+    fn product_update_log_count(conn: &DbConnection) -> i64 {
+        conn.query_row(
+            "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'product_update'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_stock_unit_between_count_units() {
+        // REQ-102 / SPEC-UNIT-D2 / BIZ-01-D7・D8: 個数の単位どうしの変更は通り、数・明細・価格・plu_dirty を変えない
+        let (_dir, mut conn) = setup_test_db();
+        create_unit_product(&mut conn, "2000000009018", ProductStockUnit::Pcs);
+        let received = crate::biz::inventory_service::create_receiving(
+            &mut conn,
+            serde_json::from_value(serde_json::json!({
+                "idempotency_key": "unit-relabel-receiving",
+                "supplier_id": null,
+                "receiving_date": "2026-10-01",
+                "note": null,
+                "items": [{"product_code": "2000000009018", "quantity": 12, "cost_price": 300}],
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        product_repo::update_product(
+            &conn,
+            "2000000009018",
+            &ProductUpdates {
+                plu_dirty: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let snapshot = |conn: &DbConnection| {
+            let product = product_repo::find_by_product_code(conn, "2000000009018")
+                .unwrap()
+                .unwrap()
+                .product;
+            let item_quantity =
+                crate::biz::inventory_service::get_receiving_record(conn, received.record_id)
+                    .unwrap()
+                    .items[0]
+                    .quantity;
+            let price_history: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM price_history WHERE product_code = '2000000009018'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            (
+                product.stock_quantity,
+                product.selling_price,
+                product.cost_price,
+                item_quantity,
+                price_history,
+                product.plu_dirty,
+            )
+        };
+        let before = snapshot(&conn);
+        assert_eq!(before.0, 12);
+        assert_eq!(before.3, 12);
+        assert!(!before.5);
+
+        let req = ProductUpdateRequest {
+            stock_unit: Some(ProductStockUnit::Ball),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000009018", &req).unwrap();
+
+        let found = product_repo::find_by_product_code(&conn, "2000000009018")
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.product.stock_unit, ProductStockUnit::Ball);
+        assert_eq!(
+            snapshot(&conn),
+            before,
+            "数・明細・価格・plu_dirty は変わらない"
+        );
+        assert_eq!(
+            latest_update_detail(&conn),
+            Some(serde_json::json!({"stock_unit": {"old": "pcs", "new": "ball"}}))
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_rejects_cross_kind_stock_unit() {
+        // REQ-102 / SPEC-UNIT-D2 / BIZ-01-D8: 個数 ↔ 長さの変更は拒み、何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_unit_product(&mut conn, "2000000009018", ProductStockUnit::Pcs);
+        create_unit_product(&mut conn, "2000000009025", ProductStockUnit::M);
+        for (code, from, to) in [
+            ("2000000009018", ProductStockUnit::Pcs, ProductStockUnit::M),
+            ("2000000009025", ProductStockUnit::M, ProductStockUnit::Pcs),
+        ] {
+            let before = product_repo::find_by_product_code(&conn, code)
+                .unwrap()
+                .unwrap()
+                .product;
+            let logs_before = product_update_log_count(&conn);
+            let req = ProductUpdateRequest {
+                stock_unit: Some(to),
+                ..Default::default()
+            };
+            let result = update_product(&mut conn, code, &req);
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref message)) if message == "在庫単位は個数の単位どうしでだけ変えられます"),
+                "{code}: {result:?}"
+            );
+            let after = product_repo::find_by_product_code(&conn, code)
+                .unwrap()
+                .unwrap()
+                .product;
+            assert_eq!(after.stock_unit, from);
+            assert_eq!(after.updated_at, before.updated_at);
+            assert_eq!(product_update_log_count(&conn), logs_before);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_rejects_length_to_length_and_checks_unit_last() {
+        // REQ-102 / BIZ-01-D8: 長さどうし（m → cm）も拒む。単位の検査は手順 2 の今の検査の後
+        let (_dir, mut conn) = setup_test_db();
+        create_unit_product(&mut conn, "2000000009025", ProductStockUnit::M);
+        create_unit_product(&mut conn, "2000000009018", ProductStockUnit::Pcs);
+        let req = ProductUpdateRequest {
+            stock_unit: Some(ProductStockUnit::Cm),
+            ..Default::default()
+        };
+        let result = update_product(&mut conn, "2000000009025", &req);
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref message)) if message == "在庫単位は個数の単位どうしでだけ変えられます"),
+            "{result:?}"
+        );
+        let req = ProductUpdateRequest {
+            supplier_id: Some(Some(9999)),
+            stock_unit: Some(ProductStockUnit::M),
+            ..Default::default()
+        };
+        let result = update_product(&mut conn, "2000000009018", &req);
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref message)) if message == "指定された取引先が存在しません"),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_stock_unit_null_keeps_unit() {
+        // REQ-102 / PRODUCT-PATCH-D1 / 30 §4.4 手順 6: stock_unit が null なら単位を変えず、ログ行は書き detail は NULL
+        let (_dir, mut conn) = setup_test_db();
+        create_unit_product(&mut conn, "2000000009018", ProductStockUnit::Pcs);
+        let logs_before = product_update_log_count(&conn);
+        let req: ProductUpdateRequest = serde_json::from_str(r#"{"stock_unit":null}"#).unwrap();
+        update_product(&mut conn, "2000000009018", &req).unwrap();
+        let found = product_repo::find_by_product_code(&conn, "2000000009018")
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.product.stock_unit, ProductStockUnit::Pcs);
+        assert_eq!(product_update_log_count(&conn), logs_before + 1);
+        assert_eq!(latest_update_detail(&conn), None);
+    }
+
     #[test]
     fn test_product_update_request_req102_ordinary_fields_omitted_null_value() {
-        // REQ-102 / PRODUCT-PATCH-D1: 通常7 fieldは omitted/null=no update、value=set。
+        // REQ-102 / PRODUCT-PATCH-D1: 通常8 fieldは omitted/null=no update、value=set。
         let req: ProductUpdateRequest = serde_json::from_str("{}").unwrap();
+        assert_eq!(req.stock_unit, None);
         assert_eq!(req.name, None);
         assert_eq!(req.department_id, None);
         assert_eq!(req.selling_price, None);
@@ -2905,10 +3211,12 @@ mod tests {
                 "cost_price":null,
                 "tax_rate":null,
                 "pos_stock_sync":null,
-                "plu_target":null
+                "plu_target":null,
+                "stock_unit":null
             }"#,
         )
         .unwrap();
+        assert_eq!(req.stock_unit, None);
         assert_eq!(req.name, None);
         assert_eq!(req.department_id, None);
         assert_eq!(req.selling_price, None);
@@ -2925,10 +3233,12 @@ mod tests {
                 "cost_price":700,
                 "tax_rate":"8",
                 "pos_stock_sync":false,
-                "plu_target":true
+                "plu_target":true,
+                "stock_unit":"ball"
             }"#,
         )
         .unwrap();
+        assert_eq!(req.stock_unit, Some(ProductStockUnit::Ball));
         assert_eq!(req.name, Some("更新名".to_string()));
         assert_eq!(req.department_id, Some(4));
         assert_eq!(req.selling_price, Some(1200));
@@ -3709,8 +4019,9 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_import_req104_overwrite_cannot_change_stock_unit() {
-        // REQ-104 / SPEC-UNIT-D2 / BIZ-01-D8（X12）: 上書きで単位は変えられない。preview は行の error、commit は再検証する
+    fn test_import_req104_overwrite_rejects_cross_kind_stock_unit() {
+        // REQ-104 / SPEC-UNIT-D2 / BIZ-01-D8（X12）: 上書きで種類をまたぐ単位の変更と長さどうしの変更は拒む。
+        // preview は行の error、commit は再検証する
         let (_dir, mut conn) = setup_test_db();
         let mut existing = make_import_row("OU-M", "合成の反物");
         existing.stock_unit = Some("m".to_string());
@@ -3749,7 +4060,40 @@ mod tests {
         assert!(preview.duplicate_rows.is_empty());
         assert_eq!(
             preview.error_rows[0].errors,
-            vec!["在庫単位は登録の後に変えられません（登録: m、CSV: 玉）".to_string()]
+            vec!["在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）".to_string()]
+        );
+
+        // 個数の商品を m で読む行と、m の商品を cm で読む行も行の error
+        commit_import(
+            &mut conn,
+            vec![make_import_row("OU-PCS", "合成の糸")],
+            vec![],
+        )
+        .unwrap();
+        let csv = make_csv(
+            UNIT_CSV_HEADERS,
+            &[
+                "OU-PCS,合成の糸,1,500,300,10,m,",
+                "OU-M,合成の反物,1,500,300,10,cm,",
+            ],
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert!(preview.duplicate_rows.is_empty());
+        let errors: Vec<Vec<String>> = preview
+            .error_rows
+            .iter()
+            .map(|row| row.errors.clone())
+            .collect();
+        assert_eq!(
+            errors,
+            vec![
+                vec![
+                    "在庫単位は個数の単位どうしでだけ変えられます（登録: 個、CSV: m）".to_string()
+                ],
+                vec![
+                    "在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: cm）".to_string()
+                ],
+            ]
         );
 
         // preview を通さない wire
@@ -3759,7 +4103,7 @@ mod tests {
             &mut conn,
             vec![make_import_row("OU-OTHER", "同じ取込みの行"), changed],
             &["OU-M"],
-            "在庫単位は登録の後に変えられません",
+            "在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: ball）",
         );
         assert_eq!(
             product_stock_and_unit(&conn, "OU-M"),
@@ -3805,6 +4149,316 @@ mod tests {
             product_stock_and_unit(&conn, "OU-M"),
             (100, "m".to_string())
         );
+    }
+
+    /// 商品 CSV の上書きの test 用に、単位 `unit` の商品を新規の行で作る
+    fn commit_unit_product(conn: &mut DbConnection, code: &str, unit: &str) {
+        let mut row = make_import_row(code, "合成の商品");
+        row.stock_unit = Some(unit.to_string());
+        commit_import(conn, vec![row], vec![]).unwrap();
+    }
+
+    fn product_plu_dirty(conn: &DbConnection, code: &str) -> bool {
+        product_repo::find_by_product_code(conn, code)
+            .unwrap()
+            .unwrap()
+            .product
+            .plu_dirty
+    }
+
+    /// product_update のログの (summary, detail_json) を古い順に返す
+    fn product_update_logs(conn: &DbConnection) -> Vec<(String, Option<serde_json::Value>)> {
+        let mut statement = conn
+            .prepare(
+                "SELECT summary, detail_json FROM operation_logs
+                 WHERE operation_type = 'product_update' ORDER BY id",
+            )
+            .unwrap();
+        statement
+            .query_map([], |row| {
+                let detail: Option<String> = row.get(1)?;
+                Ok((
+                    row.get(0)?,
+                    detail.map(|detail| serde_json::from_str(&detail).unwrap()),
+                ))
+            })
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_overwrite_allows_count_unit_change() {
+        // REQ-104 / SPEC-UNIT-D2 / BIZ-01-D8: 個数の単位どうしの上書きは重複行になる（語でも code でも）。preview は書かない
+        let (_dir, mut conn) = setup_test_db();
+        commit_unit_product(&mut conn, "OC-PCS", "pcs");
+        for cell in ["玉", "ball"] {
+            let csv = make_csv(
+                UNIT_CSV_HEADERS,
+                &[&format!("OC-PCS,合成の商品,1,500,300,10,{cell},")],
+            );
+            let preview = preview_import(&conn, &csv).unwrap();
+            assert!(
+                preview.error_rows.is_empty(),
+                "{cell}: {:?}",
+                preview.error_rows
+            );
+            assert_eq!(preview.duplicate_rows.len(), 1, "{cell}");
+            assert_eq!(
+                preview.duplicate_rows[0].import_row.stock_unit.as_deref(),
+                Some("ball"),
+                "{cell}"
+            );
+            assert_eq!(
+                product_stock_and_unit(&conn, "OC-PCS").1,
+                "pcs",
+                "preview は書かない"
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_overwrite_revalidates_stock_unit_wire() {
+        // REQ-104 / BIZ-01-D8: commit は上書きの行の単位を再検証し、外れれば TX 全体を戻す（前の正しい行・ログも残らない）
+        let (_dir, mut conn) = setup_test_db();
+        commit_unit_product(&mut conn, "RV-PCS", "pcs");
+        commit_unit_product(&mut conn, "RV-M", "m");
+        commit_unit_product(&mut conn, "RV-OK", "pcs");
+        for (code, unit, message) in [
+            (
+                "RV-PCS",
+                "m",
+                "在庫単位は個数の単位どうしでだけ変えられます（登録: 個、CSV: m）",
+            ),
+            (
+                "RV-M",
+                "cm",
+                "在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: cm）",
+            ),
+            ("RV-PCS", "kg", "在庫単位が正しくありません: kg"),
+        ] {
+            let mut good = make_import_row("RV-OK", "合成の商品");
+            good.stock_unit = Some("ball".to_string());
+            let mut bad = make_import_row(code, "合成の商品");
+            bad.stock_unit = Some(unit.to_string());
+            assert_commit_rejected(
+                &mut conn,
+                vec![make_import_row("RV-NEW", "同じ取込みの新規"), good, bad],
+                &["RV-OK", code],
+                message,
+            );
+            assert!(product_update_logs(&conn).is_empty(), "{message}");
+        }
+        assert_eq!(product_stock_and_unit(&conn, "RV-OK").1, "pcs");
+        assert!(product_repo::find_by_product_code(&conn, "RV-NEW")
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_unit_only_overwrite_keeps_plu_dirty() {
+        // REQ-104 / BIZ-01-D8: 単位だけの上書きは plu_dirty を変えない（0 は 0、1 は 1）。任意列が無い・空の CSV でも同じ
+        let (_dir, mut conn) = setup_test_db();
+        let headers = [
+            "商品コード,商品名,部門ID,売価,原価,税率,在庫単位".to_string(),
+            "商品コード,商品名,部門ID,売価,原価,税率,在庫単位,JANコード,メーカー品番,取引先ID,POS在庫連動,PLU対象"
+                .to_string(),
+        ];
+        for (header_index, headers) in headers.iter().enumerate() {
+            for initial in [false, true] {
+                let code = format!("UO-{header_index}-{initial}");
+                commit_unit_product(&mut conn, &code, "pcs");
+                product_repo::update_product(
+                    &conn,
+                    &code,
+                    &ProductUpdates {
+                        plu_target: Some(true),
+                        plu_dirty: Some(initial),
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                let extra = if header_index == 0 { "" } else { ",,,,," };
+                let csv = make_csv(
+                    headers,
+                    &[&format!("{code},合成の商品,1,500,300,10,玉{extra}")],
+                );
+                let preview = preview_import(&conn, &csv).unwrap();
+                assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+                let rows: Vec<ImportRow> = preview
+                    .duplicate_rows
+                    .into_iter()
+                    .map(|row| row.import_row)
+                    .collect();
+                assert_eq!(rows.len(), 1);
+                commit_import(&mut conn, rows, vec![code.clone()]).unwrap();
+                assert_eq!(product_stock_and_unit(&conn, &code).1, "ball", "{code}");
+                assert_eq!(product_plu_dirty(&conn, &code), initial, "{code}");
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_overwrite_with_other_changes_sets_plu_dirty() {
+        // REQ-104 / BIZ-01-D8・§4.9 手順 2 d.: 単位と他の 1 列が変わる上書き、単位が空・同じ上書きは plu_dirty=1
+        let (_dir, mut conn) = setup_test_db();
+        let supplier = seed_named_supplier(&conn, "合成の取引先");
+        let other_supplier = seed_named_supplier(&conn, "別の取引先");
+        let supplier = supplier.to_string();
+        let other_supplier = other_supplier.to_string();
+        // 登録と同じ値の列（在庫単位の他）: 商品名・部門・売価・原価・税率・在庫単位・JAN・メーカー品番・取引先・在庫連動・PLU対象
+        let cases: [(&str, usize, &str); 12] = [
+            ("JAN", 7, ""),
+            ("商品名", 1, "別の名前"),
+            ("部門", 2, "2"),
+            ("売価", 3, "600"),
+            ("原価", 4, "350"),
+            ("税率", 5, "8"),
+            ("取引先", 9, other_supplier.as_str()),
+            ("メーカー品番", 8, "MK-2"),
+            ("在庫連動", 10, "0"),
+            ("PLU対象", 11, "1"),
+            ("(b) 単位が空", 6, ""),
+            ("(c) 単位が同じで売価が違う", 3, "600"),
+        ];
+        let mut lines = Vec::new();
+        let mut codes = Vec::new();
+        for (index, (label, column, value)) in cases.iter().enumerate() {
+            let code = format!("OD-{index}");
+            let jan = synthetic_ean13_req907(910 + index as u64);
+            let mut row = make_import_row(&code, "合成の商品");
+            row.jan_code = Some(jan.clone());
+            row.maker_code = Some("MK-1".to_string());
+            row.supplier_id = Some(supplier.parse().unwrap());
+            row.pos_stock_sync = Some(true);
+            row.plu_target = Some(false);
+            commit_import(&mut conn, vec![row], vec![]).unwrap();
+            product_repo::update_product(
+                &conn,
+                &code,
+                &ProductUpdates {
+                    plu_dirty: Some(false),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let mut cells = vec![
+                code.clone(),
+                "合成の商品".to_string(),
+                "1".to_string(),
+                "500".to_string(),
+                "300".to_string(),
+                "10".to_string(),
+                "玉".to_string(),
+                jan,
+                "MK-1".to_string(),
+                supplier.clone(),
+                "1".to_string(),
+                "0".to_string(),
+            ];
+            cells[*column] = value.to_string();
+            if label.starts_with("(c)") {
+                cells[6] = "個".to_string();
+            }
+            lines.push(cells.join(","));
+            codes.push(code);
+        }
+        let lines: Vec<&str> = lines.iter().map(String::as_str).collect();
+        let csv = make_csv(
+            "商品コード,商品名,部門ID,売価,原価,税率,在庫単位,JANコード,メーカー品番,取引先ID,POS在庫連動,PLU対象",
+            &lines,
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+        let rows: Vec<ImportRow> = preview
+            .duplicate_rows
+            .into_iter()
+            .map(|row| row.import_row)
+            .collect();
+        assert_eq!(rows.len(), cases.len());
+        commit_import(&mut conn, rows, codes.clone()).unwrap();
+        for ((label, _, _), code) in cases.iter().zip(&codes) {
+            assert!(
+                product_plu_dirty(&conn, code),
+                "{label}: plu_dirty=1 になるべき"
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_overwrite_logs_stock_unit_change_per_product() {
+        // REQ-104 / BIZ-01-D7・D8: 単位を変えた商品ごとに TX の中で product_update を 1 行（key は stock_unit だけ）
+        let (_dir, mut conn) = setup_test_db();
+        for code in ["LG-A", "LG-B", "LG-C"] {
+            commit_unit_product(&mut conn, code, "pcs");
+        }
+        let mut a = make_import_row("LG-A", "合成の商品");
+        a.stock_unit = Some("ball".to_string());
+        let mut b = make_import_row("LG-B", "改名した商品");
+        b.stock_unit = Some("bag".to_string());
+        let c = make_import_row("LG-C", "名前だけ変えた商品");
+        commit_import(
+            &mut conn,
+            vec![a, b, c],
+            vec!["LG-A".to_string(), "LG-B".to_string(), "LG-C".to_string()],
+        )
+        .unwrap();
+        assert_eq!(
+            product_update_logs(&conn),
+            vec![
+                (
+                    "商品を更新しました: LG-A".to_string(),
+                    Some(serde_json::json!({"stock_unit": {"old": "pcs", "new": "ball"}}))
+                ),
+                (
+                    "商品を更新しました: LG-B".to_string(),
+                    Some(serde_json::json!({"stock_unit": {"old": "pcs", "new": "bag"}}))
+                ),
+            ]
+        );
+        let imports: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'product_import'
+                 AND summary = '商品一括インポート: 新規0件、更新3件'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(imports, 1, "件数の要約のログは今のまま");
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_overwrite_log_failure_rolls_back_all() {
+        // REQ-104 / BIZ-01-D8: 上書きの product_update のログの INSERT が失敗すると TX 全体が戻る
+        let (_dir, mut conn) = setup_test_db();
+        commit_unit_product(&mut conn, "LF-PCS", "pcs");
+        conn.execute_batch(
+            "CREATE TRIGGER fail_product_update_log
+             BEFORE INSERT ON operation_logs
+             WHEN NEW.operation_type = 'product_update'
+             BEGIN SELECT RAISE(ABORT, 'synthetic operation log failure'); END;",
+        )
+        .unwrap();
+        let before = import_side_effects(&conn);
+        let mut changed = make_import_row("LF-PCS", "合成の商品");
+        changed.stock_unit = Some("ball".to_string());
+        let result = commit_import(
+            &mut conn,
+            vec![make_import_row("LF-NEW", "同じ取込みの新規"), changed],
+            vec!["LF-PCS".to_string()],
+        );
+        assert!(result.is_err(), "{result:?}");
+        assert_eq!(import_side_effects(&conn), before);
+        assert_eq!(product_stock_and_unit(&conn, "LF-PCS").1, "pcs");
+        assert!(product_repo::find_by_product_code(&conn, "LF-NEW")
+            .unwrap()
+            .is_none());
     }
 
     #[test]
