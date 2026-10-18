@@ -123,9 +123,8 @@ describe("ProductForm (UI-01b)", () => {
   ] as const)("UI-01b-D23: 在庫の節の説明文は mode と単位で 3 つ（%s・%s）", (mode, unit, text) => {
     renderStockSection(mode, unit);
     expect(screen.getByText(text)).toBeInTheDocument();
-    expect(
-      screen.queryByText("初期在庫と数量単位を設定します。登録後は数量単位を変更できません。"),
-    ).toBeNull();
+    // 旧い create の文（読点の無い「登録後は数量単位を変更…」）は出ない
+    expect(screen.queryByText(/登録後は数量単位を変更/)).toBeNull();
   });
 
   it("discontinue requires confirmation and cancel keeps state", async () => {
