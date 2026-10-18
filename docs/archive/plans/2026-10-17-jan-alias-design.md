@@ -6,7 +6,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: af1479a5ff3c8605c7794bb61a113f70dc4a8b29
 - Amendments: none
@@ -42,7 +42,7 @@ owner への確かめ（設計を止めない。答えが無い間は既定で�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（owner の改定、TD-296） | 0（起票の時点。TD-284・TD-286 は D-117 の lane の介入に数えた。TD-296 は起票の前の先取りの問い） | 3（Q1 の確かめ 1〈答えが無ければ既定で進むので 0 にもなる〉、Ready 1・merge 1。plan-approved は TD-296 の 4a で Coordinator が進める） | 6 | 9 = 0 + 3 + 6 |
+| 介入 | 9（owner の改定、TD-296） | 3（closeout 時点。Plan Review round 3 の天井の決定 1〈TD-317「直して進める」〉、Ready 1、merge 1。L3・manual は無し。plan-approved は TD-296 の 4a で Coordinator が進めた。Q1 は聞かず既定 a。TD-284・TD-286 は D-117 の lane の介入に数えた。TD-296 は起票の前の先取りの問い） | 0 | 6 | 9 = 3 + 0 + 6 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -107,15 +107,15 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. 別名の持ち方（D-122 (1)(3)）: [master-tables](../db-design/master-tables.md) に「1a. product_jan_aliases」（役割・カラム・不変条件と 3 つの trigger・migration・設計意図）を足し、[DB_DESIGN](../DB_DESIGN.md) のテーブル一覧と詳細の対応表に行を足した。[22](../function-design/22-mnt-migration.md) に §18（MNT-03-D16。表と trigger の migration、`products` を作り直す migration の規則、テスト）を足した。[20](../function-design/20-io-product-repo.md) に IO-01-D5（`find_jan_alias`・`insert_jan_alias`、`insert_product`・`update_product` は別名を扱わない）とモジュール構成の行を足した。
-2. 作る経路・使う経路（D-122 (4)(5)(7)）: [30](../function-design/30-biz-product-service.md) の §4.8 に `ImportDuplicateRow` の構造体（`old_jan_question`）と手順 5 の判定の行、§4.9 に引数 `old_jan_aliases` と `OldJanAliasAnswer` の構造体・手順 0b・手順 2 e.・エラーハンドリングの行、新しい §4.9.2（BIZ-01-D9: 問いの条件・経路・preview の判定・warning・答えの運び方・commit の判定・共有 JAN との関係・理由と却下・Revisit）を足した。[32](../function-design/32-biz-csv-import-service.md) §15.3 手順 4 b に、ヒット 0 件の行で別名を引く段と、引き当ての規則を preview と D-118 の確定の取り直しで共有する文、更新履歴の行を足した。[42](../function-design/42-cmd-sales-stocktake.md) §22.6 の `commit_import` の signature と手順、[60](../function-design/60-ui-product-import.md) の UI-01c-D17・§60.0・§60.3・§60.4・§60.9・§60.10、[51](../function-design/51-ui-product-form.md) の UI-01b-D25 と変更履歴、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の商品一括インポート画面、architecture の [biz-task-specs](../architecture/biz-task-specs.md)（BIZ-01 の一括インポートと BIZ-03 の Stage 2）と [cmd-task-specs](../architecture/cmd-task-specs.md)（`commit_import` の行）、[pos-tables](../db-design/pos-tables.md) の B-1 のマスタ照合の行を、同じ規則に揃えた。
-3. PLU の枠との関係（D-122 (2)）: [33](../function-design/33-biz-plu-export-service.md) §16.6 の「同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う」を、別名は枠と独立で §16.3 の照合・prepare・confirm は別名を読まず書かない、前の JAN の枠の値段は前の値段のまま（D-117 の受け入れ済みの限界）に置き換えた。[plu-tables](../db-design/plu-tables.md) の「products との結合」に、別名を結合キーに入れない 1 文を足した。D-117 の枠の規則・照合の表は変えていない。
-4. 後続の lane の範囲・順・Risk: [backlog](../backlog.md) の「TD-284 の lane」の項目に本 lane で置いた設計の要約を足し、その直後に「JAN の別名の runtime」（R3、PLU の書出しの見直しの runtime と同じ lane かその後〈round 2 の是正〉、触る file と L3）を足した。
+1. 別名の持ち方（D-122 (1)(3)）: [master-tables](../../db-design/master-tables.md) に「1a. product_jan_aliases」（役割・カラム・不変条件と 3 つの trigger・migration・設計意図）を足し、[DB_DESIGN](../../DB_DESIGN.md) のテーブル一覧と詳細の対応表に行を足した。[22](../../function-design/22-mnt-migration.md) に §18（MNT-03-D16。表と trigger の migration、`products` を作り直す migration の規則、テスト）を足した。[20](../../function-design/20-io-product-repo.md) に IO-01-D5（`find_jan_alias`・`insert_jan_alias`、`insert_product`・`update_product` は別名を扱わない）とモジュール構成の行を足した。
+2. 作る経路・使う経路（D-122 (4)(5)(7)）: [30](../../function-design/30-biz-product-service.md) の §4.8 に `ImportDuplicateRow` の構造体（`old_jan_question`）と手順 5 の判定の行、§4.9 に引数 `old_jan_aliases` と `OldJanAliasAnswer` の構造体・手順 0b・手順 2 e.・エラーハンドリングの行、新しい §4.9.2（BIZ-01-D9: 問いの条件・経路・preview の判定・warning・答えの運び方・commit の判定・共有 JAN との関係・理由と却下・Revisit）を足した。[32](../../function-design/32-biz-csv-import-service.md) §15.3 手順 4 b に、ヒット 0 件の行で別名を引く段と、引き当ての規則を preview と D-118 の確定の取り直しで共有する文、更新履歴の行を足した。[42](../../function-design/42-cmd-sales-stocktake.md) §22.6 の `commit_import` の signature と手順、[60](../../function-design/60-ui-product-import.md) の UI-01c-D17・§60.0・§60.3・§60.4・§60.9・§60.10、[51](../../function-design/51-ui-product-form.md) の UI-01b-D25 と変更履歴、[SCREEN_DESIGN](../../SCREEN_DESIGN.md) の商品一括インポート画面、architecture の [biz-task-specs](../../architecture/biz-task-specs.md)（BIZ-01 の一括インポートと BIZ-03 の Stage 2）と [cmd-task-specs](../../architecture/cmd-task-specs.md)（`commit_import` の行）、[pos-tables](../../db-design/pos-tables.md) の B-1 のマスタ照合の行を、同じ規則に揃えた。
+3. PLU の枠との関係（D-122 (2)）: [33](../../function-design/33-biz-plu-export-service.md) §16.6 の「同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う」を、別名は枠と独立で §16.3 の照合・prepare・confirm は別名を読まず書かない、前の JAN の枠の値段は前の値段のまま（D-117 の受け入れ済みの限界）に置き換えた。[plu-tables](../../db-design/plu-tables.md) の「products との結合」に、別名を結合キーに入れない 1 文を足した。D-117 の枠の規則・照合の表は変えていない。
+4. 後続の lane の範囲・順・Risk: [backlog](../../backlog.md) の「TD-284 の lane」の項目に本 lane で置いた設計の要約を足し、その直後に「JAN の別名の runtime」（R3、PLU の書出しの見直しの runtime と同じ lane かその後〈round 2 の是正〉、触る file と L3）を足した。
 5. 決定の記録: `docs/decision-log.md` の末尾に D-122（Decision (1)〜(8)、Why、Alternatives、Guarantee range、Compatibility、owner の決定、Revisit）を足し、D-117 の Revisit の次に本決定を指す 1 行を足した。D-117 の本文は変えていない。
 
 ついでに直したもの: 無し。
 
-変えない正本と理由: [40](../function-design/40-cmd-product.md)（`commit_import` の CMD は 42 §22.6 にあり、40 は商品の個別の command と共通 error の契約で、別名で変わる所が無い）、[26](../function-design/26-io-product-csv-importer.md)（商品 CSV の列は変えない。問いは CSV の列でなく UI-01c の preview で聞く）、`docs/inventory_system_erd.html`（実装の schema の図。表が入る runtime の lane が直す。backlog の runtime の項目に書いた）、[55](../function-design/55-ui-csv-import.md) の `unmatched_product` の表示（「商品マスタへの新規追加で次回取込み時に紐付け」は別名の後も正しい）、`FUNCTION_DESIGN.md` の UI-01c の行（signature を書いていない）、[60](../function-design/60-ui-product-import.md) の UI-01c-D2 の行（generated の binding を使う方針の決定の記録で、3 つ目の引数は UI-01c-D17 と §60.0・§60.4 が持つ）。
+変えない正本と理由: [40](../../function-design/40-cmd-product.md)（`commit_import` の CMD は 42 §22.6 にあり、40 は商品の個別の command と共通 error の契約で、別名で変わる所が無い）、[26](../../function-design/26-io-product-csv-importer.md)（商品 CSV の列は変えない。問いは CSV の列でなく UI-01c の preview で聞く）、`docs/inventory_system_erd.html`（実装の schema の図。表が入る runtime の lane が直す。backlog の runtime の項目に書いた）、[55](../../function-design/55-ui-csv-import.md) の `unmatched_product` の表示（「商品マスタへの新規追加で次回取込み時に紐付け」は別名の後も正しい）、`FUNCTION_DESIGN.md` の UI-01c の行（signature を書いていない）、[60](../../function-design/60-ui-product-import.md) の UI-01c-D2 の行（generated の binding を使う方針の決定の記録で、3 つ目の引数は UI-01c-D17 と §60.0・§60.4 が持つ）。
 
 型・JSON・関数の形を変えるもの（後続の runtime の lane が触る。本 lane は変えない。`rg` で全件を数えた）:
 
@@ -278,7 +278,11 @@ Test Design Matrix: [2026-10-17-jan-alias-design](test-matrices/2026-10-17-jan-a
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: owner の決定（repo 外の回答台帳 TD-284 の c、TD-286 の β、TD-296 の 6b）を、前の JAN を商品の側の表 `product_jan_aliases` と 3 つの trigger に置き、PLU の枠と独立にする形で設計正本に置き、D-122 に記録した。商品 CSV の上書きで JAN を直す行に前の番号の現物の有無を 1 回聞き（既定「ない」）、答えは `commit_import` の `old_jan_aliases`（`{product_code, old_jan}` の組）で運び、commit の判定・error・回復は 30 §4.9.2 の判定表（J1〜J7）の 1 か所に置いた。Z004 の引き当てはヒット 0 件の行で別名を引き、preview と D-118 の確定の取り直しで同じ関数を使う。`products` を作り直す migration の規則は 22 §18 に置いた。D-117 の本文は変えず、Revisit に本決定を指す 1 行を足した。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の lane）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（前の JAN の売上は `unmatched_product` の行エラーで知らせる）。設計照合 test と traceability の検査は green のまま。
+- 未検証: Contract Probe の P3（レジが前の JAN の枠の登録で売り、Z004 にその JAN の行が出る）と、UI-01c の問いの見た目と文言は、runtime の lane の L3。owner への Q1（前の JAN の枠の値段）は既定 a のまま。
+- review・CI・merge（closeout、2026-10-18）: Plan Review は round 3（天井）までで、round 3 の残りは owner の決定（TD-317）で直して plan-approved。Final Review は broad 1 回で是正なし（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由の squash merge。PR: [#174](https://github.com/kosei-w90607/inventory-system-desktop/pull/174)
+- 後続: `docs/backlog.md` の「JAN の別名の runtime」（Final Review の P3 4 件の申し送りを含む。「PLU の書出しの見直しの runtime」と同じ lane か、その後）。
 
 ## Review Response
 
@@ -330,3 +334,5 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol
 | R15 | Codex #3（P3） | 採る | J4 の回復の説明が引き当ての規則と違う | 「問いは出なくなり、売上は 32 の既存の共有と単独のヒットの規則に従う」にした |
 | R16 | Claude #2（P3） | 採る | 引き当ての関数の返す形が決まっていない | ヒットなし・単独（別名を含む）・複数（先頭と件数）を区別して返すと書いた |
 | R17 | Claude #3（P3） | 採る | 読む経路の一覧に warning と J5 が無い | 足した。あわせて、問いの判定は別名の表を読まないので一覧から外した（起草役が発注を越えて直し、Coordinator が問いの条件と J3・J4・J6・J7 が別名を読まないことを確かめて採った） |
+
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= approve（P3 1）。是正は無し。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。P3 4 件は全件 follow-up（Coordinator の裁定）で、`docs/backlog.md` の「JAN の別名の runtime」へ申し送った: Claude 側 1（22 §16 の `products` の作り直しの手順〈vU の手順 5・vB の手順 4・「作り直しを 1 回にまとめる順」〉に §18 の trigger の規則への参照が無い）、Claude 側 2（§18 の作り直しの規則が `PRAGMA foreign_keys = OFF` を前提にしていると書いていない）、Claude 側 3（Matrix の Main Wiring が `find_by_jan_code` の Z004 側の呼出しを `parse.rs` だけ挙げ、`time_evidence.rs` の test 専用の呼出し〈D-118 の runtime (b) で外す〉を除外と書いていない）、Codex 1（Matrix の wire type の行に旧形の `string[]` が残る。正しくは `old_jan_question: string | null` と `oldJanAliases: OldJanAliasAnswer[]`）。packet の本文で直す所は無い。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 3）に直した。

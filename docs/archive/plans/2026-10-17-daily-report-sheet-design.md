@@ -6,7 +6,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 94c8fb01263caad5ab12854ace49bafe47ed9f7f
 - Amendments: none
@@ -38,7 +38,7 @@
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（owner の改定、TD-296） | 0（起票時点。TD-260・TD-280・TD-296・TD-279・TD-305 は起票の前の決定と答えで、本 lane の介入に数えない） | 4（Open Questions の Q1・Q2 を 1 回で聞いて 2、Ready 1、merge 1） | 5 | 9 = 0 + 4 + 5 |
+| 介入 | 9（owner の改定、TD-296） | 3（closeout 時点。Plan Review round 3 の天井の決定 1〈TD-317「直して進める」〉、Ready 1、merge 1。L3・manual は無し。Open Questions の Q1・Q2 は聞かず既定 a。TD-260・TD-280・TD-296・TD-279・TD-305 は起票の前の決定と答えで、本 lane の介入に数えない） | 0 | 6 | 9 = 3 + 0 + 6 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -105,11 +105,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. 紙の内容と足し方（Scope の 1、発注の Scope 1）: [34](../function-design/34-biz-sales-service.md) に §19.3a `get_daily_report_sheet`（SALES-SHEET-D1〜D6、型 `DailyReportSheet`・`DailyReportSheetRow`・`DailyReportSheetPluImport`、処理ステップ、エラー、runtime の lane のテスト）を足し、§19.3 の手順 3 の支払の集約の鍵と「設計判断」の Z001 の段に紙の例外を書いた。[24](../function-design/24-io-csv-import-repo.md) の §14.21 手順 3 を SALES-SHEET-D2 と同じ規則にし（規則は D2 の 1 か所に置き、24 は引くだけ）、§14.21a `get_daily_report_sheet_lines`・§14.21b `get_active_z004_import_totals` を足した。[42](../function-design/42-cmd-sales-stocktake.md) に CMD `get_daily_report_sheet` を足した。round 3 の是正で、24 §14.21 手順 3 の互換の範囲に「各組の保存済みの `payment_key` も全取込みで同じ」を足し、§14.21a の DTO に取込みの id の並び（`import_ids`）を置いて `import_seq` をその位置にし、34 §19.3 手順 3 の warning の文に紙への案内を足した。
-2. 紙の並びと印刷の手段（発注の Scope 1）: [56](../function-design/56-ui-daily-sales.md) に「日報の紙」の節（UI-09a-D17 = 印刷ボタンと押せない状態の文、並びの既定、表と値の書き方、紙の上の知らせ、文字の大きさの下限 9 pt、色なし、画面に出さない。UI-09a-D18 = WebView の印刷と代わりの道）を足し、ファイル構成の `ExportBar` の行・component の `Tooltip` の行・非目的の「印刷ボタンの本実装」の行・更新履歴を直した。[UI_TECH_STACK](../UI_TECH_STACK.md) に §6.5.5 印刷、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の日次売上の利用者配慮に 1 行、[ui-task-specs](../architecture/ui-task-specs.md) の UI-09a の印刷ボタンの行に設計の参照を足した。round 3 の是正で、56 の warning の注記の見出し（`日報の確認が必要です`）、UI-09a-D16 の 2 回以上の日の文と支払集計の段、UI-09a-D15 の加算の段、紙の題、紙の内容の読込みの失敗の `再試行` を直した。
-3. 意味づけの見直し（発注の Scope 2）: [29](../function-design/29-io-daily-report-parser.md) に IO-07-D4a（意味の鍵は `gross_sales`・`net_sales`・`cash` だけ、`credit` の規則を外す、半角カナの正規化を入れない、`payment_key`・`line_key` は足す鍵に使わない。根拠は手元の Z 帳票の 2026-09-30 版での集計の数と位置だけ）を足し、§29.4.1 の layout A の表の Z002 の行と「行の構成と性質」の段に紙の扱いを書いた。[pos-tables](../db-design/pos-tables.md) §12d の設計意図に足す鍵の段を足した（列・制約は変えない）。
-4. 紙の切替えの時期（発注の Scope 3）: 56 の UI-09a-D19（切替えまで店は今の Excel を続ける、切り替える前の 2 つの確かめ、月の初めか元日、既定、戻し方）を足し、UI-09a-D13 の紙の用途を事実（店の控えと店の外の提出先へ渡す用を兼ねる、2026-09-29 の店主の答え、repo 外の回答台帳 TD-059・TD-060）に直し、D13 の導入前受入（go-live の前）と D19 の運用開始の後の紙の照合を別の段に分けた（順は D13 → 運用開始 → D19）。[plu-export-and-real-csv-verification](../plu-export-and-real-csv-verification.md) の「税理士等への外部提出用途ではない」（2026-08 の旧い記述）を UI-09a-D13 と D-120 への参照に直し、「印刷機能の要否はこの受入結果で決め」に D-120 の決定と、この比較が D13 の導入前受入で D19 とは別であることを足した。
-5. 後続と決定（発注の Scope 4）: [backlog](../backlog.md) の「日報の紙と意味づけ」に設計 lane の起票と決めたことを足し、その下に「日報の紙の runtime」（R3、範囲・L3・依存）を足した。「日報画面の Excel 印刷・バインダー代替受入判定」と「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」に D-120 の決定を足した。round 3 の是正で、印刷の要否を残していた 3 か所（案 B・案 C の後続候補、「CSV 出力・印刷の実挙動確認」、後続候補の列挙の「日次 / 月次の印刷要否」）に、日次は作ると決めた・月次は未定を足し、D-120 の Compatibility の互換の範囲を 24 §14.21 手順 3 への参照にした。[decision-log](../decision-log.md) の末尾に D-120 を足し、D-096 の Revisit の後に紙の行を 1 行足した（D-096 の本文は変えていない）。
+1. 紙の内容と足し方（Scope の 1、発注の Scope 1）: [34](../../function-design/34-biz-sales-service.md) に §19.3a `get_daily_report_sheet`（SALES-SHEET-D1〜D6、型 `DailyReportSheet`・`DailyReportSheetRow`・`DailyReportSheetPluImport`、処理ステップ、エラー、runtime の lane のテスト）を足し、§19.3 の手順 3 の支払の集約の鍵と「設計判断」の Z001 の段に紙の例外を書いた。[24](../../function-design/24-io-csv-import-repo.md) の §14.21 手順 3 を SALES-SHEET-D2 と同じ規則にし（規則は D2 の 1 か所に置き、24 は引くだけ）、§14.21a `get_daily_report_sheet_lines`・§14.21b `get_active_z004_import_totals` を足した。[42](../../function-design/42-cmd-sales-stocktake.md) に CMD `get_daily_report_sheet` を足した。round 3 の是正で、24 §14.21 手順 3 の互換の範囲に「各組の保存済みの `payment_key` も全取込みで同じ」を足し、§14.21a の DTO に取込みの id の並び（`import_ids`）を置いて `import_seq` をその位置にし、34 §19.3 手順 3 の warning の文に紙への案内を足した。
+2. 紙の並びと印刷の手段（発注の Scope 1）: [56](../../function-design/56-ui-daily-sales.md) に「日報の紙」の節（UI-09a-D17 = 印刷ボタンと押せない状態の文、並びの既定、表と値の書き方、紙の上の知らせ、文字の大きさの下限 9 pt、色なし、画面に出さない。UI-09a-D18 = WebView の印刷と代わりの道）を足し、ファイル構成の `ExportBar` の行・component の `Tooltip` の行・非目的の「印刷ボタンの本実装」の行・更新履歴を直した。[UI_TECH_STACK](../../UI_TECH_STACK.md) に §6.5.5 印刷、[SCREEN_DESIGN](../../SCREEN_DESIGN.md) の日次売上の利用者配慮に 1 行、[ui-task-specs](../../architecture/ui-task-specs.md) の UI-09a の印刷ボタンの行に設計の参照を足した。round 3 の是正で、56 の warning の注記の見出し（`日報の確認が必要です`）、UI-09a-D16 の 2 回以上の日の文と支払集計の段、UI-09a-D15 の加算の段、紙の題、紙の内容の読込みの失敗の `再試行` を直した。
+3. 意味づけの見直し（発注の Scope 2）: [29](../../function-design/29-io-daily-report-parser.md) に IO-07-D4a（意味の鍵は `gross_sales`・`net_sales`・`cash` だけ、`credit` の規則を外す、半角カナの正規化を入れない、`payment_key`・`line_key` は足す鍵に使わない。根拠は手元の Z 帳票の 2026-09-30 版での集計の数と位置だけ）を足し、§29.4.1 の layout A の表の Z002 の行と「行の構成と性質」の段に紙の扱いを書いた。[pos-tables](../../db-design/pos-tables.md) §12d の設計意図に足す鍵の段を足した（列・制約は変えない）。
+4. 紙の切替えの時期（発注の Scope 3）: 56 の UI-09a-D19（切替えまで店は今の Excel を続ける、切り替える前の 2 つの確かめ、月の初めか元日、既定、戻し方）を足し、UI-09a-D13 の紙の用途を事実（店の控えと店の外の提出先へ渡す用を兼ねる、2026-09-29 の店主の答え、repo 外の回答台帳 TD-059・TD-060）に直し、D13 の導入前受入（go-live の前）と D19 の運用開始の後の紙の照合を別の段に分けた（順は D13 → 運用開始 → D19）。[plu-export-and-real-csv-verification](../../plu-export-and-real-csv-verification.md) の「税理士等への外部提出用途ではない」（2026-08 の旧い記述）を UI-09a-D13 と D-120 への参照に直し、「印刷機能の要否はこの受入結果で決め」に D-120 の決定と、この比較が D13 の導入前受入で D19 とは別であることを足した。
+5. 後続と決定（発注の Scope 4）: [backlog](../../backlog.md) の「日報の紙と意味づけ」に設計 lane の起票と決めたことを足し、その下に「日報の紙の runtime」（R3、範囲・L3・依存）を足した。「日報画面の Excel 印刷・バインダー代替受入判定」と「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」に D-120 の決定を足した。round 3 の是正で、印刷の要否を残していた 3 か所（案 B・案 C の後続候補、「CSV 出力・印刷の実挙動確認」、後続候補の列挙の「日次 / 月次の印刷要否」）に、日次は作ると決めた・月次は未定を足し、D-120 の Compatibility の互換の範囲を 24 §14.21 手順 3 への参照にした。[decision-log](../../decision-log.md) の末尾に D-120 を足し、D-096 の Revisit の後に紙の行を 1 行足した（D-096 の本文は変えていない）。
 6. owner に聞く見た目の問い（発注の Scope 5）: 下の Open Questions と、Matrix の Manual の L3 の項目。
 
 ついでに直したもの: 無し。
@@ -294,7 +294,11 @@ agent 側で解く問い（設計の問いではない。runtime の lane で確
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 日報を手で写して印刷する作業を無くすため、その日の完了した日報の取込みを位置と名称の組で足した 1 日 1 枚の紙（34 §19.3a SALES-SHEET-D1〜D6）、A4 縦・文字 9 pt 以上・色なしの既定の並び、WebView の印刷と代わりの道、紙の切替えの時期（56 UI-09a-D17〜D19）を設計正本に置き、D-120 に記録した。日次売上の支払集計の合算の鍵も紙と同じ規則にし（24 §14.21 手順 3）、`credit` の規則を外して半角カナの正規化を入れない理由を書いた（29 IO-07-D4a）。紙の用途の記述を事実（店の控えと店の外の提出先へ渡す用を兼ねる）に直した。D-096 の本文は変えず、Revisit の後に 1 行足した。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の「日報の紙の runtime」）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（日次売上の印刷ボタンは押せないまま）。設計照合 test と traceability の検査は green のまま。
+- 未検証: Contract Probe の P1（WebView2 の印刷）は runtime の lane の実装の前、P2（レジスターツールの日報との値の一致）と P5（1 枚に収まるか）は runtime の lane の L3。owner への Q1（紙の並び）・Q2（切替えの日）は既定 a のまま。
+- review・CI・merge（closeout、2026-10-18）: Plan Review は round 3（天井）までで、round 3 の残りは owner の決定（TD-317）で直して plan-approved。Final Review は broad 1 回と是正の後の closure（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由の squash merge。PR: [#173](https://github.com/kosei-w90607/inventory-system-desktop/pull/173)
+- 後続: `docs/backlog.md` の「日報の紙の runtime」（Final Review の closure の P3 の申し送りを含む）と、その起票の前に決める「日次売上と日報の紙の wire の i64 を安全な整数の範囲で扱う横断の規則を決める」。
 
 ## Review Response
 
@@ -355,3 +359,5 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 5）と Codex GPT-6.1 Sol
 | R24 | Claude #5（P3） | 採る | 紙の内容の読込みの失敗に再試行が無い | 既存と同じ `再試行` を置いた |
 
 起草役の判断の Coordinator の裁定（2026-10-18）: IO の DTO の取込みの数を `import_ids` に置き換えたこと（数を 2 か所に分けない）、画面の 2 回以上の日の文を条件で切り替えない中立の文にしたこと（wire を変えない）、§14.21a の読む親を `import_ids` に限ったことは採る。画面の文と見出しの変更は 2 回以上取り込んだ全部の日に及ぶので、owner の好み（壊さない優先）に照らして runtime の lane の L3 で owner が読み違えないかを見る。
+
+Closeout（2026-10-18）: Final Review は broad 1 回で、Claude 側（Fable 5.1）= approve（P3 2）、Codex（Sol）= reject（P2 2・P3 1）。是正は、足す値の順と NULL の優先、名称か並びの変わった日の画面の warning（IO の DB DTO の内部の field を `payment_sum_case` に置き換えた）、Matrix の行。是正の closure（Codex Sol）は approve（P3 1）で、main の取込みの差分は Sonnet 5.5 の delta の確認 = 可。helper の record は review = pass。hosted の `Merge gate` は Ready の後の run で success で、owner の Ready・merge の承認の後に helper 経由で squash merge した。closure の P3（名称か並びの変わった日は、画面に公式セクションの注記と印刷ボタンの下の文の 2 つが出る。足さない日は前から 2 つ）は `docs/backlog.md` の「日報の紙の runtime」へ送った（まとめるかは紙の runtime の lane の L3 の見た目で決める）。packet の本文（Scope・Contract Ledger・AC）は書き換えず、merge の版との食い違いと正しい値をここに記録する: (1) Contract Ledger の「隣接の除外」の行は UI-09a-D15・D16 を「変えない」としているが、本 lane は D15・D16 を変えた（Scope の 2。Final Review の Codex F3）。正本は 56 UI-09a-D15・D16。(2) AC13 の `payment_lines_unsummed` を数える 2 式（34・24）は、Final Review の是正で内部の field を `payment_sum_case` に置き換えたので、merge の版では 1 → 0。新しい anchor は `payment_sum_case`・`LabelChanged` で、24・34 で各 1。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 3）に直した。

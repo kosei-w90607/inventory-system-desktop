@@ -8,11 +8,11 @@ Risk: R3
 
 ## Contracts Under Test
 
-- SALES-SHEET-D1〜D6（[34](../../function-design/34-biz-sales-service.md) §19.3a）
-- 24 §14.21 手順 3（支払の合算の鍵）、§14.21a・§14.21b（[24](../../function-design/24-io-csv-import-repo.md)）
-- CMD `get_daily_report_sheet`（[42](../../function-design/42-cmd-sales-stocktake.md)）
-- IO-07-D4a（[29](../../function-design/29-io-daily-report-parser.md)）
-- UI-09a-D17・D18・D19（[56](../../function-design/56-ui-daily-sales.md)）、UI_TECH_STACK §6.5.5
+- SALES-SHEET-D1〜D6（[34](../../../function-design/34-biz-sales-service.md) §19.3a）
+- 24 §14.21 手順 3（支払の合算の鍵）、§14.21a・§14.21b（[24](../../../function-design/24-io-csv-import-repo.md)）
+- CMD `get_daily_report_sheet`（[42](../../../function-design/42-cmd-sales-stocktake.md)）
+- IO-07-D4a（[29](../../../function-design/29-io-daily-report-parser.md)）
+- UI-09a-D17・D18・D19（[56](../../../function-design/56-ui-daily-sales.md)）、UI_TECH_STACK §6.5.5
 
 ## Failure Modes
 
