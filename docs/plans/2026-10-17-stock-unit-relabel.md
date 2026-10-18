@@ -11,7 +11,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 290c8baa57ad74742bf122e40086316f81254377
 - Amendments: none
@@ -33,6 +33,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `ca7bdcc6` で直し、Coordinator が差分（Matrix の Failure Modes・T1・T4・T9 と Mutation の節、packet の前文の数・Ordinary Operation の 3 行目・S5・AC6 と baseline・L3-1・L3-2 の入力物）を読んだ。直したのは検証の計画と数と字面で、Scope の設計は変えていないので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `9cb6ac2c` で直し、Coordinator が差分（S5 と所有表の §7.5、AC3 の subshell と baseline、S1〜S3 の compile の単位、Writer への助言の定義、Matrix の anchor、comment の一覧）を読んだ。
 8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 1 件は owner の決定（repo 外の回答台帳 TD-315）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。
+9. plan-approved → implementing（2026-10-18、Coordinator、本 commit。state だけ）: 第 1 便（#170・#173・#174・#175・#177）の後の main `44f1e666` を merge した（`4d843b2a`。衝突は 51 §7.9 の変更履歴の表の 1 行だけで、両方の行を残した。code の差分は無い）。発注の直前に AC1・AC3〜AC6 の baseline を逐語で測り直し、上の baseline と一致した（AC1 は 125 passed、AC4 は 6 file・96 passed、AC3 の再生成の差分は無し）。Writer（Opus 5.5 subagent、`subagent_type: writer`）へ Scope の S1〜S5 の実装を発注する。
 
 ## Owner Effort Budget
 
@@ -42,7 +43,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 0（2026-10-17。lane の選択 TD-304 は本 lane の前の判断で数えない） | 3（L3 の round 1〈L3-1〜L3-3 を 1 回で〉、Ready 1、merge 1） | 6 | 9 = 0 + 3 + 6 |
+| 介入 | 9 | 1（2026-10-18: round 3 の天井の判断 TD-315。lane の選択 TD-304 は本 lane の前の判断で数えない） | 3（L3 の round 1〈L3-1〜L3-3 を 1 回で〉、Ready 1、merge 1） | 5 | 9 = 1 + 3 + 5 |
 
 plan-approved は Coordinator が進める（TD-296 の 4a）。owner は 2026-10-20 から手が使いにくい（記号か短文で答える）。L3 は Draft のまま溜め、owner の手が戻った後に他の lane の L3 と 1 回の session にまとめる（repo 外の地図 `.local/reports/autonomy-2026-10/map.md` §7.3。Final Review の pass までは L3 を待たずに進める）。介入のたびに、やろうとしていることが全体を顧みない対症療法になっていないかを考え直す（TD-296 の 5a）。
 
