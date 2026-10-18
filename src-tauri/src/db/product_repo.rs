@@ -1184,7 +1184,7 @@ pub struct StockCopyRow {
 
 /// 全商品の写しの 4 項目と単位・名前を商品コードの順で取得する（BIZ-07 整合性チェック用）
 ///
-/// 20-io-product-repo.md §2.11
+/// 20-io-product-repo.md の `find_all_stock_quantities` の項
 pub fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<StockCopyRow>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT product_code, name, stock_unit, stock_quantity, stock_recheck,
