@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- D-124: L3 を頼む PR が同じ便で先に merge する PR（manual の有無を問わない）と path を共有するなら、L3 を持つ PR を train の先にするか、前の PR の merge と base 同期の後に L3 を頼み（既定は L3 を持つ PR を先にする）、共有は失敗を「共有あり」と扱う手順で確かめ、先の PR の head の変化と batch Ready で確かめ直す規則が `docs/DEV_WORKFLOW.md` `## Wave Operation` の 1 か所に在る
+- D-124: L3 は merge train の先頭に来て `origin/main` を含む head で頼むのが既定で、その後は他の PR を先に merge せず、L3 済みの PR を後ろへ回さない。束ねるのは、束ねる各 PR が先に merge する全ての PR（同じ便・closeout・便の外）と path を共有せず、先頭になったときに `origin/main` を 1 回だけ取り込む場合だけで、共有は失敗を「束ねない」と扱う手順で確かめる。この規則が `docs/DEV_WORKFLOW.md` `## Wave Operation` の 1 か所に在り、Ready の箇条の既定案の句が L3 済みの PR を後ろへ回さないことを示す
 - D-125: 設計の正本と code の comment は行番号で引かず symbol か節の ID で引き、backlog の申し送りは時点の main の commit を添え、時点の記録と dated の packet・matrix はそのまま残す規則が `docs/DOC_STYLE_GUIDE.md` §1 の 1 か所に在り、`docs/quality/review-checklist.md` から参照される
 - D-126: decision-log の `Status` は決定の状態だけを書き、本文は append-only、全体の置換えは `superseded（by D-xxx。…）` と `- Superseded by:` の行、一部は `- Superseded in part by:` の行で示し、後から直してよいのを Status の行・Superseded の行・移送の link の path に限る規則が `docs/decision-log.md` の頭の 1 か所に在る
 - D-127: 既存を出発点として扱い継ぎ足しで歪ませない（規則は環境が変わるたびに変える、を含む）・使い手に押しつけない・所感は原文で扱う規則が `AGENTS.md` `## Working Rules`、店主への問いを Issue に書かない規則が同 `## Decision and Approval Boundaries`、Safety の両立の句が同 `## Safety`、コピペ物の書き方と安全境界の review の経路（inline の review は Final Review の本数に数えない）が `CLAUDE.md` の各 1 か所に在り、Final Review の枠を決める項目が `docs/backlog.md` に在る
@@ -20,9 +20,9 @@ Risk: R3
 - 規則の文が置き場に無い、または別の節・別の file に書かれる（AC1〜AC3 の置き場の確認で落ちる）
 - 同じ規則の文が 2 か所に書かれる（D の本文が規則の文を写す等）
 - D-124 の判定が merge の衝突だけになり、衝突なしに同じ file を触る PR を束ねる（Contract Probe P2 の反例）
-- D-124 が「L3 を束ねる前」だけで発火し、manual を持たない先の PR との共有を外す
-- D-124 の確かめが L3 の時点の 1 回だけで、先の PR の head の変化・batch Ready の train 順で確かめ直さない。Ready の箇条の既定案（review 通過順）と D-124 の既定案が食い違う
-- D-124 の確かめ方の command が失敗しても空の出力で「共有なし」と誤る（Contract Probe P3）
+- D-124 の比べる相手が同じ便の PR だけになり、前の便の closeout・同じ便の closeout・便の外の PR との共有を外す（round 3 の Claude 側 #1）
+- D-124 が L3 済みの PR を後ろへ回す並べ替えや、束ねた PR の 2 回以上の base 同期を許し、helper が manual の再利用を拒む（round 3 の Codex の #1・#2、Contract Probe P4）。L3 の head が `origin/main` を含まないまま頼む
+- D-124 の束ねるときの確かめ方の command が失敗しても空の出力で「共有なし」と誤る（Contract Probe P3）
 - D-125 が data の行番号・review の一時出力・時点の記録・dated の packet まで禁じる、または Plans に SHA を書かせる。review の経路から辿れない
 - D-126 の語・書式が lane 1 の Status の直し（`superseded（by D-xxx。…）`・`- Superseded by:` の行）と食い違う
 - D-127 が安全の境界（D-098 の列挙・既存テストを弱めない規則を含む）を緩めると読める、または Safety の「小さく、確認可能な変更を優先する」と食い違ったまま残る
@@ -38,7 +38,7 @@ Risk: R3
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
 | D-124 置き場 | 箇条が無い・別の節に在る | regression（rg） | 行 1: `awk '/^## Wave Operation/,/^### Stacked train/' docs/DEV_WORKFLOW.md \| rg -c 'name-only --no-renames'` が `1` | 箇条が Wave Operation の外（Stacked train の下・別 file）に書かれた、または command が落ちた |
-| D-124 発火の範囲と判定の語 | 「束ねる前」だけで発火する、merge の衝突だけで判定する | regression（rg） | 行 2: 同じ範囲で `rg -c 'manual の有無を問わない'` が `1`、`rg -c 'merge-tree'` が出力なし | 主語が「束ねる前」に戻った、または merge-tree が判定の command として入った |
+| D-124 既定と判定の語 | 先頭で頼む既定が無い、merge の衝突だけで判定する、round 1〜3 の形が残る | regression（rg） | 行 2: 同じ範囲で `rg -c '先頭に来て'` が `1`、`rg -c 'merge-base --is-ancestor'` が `1`、`rg -c 'merge-tree'`・`rg -c '確かめ直す'`・`rg -c 'manual の有無を問わない'` が出力なし | 既定が落ちた、merge-tree が判定の command として入った、または置き換えの前の句が残った |
 | D-124 矛盾なし | 別の所に L3 を束ねる手順が残る | negative（rg） | 行 3: `rg -n 'L3.{0,30}束ね\|束ね.{0,30}L3' $R` が Wave Operation の新しい箇条の行だけ | 別の文書に束ね方の別の手順が書かれた |
 | D-125 置き場 | 節が §1 の外 | regression（rg） | 行 4: `rg -n '^## 1\. 参照の書き方\|^### code と文書の箇所の引き方\|^## 2\. ' docs/DOC_STYLE_GUIDE.md` で新しい節の行が §1 と §2 の間 | 節が §5 禁止事項など別の所に置かれた |
 | D-125 範囲 | 一時出力・data の行番号・dated の packet まで禁じる、Plans に SHA を書かせる | review（読む）+ rg | 行 5: 新しい節に `対象外:` の箇条が在り、dated の Plan Packet と Test Design Matrix・`line_no`・`path:line`（review・subagent）を名指す（`rg -c 'line_no' docs/DOC_STYLE_GUIDE.md` が `1`。baseline は出力なし・exit 1）。申し送りの箇条が `docs/backlog.md` だけを対象にする | 対象外の箇条が落ちた、または申し送りの対象に Plans が戻った |
@@ -49,17 +49,17 @@ Risk: R3
 | 1 か所だけ | 規則の文が 2 か所（同じ file の中の重複を含む） | regression（rg） | 行 10: packet の AC5 の 15 本の `rg -n -o -F 'LITERAL' docs AGENTS.md CLAUDE.md $G` がそれぞれちょうど 1 行で、指定の位置に在る | D の本文や別の文書・同じ file の別の節が規則の文を写した |
 | BOM | decision-log の先頭が変わる | regression（od） | 行 11: `head -c3 docs/decision-log.md \| od -An -tx1` が ` ef bb bf` | 編集の道具が BOM を落とした |
 | 検査 | 新しい節が既存の検査を壊す | CLI | 行 12: `bash scripts/doc-consistency-check.sh`、`--target plan docs/plans/2026-10-19-docs-writing-rules.md`、`bash scripts/check-workflow-git.sh` が exit 0 | M1・M3・R3・PK の検査に当たる語・link を入れた |
-| D-124 確かめ方の頑健さ | command の失敗を「共有なし」と誤る | regression（rg）+ review（読む） | 行 13: Wave Operation の範囲で `rg -c 'gh pr view'` が `1`、箇条が「終了値が 0 であることを確かめ」「どれかが失敗したら比べられない」を持つ（Contract Probe P3 の反例を防ぐ形） | 手順が process substitution の 1 行に戻った、または失敗の扱いが落ちた |
+| D-124 確かめ方の頑健さ | command の失敗を「共有なし」と誤る | regression（rg）+ review（読む） | 行 13: Wave Operation の範囲で `rg -c 'gh pr view'` が `1`、箇条が「終了値が 0 であることを確かめ」「どれかが失敗したら比べられないとして、束ねない」を持つ（Contract Probe P3 の反例を防ぐ形） | 手順が process substitution の 1 行に戻った、または失敗の扱いが落ちた |
 | D-126 書式 | 全体の置換えを `superseded by D-xxx` の 1 語で書く | negative（rg） | 行 14: `rg -n '^- Status: superseded by ' docs/decision-log.md` が出力なし・exit 1 | lane 1 の適用と違う書式が入った |
 | D-127 置き場（共通） | 規則が `AGENTS.md` の別の節・`CLAUDE.md`・2 か所に入る | regression（rg） | 行 15: packet の AC5 の `継ぎ足さない（D-127）`・`押しつけない（D-127）`・`所感は原文で扱う（D-127）`・`差分の行数でなく`・`現場の手順書にする（D-127）`・`それらの改訂は通常の packet・PR の経路で行う` がそれぞれ `AGENTS.md` の指定の節の 1 行 | 共通の規則が Claude だけの補助に入った、または重複した |
 | D-127 置き場（Claude だけ） | (g)(h) が `AGENTS.md` に入る、2 か所に入る | regression（rg） | 行 16: packet の AC5 の `返答の本文に inline で書き`・`Final Review の本数に数えない` がそれぞれ `CLAUDE.md` の指定の節の 1 行 | Claude だけの運用が共通の入口に入った、または重複した |
 | D-127 矛盾なし | 既存の「小さく」「smallest」系・委任の範囲・owner の原文の照合と食い違う | negative（rg）+ review（読む） | 行 17: packet の AC6 の D-127 と (d)〜(h)（`rg -i`）の 2 本の `rg` が、packet に書いた baseline の行（D-127 は 3 行、(d)〜(h) は 14 行）と足した D-127 の行だけ。Safety の行が両立の句を持ち、「継ぎ足さない」の箇条が安全・データ保護・外部書込みの承認の境界を除く文を持ち、(e) の箇条が原文の置き場を repo の外と書く | 両立の句・境界の除外・原文の置き場の文が落ちた |
-| D-124 確かめ直し | 先の PR の head の変化・batch Ready で確かめ直さない、Ready の箇条の既定案と食い違う | regression（rg）+ review（読む） | 行 18: Wave Operation の範囲で `rg -c '確かめ直す'` が `1`、`rg -c 'D-124 の箇条の既定案'` が `1`（Ready の箇条の 1 句）、D-124 の箇条が「既定案は L3 を持つ PR を train の先にする案」を持つ | 確かめ直しの句が落ちた、または Ready の箇条が review 通過順だけを既定にした |
+| D-124 並べ替えと同期の回数 | L3 済みの PR を後ろへ回す、束ねた PR が 2 回以上同期する、Ready の箇条が L3 と食い違う | regression（rg）+ review（読む） | 行 18: Wave Operation の範囲で `rg -c 'L3 を済ませた PR を後ろへ回す順にしない'` が `1`（Ready の箇条の 1 句）。D-124 の箇条が「L3 済みの PR を後ろへ回さない」「先頭になったときに `origin/main` を 1 回だけ取り込む」「先に merge する全ての PR（同じ便・closeout・便の外を問わない）」を持つ（Contract Probe P4 の 2 つの反例を防ぐ形） | 並べ替えの禁止・同期の回数・比べる相手の範囲の句が落ちた |
 | D-125 の経路 | review の経路から辿れない | regression（rg） | 行 19: packet の AC5 の `DOC_STYLE_GUIDE.md) §1 の箇所の引き方` が `docs/quality/review-checklist.md` の `### 8.` の範囲の 1 行 | review-checklist の参照が落ちた、または規則の文を写した |
 | D-127 の除外と Final Review の枠 | 安全の境界を緩める、inline の review を本数に数える | regression（rg）+ review（読む） | 行 20: packet の AC5 の `それらの改訂は通常の packet・PR の経路で行う`（`AGENTS.md`）・`Final Review の本数に数えない`（`CLAUDE.md`）・`Claude 側の枠を共通の正本で決める`（`docs/backlog.md`）がそれぞれ 1 行。「継ぎ足さない」の箇条が D-098 の列挙と既存テストを弱めない規則を名指す | 除外が Decision and Approval Boundaries・Safety だけに戻った、または枠の項目が落ちた |
 | D-126 allow-list | 移送の link の直しを本文の書き換えに数える | review（読む） | 行 21: `## Status の書き方` の 3 つ目の箇条が「file の移送に伴う link の path の直し」を持つ（packet の規則の文と一致） | closeout の archive 移送の link の直しが append-only の違反に読める |
 
-oracle の独立性: 行 1・2・4・7・13・15・16・18〜20 の literal は packet の「規則の文と置き場」の文（owner の決定 TD-324・TD-326・TD-327・TD-328、D-127 の出所の owner の方針と round 1 の裁定から起こした文）から取り、実装の後の正本から取らない。
+oracle の独立性: 行 1・2・4・7・13・15・16・18〜20 の literal は packet の「規則の文と置き場」の文（owner の決定 TD-324・TD-326〜TD-329、D-127 の出所の owner の方針と round 1〜3 の裁定から起こした文）から取り、実装の後の正本から取らない。
 
 ## State Lifecycle Matrix
 
@@ -131,7 +131,7 @@ docs の規則の変更なので、mutation は正本の文に入れて検索の
 
 - If a mock value is changed so it differs from the design-doc expected value, which assertion proves the implementation used the correct source and not the mock's accidental constant? → not applicable（mock を使わない）。代わりに、行 1・2 の literal を packet の文から取る（oracle の独立性）
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → not applicable
-- If a key branch is inverted, which test fails? → D-124 の「path を共有するなら」を「path を共有しないなら」に変える注入で、行 2 の `manual の有無を問わない` は残るので落ちない。この反転は Final Review が文を読んで見る（Residual Test Gaps）
+- If a key branch is inverted, which test fails? → D-124 の束ねる条件の「path を共有せず」を「path を共有して」に変える注入で、行 2・18 の literal は残るので落ちない。この反転は Final Review が文を読んで見る（Residual Test Gaps）
 - If a threshold comparison changes, which test fails? → not applicable
 - If a guard is removed, which test fails? → D-125 の対象外の箇条を消す注入で行 5（`line_no` の数）が落ちる
 - If an output field is omitted, which test fails? → D-124 の command を消す注入で行 1、D-126 の節の見出しを消す注入で行 7 が落ちる
@@ -144,5 +144,5 @@ docs の規則の変更なので、mutation は正本の文に入れて検索の
 
 - 規則の文の意味（条件の向き・語の選び方）は `rg` で確かめられず、Plan Review と Final Review（Double Audit）が文を読んで確かめる
 - D-124 の「path を共有しなければ PR 差分は byte で変わらない」は Contract Probe P2 の 1 例で確かめた。`.gitattributes` の変更のように path の外から diff を変える場合は、merge-evidence の owner の判断に残る
-- 同じ便の外の PR（前の wave の closeout・R0 の PR 等）が先に同じ path を触って merge すると、L3 を持つ PR の manual は再利用できない（D-124 の Guarantee range の受け入れる残りのリスク）
+- 同じ便の外の PR（前の wave の closeout・R0 の PR）は、先頭で頼む既定では L3 の前に取り込まれて比べる必要が無く、束ねる場合は先に merge する PR として比べる相手に入る。束ねた L3 の後に、train の順に無かった便の外の PR が共有の path を触って割り込むと、後の PR の manual は再利用できない（受け入れる残りのリスク）
 - D-127 は考え方の規則で、守られたかは `rg` で決められず、Plan Review・Final Review が文と変更を読んで見る

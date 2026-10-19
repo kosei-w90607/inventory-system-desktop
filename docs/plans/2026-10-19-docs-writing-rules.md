@@ -17,17 +17,18 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 - Branch: agent/docs-writing-rules
 - kickoff → spec-check → plan-draft（2026-10-19、起草役、`131c0809`）: owner の決定 TD-324・TD-326・TD-327 で 3 つの規則の中身が決まり、Risk は R3（`docs/DEV_WORKFLOW.md` を変える workflow gate の変更。`scripts/ci/classify-changes.sh` の workflow の一覧に `docs/DEV_WORKFLOW.md` が当たり `workflow=true`）、Final Review Minimum 2。spec-check → plan-draft の skip で進めた
 - plan-draft → design → plan-draft（2026-10-19、起草役、`a84994e5`）: round 1 の是正（Review Response 参照）と、owner の決定 TD-328 による D-127 の追加。spec-check → plan-draft の skip を取り消して design へ戻り、design の出力の D-124〜D-127（durable decision）を plan-first の変更として `docs/decision-log.md` の末尾に置いた。未解決の設計の問いは無い。実装の commit に残るのは、置き場（DEV_WORKFLOW・DOC_STYLE_GUIDE・decision-log の頭・AGENTS.md・CLAUDE.md）へ規則の文を入れることだけ
-- plan-draft（2026-10-19、起草役、本 commit）: round 2 の是正（Review Response 参照）。Phase は plan-draft のまま。実装の commit の置き場に `docs/quality/review-checklist.md`（D-125 への経路）と `docs/backlog.md`（1 項）を足した
+- plan-draft（2026-10-19、起草役、`91e00bbd`）: round 2 の是正（Review Response 参照）。Phase は plan-draft のまま。実装の commit の置き場に `docs/quality/review-checklist.md`（D-125 への経路）と `docs/backlog.md`（1 項）を足した
+- plan-draft（2026-10-19、起草役、本 commit）: round 3 の是正（Review Response 参照）。owner の決定 TD-329 で D-124 を先頭で頼む形に置き換えた。Phase は plan-draft のまま
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 9（既定の 6 から上げた。理由: docs の棚卸しの途中で owner の決定〈TD-328〜TD-330〉が加わり、それぞれを decision point として数えたため。TD-296 の 5a の先例と同じく、予算の改定を owner の決定と同じ問い合わせで扱った）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 4（2026-10-19 の TD-324・TD-326・TD-327・TD-328。decision point ごとに数える） | 2（Ready・merge） | 0 | 6 = 4 + 2 + 0 |
+| 介入 | 9 | 6（2026-10-19 の TD-324・TD-326・TD-327・TD-328・TD-329・TD-330。decision point ごとに数える） | 2（Ready・merge） | 1 | 9 = 6 + 2 + 1 |
 
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
@@ -44,14 +45,14 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 次の 4 つの規則が、それぞれ 1 か所の正本に、読み手がそのまま従える文で在る: (1) L3 を頼む PR が同じ便で先に merge する PR と path を共有するときの L3 の順（D-124）、(2) 設計の正本と code の comment は行番号で引かず symbol か節の ID で引く（D-125）、(3) decision-log の `Status` は決定の状態だけを書く（D-126）、(4) 既存を出発点として扱い設計を継ぎ足しで歪ませず、使い手に押しつけない（D-127）
+- 次の 4 つの規則が、それぞれ 1 か所の正本に、読み手がそのまま従える文で在る: (1) L3 は merge train の先頭で最新の main を取り込んだ head で頼み、束ねるのは先に merge する全ての PR と path を共有しない PR だけ（D-124）、(2) 設計の正本と code の comment は行番号で引かず symbol か節の ID で引く（D-125）、(3) decision-log の `Status` は決定の状態だけを書く（D-126）、(4) 既存を出発点として扱い設計を継ぎ足しで歪ませず、使い手に押しつけない（D-127）
 - 決定の記録 D-124〜D-127 が `docs/decision-log.md` の末尾に在り、理由と棄却案を持つ（plan-first の変更で置いた）
 - 4 つの規則と矛盾する live な規則の文が repo に残っていない
 
 ### 失敗定義
 
 - 規則が 2 か所以上に書かれる、または置き場が読み手の通る経路から外れて読まれない
-- D-124 の判定が manual 再利用の機械条件（[merge-evidence](../agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」）より緩く、L3 を持つ PR が base 同期の後にまた L3 を要する。または確かめ方の command の失敗を「共有なし」と誤る。または L3 の後に先の PR の head が変わったときや batch Ready の train 順で確かめ直さない
+- D-124 が manual 再利用の機械条件（[merge-evidence](../agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」と helper の `reuse_geometry`）より緩く、L3 を持つ PR が base 同期の後にまた L3 を要する（L3 の後に共有の path を触る PR が先に merge する、L3 済みの PR を後ろへ回す、L3 の後に 2 回以上 base 同期する、L3 の head が `origin/main` を含まない）。または束ねるときの確かめ方の command の失敗を「共有なし」と誤る
 - D-125 が既存の時点つきの記録・data の行番号・review の一時出力まで禁じ、守れない規則になる。または review の経路から辿れず読まれない
 - D-126 が lane 1 の Status の直しと食い違う語・書式を定める
 - D-127 が安全の境界（D-098 の列挙・既存テストを弱めない規則を含む）まで「置き換え・削除」で緩めてよいと読める、または `AGENTS.md` Safety の「小さく、確認可能な変更を優先する」と食い違ったまま残る
@@ -71,8 +72,8 @@ workflow の変更なので、規則ごとに通常の作業の列で書く。
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 同じ便に L3 を持つ PR B と、B より先に merge する PR A（manual の有無を問わない）が Draft で並ぶ | Coordinator が B の L3 を頼む前に、A と B の head で path の共有を Wave Operation の手順で確かめる | 共有があれば、Coordinator が既定案「B を train の先にする」と、もう 1 つの案「A の merge と B の base 同期の後に B の L3」を L3 の依頼と同じ問い合わせで示し、owner が選ぶ。どちらでも owner は B の L3 を 1 回だけ受ける。共有が無ければ、L3 を持つ PR どうしは 1 回の依頼で束ねて受ける。L3 の後に A の head が変わったときと、batch Ready で train 順を示すときは、同じ手順で確かめ直す | owner の L3 の結果（PASS / FAIL）が B の現在の head に対して記録され、base 同期の後も manual の再利用の機械条件を満たす | Contract Probe P1〜P3 |
-| 確かめ方の command の 1 本が失敗する（ref の取得漏れ・PR の番号の誤り） | 手順は各 PR の終了値を確かめ、失敗したら比べない | 「比べられない」として共有ありと同じに扱い、束ねない | 失敗の原因を直して取り直す | Contract Probe P3 |
+| 同じ便に L3 を持つ PR B が Draft で並ぶ（他の PR の有無を問わない） | Coordinator は B が merge train の先頭に来たときに、B の head が `origin/main` を含むことを確かめ（含まなければ base 同期）、その head で L3 を頼む。複数の PR を束ねたいときは、束ねる各 PR と、それより先に merge する全ての PR の path の共有を Wave Operation の手順で確かめる | owner は B の L3 を 1 回だけ受ける。B の L3 の後は他の PR を B より先に merge せず、B は base 同期せずに merge へ進む。束ねた PR は、それぞれが先頭になったときに `origin/main` を 1 回だけ取り込み、manual を再利用する | owner の L3 の結果（PASS / FAIL）が B の現在の head に対して記録され、束ねた PR では base 同期の後も manual の再利用の機械条件を満たす | Contract Probe P1〜P4 |
+| 束ねるときの確かめ方の command の 1 本が失敗する（ref の取得漏れ・PR の番号の誤り） | 手順は各 PR の終了値を確かめ、失敗したら比べない | 「比べられない」として束ねず、先頭で 1 本ずつ頼む既定に戻る | 失敗の原因を直して取り直す | Contract Probe P3 |
 | Writer が設計書か code の comment で code の箇所を引く | DOC_STYLE_GUIDE §1 の新しい節に従い、path と symbol（文書は節の ID）で書く | 後の変更で行が動いても、読み手が `rg` で同じ箇所へ着く | Plan Review・Final Review が行番号の引用を finding にできる | 無し |
 | Coordinator が新しい D を decision-log に足す | owner の決定の前は `Status: proposed`、決定の後は `accepted`。実装の merge では Status を変えない | 読み手が Status から決定の状態だけを読み、実装の状態は code・Plans で見る | 全体が置き換わったら Status を `superseded（by D-xxx。…）` にして `- Superseded by:` の行、一部なら `- Superseded in part by:` の行を足す | 無し |
 | 新しい事実で正本か実装を直す（Writer・Coordinator） | 条件や例外を足す前に、置き換え・削除で素直な形に戻せないかを見る。発注と review が「この変更で不要になる記述・条件は無いか」を問う | 正本と実装が継ぎ足しの例外で読みにくくならず、店・owner に手作業の回避が回らない | review が残った継ぎ足し・手作業の回避を finding にできる。安全・データ保護・外部書込みの承認の境界は変えない | 無し |
@@ -85,16 +86,16 @@ workflow の変更なので、規則ごとに通常の作業の列で書く。
 
 ### D-124 の置き場: `docs/DEV_WORKFLOW.md` `## Wave Operation`
 
-置き場の理由: owner の決定（TD-324）が置き場を `## Wave Operation` と指定した。同節は便の PR の並列・Ready の順・base 同期を持ち、L3 の頼み方はその間の手順になる。既存の箇条「先頭 lane の merge 後、後続 lane は main との同期を…」の直後に 1 つの箇条として足す。同じ節の Ready の箇条の「Coordinator は既定案として review 通過順を提示する。」は、既定案の食い違いを無くすため、次の 1 句を足して D-124 の箇条を指す（規則は D-124 の箇条だけが持つ）。
+置き場の理由: owner の決定（TD-324）が置き場を `## Wave Operation` と指定した。同節は便の PR の並列・Ready の順・base 同期を持ち、L3 の頼み方はその間の手順になる。既存の箇条「先頭 lane の merge 後、後続 lane は main との同期を…」の直後に 1 つの箇条として足す。round 1〜3 で足した「束ねる前に確かめる」「確かめ直す」「既定案は L3 を持つ PR を先に」の形は、owner の決定 TD-329 で「先頭で頼む形」へ置き換えた（D-127 の (a)。足した句を残して追記しない）。同じ節の Ready の箇条の「Coordinator は既定案として review 通過順を提示する。」は、既定の train 順と L3 の関係を示すため、次の 1 句を足して D-124 の箇条を指す（規則は D-124 の箇条だけが持つ）。
 
 ```markdown
-Coordinator は既定案として review 通過順を提示する（L3 を持つ PR が同じ便で先に merge する PR と path を共有するときは、下の D-124 の箇条の既定案による）。
+Coordinator は既定案として review 通過順を提示する（L3 を済ませた PR を後ろへ回す順にしない。L3 は下の D-124 の箇条のとおり先頭で頼む）。
 ```
 
 D-124 の箇条:
 
 ```markdown
-- L3（manual）を頼む PR が、同じ便でそれより先に merge する PR（manual の有無を問わない）と path を共有するなら、L3 を持つ PR を merge train の先にするか、前の PR の merge と L3 を持つ PR の base 同期の後に L3 を頼む。既定案は L3 を持つ PR を train の先にする案で、Coordinator がそれを示し、L3 の依頼と同じ 1 回の問い合わせで owner が決める。path を共有しない PR どうしの L3 は 1 回の依頼で束ねてよい。共有は L3 を頼む時点の head で確かめ、L3 の後に先の PR の head が変わったとき（例: 是正の commit）と、batch Ready で train 順を示すときは、同じ手順で確かめ直す: `git fetch origin` の後、各 PR の `git rev-parse origin/BRANCH` が `gh pr view N --json headRefOid -q .headRefOid` と一致することを確かめ、PR ごとに `git diff --name-only --no-renames origin/main...SHA > FILE` の終了値が 0 であることを確かめ、全ての PR で成功したときだけ `comm -12 <(sort FILE_A) <(sort FILE_B)` で比べる（出力が空なら共有なし）。どれかが失敗したら比べられないとして、共有ありと同じに扱う。manual を持つ lane は、backlog の完了の整理のように設計の契約でない共有の更新を closeout へ寄せ、共有の path を減らす。防ぐ失敗: 後に merge する PR は base 同期で PR の差分が変わり（衝突の解消が無くても、共有の file は pre-image の blob が変わるので `--full-index` の index の行が必ず変わり、hunk の位置も動き得る）、[merge-evidence](agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」の manual 再利用の機械条件（PR 差分の byte 一致）を満たせず、L3 が 2 回になる（第 2 便の PR #171・#176。D-124）。
+- L3（manual）は、その PR が merge train の先頭に来て、最新の `origin/main` を取り込んだ head で頼むのが既定で、その後は他の PR を先に merge しない。L3 を頼む前に、その PR の head が `origin/main` を含むこと（`git merge-base --is-ancestor origin/main SHA` の終了値が 0）を確かめ、含まなければ先に base 同期する。複数の PR の L3 を 1 回の依頼で束ねてよいのは、束ねる各 PR が、自分より先に merge する全ての PR（同じ便・closeout・便の外を問わない）と path を共有せず、各 PR が自分が先頭になったときに `origin/main` を 1 回だけ取り込む場合に限る。どちらでも、L3 の後に train の順を変えて L3 済みの PR を後ろへ回さない。束ねるときの path の共有は L3 を頼む時点の head で確かめる: `git fetch origin` の後、各 PR の `git rev-parse origin/BRANCH` が `gh pr view N --json headRefOid -q .headRefOid` と一致することを確かめ、PR ごとに `git diff --name-only --no-renames origin/main...SHA > FILE` の終了値が 0 であることを確かめ、全ての PR で成功したときだけ `comm -12 <(sort FILE_A) <(sort FILE_B)` で比べる（出力が空なら共有なし）。どれかが失敗したら比べられないとして、束ねない。manual を持つ lane は、backlog の完了の整理のように設計の契約でない共有の更新を closeout へ寄せ、共有の path を減らす。防ぐ失敗: helper（`scripts/pr-gate.py` の `reuse_geometry` と `record` の manual の再利用）が manual を再利用できるのは、L3 の head に `origin/main` を 1 回 merge しただけの head で、PR 差分の全体が byte で一致するときの 1 回だけで、再利用した manual の再利用は拒む。共有の file は base 同期で pre-image の blob が変わり `--full-index` の index の行が必ず変わるので、L3 の後に共有の path を触る PR が先に merge するか、L3 の後に 2 回以上 base 同期すると、L3 が 2 回になる（第 2 便の PR #171・#176。D-124）。
 ```
 
 ### D-125 の置き場: `docs/DOC_STYLE_GUIDE.md` `## 1. 参照の書き方`
@@ -134,7 +135,7 @@ file の頭の「対象」の行は「docs/ 配下の全設計書、src-tauri/sr
 
 - `Status` は決定の状態だけを書く: `accepted`（決まった）、`superseded`（全体が置き換わった）、`withdrawn`（取り下げた）。`proposed` は owner の決定の前だけに使う。括弧に出所（owner の決定の日付・repo 外の回答台帳の ID・design lane）を添えてよい。superseded は `superseded（by D-xxx。元の出所）` と書く
 - 実装が済んだか、どの lane・PR が反映するかは code と `docs/Plans.md`・Plan Packet が持ち、Status に書かない
-- 決定の本文（Decision・Why・Alternatives ほか）は append-only で書き換えない。全体が置き換わったときは Status を `superseded（by D-xxx。元の出所）` にし、本文の後に `- Superseded by: D-xxx（日付）。置き換わった中身` の行を足す。一部が置き換わったときは `- Superseded in part by: D-xxx（置き換わった所）` の行を足す。後から直してよいのは Status の行（状態の語と出所）と、Status の行が無い D への Status の行の追加と、Superseded の行の追加と、file の移送に伴う link の path の直しだけ
+- 決定の本文（Decision・Why・Alternatives ほか）は、main に merge された後は append-only で書き換えない（同じ PR の merge の前の直しは対象外）。全体が置き換わったときは Status を `superseded（by D-xxx。元の出所）` にし、本文の後に `- Superseded by: D-xxx（日付）。置き換わった中身` の行を足す。一部が置き換わったときは `- Superseded in part by: D-xxx（置き換わった所）` の行を足す。後から直してよいのは Status の行（状態の語と出所）と、Status の行が無い D への Status の行の追加と、Superseded の行の追加と、file の移送に伴う link の path の直しだけ
 - 理由と棄却案は D-126
 ```
 
@@ -151,7 +152,7 @@ file の頭の「対象」の行は「docs/ 配下の全設計書、src-tauri/sr
 (f) の置き場は `## Decision and Approval Boundaries` の「owner へ送り、中継を省かない問い合わせ」の箇条の直後（問い合わせの行き先の規則の隣）。
 
 ```markdown
-- 店主への問いは GitHub の Issue に書かない。Issue は店の PC の Claude も読む現場の手順書にする（D-127）。
+- 店主への問いは GitHub の Issue に書かず、owner への問い合わせで送り、回答は repo の外の回答台帳に残す。Issue は店の PC の Claude も読む現場の手順書にする（D-127）。`docs/AGENT_OPERATING_MANUAL.md` §5.1 の調査項目の issue は、その手順書の形（場所・操作・合格基準）に限る。
 ```
 
 両立の句: `## Safety` の「小さく、確認可能な変更を優先する。」を次の文にする（同じ規則を 2 か所に書かず、Working Rules の箇条を指す）。
@@ -184,7 +185,7 @@ owner に渡すコピペ物（command・URL の一覧・checklist）は返答の
 
 ### 決定の記録（`docs/decision-log.md` の末尾、plan-first で置いた）
 
-D-127 は owner の決定 TD-328（2026-10-19）で本 lane に足した（Review Response 参照）。D-124・D-125・D-126・D-127 は本 lane が持つ番号で（[Review Rules](../DEV_WORKFLOW.md#review-rules) の連番 registry。並走の lane 1 は番号を新設しない）、D-123 と同じ項目（Status・Context・Decision・Why・Alternatives・Guarantee range・Compatibility・owner の決定・Revisit）で書いた。D の本文は置き場を名指し、規則の文と手順を写さない（AC5）。D-124 の Decision は、判定を merge の衝突から path の共有へ広げたのが起票の Writer の Contract Probe の結果で Coordinator が採ったこと（owner の決定の目的は L3 を 2 回にしないこと）を書く。
+D-127 は owner の決定 TD-328（2026-10-19）で本 lane に足した（Review Response 参照）。D-124・D-125・D-126・D-127 は本 lane が持つ番号で（[Review Rules](../DEV_WORKFLOW.md#review-rules) の連番 registry。並走の lane 1 は番号を新設しない）、D-123 と同じ項目（Status・Context・Decision・Why・Alternatives・Guarantee range・Compatibility・owner の決定・Revisit）で書いた。D の本文は置き場を名指し、規則の文と手順を写さない（AC5）。D-124 の Decision は、判定を merge の衝突から path の共有へ広げたこと（起票の Writer の Contract Probe の結果）と、先頭で頼む形へ置き換えたことを owner が TD-329 で決めたこと（owner の決定の目的は L3 を 2 回にしないこと）を書く。
 
 ## Scope
 
@@ -228,7 +229,7 @@ merge の順はどちらが先でもよい。後の lane は `origin/main` の�
 
 AC の command は bash で、repo root で逐語に実行する（zsh では `$R` が 1 語のまま渡り exit 2 になる）。先に bash で `R="AGENTS.md CLAUDE.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/DOC_STYLE_GUIDE.md docs/ci.md docs/templates docs/agent-guidance docs/code_review.md docs/quality/review-checklist.md docs/adr/README.md .agents/skills/inventory-workflow-start .agents/skills/inventory-implementation .agents/skills/inventory-code-review .agents/skills/inventory-operator-ui"` と `G='--glob !docs/plans/** --glob !docs/archive/**'`（対話の bash の history 展開を避けて single quote）を置く。baseline は本 commit の tree（D-124〜D-127 を置いた後、Scope の置き場へ規則の文を入れる前）で、bash で逐語に実行した出力。
 
-- AC1 D-124 の置き場: `awk '/^## Wave Operation/,/^### Stacked train/' docs/DEV_WORKFLOW.md | rg -c 'name-only --no-renames'` が `1`、同じ範囲の `rg -c 'manual の有無を問わない'` が `1`、`rg -c 'gh pr view'` が `1`、`rg -c 'merge-tree'` が出力なし（exit 1）、`rg -c '確かめ直す'` が `1`、`rg -c 'D-124 の箇条の既定案'` が `1`。baseline: 6 本とも出力なし・exit 1
+- AC1 D-124 の置き場: `awk '/^## Wave Operation/,/^### Stacked train/' docs/DEV_WORKFLOW.md | rg -c 'name-only --no-renames'` が `1`、同じ範囲の `rg -c 'merge-base --is-ancestor'` が `1`、`rg -c 'gh pr view'` が `1`、`rg -c '先頭に来て'` が `1`、`rg -c 'L3 を済ませた PR を後ろへ回す順にしない'` が `1`（Ready の箇条の 1 句）、`rg -c 'merge-tree'` と `rg -c '確かめ直す'` と `rg -c 'manual の有無を問わない'` が出力なし（exit 1。round 1〜3 の形が残っていない）。baseline: 8 本とも出力なし・exit 1
 - AC2 D-125 の置き場: `rg -n '^## 1\. 参照の書き方|^### code と文書の箇所の引き方|^## 2\. ' docs/DOC_STYLE_GUIDE.md` で新しい節の行番号が §1 と §2 の見出しの間にある。baseline: `35:## 1. 参照の書き方` と `83:## 2. 関数設計書テンプレート（function-design/） ✅M2` の 2 行
 - AC3 D-126 の置き場: `rg -n '^## Status の書き方|^## D-001$|^## Purpose' docs/decision-log.md` が `## Purpose`・`## Status の書き方`・`## D-001` の順の 3 行。baseline: `3:## Purpose` と `8:## D-001` の 2 行
 - AC4 決定の記録: `rg -c '^## D-12[4567]: ' docs/decision-log.md` が `4`。`rg -A2 '^## D-12[4567]: ' docs/decision-log.md | rg -c '^- Status: accepted（owner の決定、repo 外の回答台帳 TD-32[4678]、2026-10-19'` が `4`。`rg -A2 '^## D-12[4567]: ' docs/decision-log.md | rg '^- Status:' | rg 'runtime|実装の PR|merge で'` が出力なし（exit 1）。`rg -n '^- Status: superseded by ' docs/decision-log.md` が出力なし（exit 1。全体の置換えは `superseded（by D-xxx。…）` の形）。baseline: 本 commit で `4`・`4`・出力なし・出力なし
@@ -265,8 +266,8 @@ AC の command は bash で、repo root で逐語に実行する（zsh では `$
 - 必要な設計成果物: 「Durable cross-cutting choice, workflow gate change」の行 = decision-log の D-124〜D-127（updated in this PR、plan-first の commit で置いた）。ほかの行（BIZ・DTO・DB・画面・CSV）は当たらない
 - plan にしかない durable な判断の昇格先: 決定・理由・棄却案は decision-log の D-124〜D-127（置いた）。規則の文は置き場の正本で、同じ PR の実装の commit で書き、merge の前に揃う
 - 前提・制約と、延期した design gap の follow-up: 既存の引用の書き換えと検査は lane 2、既存の D の Status の直しは lane 1、並走の本数の規則は backlog に残す（Non-scope）
-- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: D-124 の「path を共有しなければ後の PR の差分は byte で変わらない」は Contract Probe P2 で 1 例を確かめた性質で、manual 再利用の必要条件にとどめ、owner の判断を残す。同じ便の外の PR が先に同じ path を触る場合は残りのリスク（D-124 の Guarantee range）
-- 判定（ready / not ready）と理由: ready。規則の中身は owner の決定 TD-324・TD-326・TD-327・TD-328 ほか（D-127 の Status の出所）で決まり、design の出力の D-124〜D-127 は plan-first の変更で decision-log に在る。前提は Contract Probe P1〜P3 で確かめた
+- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: D-124 の「path を共有せず `origin/main` を 1 回だけ取り込めば PR 差分は byte で変わらない」は Contract Probe P2 と helper の `reuse_geometry` の現物で確かめた性質で、manual 再利用の必要条件にとどめ、owner の判断を残す。先頭で頼む既定では L3 の後の base 同期が無く、比べる相手の漏れが起きない。束ねる場合の比べる相手は先に merge する全ての PR（便の外を含む）
+- 判定（ready / not ready）と理由: ready。規則の中身は owner の決定 TD-324・TD-326〜TD-329 ほか（D-127 の Status の出所）で決まり、design の出力の D-124〜D-127 は plan-first の変更で decision-log に在る。前提は Contract Probe P1〜P3 で確かめた
 
 ## Registration / Generation Obligations
 
@@ -292,14 +293,14 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 ## Review Focus
 
-- D-124 の主語（L3 を頼む PR と、同じ便で先に merge する全ての PR の path の共有）と 2 つの手段・owner の選び方が、owner の決定の目的（L3 を 2 回にしない）と merge-evidence の再利用の条件に合うか（Contract Probe P1・P2）
-- D-124 の確かめ方の手順が、command の失敗を「共有なし」と誤らないか（Contract Probe P3）
+- D-124 の既定（L3 は merge train の先頭で、`origin/main` を含む head で頼む）と束ねる条件（先に merge する全ての PR と path を共有しない、先頭になったときに 1 回だけ取り込む）が、helper の manual の再利用の条件（`reuse_geometry`、再利用済みの拒否）と owner の決定の目的（L3 を 2 回にしない）に合うか（Contract Probe P1〜P4）
+- D-124 の束ねるときの確かめ方の手順が、command の失敗を「共有なし」と誤らないか（Contract Probe P3）
 - D-125 の申し送りの対象を backlog に絞ったことと、Evidence Ownership（D-038・D-050）・Post-Merge Closeout の「SHA を書かない」の関係
 - D-126 の書式が lane 1 の適用（`superseded（by D-xxx。…）` と `- Superseded by:` の行）と同じか
 - 置き場の選び方と、同じ規則を 2 か所に書いていないか（AC5）
 - D-127 の (a)〜(f) を `AGENTS.md`、(g)(h) を `CLAUDE.md` に分けたことと、(h) が共通の品質の条件（座組表・Double Audit の数え方）を `CLAUDE.md` で変えていないか
 - D-127 の「置き換え・削除」が安全の境界（D-098 の列挙・既存テストを弱めない規則を含む）を緩めると読めないか、`AGENTS.md` Safety の「小さく、確認可能な変更」との両立の句が足りるか
-- D-124 の確かめ直し（先の PR の head の変化・batch Ready）と、Ready の箇条の既定案の句が食い違わないか
+- Ready の箇条の既定案（review 通過順）の句と、D-124 の「L3 済みの PR を後ろへ回さない」が食い違わないか
 - D-125 が review の経路（review-checklist）から辿れるか
 
 ## Contract Ledger
@@ -308,11 +309,11 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| D-124（新設） | DEV_WORKFLOW `## Wave Operation`、decision-log D-124 | D-124 は plan-first で置いた。実装は箇条を 1 つ足し、Ready の箇条の既定案の文に 1 句 | AC1・AC5・AC6 の `rg`（matrix の行 1〜3・13・18） | L3 なし |
+| D-124（新設） | DEV_WORKFLOW `## Wave Operation`、decision-log D-124 | D-124 は plan-first で置いた（TD-329 で先頭で頼む形へ置き換えた）。実装は箇条を 1 つ足し、Ready の箇条の既定案の文に 1 句 | AC1・AC5・AC6 の `rg`（matrix の行 1〜3・13・18） | L3 なし |
 | D-125（新設） | DOC_STYLE_GUIDE `## 1. 参照の書き方`、`docs/quality/review-checklist.md` `### 8. 設計-コード整合`、decision-log D-125 | D-125 は plan-first で置いた。実装は節を 1 つ足し、頭の「対象」の行、review-checklist の参照の 1 行と更新履歴 | AC2・AC5・AC6 の `rg`（matrix の行 4〜6・19） | L3 なし |
 | D-126（新設） | decision-log の頭（`## Purpose` の後）、decision-log D-126 | D-126 は plan-first で置いた。実装は節 `## Status の書き方` | AC3・AC4・AC5・AC6 の `rg`（matrix の行 7〜9・14・21） | L3 なし |
-| D-055 Wave Operation の既存の箇条 | DEV_WORKFLOW `## Wave Operation` | Ready の箇条の既定案（review 通過順）に D-124 を指す 1 句を足すだけで、ほかは変えない | AC1 の `D-124 の箇条の既定案`、AC8 の doc check | 非対象 |
-| merge-evidence の manual 再利用の条件 | merge-evidence「base同期だけでheadが変わる場合」 | 変えない。D-124 が引く | Contract Probe P2 | 非対象 |
+| D-055 Wave Operation の既存の箇条 | DEV_WORKFLOW `## Wave Operation` | Ready の箇条の既定案（review 通過順）に、L3 済みの PR を後ろへ回さない句を足すだけで、ほかは変えない | AC1 の `L3 を済ませた PR を後ろへ回す順にしない`、AC8 の doc check | 非対象 |
+| merge-evidence と helper の manual 再利用の条件 | merge-evidence「base同期だけでheadが変わる場合」、`scripts/pr-gate.py` の `reuse_geometry` と `record` | 変えない。D-124 が引く | Contract Probe P2・P4 | 非対象 |
 | D-074 stacked train | DEV_WORKFLOW `### Stacked train` | 変えない（D-124 の対象外） | AC1 の `awk` の範囲の終端 | 非対象 |
 | D-038・D-050 Evidence Ownership | DEV_WORKFLOW Workflow State・Plan Packet Rules | 変えない。D-125 の Compatibility に書いた | 無し（文の review） | 非対象 |
 | Post-Merge Closeout の `## 直近の完了` | DEV_WORKFLOW Post-Merge Closeout | 変えない（D-125 は Plans に行番号の申し送りを置かない） | 無し（文の review） | 非対象 |
@@ -332,10 +333,11 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 - P1 `git merge-tree --write-tree --name-only A B` は衝突のとき exit 1 で衝突の path を出し、衝突が無いとき exit 0 で tree だけを出す: 第 2 便の PR #171 の base 同期の前の head `2f71fab1` と PR #176 の head `daa23a40` で実行 → exit 1、衝突の path は `docs/backlog.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/db/product_repo.rs`（実装 file の衝突を含む）。`2f71fab1` と祖先の `44f1e666` で実行 → exit 0、tree の 1 行だけ（git 2.53.0）
 - P2 両方の PR が触る file は、merge の衝突が無くても base 同期で PR 差分の byte が変わり、片方だけが触る file は変わらない: `git diff --binary --full-index --no-ext-diff --no-textconv FROM TO -- FILE | sha256sum` を、同期の前（`44f1e666` → `2f71fab1`）と後（`c1c1c5bf` → `87a96fb9`、PR #171 の最終の head）で file ごとに比べた。両方が触り P1 で衝突に出なかった `src-tauri/src/biz/product_service.rs` → `5e322fd6…` と `be9481b7…` で不一致。理由は pre-image の blob が変わること: `--full-index` の index の行が `e8e383d5…..c3c685d7…` から `82e493b6…..7362e89f…` へ変わり（共有の file では必ず変わる）、hunk の見出しも `@@ -63,6 +63,8 @@` から `@@ -64,6 +64,8 @@` へ動いた（round 2 の是正で `grep '^index'` を前後に当てて確かめた）。#171 だけが触る file は前後で一致: `src/features/products/components/ProductForm.tsx` → `ffc8c0c0…`、`docs/SCREEN_DESIGN.md` → `7143e6af…`（起票の版の `117a0c11…` はこの 2 file をまとめた 1 本の差分の sha256 で、前後で一致した）。PR が触る path の一覧は `git diff --name-only --no-renames 44f1e666...2f71fab1` と `44f1e666...daa23a40` で取った。結論: merge-tree の衝突だけで束ねる PR を選ぶと、後の PR の manual を再利用できない場合が残るので、D-124 は path の共有で判定する
 - P3 起票の版の command（`comm -12 <(git diff … origin/main...origin/A | sort) <(…)`）は、ref が無いと `git diff` が `fatal` を出しても `comm` が exit 0 で空を返し、「共有なし」と誤る: `origin/no-such-branch-p3` で実行 → `fatal: ambiguous argument`、全体の exit 0・出力なし。直した手順（PR ごとに `git diff --name-only --no-renames origin/main...SHA > FILE` の終了値を確かめる）は、`gh pr view 179 --json headRefOid` の head では exit 0、無い SHA では exit 128 で、比べずに「比べられない」へ進んだ（probe の script は scratchpad、起票の後の round 1 の是正で実行）
+- P4 helper の manual の再利用は、L3 の head に `origin/main` を 1 回 merge しただけの head で、PR 差分の全体が byte で一致するときの 1 回だけ: `scripts/pr-gate.py` の現物で、`reuse_geometry` は新しい head の親が `[old_head, base]` であること（`not a single main merge`）と、`git diff --binary --full-index … BASE...HEAD` の byte 一致（`PR diff changed; manual reuse forbidden`）を要求し、`record` の manual の再利用は元の manual が `source_head` を持たないこと（再利用済みでないこと）を要求する（round 3 の是正で `rg -n 'not a single main merge|PR diff changed|reuse_from' scripts/pr-gate.py` で読んだ）。Plan Review round 3 の Codex は、合成の repo で、L3 済みの共有の PR を後ろへ回す順と、束ねた PR の 2 回目の base 同期で、helper がそれぞれ `PR diff changed; manual reuse forbidden` と `not a single main merge` を返すことを確かめた（repo 外の報告）。結論: L3 の後に共有の path を触る PR を先に merge する、または L3 の後に 2 回以上 base 同期すると L3 が 2 回になるので、D-124 は先頭で頼む形を既定にする
 
 ## Data Safety
 
-- 店の実値・発言の原文・実 POS / 店舗のデータを書かない。owner の決定は repo 外の回答台帳の ID（TD-324・TD-326・TD-327・TD-328、D-127 の出所の TD-310）と日付で引く
+- 店の実値・発言の原文・実 POS / 店舗のデータを書かない。owner の決定は repo 外の回答台帳の ID（TD-324・TD-326〜TD-330、D-127 の出所の TD-310）と日付で引く
 - probe は公開 repo の commit（PR #171・#176・#179）だけを使い、作業の出力は `$TMPDIR` に置いた
 - 調査の報告（repo 外の `.local/`）の全件の表を写さない
 
@@ -376,3 +378,15 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
   7. D-126 の allow-list（Opus #7）→ 規則の文と D-126 の Decision (3) に「file の移送に伴う link の path の直し」を足した
   8. (e) の「要件」（Opus #8）→ 規則の文と D-127 の Decision (3) に「製品の要件。Contract Audit が L3 の項目にする検証は除く」を添えた
   9. AC6 の Issue（Opus #9）→ `rg -n -i` にし、baseline の 14 行の内訳を書いた。MANUAL §5.1 の調査項目の issue は手順書なので (f) と両立と、Matrix の Adjacent Pattern Audit に書いた
+
+### Plan Review round 3（対象 `91e00bbd`、2026-10-19。Plan Review round の天井）
+
+- Codex（GPT-6.1 Sol）: reject（P1 0 / P2 2 / P3 0）。Ordinary Operation は「具体的な反例あり」。#1 P2 既定案の「L3 を頼む PR を先頭へ」が L3 済みの共有の PR を追い越せ、追い越された PR は差分が変わり L3 がまた要る（合成の repo で helper が `PR diff changed; manual reuse forbidden` を返した）、#2 P2 path を共有しない PR を束ねても、L3 の後の base 同期の回数を縛っておらず、2 回目の同期で再利用が拒まれる（helper が `not a single main merge` と再利用済みの拒否を返した）。AC の baseline は現物と一致
+- fresh Opus 5.5（`subagent_type: reviewer`）: reject（P1 0 / P2 1 / P3 4）。Ordinary Operation は「具体的な反例あり」。#1 P2 比べる相手が同じ便で先に merge する PR だけで、L3 を頼む時点の `origin/main` に在り head に無い commit（前の便の closeout）と、L3 の後に merge する同じ便の closeout が漏れる、#2 P3 L3 を持つ PR どうしが共有するときの既定案、#3 P3 append-only を当てる本文の範囲、#4 P3 (f) の問いの置き場と MANUAL §5.1 の線引き、#5 P3 path の共有へ広げたのが TD-324 の文より広く owner に確かめる要
+- 天井の disposition（owner の決定、repo 外の回答台帳）: TD-329 で D-124 を「先頭で頼む形」に置き換え、TD-330 で直して追加の round なしで plan-approved へ進めると決めた。反映先:
+  1. D-124 の置き換え（Codex #1・#2、Opus #1）→ round 1〜3 で足した「束ねる前に確かめる」「確かめ直す」「既定案は L3 を持つ PR を先に」の句を消し、次の形に置き換えた（規則の文、decision-log の D-124 の全項目、Ordinary Operation、失敗定義、Review Focus、Ledger、Matrix の行 2・13・18、Residual）。L3 は train の先頭で `origin/main` を含む head（`git merge-base --is-ancestor`）で頼むのが既定で、その後は他の PR を先に merge しない。束ねるのは、束ねる各 PR が先に merge する全ての PR（同じ便・closeout・便の外）と path を共有せず、先頭になったときに `origin/main` を 1 回だけ取り込む場合だけ。L3 済みの PR を後ろへ回さない。path の共有の確かめ方（round 2 の手順）は、束ねるときの確かめ方として残した。Wave Operation の Ready の箇条の句は「L3 を済ませた PR を後ろへ回す順にしない」に直した。Contract Probe P4 に helper の現物（`reuse_geometry`・`record`）と round 3 の Codex の probe を書いた
+  2. Opus #2 → 置き換えで解消した（L3 を持つ PR どうしの共有は、先頭で頼む既定で順に 1 本ずつ）
+  3. Opus #3 → D-126 の規則の文と D-126 の Decision (3) に「main に merge された後の本文に当てる（同じ PR の merge の前の直しは対象外）」を足した
+  4. Opus #4 → (f) の規則の文と D-127 の Decision (4) に「問いは owner への問い合わせで送り、回答は repo の外の回答台帳に残す。MANUAL §5.1 の調査項目の issue は手順書の形（場所・操作・合格基準）に限る」を添えた
+  5. Opus #5 → owner が TD-329 で確かめた。D-124 の Status の出所と owner の決定に TD-329 を足した
+  6. Owner Effort Budget → TD-329・TD-330 を decision point として数え、上限を 9 に上げて理由を書いた
