@@ -4,7 +4,7 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 出所: 起点 `18db621e`（main）で Coordinator が依頼した read-only の調査 2 本（repo 外の報告。A「proposed・未実装と decision-log の Status」、C「dashboard と時点つきの事実・未確認の前提」）。下の数のうち「調査の分類の数」は調査の手の分類で、command の出力ではない（調査 A: 実装済みなのに proposed・予定のまま 40、一部実装で書き分けが無い・古い 23、計 63。調査 C: dashboard の食い違い 30 と古い「最終更新」の見出し 8 file、backlog の上位 255 項目のうち済んだのに開いている 18・閉じ印つきで残置 46・前提が変わった 7・重複 13）。AC の baseline は本 packet の起票で command を逐語で実行した出力（下の Acceptance Criteria、D-062）。
 
-規模と手法: 触る file は 50 前後（下の Scope の段ごとの表）と本 packet。1 lane のまま、作業を 5 段（S1〜S5）に分け、段ごとに AC を置く。本 run（起票）は packet だけを置き、docs の本体の直しは plan-approved の後の別の run で行う。
+規模と手法: 触る file は 50 前後（下の Scope の段ごとの表）と本 packet。1 lane のまま、作業を S1〜S5 と S7（個人の memory にあった tracked にすべき 2 項を正本へ上げる）に分け、段ごとに AC を置く（S6 は直さない分類）。本 run（起票）は packet だけを置き、docs の本体の直しは plan-approved の後の別の run で行う。
 
 ## Workflow State
 
@@ -27,6 +27,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 1. kickoff → spec-check（2026-10-19、起草役）: 発注書の範囲（調査 A・C の直す所、TD-327 の Status の規則の適用、Draft PR #155 の backlog への戻し、backlog の 51 UI-01b-D5 の句）を範囲にし、Risk を R2 と記録した（下の Risk）。
 2. spec-check → plan-draft（2026-10-19、起草役、同じ commit）: 表の唯一の skip。直す先の設計正本（下の Design Readiness の一覧）は契約として足りていて、本 lane は新しい設計を足さない。文を code（実装の現物）と owner の決定（decision-log・TD-327）に合わせるだけなので、design の段で足す設計の出力が無い。
 3. plan-draft（round 1 の是正、2026-10-19、起草役）: Plan Review round 1 の是正（Review Response 参照）。Scope の範囲と方向は変えず、段の中の行と AC を足し・直した。
+4. plan-draft（round 2 の前の追加、2026-10-19、起草役）: Q4 の裁定と S7 の追加（Review Response 参照）。S7 で Scope に 3 file を足した。
 
 ## Owner Effort Budget
 
@@ -58,6 +59,7 @@ Goal Invariant:
 - 実装に使う設計正本（function-design・architecture・db-design・ARCHITECTURE・DB_DESIGN・SCREEN_DESIGN・図面）を読んだ人が、今の build の振舞いを、実装済みの所は実装済みの契約として、まだの所は proposed・未実装として、取り違えずに読める。特に棚卸しの確定（旧本体）と商品別売上の取消の在庫の書き方が、今の code（記録から求め直して写しを書く）どおりに読める。
 - decision-log の各 D の Status が、決定の状態だけ（accepted・superseded〈by D-xxx〉・withdrawn。owner の決定の前だけ proposed）を示し、置き換わった D から置き換えた D を辿れる（TD-327）。
 - dashboard（`docs/Plans.md`・`docs/project-memory.md`・`docs/PROJECT_HANDOFF.md`）と `docs/backlog.md` を読んだ人が、今残っている作業と前提だけを読め、済んだ項目・置き換わった段取りの名前を今の作業として読まない。Draft PR #155 が backlog から辿れる。
+- UI を実装・review する人が、class の上書きの 2 つの罠（S7-1）と owner の UI の好み（S7-2）を、個人の memory でなく tracked の正本から読める。
 
 ### 失敗定義
 
@@ -148,9 +150,10 @@ TD-327 の規則（Status は決定の状態だけ。実装が済んだかは co
 | S3-16 | D-111 | `accepted（…。runtime は後続の lane）` | 「runtime は後続の lane」を外す | — |
 | S3-17 | D-113 | `accepted（…、runtime は後続の単位の lane と原価の lane）` | 「runtime は後続の単位の lane と原価の lane」を外す | — |
 | S3-18 | D-071 の `- Superseded in part by: D-121（2026-10-17、proposed）。…` | D-121 を proposed と書く | 「、proposed」を外す（D-121 は S3-1 で accepted） | — |
+| S3-19 | D-100・D-101・D-102・D-103・D-104・D-105・D-106・D-107 | `accepted（owner … Plan Packet … の設計判断。…（正本・script・test・文書・code）への反映は同 packet の実装の PR で行う）`（D-103・D-105 は「実装は同 packet の PR で行う」、D-104 は「runtime は同 packet の実装の PR」） | 反映の予定の句（実装の後に古くなる実装の状態の一種）だけを外す。決定の内容と出所（owner の判断・Plan Packet・設計判断の ID・plan-first の commit で記録したこと）は残す。D-106・D-107 の「merge で accepted にする。PR #138 で merge、2026-10-04」の類は、accepted になった時点の出所として「PR … の merge で accepted（日付）」の形に残す | — |
 | S3-11 | ADR `docs/adr/2026-10-16-stocktake-count-placement.md` の Status、`docs/adr/README.md` の同 ADR の行 | ADR は `proposed — 2026-10-16、…`、索引は「（proposed）」と「D-118 の design 出力であり未実装」 | ADR の template（`docs/templates/adr.md`）の 3 値は decision-log と同じ意味で、D-118 が accepted になるので ADR も `accepted` にする。索引の「（proposed）」を「（accepted）」に、「であり未実装」を外す | — |
 
-S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-038・D-046・D-049・D-055・D-062・D-065・D-074・D-085）の `Superseded in part by: D-092` の行（Coordinator の裁定の外）。D-100〜D-107 の Status の「（正本・script・code への）反映は同 packet の実装の PR で行う」の類は、決定をどこへ反映するかの出所で、時が経っても古くならない（「未着手」「残る」と違う）ので残す（Review Focus Q4）。
+S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-038・D-046・D-049・D-055・D-062・D-065・D-074・D-085）の `Superseded in part by: D-092` の行（Coordinator の裁定の外）。
 
 ### S4 dashboard と図面
 
@@ -213,6 +216,15 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 | 店の事実の旧表記 | SCREEN_DESIGN 217（調査 C の S6）と backlog の「期間・動線の旧表記の残り 7 か所」 | SCREEN_DESIGN・35・biz-task-specs・tracking・screen_mockups・code comment | backlog の同じ項目（code comment を含むので別の小口） |
 | 利用者に見える文言 | ExportBar の Tooltip（調査 A §3.3） | `src/features/daily-sales/components/ExportBar.tsx`・`src/features/monthly-sales/components/ExportBar.tsx` | backlog の 1 行（S5） |
 
+### S7 個人の memory から正本へ上げる 2 項
+
+出所: Coordinator の個人の auto-memory（repo の外、Claude だけが読む）にある、tracked に置くべき内容（owner 2026-10-19「memory も棚卸しして…上手く分ける…今回ってドキュメント整備の一環だからやっていい」）。内容は発注書に写されたもので、memory の file は読んでいない。実装 run は各項を repo の中の出所（PR・原文の file・decision-log・code）で確かめてから置き、確かめられない項は置かない（S7-2 の 2026-09-24 の canvas の判断だけは下の例外）。
+
+| # | 置き場 | 置く内容 | 確かめ方 | 結果 |
+|---|---|---|---|---|
+| S7-1 | `docs/UI_TECH_STACK.md` の §6 に新しい小節（§6.12「class の上書きの罠」）。置き場の理由: §6 は横断の UI 要素の実装上の決定（§6.10 Error Boundary、§6.11 離脱ガード）を持ち、§2 は採用 stack の選定、§7 はリスクと保留の記録なので、実装の注意は §6 が合う | (1) 共通 primitive の size・state の variant を呼出し側で上書きするときは同じ variant 修飾子を付ける。素の utility class（例 `sm:max-w-3xl`）は `data-[size=default]:sm:max-w-lg` のような variant 付きの class に詳細度で負け、typecheck・lint・test が全部 green のまま実 render でだけ崩れる（PR #15、2026-08-29）。`docs/design-system/02-component-catalog.md` の一覧の選択行（`data-[state=selected]` の明示固定）の例は重複させず参照する。(2) TanStack Router の `Link` component は base の `className` と `activeProps` の `className` を空白でつなぐだけで、同じ CSS property の class の衝突を解かない（twMerge しない）。base と activeProps に同じ property の class を置くと両方が DOM に残り、生成 CSS の出現順で負けた側が見えない。RTL の `toHaveClass` も `cn()` の twMerge も素通りする（PR #28 の L3 FAIL、2026-09-02）。衝突する property は片側だけに置き、「active のときに負け側の class が共存しない」負の assert を test に足す | (1) PR #15 と catalog の該当の節。(2) lockfile の版（`package.json` と `package-lock.json` で `@tanstack/react-router` 1.170.5）の `node_modules/@tanstack/react-router/dist/esm/link.js` の className の組み立てで確かめ、版を添える。起票の時点で手元にある `node_modules` は本 worktree に無く、本体の checkout の `node_modules/@tanstack/react-router/package.json` の version は 1.168.23 で、`link.js` は base・active・inactive の className を空白でつなぐ（`[className, resolvedActiveProps.className, resolvedInactiveProps.className].filter(Boolean).join(" ")`）。1.170.5 で確かめられなければ「1.168.23 での観測」と書く | — |
+| S7-2 | `docs/design-system/03-philosophy.md` に新しい節「owner の受け取り方（L3 の原文から）」。置き場の理由: 03 は「出典ごとに何を取り、何を取らないか」を持つ file で、owner の L3 の原文（`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`）はデザインの判断の一次の出典の 1 つ。原則は 04、判断の規則（DSR）は 01 が持つので、好みを原則や規則として足さず、出典の節として置き、各項に関係する 04 の原則・DSR を添える。README の「読む順」と sub docs の表の 03 の説明に「owner の受け取り方」を 1 句足す | 要約の項: 壊さない優先（今の導線は壊す必要を感じない、ただし慣れの自覚がある → 新案は実機で今の形と並べて見せる段取りを入れる）／共通化は道具（統一しても見やすくなるとは限らない。構造は画面ごとの意味を優先し、文言・囲み・色・token は揃える）／列見出しは一覧のもの（日次・月次・操作ログの詳細には付けすぎ。レポート系は表にしない）／飾りより情報（架空の field・誤解を招くラベルは採らない）／色は意味があるときだけ（添える根拠は 00 の色の役割表と DSR-08〈色を役割に沿う semantic token で当て、色だけで意味を伝えない〉。DSR-08 は「色を使う場面を絞る」より「色だけに頼らない」の規則なので、一致を言い切らず、読んで当たる方を添える）／線と塊は少なく、角は丸く（灰色の塊は採らない）／説明文を歓迎（quick action の説明、集計の説明書き、「直近 10 件」の明示）／配置の常識（金額は右端、状態 → 在庫数 → 売価、操作ボタンは右下、開始・終了は「期間」の group）／決まりは「どう見せるか」でなく「見る人がどう受け取るか・その効果」から組む（見せ方 → 受け取り方 → 効果 → 根拠）／分からないときは分からないと言い、無理に決めず実機を見てから決める／2026-09-24 の canvas での判断（キオスク型は採らず業務端末型で部門分け・スキャンを上部、新案は今のアプリの外枠の中で描く、操作と進行中は同じ緑寄りで揃える、書体は Noto Sans JP が好み〈同梱と実機での読み分けが条件〉、ランキング 1 位は amber をやめ順位と太字〈実画面で最終判断〉） | 各項を原文の file の該当の run・行で確かめ、確かめられない項は置かない。2026-09-24 の canvas の判断は、repo の中の記録（decision-log の D-091〈ランキング 1 位を色でなく順位と太字、色の役割の組み直し〉、`docs/design-system/00-foundations.md` の書体の節〈Noto Sans JP の候補と同梱の条件〉、backlog の書体の lane）があればそこを引き、無い項（キオスク型・業務端末型・外枠の中で描く等）は「2026-09-24 の owner の canvas での判断」として要旨だけを置く。claude.ai の artifact の URL は書かない。原文の長い引用・店の運用の細部は書かず要約にする | — |
+
 ### 他の lane との所有
 
 | file | 節 | 所有 |
@@ -221,7 +233,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 | `docs/archive/plans/2026-09-15-filter-label-top-runtime.md` | backlog「次に動く lane」への link 1 つ（付け替えだけ、S5） | 本 lane |
 | `docs/decision-log.md` | 頭（Purpose の下に置く Status の規則の文）と末尾に足す D-124〜D-126 | `agent/docs-writing-rules` |
 | `docs/Plans.md` | `## 次の行動` の棚卸しの文（本 packet への pointer の 1 句、本 run）と S4 の P1〜P7 | 本 lane |
-| 上の表の他の file | S1〜S5 の行 | 本 lane |
+| 上の表の他の file（S7 の `docs/UI_TECH_STACK.md` §6.12・`docs/design-system/03-philosophy.md`・`docs/design-system/README.md` を含む） | S1〜S5・S7 の行 | 本 lane |
 | workflow の正本（`AGENTS.md`・`CLAUDE.md`・`docs/DEV_WORKFLOW.md`・`docs/ci.md`・`docs/AGENT_OPERATING_MANUAL.md`・`docs/code_review.md`・`docs/quality/review-checklist.md`・`docs/project-profile.md`・`docs/agent-guidance/**`・`docs/templates/**`） | 全体 | 並走の lane（本 lane は触らない） |
 
 `docs/decision-log.md` で重なる 2 本は、後に merge する方が `origin/main` の単段 merge で同期する（`docs/DEV_WORKFLOW.md` Wave Operation）。本 lane の行は既存の D の中、向こうの行は頭と末尾で、同じ行を触らない。
@@ -256,7 +268,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC-S3-1: `rg -n '^- Status: proposed' docs/decision-log.md` が何も出さない（exit 1）。
 - AC-S3-2: `rg -n '^- Status: superseded' docs/decision-log.md` が D-056・D-058・D-079・D-084・D-087・D-116 の 6 行を出し、`rg -n '^- Superseded by: D-092' docs/decision-log.md` が D-056・D-058・D-079・D-084・D-087 の 5 行を出す。
 - AC-S3-3: `rg -n -A2 '^## D-085' docs/decision-log.md` が `- Status: accepted` の行を出す。
-- AC-S3-4: `rg -n '^- (Status|Superseded( in part)? by):.*(implementation slice|reflected in PR|future mechanical checks|remains a separately gated|remains R4|implementation completed|pending Final Review|are complete|and implemented by|実装は未着手|実装は R3 packet で進行|merge 後の follow-up|runtime は後続|、proposed）)' docs/decision-log.md` が何も出さない（exit 1）。
+- AC-S3-4: `rg -n '^- (Status|Superseded( in part)? by):.*(implementation slice|reflected in PR|future mechanical checks|remains a separately gated|remains R4|implementation completed|pending Final Review|are complete|and implemented by|実装は未着手|実装は R3 packet で進行|merge 後の follow-up|runtime は後続|、proposed）|反映は同 packet の実装の PR で行|実装は同 packet の PR で行う|runtime は同 packet の実装の PR)' docs/decision-log.md` が何も出さない（exit 1）。
 - AC-S3-5: `rg -n '^proposed' docs/adr/2026-10-16-stocktake-count-placement.md` と `rg -n '（proposed）|D-118 の design 出力であり未実装' docs/adr/README.md` が何も出さない（exit 1）。
 - AC-S3-6（読んで確かめる）: 各 Status の行に、出所（design lane・Plan Packet・owner の決定の TD・日付）が残り、実装の状態の語が無い。
 - AC-S3-7: `git diff origin/main...HEAD -- docs/decision-log.md | rg '^[-+]' | rg -v '^(\+\+\+|---)' | rg -v '^[-+]- (Status|Superseded( in part)? by):'` が何も出さない（後ろの `rg` の exit 1。決定の本文の行を変えていない）。
@@ -274,6 +286,9 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC-S5-5: `rg -n '^#### 次に動く lane（順番固定）' docs/backlog.md` と `rg -n 'backlog\.md#次に動く' docs` が何も出さない（exit 1）。`rg -n -o '(FUNCTION_DESIGN|DEV_SETUP_CHECKLIST|SCREEN_DESIGN|backlog|Plans)\.md#[^)]+' docs` が出す anchor が、どれも今ある見出しを指す（S5 の前文の手順。doc check は anchor を見ない）。
 - AC-S5-6: S5 の表の全行の「結果」が「直した」か「残す（理由）」で、閉じた・寄せた項目ごとに根拠の 1 句がある。
 - AC-S5-7: `rg -n '^- .*Q40' docs/backlog.md` がちょうど 1 行を出し、`rg -n '^- D-023 POS adapter boundary' docs/backlog.md` が 1 行を出す（生きている項目として残す）。
+- AC-S7-1: `rg -c 'data-\[size=default\]:sm:max-w-lg' docs/UI_TECH_STACK.md` と `rg -c 'activeProps' docs/UI_TECH_STACK.md` がそれぞれ `1`（S7-1 の 2 項が 1 回ずつ）。(2) の項に確かめた版（1.170.5、または「1.168.23 での観測」）が書かれている。
+- AC-S7-2: `rg -c 'owner-l3-feedback-raw' docs/design-system/03-philosophy.md` が 1 以上。
+- AC-S7-3（読んで確かめる）: 03 の新しい節の各項が原文の file か上に挙げた repo の中の記録で確かめられ（2026-09-24 の canvas の判断の要旨を除く）、design-system の既存の規則（04 の原則・01 の DSR・00 の色の役割表と書体の節）と食い違わない。claude.ai の artifact の URL・店の運用の細部・原文の長い引用が無い。S7 の表の「結果」が「直した」か「残す（理由）」。
 
 baseline（docs の本体は起点 `18db621e` から変えていない。起票の時点〈2026-10-19〉に測り、AC-S1-3・AC-S2-1b・AC-S3-4・AC-S5-5・AC-S5-7 は Plan Review round 1 の是正の時点〈2026-10-19、本 branch の tip `6c815f7a`〉に直した command で測り直した。各 command を逐語で実行した。長い行は先頭だけ写した。AC1〜AC3 は PR の Validation の欄）:
 
@@ -289,7 +304,7 @@ AC-S2-5  前: io-task-specs:7・UI_TECH_STACK:785・02-component-catalog:1041 �
 AC-S3-1  exit=0。969・983・996・1009・1022・1034・1046 の 7 行（D-116〜D-122）
 AC-S3-2  前・後とも exit=1（0 行）
 AC-S3-3  708:## D-085 … / 709:（空行）/ 710:- Decision: …（Status の行が無い）
-AC-S3-4  exit=0。251・287・304・312・330・338・346・362・370・532・584・936・950・969・983・996・1009・1022・1034・1046 の 20 行
+AC-S3-4  exit=0。251・287・304・312・330・338・346・362・370・532・584・843・854・865・875・885・895・905・914・936・950・969・983・996・1009・1022・1034・1046 の 28 行（Q4 の裁定で式を足した後、tip `aace90e8` で測った）
 AC-S3-5  前: 5:proposed — 2026-10-16 … / 後: 7:- [棚卸しの数と売上の前後を … の 1 行
 AC-S4-1  8 行（8 file に 1 行ずつ）
 AC-S4-2  前: Plans 18・30・34・57・58 の 5 行 / 後: project-memory 46・50・67・250 の 4 行
@@ -301,6 +316,8 @@ AC-S5-3  前（#155）: exit=1 / 後（#172）: exit=1
 AC-S5-4  exit=0。36・72・93・140・146・148・153 の 7 行
 AC-S5-5  前: 13:#### 次に動く lane（順番固定） / 中: Plans.md:30 と archive/plans/2026-09-15-filter-label-top-runtime.md:414 の 2 行 / 後: 16 行（今ある見出しを指さないのは、次に動く lane の 2 行だけ）
 AC-S5-7  前: 312・414 の 2 行 / 後: 212 の 1 行
+AC-S7-1  2 本とも出力なし（exit=1）（tip `aace90e8` で測った）
+AC-S7-2  出力なし（exit=1）（同上）
 ```
 
 ## Design Readiness
@@ -351,7 +368,7 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 - Q1（Plan Review で答える）: D-117〜D-122 を accepted にした後も、design docs の「proposed・未実装」の語（決定が採られる前の意味を含む）を残してよいか。既定: 残す（design docs のこの語は実装の状態の印で、decision-log の Status とは別。語を替えるなら D-126 の規則で全体を一度に替える）。
 - Q2（Plan Review で答える）: D-056・D-058・D-079・D-084・D-087 は Superseded の行を足すだけでなく Status も `superseded（by D-092）` にするか。既定: する（TD-327 の 4 値で、全面的に置き換わった決定の状態は superseded。D-116 の扱いと同じ）。
 - Q3: round 1 の是正で決着（Review Response 参照）。D-034・D-038・D-045・D-046・D-111・D-113 は S3-12〜S3-17 として本 lane に入れ、AC-S3-4 の期待は 0 行。
-- Q4（Plan Review で答える）: D-100〜D-107 の Status の「（正本・script・code への）反映は同 packet の実装の PR で行う」の類を、実装の状態の語として外すか。既定: 外さない（決定をどこへ反映するかの出所で、時が経っても古くならない）。外すなら S3 に行を足し、AC-S3-4 の検索式に足す。
+- Q4: Coordinator の裁定で決着（Review Response 参照）。D-100〜D-107 の反映の予定の句は S3-19 として外し、AC-S3-4 の式に足した。
 
 ## Implementation Results
 
@@ -383,3 +400,13 @@ Fill after review.
 | Claude O7（P3） | 選択肢が 2 つのままの行に既定を 1 つ | S2-2（§14 は完了の 1 行、本文は残す）、S1-2（理由 1 は残し、理由 2 は条件付き）、S5 の (2)（140 は archive）、S5 の文の直し（53〜55 の残す基準） |
 
 是正の中で見つけた同じ類で、裁定に無いもの: D-100〜D-107 の Status の「反映は同 packet の実装の PR で行う」の類。外さない既定で Review Focus の Q4 に置いた。
+
+### round 2 の前の追加（2026-10-19、対象 `aace90e8`）
+
+- Q4 の裁定（Coordinator）: D-100〜D-107 の反映の予定の句も S3 に入れる。TD-327 の規則では反映の予定は実装の状態の一種で、実装の後に古くなる。決定の内容と出所は残し、反映の予定の句だけを外す。Goal の「各 D」はそのまま。反映した所: S3-19、S3 の「入れない」の段落から D-100〜D-107 を外した、AC-S3-4 の式と baseline（28 行）、Review Focus の Q4 の決着。
+- S7 の追加: owner 2026-10-19 の指示（memory も棚卸しして、今回のドキュメント整備の一環として分ける）を受け、Coordinator の個人の auto-memory にあった tracked に置くべき 2 項を、本 lane の S7 として正本へ上げる。内容は発注書に写されたもので、起草役は memory の file を読んでいない。反映した所: 前文、Goal の最小完了条件の 4 項目、Scope の S7 の節、所有表、AC-S7-1〜AC-S7-3 と baseline。
+- 起草役の判断:
+  - S7-1 の置き場は §6 の新しい小節（§6.12）にした。
+  - S7-1 (2) の TanStack Router の振舞いは、手元の 1.168.23 の `link.js` で確かめた形（空白でつなぐだけで衝突を解かない）に言い直した。発注の写しの「空白連結で merge されない」は、「つながれない」とも読めるため。
+  - S7-2 の置き場は 03（出典の file）の新しい節にした。
+  - 「色は意味があるときだけ」は DSR-08 と言い切らず、00 の色の役割表と DSR-08 から読んで当たる方を添える形にした。DSR-08 の規則は「色だけで意味を伝えない」で、色を使う場面を絞る規則ではないため。
