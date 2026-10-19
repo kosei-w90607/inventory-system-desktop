@@ -1,6 +1,6 @@
 # 63. UI-03: 返品・交換
 
-> **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: この画面の日付の欄の意味は「品が動いた日」（返品・交換は品が戻った・渡った日）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。欄の見出し・説明の文言の細部は runtime の lane。
+> **計数の置き場と在庫の求め直し（D-118。(a) は実装済み、(b) は proposed・未実装）**: この画面の日付の欄の意味は「品が動いた日」（返品・交換は品が戻った・渡った日）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。(a) で入ったのは、この日付を業務日として movement に書くこと（`biz/inventory_service/common.rs` の `validate_business_date`）と、計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`）。計数を保存する公開の経路・精算の窓・この画面への反映は (b)。欄の見出し・説明の文言の細部は runtime の lane。
 
 > 対応仕様: REQ-202 / UI-03
 >

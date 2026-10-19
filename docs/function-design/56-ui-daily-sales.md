@@ -515,7 +515,7 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 
 **hooks/components test は本 PR スコープ外**:
 
-- TanStack Query Provider mock / Router mock の追加は 7-7b 後続 PR
+- TanStack Query Provider mock / Router mock は本 PR では足さなかった（その後に整い、今は `QueryClientProvider` を使う test が多数ある）
 - `memory/feedback-pr-merge-gate-scope-discipline.md` 準拠、PR size を新規 19 + 更新 11 に抑える
 - E2E（Playwright）は Phase 2 完了時 8-9 判定で対応
 
@@ -593,7 +593,7 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 | 税率別合計の表示 | モックアップ + SP-501 明示なし | BIZ-05 DTO 拡張後の別 PR（Backlog 「税率別合計の必要性確認」） |
 | BIZ-05 への source 別 count 追加 | UI 派生で軽量に実装可能 | 必要になったら BIZ 拡張で削除（`computeSalesLineSummary` を破棄可能に設計） |
 | DatePicker（shadcn Date Picker）採用 | `<input type="date">` で十分、依存 7 component + dayjs 不要 | 日付範囲選択が要件化された時点で別 PR |
-| hooks/components の Vitest test | TanStack Query Provider mock / Router mock 整備は 7-7b 後続 PR | 7-7b 着手時 |
+| hooks/components の Vitest test | 本 PR の時点では Query Provider mock / Router mock が無かった（その後に整い、今は `QueryClientProvider` を使う test がある） | 済み |
 | E2E（Playwright）テスト | Phase 2 完了時 8-9 判定で対応 | 8-9 判定後 |
 | useTodayDate の共通 `src/lib/dates/` 移送 | UI-00 既存 `useYesterdayDate.ts` への影響、本 PR scope 外 | 将来 UI-09b / UI-06a 等で多用化する時に共通化 |
 

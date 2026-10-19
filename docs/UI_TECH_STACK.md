@@ -782,7 +782,7 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 - **Playwright スクショ**: E2E 採用時に追加コスト小で導入可
 - **見送り**: Phase 2 デモで「見た目が毎回同じ」が重視されなければ不要
 
-**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は将来の global text-size / display-scale option と合わせて調整する follow-up として分離した。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
+**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は global text-size / display-scale option と合わせて調整する follow-up として分離し、表示の大きさの option（`src/components/layout/useDisplayScale.ts`）で対応した（[DEV_SETUP_CHECKLIST](DEV_SETUP_CHECKLIST.md) の 8-0、PR #77）。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
 
 **評価タイミング**:
 1. global text-size / display-scale option の実装プラン作成時: typography / density / status 表示の横断変更に対して lightweight screenshot diff が必要か確認する（2026-06-07 follow-up では新規 screenshot-diff gate は追加せず、targeted RTL + Windows native L3 で確認する）

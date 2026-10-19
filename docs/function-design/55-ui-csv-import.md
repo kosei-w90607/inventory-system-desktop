@@ -509,9 +509,9 @@ DB ロック競合等の `internal` も、解析・取込みの失敗では他�
 
 ### 55.10 テスト方針
 
-#### Phase 1 7-7 Vitest 未着手のため、本 PR では unit test なし
+#### 本 PR（Phase 1 7-7 の前）では unit test を置かなかった（当時の記録）
 
-`src/features/csv-import/reducer.ts` は副作用ゼロの純関数。9 action × 6 state = 54 組合せのテスト（13 個の valid 遷移 + 41 個の invalid 遷移網羅）は 7-7 着手後の最優先 retroactive 追加対象（[53-ui-home.md §53.9 非目的](53-ui-home.md) と同方針）。
+`src/features/csv-import/reducer.ts` は副作用ゼロの純関数。9 action × 6 state = 54 組合せのテスト（13 個の valid 遷移 + 41 個の invalid 遷移網羅）は 7-7 着手後の最優先 retroactive 追加対象とした。今は `src/features/csv-import/reducer.test.ts` ほかの test がある（[53-ui-home.md §53.9 非目的](53-ui-home.md) と同方針）。
 
 #### Windows native cargo tauri dev での手動 10 項目シナリオ
 

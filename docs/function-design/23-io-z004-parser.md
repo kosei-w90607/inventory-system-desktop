@@ -242,7 +242,7 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
 
 | コード欄 | 個数・金額とも0 | 個数か金額が0でない |
 |---|---|---|
-| 13桁JAN（13桁 + 右パディング1文字を含む） | Ok(Some)。BIZ-03 が空レコードとして除外し、相殺の判定（ADR D4）の入力に残す | Ok(Some) |
+| 13桁JAN（13桁 + 右パディング1文字を含む） | Ok(Some)。BIZ-03 が空レコード（quantity=0 かつ amount=0）として除外する（D-118 で相殺の判定は持たない。[32](32-biz-csv-import-service.md) の冒頭の D-118 の節） | Ok(Some) |
 | 全桁0（未登録の枠、PLU の登録を消した枠、コードを持たない通常PLU） | Ok(None) | InvalidJan（商品コードの無い枠の売上） |
 | 13桁JANにならない（8桁独自コード + EEEEEE、その他の13桁にならない文字列） | Ok(None) | InvalidJan（normalize_jan の文言） |
 
@@ -349,7 +349,7 @@ fn normalize_jan(raw: &str, line_no: usize) -> Result<Option<String>, String>
 | マスタ照合（JAN→product_code紐付け） | 業務ロジック | BIZ-03 Stage 2 Validate |
 | 重複チェック（file_hash照合） | 業務ロジック | BIZ-03 Stage 3 Preview |
 | 符号変換（売上帳票視点→在庫視点） | INV-1の在庫視点変換 | BIZ-03 Stage 4 Commit |
-| 正常JANの空レコード除外（quantity=0 and amount=0） | 業務ルール判定（相殺の判定の入力に残すため） | BIZ-03 Stage 2 Validate |
+| 正常JANの空レコード除外（quantity=0 and amount=0） | 業務ルール判定（売上も movement も作らない行を決めるのは BIZ。D-118 で相殺の判定は持たない） | BIZ-03 Stage 2 Validate |
 | 入力サイズ上限チェック（10,000行/20MB） | 上流のガードチェック | BIZ-03（parse_z004呼び出し前） |
 
 ---
