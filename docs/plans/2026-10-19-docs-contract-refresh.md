@@ -28,16 +28,17 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 2. spec-check → plan-draft（2026-10-19、起草役、同じ commit）: 表の唯一の skip。直す先の設計正本（下の Design Readiness の一覧）は契約として足りていて、本 lane は新しい設計を足さない。文を code（実装の現物）と owner の決定（decision-log・TD-327）に合わせるだけなので、design の段で足す設計の出力が無い。
 3. plan-draft（round 1 の是正、2026-10-19、起草役）: Plan Review round 1 の是正（Review Response 参照）。Scope の範囲と方向は変えず、段の中の行と AC を足し・直した。
 4. plan-draft（round 2 の前の追加、2026-10-19、起草役）: Q4 の裁定と S7 の追加（Review Response 参照）。S7 で Scope に 3 file を足した。
+5. plan-draft（round 2 の是正、2026-10-19、起草役）: Plan Review round 2 の是正（Review Response 参照）。S1・S2 の型を意味の側で洗い直し、S1 に行を足した。Owner Effort Budget の上限を改定した。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 9（既定の 6 から改定。理由: 棚卸しの途中で owner の決定が 4 つ加わり〈下の表〉、Ready・merge と round 3〈天井〉の後の owner の判断の見込みを足すと既定の 6 に予備が残らない。上限を上げる先例は repo 外の回答台帳 TD-296 の 5a〈MSI の手順書の lane で 6 → 9〉）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（起票の時点。TD-327〈Status の規則と Draft PR #155 の扱い〉を本 lane の入力の決定として数える） | 2（Ready 1、merge 1） | 3 | 6 = 1 + 2 + 3 |
+| 介入 | 9 | 4（round 2 の是正の時点。decision point ごとに数える: TD-327 の棚卸しの計画 1、TD-327 の decision-log の Status の規則 1、TD-327 の Draft PR #155 の扱い 1、S7 の範囲の追加〈owner 2026-10-19 の指示〉1） | 3（Ready 1、merge 1、round 3 は天井なので、そこで P1/P2 が残れば owner の判断 1） | 2 | 9 = 4 + 3 + 2 |
 
 店の資料・owner に聞く束（下の S6 の分類）は本 lane で問わないので、本 lane の介入に数えない。
 
@@ -90,7 +91,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 
 ### S1 契約の誤り（最優先）
 
-PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledger::recompute_stock` だけを通る形になった（production で `inventory_repo::update_stock_quantity(` を呼ぶのは `recompute_stock` の中だけ。`rg -n 'update_stock_quantity\(|recompute_stock\(' src-tauri/src --glob '!*test*'` で確かめた）。設計正本の 32・35 と、その上位の `docs/architecture/biz-task-specs.md` が今も旧い直呼び（写しを直接書く手順）を書く。どれも現行 build では停止中の旧本体（§15.0・§20.0、呼出し元は `#[cfg(test)]` の test・診断・fixture だけ）の記述で、旧本体の記述であることは残す。
+PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledger::recompute_stock` だけを通る形になった（production で `inventory_repo::update_stock_quantity(` を呼ぶのは `recompute_stock` の中だけ。`rg -n 'update_stock_quantity\(|recompute_stock\(' src-tauri/src --glob '!*test*'` で確かめた）。設計正本の 32・35・24・44、上位の `docs/architecture/biz-task-specs.md`・`docs/ARCHITECTURE.md`・`docs/db-design/pos-tables.md` と図面が、今も写しを直接書く旧い手順・式を書く（下の洗い直しの表）。32・35・24 と biz-task-specs の BIZ-03・BIZ-06 の手順は現行 build では停止中の旧本体（§15.0・§20.0、呼出し元は `#[cfg(test)]` の test・診断・fixture だけ）の記述で、旧本体の記述であることは残す。
 
 | # | file・節 | 今の文（要旨） | 直し方（code の根拠） | 結果 |
 |---|---|---|---|---|
@@ -99,7 +100,28 @@ PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledge
 | S1-3 | `docs/function-design/32-biz-csv-import-service.md` §15.5 処理ステップ 5 と「在庫補正の詳細」 | 無効にした movement を product_code ごとに合算し、`new_stock = stock + correction` を `update_stock_quantity` で書く | 無効にした movement の商品ごとに `recompute_stock` で求め直し、前後の写しを `StockCorrection` に入れる形へ（`biz/csv_import_service/commit.rs` の `apply_void_stock_corrections`、`rollback.rs` の `legacy_rollback_csv_import`）。値は、写しが記録と一致しているとき「写し − 無効にした数量」と同じ（同関数の doc comment）で、一致していなければ記録から求め直した値になる。補償の movement は作らない | — |
 | S1-4 | 同 §15.5「設計判断 — apply_stock_change を使わない理由」 | 「ここでは直接 update_stock_quantity を使う」 | 「movement を足さず、無効にした記録を除いて `recompute_stock` で求め直す」へ | — |
 | S1-5 | 同 §15.8 対応不変条件の INV-2 の行 | 「rollback 時は直接 update_stock_quantity」 | 「rollback 時は `recompute_stock` で求め直す」へ | — |
-| S1-6 | `docs/architecture/biz-task-specs.md` の BIZ-06「棚卸し確定」の手順 2 と BIZ-03「ロールバック処理」の手順 2 | 「products.stock_quantityをactual_countに更新」「is_voided=1にした各inventory_movementsについてproducts.stock_quantityを逆方向に補正」 | 「補正の movement を足した後、`recompute_stock` で求め直す」「movement を無効にした後、その商品を `recompute_stock` で求め直す」へ。旧本体（停止中）の記述であることは残す | — |
+| S1-6 | `docs/architecture/biz-task-specs.md` の BIZ-06「棚卸し確定」の手順 2 と BIZ-03「ロールバック処理」の手順 2 | 「products.stock_quantityをactual_countに更新」「is_voided=1にした各inventory_movementsについてproducts.stock_quantityを逆方向に補正」 | 「補正の movement を足した後、`recompute_stock` で求め直す」「movement を無効にした後、その商品を `recompute_stock` で求め直す」へ。BIZ-03・BIZ-06 の手順に、停止中の旧本体の記述だという注記（停止 ADR を引く）を足す。頭の (a) の一覧に「旧本体の確定・取消は、補正した商品・無効にした商品だけを求め直す」の 1 句を足す | — |
+| S1-7 | 同 BIZ-02 の 119 行（共通在庫処理の説明）と BIZ-03「確定」の 266 行 | 「products.stock_quantityの更新とinventory_movementsの記録」「products.stock_quantity更新 + inventory_movementsにINSERT」 | 「movement を足し、その商品を `recompute_stock` で求め直して写しを書く」へ（`biz/inventory_service/common.rs` の `apply_stock_change`）。266 行は旧本体の確定（停止中）の記述と注記する | — |
+| S1-8 | `docs/function-design/24-io-csv-import-repo.md` の `VoidedMovement` の `quantity` の説明（65 行）、`void_movements_by_reference` の戻りの説明（340 行）、「BIZ-03 での在庫補正」の例と式（369〜372 行）、設計判断の SELECT → UPDATE の理由（376 行） | quantity を逆方向に変換して在庫補正に使う、`products.stock_quantity -= voided.quantity` | 「BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない）」へ。戻り値のうち BIZ-03 が使うのは `product_code`（`commit.rs` の `apply_void_stock_corrections` は `vm.product_code` だけを集める）。SELECT → UPDATE の理由は、無効にする movement の商品を BIZ に渡すためと直す。369 行の見出しの語は残してよい | — |
+| S1-9 | `docs/ARCHITECTURE.md` 179 行（BIZ-02 の表の行）、`docs/db-design/pos-tables.md` 414 行（Z004 の確定）、`docs/function-design/44-cmd-inventory.md` 1099・1112 行（層の責務の表と INV-2 の行） | 「products.stock_quantity更新＋inventory_movements記録」「stock_quantity更新+movements記録」「stock_quantity更新とmovements記録の同時性」 | 「movement の記録と、記録からの写しの求め直し（同じ TX）」の向きに直す。pos-tables 414 は旧本体の確定（停止中）と注記する | — |
+| S1-10 | `docs/function-design/35-biz-stocktake-service.md` §20.5 処理ステップ 3a（force_fill） | 未入力の明細に `product.stock_quantity` をそのまま入れる | code（`legacy_complete_stocktake` の `product.product.stock_quantity.max(0)`、コメント「R-3 + P3-7: 負在庫補正。INV-3準拠」）に合わせ、負の在庫は 0 を入れると直す | — |
+| S1-11 | `docs/diagrams/current-system.md` の「在庫の増減と取消」の図（184 行の ROLLBACK の「その増減を戻す」）と「棚卸しの時間と在庫」の図 | 取消で増減を戻す、確定で actual_count へ在庫を合わせる | S4 の H1 で直す（無効にした記録を除いて求め直す、補正の movement を足して求め直す）。ここでは S1 の型の hit として数える | — |
+
+S1 の型の洗い直し（round 2 の是正で足した。`docs` から `docs/archive/`・`docs/plans/`・`docs/research/`・`docs/evidence/` を除いた範囲と、`src`・`src-tauri/src` の comment を、意味の側の式で全部洗った。起点 `18db621e` と同じ docs の本体、tip `79d51fb1`、2026-10-19）:
+
+```text
+docs:    rg -n --no-heading -e 'stock_quantity\s*[-+]?=' -e 'stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)' -e '(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity' -e 'update_stock_quantity' -e '[-+]=\s*.*quantity' -e '在庫補正' -e '逆方向' -e '(在庫|増減)[^。|]{0,6}を戻す' -e '在庫を[^。|]{0,8}補正' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs
+         → 80 行 / 27 file
+comment: rg -n --no-heading -e '//.*(stock_quantity\s*[-+]?=|stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)|(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity|update_stock_quantity|[-+]=\s*.*quantity|在庫補正|逆方向|(在庫|増減)[^。]{0,6}を戻す|在庫を[^。]{0,8}補正)' src-tauri/src src --glob '!src/lib/bindings.ts'
+         → 18 行
+```
+
+| 分類 | 数 | 行（file:起点の行） |
+|---|---|---|
+| 直す（S1 の行） | 28 | 35:335・367・369（S1-1・S1-2）、32:411・413・421・432・433・434・435・437・530（S1-3〜S1-5。411・413・432 は手順と節の見出しで、語は残し下の本文を直す）、biz-task-specs:278・488（S1-6）、biz-task-specs:119・266（S1-7）、24:65・340・369・370・371・372・376（S1-8）、ARCHITECTURE:179・pos-tables:414・44:1099・44:1112（S1-9）、diagrams/current-system:184（S1-11） |
+| 正しい（残す） | 37 | 求め直しの文と写しの書込みの関数の定義: 21:5・10・383・389・392・395、31:7、20:9、master-tables:7・8、transaction-tables:7、ADR（計数の置き場）:16・57、36:213（計数の無い商品に限った正しい等式）、36:159（操作ログの文言）。在庫を変えない・条件の文: 37:296、51:28、35:156・178・268・290・336、biz-task-specs:473、44:784、24:688（責務の所在）、ARCHITECTURE:151（整合性の補正の画面）、75:49（query の無効化）、ACCEPTANCE_SCENARIO:134（符号の説明）、DB_DESIGN:85・101。業務記録の取消・訂正の設計（逆方向の movement を足す、(b) と別の未実装の設計）: transaction-tables:60、tracking-system-tables:99、65:46・206・207・209・210 |
+| 対象外（理由） | 15 | 置き換わった時点証拠 ADR の本文（superseded の記録）: adr/2026-09-18-stocktake-time-evidence:58・180・271・278・284・314・373。decision-log の決定の本文（append-only）: 385・387（D-051、D-118 の Superseded in part の行あり）・397（無関係の「逆方向」）・927・928（D-109）。参照資料: screen_mockups.html:194、design-system/reference/2026-08-20-proposal-A-rules-bound:133。backlog:53（S5 の 53〜55 の行が扱う） |
+| code の comment | 18 | 全部「正しい」か「対象外」（本 lane は code を変えない）。在庫補正の語は取消の補正の結果の名（`commit.rs`・`rollback.rs`・`mod.rs`・`integrity_service.rs`）、test の comment は結果の等式（`stocktake_service.rs` の 1285・1286・1568）、`common.rs:348` は `recompute_stock` の中の `update_stock_quantity` の戻り、`sales_repo.rs:410` は戻り値を BIZ-03 が使うこと。古い手順を書く comment は無かった |
 
 32・35 の冒頭の D-118 の節（(b) の契約。取消は計数を持つ全ての商品を求め直す等）は (b) の範囲のまま変えない。(a) が旧本体に入れたのは、無効にした movement の商品・補正した商品だけの求め直しで、その違いは §15.5・§20.5 の側に書く。
 
@@ -107,23 +129,25 @@ PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledge
 
 型: (a)/(b) の書き分けは既に書き分け済みの文書（`docs/DB_DESIGN.md`・`docs/ARCHITECTURE.md` 等の「（D-118。(a) は実装済み、(b) は proposed・未実装）」）と同じ形にし、本文に「(a) で入ったのは …（module・関数）」を 1 文足す。「future」「予定」は実装済みなら現行の契約の文へ直す。
 
-| # | file・起点の行 | 今の文（要旨） | 直し方 | 結果 |
-|---|---|---|---|---|
-| S2-1 | `docs/function-design/73-ui-stocktake.md` の 18 行（29・33・46・62・86・157・173・174・180・207・210・281・289・291〜295） | 読取りの command・hook・route を「future」と書く | 括弧書きの「future」を外し、29 行の「以降 future と明記した契約は未実装」の文を今の状態に直す（`lib.rs` の command 登録 `get_active_stocktake`・`find_stocktake_item`・`get_last_completed_stocktake`、`src/features/stocktake/hooks/`、`src/routes/stocktake.tsx`）。あわせて UI-10-D7 の決定の文（102 行）と 279 行の「既存 4 command は `#[tauri::command]` だけで `#[specta::specta]` が無く bindings に型が無い」を、今の状態（`src-tauri/src/cmd/stocktake_cmd.rs` の `start_stocktake`・`get_stocktake_items`・`update_count`・`complete_stocktake` に `#[specta::specta]` があり、`src/lib/bindings.ts` に 4 関数がある）に直す。決定の中身（生 invoke を禁じ specta で揃える）は残す | — |
-| S2-2 | `docs/DEV_SETUP_CHECKLIST.md` 23・511・513・515・528・544（§14） | Phase 3・4 を「参考、未着手」「着手予定」「v1.0.0 予定」 | 完了の文に直す（`docs/SCREEN_DESIGN.md` の Phase 4「完了」、`src/routes/` の画面）。§14 は見出しの下に完了の 1 行を置き、本文は当時の記録として残す（archive へ移さない） | — |
-| S2-3 | `docs/FUNCTION_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」だけ | (a)/(b) の書き分け（一覧の 21・31・36・75・22 §19 は (a)） | — |
-| S2-4 | 同 18・100・177（§今後の追記予定） | 「後続段階は実装進行に合わせて追記」、全項目が取消線の節 | 文を今の状態に直し、節を消す | — |
-| S2-5 | `docs/function-design/43-cmd-settings-log.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（写しは記録から求め直す、写しの書込みは 36 → 31。`biz/integrity_service.rs`・`biz/stock_ledger.rs`） | — |
-| S2-6 | `docs/function-design/60-ui-product-import.md` 3 | 同 | (a)/(b) の書き分け（新規行の初期在庫は初期在庫の movement、写しは求め直し〈`biz/product_service.rs` の `recompute_stock` の呼出し〉は (a)。共有 JAN・連動を始める行の拒否は (b)） | — |
-| S2-7 | `docs/function-design/61-ui-receiving.md`・`62-ui-manual-sale.md`・`63-ui-return-exchange.md`・`64-ui-disposal.md` 各 3 | 冒頭の注記「（proposed・未実装、D-118）」 | 日付を業務日として movement に書くのは (a)（`biz/inventory_service/` の `validate_business_date`）。計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`、test `biz::stock_ledger::tests::test_stock_ledger_req205_default_count_vs_movement_dates`）も (a) で実装済み。計数を保存する公開の経路・精算の窓・この画面への反映は (b) と書き分ける | — |
-| S2-8 | `docs/function-design/22-mnt-migration.md` 360 | 「`stock_counts.count_value` と写しの範囲の列は、それを足す runtime の lane が上限で検査する」 | 列は (a) の v9 で入った（`db/schema_v9.rs`）。範囲の検査の担い手を code で確かめて今の状態に直す | — |
-| S2-9 | `docs/architecture/io-task-specs.md` 7 | 「新しい SQL / schema は未実装」 | (a) の v9 は入った、Z004 の識別の列は (b) と書き分ける | — |
-| S2-10 | `docs/UI_TECH_STACK.md` 785、`docs/design-system/02-component-catalog.md` 1041 | 「将来の global text-size / display-scale option」「将来の全体文字サイズ / 表示スケール option」と合わせて調整 | option は入った（`src/components/layout/useDisplayScale.ts`）。「将来の」を外し、商品コードの読みやすさの調整が済んだかは確かめられた所だけ書く。確かめられなければ backlog の 1 行へ送る | — |
-| S2-11 | `docs/function-design/54-ui-shortcuts.md` 207 | unit test の見送りの理由「Vitest 初期化が未着手」 | 理由の文を今の状態（Vitest は入った、`useShortcutsDialog`・`isEditableTarget` の unit test はまだ無い。backlog の shortcuts の retroactive unit test の項目）に直す。test は足さない | — |
-| S2-12 | `docs/function-design/55-ui-csv-import.md` 512 | 「Vitest 未着手のため、本 PR では unit test なし」 | 当時の記録と分かる形に直す（今は `src/features/csv-import/` に test がある） | — |
-| S2-13 | `docs/function-design/56-ui-daily-sales.md` 518・596 | 「TanStack Query Provider mock / Router mock は 7-7b 後続 PR」 | 済んだ（`QueryClientProvider` を使う test がある）と直す | — |
-| S2-14 | `docs/function-design/51-ui-product-form.md` 28（UI-01b-D5） | 「`stock_unit` も初回 UI-01b 実装では読取専用」、理由の列の「単位変更は … 影響が大きいため別 Design Phase」 | 「単位変更の範囲は D-119 で個数の単位どうしに限って決めた（UI-01b-D23）」の向きに直す（backlog の同じ項目の子、PR #171 の Final Review の P3） | — |
-| S2-15 | `docs/function-design/29-io-ej-parser.md` の番号行の 4 桁の欄（IO-08 の該当の節）と、未観測の形式を復元不能に倒す列挙 | 4 桁の欄の意味は未検証、未観測の形式（訂正・取消・値引き・番号印字・点検・小数数量・クレジット） | 今の文法表と `src-tauri/src/io/ej_parser.rs` で受理している形式を確かめ、受理済みの形式を列挙から外す。4 桁の欄は持ち帰りデータの観測（`docs/project-memory.md` の該当の行）を書き、観測を対応の規則に使わない注意は残す。code で確かめられない形式は残す | — |
+S2 の型の洗い直し（round 2 の是正で足した）: 「future」「予定」を外すだけでは、周りの説明（file 名・route・component・command の名前・属性・型）が現物と違うまま残る。各行で、外す語の周りに出る名前を `rg` と `ls` で現物と照らし、結果を「周りの説明の現物」の列に書いた（tip `79d51fb1`、2026-10-19）。現物と違う所は全部その行の直し方に入る。
+
+| # | file・起点の行 | 今の文（要旨） | 直し方 | 周りの説明の現物 | 結果 |
+|---|---|---|---|---|---|
+| S2-1 | `docs/function-design/73-ui-stocktake.md` の 18 行（29・33・46・62・86・157・173・174・180・207・210・281・289・291〜295） | 読取りの command・hook・route を「future」と書く | 括弧書きの「future」を外し、29 行の「以降 future と明記した契約は未実装」の文を今の状態に直す（`lib.rs` の command 登録 `get_active_stocktake`・`find_stocktake_item`・`get_last_completed_stocktake`、`src/features/stocktake/hooks/`、`src/routes/stocktake.tsx`）。あわせて UI-10-D7 の決定の文（102 行）と 279 行の「既存 4 command は `#[tauri::command]` だけで `#[specta::specta]` が無く bindings に型が無い」を、今の状態（`src-tauri/src/cmd/stocktake_cmd.rs` の `start_stocktake`・`get_stocktake_items`・`update_count`・`complete_stocktake` に `#[specta::specta]` があり、`src/lib/bindings.ts` に 4 関数がある）に直す。決定の中身（生 invoke を禁じ specta で揃える）は残す。§73.4 の file tree を現物に書き直す（component は別 file でなく `src/features/stocktake/StocktakePage.tsx` の export、route は `src/routes/stocktake.tsx` の layout と `src/routes/stocktake/index.tsx` の `validateSearch`）。29 行の「本書は runtime 実装（route / components / hooks / specta 化）を含まない」と、IO の `find_active_stocktake` を「`start_stocktake` から呼ばれている」とする句も直す | hooks の 6 file は `src/features/stocktake/hooks/` に在る。tree の component の 7 file（`StocktakeStartPanel.tsx` ほか）は無く、7 つとも `StocktakePage.tsx` の export（`StocktakePage`・`StocktakeStartPanel`・`StocktakeProgressHeader`・`StocktakeCountEntry`・`StocktakeItemList`・`StocktakeCompleteDialog`・`StocktakeResultPage`）。route は `src/routes/stocktake.tsx` と `src/routes/stocktake/index.tsx`（`validateSearch`）と記録詳細の `src/routes/stocktake.records.$stocktakeId.tsx`。command は `lib.rs` の登録に在る。BIZ の 3 関数は `biz/stocktake_service.rs`、IO の `find_active_stocktake`・`find_stocktake_item_by_code`・`find_last_completed_stocktake` と型の `LastStocktakeSummary`・`StocktakeItemDetail` は `db/stocktake_repo.rs` に在る。`find_active_stocktake` を呼ぶのは `get_active_stocktake` と旧本体（停止中）で、`start_stocktake` は停止の error を返す | — |
+| S2-2 | `docs/DEV_SETUP_CHECKLIST.md` 23・511・513・515・528・544（§14） | Phase 3・4 を「参考、未着手」「着手予定」「v1.0.0 予定」 | 画面の実装が済んだことだけを完了と書く（`docs/SCREEN_DESIGN.md` の Phase 4「完了」、`src/routes/` の画面）。「v1.0.0」は完了と書かない（release は D-070 で自動在庫連動の完成まで待つ）。§14 は見出しの下に画面の実装の完了の 1 行を置き、本文は当時の記録として残す（archive へ移さない） | `src/routes/` に Phase 3・4 の画面の route が在る。tag は public repo に無い（`git tag` 0 件）。v1.0 の release の条件は D-070 | — |
+| S2-3 | `docs/FUNCTION_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」だけ | (a)/(b) の書き分け（一覧の 21・31・36・75・22 §19 は (a)） | (a) は `db/schema_v9.rs`・`biz/stock_ledger.rs` に在る。root の `README.md` が FUNCTION_DESIGN の「現時点の対象モジュール」の見出しを anchor で引くので、その見出しは替えない | — |
+| S2-4 | 同 18・100・177（§今後の追記予定） | 「後続段階は実装進行に合わせて追記」、全項目が取消線の節 | 文を今の状態に直し、節を消す | 節の項目は全部取消線（179〜184 行）。この見出しへの anchor は無い（S5 の anchor の検索） | — |
+| S2-5 | `docs/function-design/43-cmd-settings-log.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（写しは記録から求め直す、写しの書込みは 36 → 31。`biz/integrity_service.rs`・`biz/stock_ledger.rs`） | `biz/integrity_service.rs` の `recompute_stock` の呼出しと `biz/stock_ledger.rs` の `recompute_stock` の定義が在る | — |
+| S2-6 | `docs/function-design/60-ui-product-import.md` 3 | 同 | (a)/(b) の書き分け（新規行の初期在庫は初期在庫の movement、写しは求め直し〈`biz/product_service.rs` の `recompute_stock` の呼出し〉は (a)。共有 JAN・連動を始める行の拒否は (b)） | `biz/product_service.rs` に `recompute_stock` の呼出しが 2 か所在る | — |
+| S2-7 | `docs/function-design/61-ui-receiving.md`・`62-ui-manual-sale.md`・`63-ui-return-exchange.md`・`64-ui-disposal.md` 各 3 | 冒頭の注記「（proposed・未実装、D-118）」 | 日付を業務日として movement に書くのは (a)（`biz/inventory_service/` の `validate_business_date`）。計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`、test `biz::stock_ledger::tests::test_stock_ledger_req205_default_count_vs_movement_dates`）も (a) で実装済み。計数を保存する公開の経路・精算の窓・この画面への反映は (b) と書き分ける | `validate_business_date` は `biz/inventory_service/common.rs` に在る（個別の画面の file でない）。`judge`・`from_count`・`derive` と test は `biz/stock_ledger.rs` に在る | — |
+| S2-8 | `docs/function-design/22-mnt-migration.md` 360 | 「`stock_counts.count_value` と写しの範囲の列は、それを足す runtime の lane が上限で検査する」 | 列は (a) の v9 で入った（`db/schema_v9.rs`）。範囲の検査の担い手を code で確かめて今の状態に直す | 写しの値と範囲は `recompute_stock` が書く前に検査する（test `test_stock_ledger_req903_recompute_rejects_out_of_range_value_and_range_end`）。`count_value` の列の CHECK は `>= 0` だけで、上限の検査は計数を保存する経路（(b)）の側 → その形で直す | — |
+| S2-9 | `docs/architecture/io-task-specs.md` 7 | 「新しい SQL / schema は未実装」 | (a) の v9 は入った、Z004 の識別の列は (b) と書き分ける | v9 が足したのは movement の並びの鍵の列・`stock_counts`・写しの列（`db/schema_v9.rs`）。Z004 の取込みの記録の識別の列は schema に無い（`rg -n 'machine_no' src-tauri/src/db` の schema の file は 0 件）→ (b) | — |
+| S2-10 | `docs/UI_TECH_STACK.md` 785、`docs/design-system/02-component-catalog.md` 1041 | 「将来の global text-size / display-scale option」「将来の全体文字サイズ / 表示スケール option」と合わせて調整 | option は入った（`src/components/layout/useDisplayScale.ts`）。「将来の」を外し、商品コードの読みやすさの調整が済んだかは確かめられた所だけ書く。確かめられなければ backlog の 1 行へ送る | `src/components/layout/useDisplayScale.ts` は在る | — |
+| S2-11 | `docs/function-design/54-ui-shortcuts.md` 207 | unit test の見送りの理由「Vitest 初期化が未着手」 | 理由の文を今の状態（Vitest は入った、`useShortcutsDialog`・`isEditableTarget` の unit test はまだ無い。backlog の shortcuts の retroactive unit test の項目）に直す。test は足さない | `useShortcutsDialog` は `src/features/shortcuts/hooks/useShortcutsDialog.ts` の export、`isEditableTarget` は同じ file の非公開の関数（表の「純関数化部分」の句も今の形に直す）。`src/features/shortcuts/` に test の file は無い | — |
+| S2-12 | `docs/function-design/55-ui-csv-import.md` 512 | 「Vitest 未着手のため、本 PR では unit test なし」 | 当時の記録と分かる形に直す（今は `src/features/csv-import/` に test がある） | `src/features/csv-import/` に test の file が 9 つ在る | — |
+| S2-13 | `docs/function-design/56-ui-daily-sales.md` 518・596 | 「TanStack Query Provider mock / Router mock は 7-7b 後続 PR」 | 済んだ（`QueryClientProvider` を使う test がある）と直す | `rg -l QueryClientProvider src --glob '*.test.*'` が 55 file | — |
+| S2-14 | `docs/function-design/51-ui-product-form.md` 28（UI-01b-D5） | 「`stock_unit` も初回 UI-01b 実装では読取専用」、理由の列の「単位変更は … 影響が大きいため別 Design Phase」 | 「単位変更の範囲は D-119 で個数の単位どうしに限って決めた（UI-01b-D23）」の向きに直す（backlog の同じ項目の子、PR #171 の Final Review の P3） | UI-01b-D23 は 51 の 29 行に在る | — |
+| S2-15 | `docs/function-design/29-io-ej-parser.md` の番号行の 4 桁の欄（IO-08 の該当の節）と、未観測の形式を復元不能に倒す列挙 | 4 桁の欄の意味は未検証、未観測の形式（訂正・取消・値引き・番号印字・点検・小数数量・クレジット） | 今の文法表と `src-tauri/src/io/ej_parser.rs` で受理している形式を確かめ、受理済みの形式を列挙から外す。4 桁の欄は持ち帰りデータの観測（`docs/project-memory.md` の該当の行）を書き、観測を対応の規則に使わない注意は残す。code で確かめられない形式は残す | `src-tauri/src/io/ej_parser.rs` は在る。受理している形式の一つ一つは実装 run が文法表と code で照らす | — |
 
 S2 に入れない (2) 済（既に書き分け済み）と (3)（まだ実装なし。正しい）は直さない（調査 A の分類）。D-118 の節のうち全体が (b) の文書（40・41・42・50・51・55・58・65・66・73・SCREEN_DESIGN の画面の節・UI_TECH_STACK の D-118 節ほか）は「（proposed・未実装、D-118）」のまま残す。
 
@@ -157,9 +181,11 @@ S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-0
 
 ### S4 dashboard と図面
 
+行の記号は調査 C の表 2-1 の番号（P = Plans、M = project-memory、H = PROJECT_HANDOFF、A = ARCHITECTURE、D = DB_DESIGN、SC = SCREEN_DESIGN。調査 C の S1〜S6 は本 packet の段の名と重ならないよう SC1〜SC6 と書く）。調査 C の P8（完了した wave の段落）は P1 の行にまとめた。
+
 | # | file・起点の行 | 今の文（要旨） | 直し方 | 結果 |
 |---|---|---|---|---|
-| P1・P8 | `docs/Plans.md` 13・17・18・19 | wave 13・ハーネス刷新・2026-10-04 の 4 lane・wave 14 の段落（全て merge 済み）、次の lane は owner が決めるという当時の文 | 消す。消す前に、段落の中で他に記録の無い owner の決定（例: wave 13 の「同居禁止を適用しない」）が decision-log か archive の packet にあるかを `rg` で確かめ、無ければ段落を `docs/archive/harness-context/2026-09-30-Plans-completed.md` の末尾の節へ移す | — |
+| P1 | `docs/Plans.md` 13・17・18・19 | wave 13・ハーネス刷新・2026-10-04 の 4 lane・wave 14 の段落（全て merge 済み）、次の lane は owner が決めるという当時の文 | 消す。消す前に、段落の中で他に記録の無い owner の決定（例: wave 13 の「同居禁止を適用しない」）が decision-log か archive の packet にあるかを `rg` で確かめ、無ければ段落を `docs/archive/harness-context/2026-09-30-Plans-completed.md` の末尾の節へ移す | — |
 | P2 | 同 22〜24（次の着手順、owner 決定 2026-09-22） | ㉘ の次は ④ 取込み・取消・回復と ⑤ 一括切替 | ㉘ ④⑤ は D-118 で「棚卸しの runtime (b)」（backlog の項目）に置き換わった。今の行き先を指す 1 文にし、済んだ 1 は消す | — |
 | P3 | 同 30 | 製品作業の既定順序は backlog の「次に動く lane（順番固定）」を維持 | その節は完了の行だけ（S5 で移す）なので消す | — |
 | P4 | 同 34 | 「migration vL で …」 | 実体の番号 v9 にする | — |
@@ -178,16 +204,16 @@ S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-0
 | A3 | 同 183 | BIZ-06 の確定は「差異補正の inventory_movements 記録」 | 停止 ADR の注記と、確定の新しい形は (b) と書き足す | — |
 | A4 | 同 262〜280、`docs/SCREEN_DESIGN.md` 435・442 | tag と「tag 済み」「tag を作成済み」 | 履歴境界の前の記録（`docs/PROJECT_HANDOFF.md` の履歴境界の節）と分かる注記を付ける | — |
 | D1 | `docs/DB_DESIGN.md` 5・20〜49・124〜138 | 表の一覧と index に v9 の `stock_counts` と新しい index が無い（5 行が「まだ載せていない」） | 一覧に `stock_counts` を、index に `idx_inventory_movements_ledger`・`idx_stock_counts_product_id` を足し、5 行の文を直す（`db/schema_v9.rs`） | — |
-| S1 | `docs/SCREEN_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（整合性検証〈75〉と操作ログ〈74〉の表示は (a)） | — |
-| S2 | 「最終更新」の見出しの 8 file: `docs/SCREEN_DESIGN.md`・`docs/plu-export-and-real-csv-verification.md`・`docs/TOOLING_SKILL_COMMANDS.md`・`docs/DEV_SETUP_CHECKLIST.md`・`docs/FUNCTION_DESIGN.md`・`docs/DOCKER_REPAIR_LOG.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/50-ui-product-list.md` | 見出しの日付が git の最終 commit より古い | 見出しの行を消す（更新日は git が持つ） | — |
-| S3・S5 | `docs/SCREEN_DESIGN.md` 55・183 | 「PR #164 で実装済み」、UI-11c の fresh 再監査と L3 は未完了 | PR 番号に履歴境界の前の注記を付ける。「未完了」は owner に聞く束（S6）へ回して残す | — |
-| S4 | 同 444 | Phase 3「タグ目標」 | Phase 3 の画面は実装済みと直す（A4 と同じ注記） | — |
+| SC1 | `docs/SCREEN_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（整合性検証〈75〉と操作ログ〈74〉の表示は (a)） | — |
+| SC2 | 「最終更新」の見出しの 8 file: `docs/SCREEN_DESIGN.md`・`docs/plu-export-and-real-csv-verification.md`・`docs/TOOLING_SKILL_COMMANDS.md`・`docs/DEV_SETUP_CHECKLIST.md`・`docs/FUNCTION_DESIGN.md`・`docs/DOCKER_REPAIR_LOG.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/50-ui-product-list.md` | 見出しの日付が git の最終 commit より古い | 見出しの行を消す（更新日は git が持つ） | — |
+| SC3・SC5 | `docs/SCREEN_DESIGN.md` 55・183 | 「PR #164 で実装済み」、UI-11c の fresh 再監査と L3 は未完了 | PR 番号に履歴境界の前の注記を付ける。「未完了」は owner に聞く束（S6）へ回して残す | — |
+| SC4 | 同 444 | Phase 3「タグ目標」 | Phase 3 の画面は実装済みと直す（A4 と同じ注記。v1.0 の release は D-070 で待つので完了と書かない） | — |
 
 ### S5 backlog の整理
 
-閉じる項目は新しい archive の file `docs/archive/2026-10-19-backlog-closed.md` へ本文を変えずに移し、移した各項目に閉じた根拠（PR・D・置き換えた項目）を 1 句足す。新しい archive は `docs/archive/` の直下にあるので、移した本文の相対 link は次の規則で直す: `archive/` で始まる path は `archive/` を除く、それ以外の docs 起点の path は `../` を前置する（`https://` と `#` だけの link は変えない）。新しい archive は移した元の節の見出し（例: `## 次に動く lane（順番固定）`）を節の見出しとして持ち、項目を元の節ごとに並べる（下の C6 の link の付け替え先）。親が済んで子が生きている項目は、子を独立の項目に上げてから親を閉じる。backlog の頭の文に新しい archive への link を足す。
+閉じる項目は新しい archive の file `docs/archive/2026-10-19-backlog-closed.md` へ本文を変えずに移し、移した各項目に閉じた根拠（PR・D・置き換えた項目）を 1 句足す。新しい archive は `docs/archive/` の直下にあるので、移した本文の相対 link は次の規則で直す: `archive/` で始まる path は `archive/` を除く、それ以外の docs 起点の path は `../` を前置する（`https://` と `#` だけの link は変えない）。新しい archive は移した元の節の見出し（例: `## 次に動く lane（順番固定）`）を節の見出しとして持ち、項目を元の節ごとに並べる（下の C6 の link の付け替え先）。親が済んで子が生きている項目は、子を独立の項目に上げてから親を閉じる。項目を移して空になる節は、見出しごと消す。backlog の頭の文に新しい archive への link を足し、頭の「L8-4 等の製品の未決判断は Plans の該当節に保持する」の句を、P6 で Plans から L8-4 を外した後の形（L8-2・L8-5 等）に直す。
 
-見出しを書き換える・消す file（`docs/backlog.md` の「次に動く lane（順番固定）」、`docs/FUNCTION_DESIGN.md` の「今後の追記予定」、`docs/DEV_SETUP_CHECKLIST.md` §14、`docs/SCREEN_DESIGN.md` の冒頭の節）への anchor は、doc check が anchor を見ないので、`rg -n -o '(FUNCTION_DESIGN|DEV_SETUP_CHECKLIST|SCREEN_DESIGN|backlog|Plans)\.md#[^)]+' docs` で全部を出し、消す・替える見出しを指す行が 0 件になるまで付け替える（起票の時点で当たるのは下の C6 の 2 行。Plans の「製品の未決判断」の見出しへの anchor は `docs/backlog.md` の頭が引くので、P6 は Plans のその節の見出しを替えない）。`docs/archive/plans/2026-09-15-filter-label-top-runtime.md` の 414 行の link（`../../backlog.md` の「次に動く lane（順番固定）」の見出しへの anchor）は、移した先の見出し（`../2026-10-19-backlog-closed.md#次に動く-lane順番固定`）へ link だけを付け替える（archive の file の本文は変えない）。
+見出しを書き換える・消す file（`docs/backlog.md` の「次に動く lane（順番固定）」と空になる節、`docs/FUNCTION_DESIGN.md` の「今後の追記予定」、`docs/DEV_SETUP_CHECKLIST.md` §14、`docs/SCREEN_DESIGN.md` の冒頭の節）への anchor は、doc check が anchor を見ないので、`rg -n -o '(FUNCTION_DESIGN|DEV_SETUP_CHECKLIST|SCREEN_DESIGN|backlog|Plans)\.md#[^)]+' docs README.md` で `docs` と root の `README.md` の全部を出し、消す・替える見出しを指す行が 0 件になるまで付け替える（起票の時点で当たるのは下の C6 の 2 行。root の `README.md` は SCREEN_DESIGN の「1. 画面一覧と使用頻度」と FUNCTION_DESIGN の「現時点の対象モジュール」を引くので、その 2 つの見出しは替えない。Plans の「製品の未決判断」の見出しへの anchor は `docs/backlog.md` の頭が引くので、P6 は Plans のその節の見出しを替えない）。`docs/archive/plans/2026-09-15-filter-label-top-runtime.md` の 414 行の link（`../../backlog.md` の「次に動く lane（順番固定）」の見出しへの anchor）は、移した先の見出し（`../2026-10-19-backlog-closed.md#次に動く-lane順番固定`）へ link だけを付け替える（archive の file の本文は変えない）。
 
 | 分類（調査 C） | 起点の行 | 直し方 | 結果 |
 |---|---|---|---|
@@ -210,7 +236,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 |---|---|---|---|
 | 店の資料で確かめる（時点つきの事実） | T14〜T30（17） | `docs/project-memory.md`、`docs/backlog.md` の入力 1〜5、29・23・34 の手元集計の節 | 2026-10-18 の SD の写しと在庫 Excel |
 | 店の資料で確かめる（未確認の前提） | U-S1〜U-S10（10） | 29・37・pos-tables・project-memory・backlog | 同じ。U-S1 は CV17 の取込みの前後 2 時点の写しが要る |
-| owner・店主・Windows 実機に聞く | T31〜T35（5）、U-O1〜U-O22（22。S4 の S3〈UI-11c の L3〉を含む） | project-memory・backlog・SCREEN_DESIGN・UI_TECH_STACK・msi runbook ほか | owner・店主・Windows の予行演習 |
+| owner・店主・Windows 実機に聞く | T31〜T35（5）、U-O1〜U-O22（22。S4 の SC3〈UI-11c の L3〉を含む） | project-memory・backlog・SCREEN_DESIGN・UI_TECH_STACK・msi runbook ほか | owner・店主・Windows の予行演習 |
 | repo で数え直せるが本 lane で直さない | T2・T4〜T9・T11〜T13、U-R4〜U-R10、T10（msi runbook の現物の照合） | project-memory・backlog・10・52・53・UI_TECH_STACK・design-system・msi runbook | 次の docs の lane。T10 は data safety の手順書で R3 に当たる |
 | 外部仕様の確認日 | X1〜X19（90 日超 7、確認日なし 2、未確認・未実施 3） | DEV_SETUP_CHECKLIST・SCREEN_DESIGN・backlog・plu-export・25・52・UI_TECH_STACK | vendor の公式資料（本 lane の外） |
 | 店の事実の旧表記 | SCREEN_DESIGN 217（調査 C の S6）と backlog の「期間・動線の旧表記の残り 7 か所」 | SCREEN_DESIGN・35・biz-task-specs・tracking・screen_mockups・code comment | backlog の同じ項目（code comment を含むので別の小口） |
@@ -223,7 +249,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 | # | 置き場 | 置く内容 | 確かめ方 | 結果 |
 |---|---|---|---|---|
 | S7-1 | `docs/UI_TECH_STACK.md` の §6 に新しい小節（§6.12「class の上書きの罠」）。置き場の理由: §6 は横断の UI 要素の実装上の決定（§6.10 Error Boundary、§6.11 離脱ガード）を持ち、§2 は採用 stack の選定、§7 はリスクと保留の記録なので、実装の注意は §6 が合う | (1) 共通 primitive の size・state の variant を呼出し側で上書きするときは同じ variant 修飾子を付ける。素の utility class（例 `sm:max-w-3xl`）は `data-[size=default]:sm:max-w-lg` のような variant 付きの class に詳細度で負け、typecheck・lint・test が全部 green のまま実 render でだけ崩れる（PR #15、2026-08-29）。`docs/design-system/02-component-catalog.md` の一覧の選択行（`data-[state=selected]` の明示固定）の例は重複させず参照する。(2) TanStack Router の `Link` component は base の `className` と `activeProps` の `className` を空白でつなぐだけで、同じ CSS property の class の衝突を解かない（twMerge しない）。base と activeProps に同じ property の class を置くと両方が DOM に残り、生成 CSS の出現順で負けた側が見えない。RTL の `toHaveClass` も `cn()` の twMerge も素通りする（PR #28 の L3 FAIL、2026-09-02）。衝突する property は片側だけに置き、「active のときに負け側の class が共存しない」負の assert を test に足す | (1) PR #15 と catalog の該当の節。(2) lockfile の版（`package.json` と `package-lock.json` で `@tanstack/react-router` 1.170.5）の `node_modules/@tanstack/react-router/dist/esm/link.js` の className の組み立てで確かめ、版を添える。起票の時点で手元にある `node_modules` は本 worktree に無く、本体の checkout の `node_modules/@tanstack/react-router/package.json` の version は 1.168.23 で、`link.js` は base・active・inactive の className を空白でつなぐ（`[className, resolvedActiveProps.className, resolvedInactiveProps.className].filter(Boolean).join(" ")`）。1.170.5 で確かめられなければ「1.168.23 での観測」と書く | — |
-| S7-2 | `docs/design-system/03-philosophy.md` に新しい節「owner の受け取り方（L3 の原文から）」。置き場の理由: 03 は「出典ごとに何を取り、何を取らないか」を持つ file で、owner の L3 の原文（`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`）はデザインの判断の一次の出典の 1 つ。原則は 04、判断の規則（DSR）は 01 が持つので、好みを原則や規則として足さず、出典の節として置き、各項に関係する 04 の原則・DSR を添える。README の「読む順」と sub docs の表の 03 の説明に「owner の受け取り方」を 1 句足す | 要約の項: 壊さない優先（今の導線は壊す必要を感じない、ただし慣れの自覚がある → 新案は実機で今の形と並べて見せる段取りを入れる）／共通化は道具（統一しても見やすくなるとは限らない。構造は画面ごとの意味を優先し、文言・囲み・色・token は揃える）／列見出しは一覧のもの（日次・月次・操作ログの詳細には付けすぎ。レポート系は表にしない）／飾りより情報（架空の field・誤解を招くラベルは採らない）／色は意味があるときだけ（添える根拠は 00 の色の役割表と DSR-08〈色を役割に沿う semantic token で当て、色だけで意味を伝えない〉。DSR-08 は「色を使う場面を絞る」より「色だけに頼らない」の規則なので、一致を言い切らず、読んで当たる方を添える）／線と塊は少なく、角は丸く（灰色の塊は採らない）／説明文を歓迎（quick action の説明、集計の説明書き、「直近 10 件」の明示）／配置の常識（金額は右端、状態 → 在庫数 → 売価、操作ボタンは右下、開始・終了は「期間」の group）／決まりは「どう見せるか」でなく「見る人がどう受け取るか・その効果」から組む（見せ方 → 受け取り方 → 効果 → 根拠）／分からないときは分からないと言い、無理に決めず実機を見てから決める／2026-09-24 の canvas での判断（キオスク型は採らず業務端末型で部門分け・スキャンを上部、新案は今のアプリの外枠の中で描く、操作と進行中は同じ緑寄りで揃える、書体は Noto Sans JP が好み〈同梱と実機での読み分けが条件〉、ランキング 1 位は amber をやめ順位と太字〈実画面で最終判断〉） | 各項を原文の file の該当の run・行で確かめ、確かめられない項は置かない。2026-09-24 の canvas の判断は、repo の中の記録（decision-log の D-091〈ランキング 1 位を色でなく順位と太字、色の役割の組み直し〉、`docs/design-system/00-foundations.md` の書体の節〈Noto Sans JP の候補と同梱の条件〉、backlog の書体の lane）があればそこを引き、無い項（キオスク型・業務端末型・外枠の中で描く等）は「2026-09-24 の owner の canvas での判断」として要旨だけを置く。claude.ai の artifact の URL は書かない。原文の長い引用・店の運用の細部は書かず要約にする | — |
+| S7-2 | `docs/design-system/03-philosophy.md` に新しい節「owner の受け取り方（L3 の原文から）」。置き場の理由: 03 は「出典ごとに何を取り、何を取らないか」を持つ file で、owner の L3 の原文（`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`）はデザインの判断の一次の出典の 1 つ。原則は 04、判断の規則（DSR）は 01 が持つので、好みを原則や規則として足さず、出典の節として置き、各項に関係する 04 の原則・DSR を添える。README の「読む順」と sub docs の表の 03 の説明に「owner の受け取り方」を 1 句足す | 要約の項: 壊さない優先（今の導線は壊す必要を感じない、ただし慣れの自覚がある → 新案は実機で今の形と並べて見せる段取りを入れる）／共通化は道具（統一しても見やすくなるとは限らない。構造は画面ごとの意味を優先し、文言・囲み・色・token は揃える）／列見出しは一覧のもの（日次・月次のサマリや単一レコードの詳細〈操作ログの詳細を含む〉へ、一覧用の列見出しを機械的に持ち込まない。比較用の表は DSR-16 に従う）／飾りより情報（架空の field・誤解を招くラベルは採らない）／色は意味があるときだけ（添える根拠は 00 の色の役割表と DSR-08〈色を役割に沿う semantic token で当て、色だけで意味を伝えない〉。DSR-08 は「色を使う場面を絞る」より「色だけに頼らない」の規則なので、一致を言い切らず、読んで当たる方を添える）／線と塊は少なく、角は丸く（灰色の塊は採らない）／説明文を歓迎（quick action の説明、集計の説明書き、「直近 10 件」の明示）／配置の常識（金額は右端、状態 → 在庫数 → 売価、操作ボタンは右下、開始・終了は「期間」の group）／決まりは「どう見せるか」でなく「見る人がどう受け取るか・その効果」から組む（見せ方 → 受け取り方 → 効果 → 根拠）／分からないときは分からないと言い、無理に決めず実機を見てから決める／2026-09-24 の canvas での判断（キオスク型は採らず業務端末型で部門分け・スキャンを上部、新案は今のアプリの外枠の中で描く、操作と進行中は同じ緑寄りの色の家族で揃える、書体は Noto Sans JP が好み〈同梱と実機での読み分けが条件〉）／ランキング 1 位: 2026-09-24 に順位と太字を試す案を了承したが、2026-09-28 の L3 で採らなかった。今は琥珀の pill と行の地（D-094 の「試し 8 点の採否」）。2 位・3 位の見せ方は backlog の別の項目 | 各項を原文の file の該当の run・行で確かめ、確かめられない項は置かない。要約の元（Coordinator の memory の写し）より後の repo の決定（decision-log・design-system・backlog）で覆っていないかを項ごとに確かめ、覆っていれば今の決定に合わせる。起票の時点で確かめた所: ランキング 1 位は D-094 で覆った（上のとおり置き換えた）。操作と進行中の色は D-094 の token（操作 `--primary` #1d5c63、進行中 `--ongoing` #2f7f86、Home の入口 card は進行中の地）で同じ家族、書体は `docs/design-system/00-foundations.md` の書体の節で採用が決まっていない（Noto Sans JP は好みとして残す）、灰色の塊は backlog の card の面色の項目（未着手）と食い違わない。2026-09-24 の canvas の判断は、repo の中の記録（decision-log の D-091〈色の役割の組み直し〉、00 の書体の節、backlog の書体の lane）があればそこを引き、無い項（キオスク型・業務端末型・外枠の中で描く）は「repo に記録なし（owner の canvas 2026-09-24、未照合）」と書いて要旨だけを置く。claude.ai の artifact の URL は書かない。原文の長い引用・店の運用の細部は書かず要約にする | — |
 
 ### 他の lane との所有
 
@@ -254,9 +280,9 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0。
 - AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-19-docs-contract-refresh.md` が exit 0。
 - AC3: `cargo run --bin generate_traceability -- --check` が exit 0（function-design を触る。REQ の参照は増減させない）と、`cargo test --test design_compliance_test` が PASS（function-design の必須節を見る検査。32・35 の節を書き換えるので回す）。
-- AC-S1-1: `rg -n 'update_stock_quantity\(|直接 update_stock_quantity|update_stock_quantity \+ inventory_repo::insert_movement|1回の update_stock_quantity|stock計算 → update_stock_quantity' docs/function-design/32-biz-csv-import-service.md docs/function-design/35-biz-stocktake-service.md` が何も出さない（exit 1）。
+- AC-S1-1（直す形が残らない）: `rg -n --no-heading -e 'products\.stock_quantity ?(の)?更新' -e 'stock_quantity更新\+movements|stock_quantity更新とmovements' -e 'stock_quantityを(actual_countに更新|逆方向に補正)' -e 'stock_quantity -= ' -e '::update_stock_quantity\(' -e '直接 update_stock_quantity|update_stock_quantity \+ inventory_repo::insert_movement|1回の update_stock_quantity|stock計算 → update_stock_quantity' -e '逆方向に変換して在庫補正|在庫を [+-]\d+ 補正|在庫補正に product_code と quantity|在庫補正 = [+-]|その増減を戻す|戻り値を使って在庫補正|product_code でグループ化して集計' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs` が何も出さない（exit 1）。S1 の洗い直しの表の「直す」28 行のうち、見出しの語だけの 3 行（24:369、32:411・432）を除く 25 行を拾う式。
 - AC-S1-2（読んで確かめる）: 35 §20.5 の手順 5 g と 32 §15.5 の手順 5・§15.8 の INV-2 が `recompute_stock` を名指しし、順が code の `legacy_complete_stocktake`・`apply_void_stock_corrections` と同じで、旧本体の記述であること（§15.0・§20.0）が残っている。`stock_after` と求め直しの値の関係が S1-1 の条件付きの形で書かれている。
-- AC-S1-3: `rg -n 'products.stock_quantityをactual_countに更新|products.stock_quantityを逆方向に補正' docs/architecture/biz-task-specs.md` が何も出さない（exit 1）。
+- AC-S1-3（洗い直しの式の hit が全部分類済み）: S1 の洗い直しの docs の式と comment の式を同じ範囲で実行し直し、出た行が全部、表の「正しい」「対象外」の行か、直した文（`recompute_stock` を名指しする行、語を残した見出し）である。新しく出た行は分類して表に足す。`rg -n '::update_stock_quantity\(|stock_quantity -= ' src-tauri/src --glob '!*test*'` の production の hit は `biz/stock_ledger.rs` の 1 行だけ（code を変えないことの確かめ）。
 - AC-S2-1: `rg -c 'future' docs/function-design/73-ui-stocktake.md` が何も出さない（exit 1）。
 - AC-S2-1b: `rg -n '付いておらず|付与されておらず|型が生成されていない' docs/function-design/73-ui-stocktake.md` が何も出さない（exit 1）。直した文の根拠として、`rg -n -B1 'pub fn (start_stocktake|get_stocktake_items|update_count|complete_stocktake)\(' src-tauri/src/cmd/stocktake_cmd.rs | rg -c 'specta::specta'` が `4`、`rg -n '^\t(startStocktake|getStocktakeItems|updateCount|completeStocktake):' src/lib/bindings.ts` が 4 行を出す。
 - AC-S2-2: `rg -n '今後の追記予定|実装進行に合わせて追記' docs/FUNCTION_DESIGN.md` と `rg -n '参考、未着手|着手予定|v1\.0\.0 予定|v0\.9\.0-ui-product-inventory 予定' docs/DEV_SETUP_CHECKLIST.md` が何も出さない（exit 1）。
@@ -267,7 +293,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC-S2-7: S2 の表の全行の「結果」が「直した」か「残す（理由）」。
 - AC-S3-1: `rg -n '^- Status: proposed' docs/decision-log.md` が何も出さない（exit 1）。
 - AC-S3-2: `rg -n '^- Status: superseded' docs/decision-log.md` が D-056・D-058・D-079・D-084・D-087・D-116 の 6 行を出し、`rg -n '^- Superseded by: D-092' docs/decision-log.md` が D-056・D-058・D-079・D-084・D-087 の 5 行を出す。
-- AC-S3-3: `rg -n -A2 '^## D-085' docs/decision-log.md` が `- Status: accepted` の行を出す。
+- AC-S3-3: `rg -n -A3 '^## D-085' docs/decision-log.md` が `- Status: accepted` の行を出す（D-085 の節の中、`## D-085` の見出しと次の `## D-` の間に Status の行があることを読んで確かめる）。
 - AC-S3-4: `rg -n '^- (Status|Superseded( in part)? by):.*(implementation slice|reflected in PR|future mechanical checks|remains a separately gated|remains R4|implementation completed|pending Final Review|are complete|and implemented by|実装は未着手|実装は R3 packet で進行|merge 後の follow-up|runtime は後続|、proposed）|反映は同 packet の実装の PR で行|実装は同 packet の PR で行う|runtime は同 packet の実装の PR)' docs/decision-log.md` が何も出さない（exit 1）。
 - AC-S3-5: `rg -n '^proposed' docs/adr/2026-10-16-stocktake-count-placement.md` と `rg -n '（proposed）|D-118 の design 出力であり未実装' docs/adr/README.md` が何も出さない（exit 1）。
 - AC-S3-6（読んで確かめる）: 各 Status の行に、出所（design lane・Plan Packet・owner の決定の TD・日付）が残り、実装の状態の語が無い。
@@ -277,24 +303,24 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC-S4-3: `rg -c 'stock_counts' docs/inventory_system_erd.html` と `rg -c 'stock_counts' docs/diagrams/current-system.md` がそれぞれ 1 以上、`rg -n 'v1〜v7' docs/inventory_system_erd.html` が何も出さない（exit 1）。
 - AC-S4-4: `rg -n '^\| .*stock_counts|idx_inventory_movements_ledger|idx_stock_counts_product_id' docs/DB_DESIGN.md` が表の一覧の行と 2 つの index の行を出す。
 - AC-S4-5: `rg -n '^## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）' docs/SCREEN_DESIGN.md` が何も出さない（exit 1）。
-- AC-S4-6（読んで確かめる）: A4・S3・S4・S5 の履歴境界の前の PR 番号・tag に、`docs/PROJECT_HANDOFF.md` の履歴境界の節を引く注記がある。
+- AC-S4-6（読んで確かめる）: A4・SC3・SC4・SC5 の履歴境界の前の PR 番号・tag に、`docs/PROJECT_HANDOFF.md` の履歴境界の節を引く注記がある。
 - AC-S4-7: S4 の表の全行の「結果」が「直した」か「残す（理由）」。
 - AC-S5-1: `rg -n '^- \[x\]|^- ~~' docs/backlog.md` が何も出さない（exit 1）。
 - AC-S5-2: `docs/archive/2026-10-19-backlog-closed.md` があり、`rg -c '^- ' docs/archive/2026-10-19-backlog-closed.md` が S5 で閉じた項目の数以上で、`rg -n '2026-10-19-backlog-closed.md' docs/backlog.md` が 1 行以上を出す。移した項目の相対リンクの path は全部在る（`rg -o '\]\([^)#]+' docs/archive/2026-10-19-backlog-closed.md` で出した path を 1 つずつ確かめる）。
 - AC-S5-3: `rg -n 'PR #155|pull/155' docs/backlog.md` と `rg -n 'PR #172|pull/172' docs/backlog.md` がそれぞれ 1 行以上を出す。
 - AC-S5-4: `rg -n '㉘ 以降の棚卸し実装 lane|⑤ で棚卸しの .total_cost.|⑤ で BIZ から返す|㉘ ④ に吸収|2026-09-30 に試す予定|\(8, 8\)' docs/backlog.md` が何も出さない（exit 1）。
-- AC-S5-5: `rg -n '^#### 次に動く lane（順番固定）' docs/backlog.md` と `rg -n 'backlog\.md#次に動く' docs` が何も出さない（exit 1）。`rg -n -o '(FUNCTION_DESIGN|DEV_SETUP_CHECKLIST|SCREEN_DESIGN|backlog|Plans)\.md#[^)]+' docs` が出す anchor が、どれも今ある見出しを指す（S5 の前文の手順。doc check は anchor を見ない）。
+- AC-S5-5: `rg -n '^#### 次に動く lane（順番固定）' docs/backlog.md` と `rg -n 'backlog\.md#次に動く' docs README.md` が何も出さない（exit 1）。`rg -n -o '(FUNCTION_DESIGN|DEV_SETUP_CHECKLIST|SCREEN_DESIGN|backlog|Plans)\.md#[^)]+' docs README.md` が出す anchor が、どれも今ある見出しを指す（S5 の前文の手順。doc check は anchor を見ない）。
 - AC-S5-6: S5 の表の全行の「結果」が「直した」か「残す（理由）」で、閉じた・寄せた項目ごとに根拠の 1 句がある。
 - AC-S5-7: `rg -n '^- .*Q40' docs/backlog.md` がちょうど 1 行を出し、`rg -n '^- D-023 POS adapter boundary' docs/backlog.md` が 1 行を出す（生きている項目として残す）。
-- AC-S7-1: `rg -c 'data-\[size=default\]:sm:max-w-lg' docs/UI_TECH_STACK.md` と `rg -c 'activeProps' docs/UI_TECH_STACK.md` がそれぞれ `1`（S7-1 の 2 項が 1 回ずつ）。(2) の項に確かめた版（1.170.5、または「1.168.23 での観測」）が書かれている。
+- AC-S7-1: `rg -c 'data-\[size=default\]:sm:max-w-lg' docs/UI_TECH_STACK.md` が `1`、`rg -c 'activeProps' docs/UI_TECH_STACK.md` が 1 以上（同じ項の中で語を 2 回使ってよい。2 項がそれぞれ 1 回ずつ置かれ、別の節に重複が無いことは読んで確かめる）。(2) の項に確かめた版（1.170.5、または「1.168.23 での観測」）が書かれている。
 - AC-S7-2: `rg -c 'owner-l3-feedback-raw' docs/design-system/03-philosophy.md` が 1 以上。
-- AC-S7-3（読んで確かめる）: 03 の新しい節の各項が原文の file か上に挙げた repo の中の記録で確かめられ（2026-09-24 の canvas の判断の要旨を除く）、design-system の既存の規則（04 の原則・01 の DSR・00 の色の役割表と書体の節）と食い違わない。claude.ai の artifact の URL・店の運用の細部・原文の長い引用が無い。S7 の表の「結果」が「直した」か「残す（理由）」。
+- AC-S7-3（読んで確かめる）: 03 の新しい節の各項が原文の file か上に挙げた repo の中の記録で確かめられ（2026-09-24 の canvas の判断の要旨を除く）、design-system の既存の規則（04 の原則・01 の DSR・00 の色の役割表と書体の節）と、要約の元より後の決定（decision-log・design-system・backlog。例: D-094 のランキング 1 位）と食い違わない。repo に記録の無い canvas の要旨には「repo に記録なし（owner の canvas 2026-09-24、未照合）」と書いてある。claude.ai の artifact の URL・店の運用の細部・原文の長い引用が無い。S7 の表の「結果」が「直した」か「残す（理由）」。
 
 baseline（docs の本体は起点 `18db621e` から変えていない。起票の時点〈2026-10-19〉に測り、AC-S1-3・AC-S2-1b・AC-S3-4・AC-S5-5・AC-S5-7 は Plan Review round 1 の是正の時点〈2026-10-19、本 branch の tip `6c815f7a`〉に直した command で測り直した。各 command を逐語で実行した。長い行は先頭だけ写した。AC1〜AC3 は PR の Validation の欄）:
 
 ```text
-AC-S1-1  exit=0。35:335・35:367・35:369・32:421・32:435・32:437・32:530 の 7 行
-AC-S1-3  exit=0。biz-task-specs 278・488 の 2 行
+AC-S1-1  exit=0。25 行（S1 の洗い直しの表の「直す」28 行から見出しの 3 行を除いた行。round 2 の是正で式を替え、tip `79d51fb1` で測った）
+AC-S1-3  docs の式 80 行 / 27 file、comment の式 18 行（同上。分類は S1 の洗い直しの表）/ production の hit: biz/stock_ledger.rs:190 の 1 行
 AC-S2-1  18（exit=0）
 AC-S2-1b 前: exit=0。73:102・73:279 の 2 行 / 根拠: rg -c は 4、bindings は 237・243・282・289 の 4 行
 AC-S2-2  FUNCTION_DESIGN 18・100・177・179 の 4 行 / DEV_SETUP_CHECKLIST 23・511・513・515・528 の 5 行
@@ -303,7 +329,7 @@ AC-S2-4  exit=0。64:3・63:3・62:3・60:3・61:3・43:3・FUNCTION_DESIGN:3 �
 AC-S2-5  前: io-task-specs:7・UI_TECH_STACK:785・02-component-catalog:1041 の 3 行 / 後: 51:28 の 1 行
 AC-S3-1  exit=0。969・983・996・1009・1022・1034・1046 の 7 行（D-116〜D-122）
 AC-S3-2  前・後とも exit=1（0 行）
-AC-S3-3  708:## D-085 … / 709:（空行）/ 710:- Decision: …（Status の行が無い）
+AC-S3-3  708:## D-085 … / 709:（空行）/ 710:- Decision: … / 711:- Why: …（Status の行が無い。-A3 で測り直した）
 AC-S3-4  exit=0。251・287・304・312・330・338・346・362・370・532・584・843・854・865・875・885・895・905・914・936・950・969・983・996・1009・1022・1034・1046 の 28 行（Q4 の裁定で式を足した後、tip `aace90e8` で測った）
 AC-S3-5  前: 5:proposed — 2026-10-16 … / 後: 7:- [棚卸しの数と売上の前後を … の 1 行
 AC-S4-1  8 行（8 file に 1 行ずつ）
@@ -314,7 +340,7 @@ AC-S4-5  exit=0。3: の 1 行
 AC-S5-1  48 行（rg … | wc -l）
 AC-S5-3  前（#155）: exit=1 / 後（#172）: exit=1
 AC-S5-4  exit=0。36・72・93・140・146・148・153 の 7 行
-AC-S5-5  前: 13:#### 次に動く lane（順番固定） / 中: Plans.md:30 と archive/plans/2026-09-15-filter-label-top-runtime.md:414 の 2 行 / 後: 16 行（今ある見出しを指さないのは、次に動く lane の 2 行だけ）
+AC-S5-5  前: 13:#### 次に動く lane（順番固定） / 中: Plans.md:30 と archive/plans/2026-09-15-filter-label-top-runtime.md:414 の 2 行（README.md は 0 行） / 後: 18 行（docs 16・README.md 2。round 2 の是正で範囲に README.md を足し、tip `79d51fb1` で測った。今ある見出しを指さないのは、次に動く lane の 2 行だけ）
 AC-S5-7  前: 312・414 の 2 行 / 後: 212 の 1 行
 AC-S7-1  2 本とも出力なし（exit=1）（tip `aace90e8` で測った）
 AC-S7-2  出力なし（exit=1）（同上）
@@ -322,9 +348,9 @@ AC-S7-2  出力なし（exit=1）（同上）
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D7）、[31](../function-design/31-biz-inventory-service.md) の「計数の置き場と在庫の求め直しの契約」（`recompute_stock`）、[32](../function-design/32-biz-csv-import-service.md) §15.0・§15.5・§15.8、[35](../function-design/35-biz-stocktake-service.md) §20.0・§20.5、[22](../function-design/22-mnt-migration.md) §19（v9）、[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[decision-log](../decision-log.md) の D-092 の Compatibility と D-116〜D-122、[DB 設計](../DB_DESIGN.md) と db-design の「計数の置き場と在庫の求め直しの契約」、[引き継ぎ案内](../PROJECT_HANDOFF.md) の履歴境界の節。
+- 引用する設計正本（節まで）: [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D7）、[31](../function-design/31-biz-inventory-service.md) の「計数の置き場と在庫の求め直しの契約」（`recompute_stock`）、[32](../function-design/32-biz-csv-import-service.md) §15.0・§15.5・§15.8、[35](../function-design/35-biz-stocktake-service.md) §20.0・§20.5、[22](../function-design/22-mnt-migration.md) §19（v9）、[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[decision-log](../decision-log.md) の D-092 の Compatibility と D-116〜D-122、[DB 設計](../DB_DESIGN.md) と db-design の「計数の置き場と在庫の求め直しの契約」、[引き継ぎ案内](../PROJECT_HANDOFF.md) の履歴境界の節。S7 は [UI 技術 stack](../UI_TECH_STACK.md) §6、design-system の [出典](../design-system/03-philosophy.md)・[判断の規則](../design-system/01-decision-rules.md)（DSR-08・DSR-16）・[土台](../design-system/00-foundations.md)（色の役割表・書体の節）、decision-log の D-091・D-094、owner の L3 の原文 `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。直すのは文と実装・決定の食い違いだけ。
-- plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) D-056・D-058・D-079・D-084・D-087 の Status を superseded にする（S3-3）、(2) ADR の Status を decision-log と同じ規則で直す（S3-11）、(3) 閉じた backlog の項目の置き場（`docs/archive/2026-10-19-backlog-closed.md`）。(1)(2) は TD-327 の規則の適用で、規則の正本は D-126（並走）。(3) は backlog の頭の文に置く。
+- plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) D-056・D-058・D-079・D-084・D-087 の Status を superseded にする（S3-3）、(2) ADR の Status を decision-log と同じ規則で直す（S3-11）、(3) 閉じた backlog の項目の置き場（`docs/archive/2026-10-19-backlog-closed.md`）。(1)(2) は TD-327 の規則の適用で、規則の正本は D-126（並走）。(3) は backlog の頭の文に置く。S7 は個人の memory にあった内容の昇格で、置き場は `docs/UI_TECH_STACK.md` §6.12（実装の注意）と `docs/design-system/03-philosophy.md`（owner の受け取り方の出典）。2026-09-24 の canvas の判断のうち repo に記録の無い項は「repo に記録なし（owner の canvas 2026-09-24、未照合）」と明記して要旨だけを置き、決まりの根拠にはしない。
 - 前提・制約と延期した gap: S6 の束は次の段へ延期する。延期しても安全な理由: 本 lane は S6 の文を変えず、確かめていない事実を確かめたように書き換えない。
 - 絶対保証の自己点検: S1 の「`recompute_stock` だけが写しを書く」は production の code の現物（上の `rg`）に基づく。test・診断の helper の直呼び（`inventory_repo.rs` の test）は設計正本の主張の外。
 - 判定: ready。
@@ -361,7 +387,7 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 ## Review Focus
 
-- S1: 直した 35 §20.5・32 §15.5 の順が code の旧本体と同じか。旧本体の記述であること（停止中）が読めるか。D-118 の節（(b)）と §15.5・§20.5（(a) の旧本体）の取り違えが無いか。
+- S1: 洗い直しの表の分類（直す 28・正しい 37・対象外 15、comment 18）に取り違えが無いか、式の外に同じ型が残っていないか。直した 35 §20.5・32 §15.5 の順が code の旧本体と同じか。旧本体の記述であること（停止中）が読めるか。D-118 の節（(b)）と §15.5・§20.5（(a) の旧本体）の取り違えが無いか。
 - S2: (a)/(b) の書き分けで、(b) の契約を実装済みと読める文が出ていないか。S2-15（EJ の未観測の形式）は code で確かめた形式だけを外しているか。
 - S3: Status の行（と D-071 の Superseded in part の 1 行）だけが変わり、決定の本文が変わっていないか（AC-S3-7）。Q2・Q4。
 - S4・S5: 閉じた項目の根拠が確かめられるか。生きている子を落としていないか。Plans から消す段落にしか無い owner の決定を落としていないか。
@@ -410,3 +436,35 @@ Fill after review.
   - S7-1 (2) の TanStack Router の振舞いは、手元の 1.168.23 の `link.js` で確かめた形（空白でつなぐだけで衝突を解かない）に言い直した。発注の写しの「空白連結で merge されない」は、「つながれない」とも読めるため。
   - S7-2 の置き場は 03（出典の file）の新しい節にした。
   - 「色は意味があるときだけ」は DSR-08 と言い切らず、00 の色の役割表と DSR-08 から読んで当たる方を添える形にした。DSR-08 の規則は「色だけで意味を伝えない」で、色を使う場面を絞る規則ではないため。
+
+### Plan Review round 2（2026-10-19、対象 `79d51fb1`）
+
+- Codex: GPT-6.1 Sol。判定 reject、P2 2・P3 1。
+- Claude 側: fresh Opus 5.5。判定 reject、P2 2・P3 6（ほかに補足 2）。
+- Coordinator の裁定: 全件を受理。round 3 が天井なので、名指しの file だけでなく、S1・S2 の型を意味の側で洗い直すよう指示した。
+
+| finding | 要旨 | 反映した所 |
+|---|---|---|
+| Codex C1（P2） | 「レポート系は表にしない」は原文の範囲を超える | S7-2 の列見出しの項（サマリと単一レコードの詳細に限る、比較用の表は DSR-16） |
+| Codex C2（P2） | ランキング 1 位は 2026-09-28 の L3 で不採用（D-094）。他の項も後の決定で覆っていないか | S7-2 のランキングの項の置き換え、項ごとの確かめの指示と起票の時点で確かめた所、AC-S7-3 |
+| Codex C3（P3） | Owner Effort Budget を decision point ごとに数え直す | Owner Effort Budget（消費 4、上限を 9 に改定し理由を書いた） |
+| Claude O1（P2） | 73 §73.4 の tree が現物と違う | S2-1 の直し方と「周りの説明の現物」の列 |
+| Claude O2（P2） | 24 の 65・370〜375 が旧い在庫補正の式 | S1-8 |
+| Claude O3（P3） | biz-task-specs の頭の (a) の一覧と、BIZ-03・BIZ-06 の停止中の注記 | S1-6 |
+| Claude O4（P3） | v1.0.0 は完了と書かない（D-070） | S2-2、S4 の SC4 |
+| Claude O5（P3） | AC-S3-3 を -A3 か節の中を読む形に | AC-S3-3 と baseline |
+| Claude O6（P3） | AC-S7-1 の activeProps は 1 以上 | AC-S7-1 |
+| Claude O7（P3） | Design Readiness と昇格先に S7。canvas の要旨は「repo に記録なし（未照合）」 | Design Readiness の 2 行、S7-2、AC-S7-3 |
+| Claude O8（P3） | 空になる節の見出し、backlog の頭の L8-4 の句、anchor の検索に root の README.md | S5 の前文の 2 段落、AC-S5-5 と baseline |
+| Claude 補足 1 | 35 §20.5 手順 3a の force_fill の値は code の `.max(0)` | S1-10 |
+| Claude 補足 2 | S4 で定義の無い記号「P8」 | S4 の前文（記号の定義、P8 は P1 にまとめた）、SCREEN_DESIGN の行の記号を SC1〜SC5 に |
+
+同じ型の洗い直しの結果:
+
+- S1 の型: docs の式は 80 行 / 27 file、src の comment の式は 18 行。分類は、直す 28（S1-6〜S1-11 を足した）、正しい 37、対象外 15、comment 18 は全部「正しい」か「対象外」。AC-S1-1 を意味の側の式（25 行）に、AC-S1-3 を全数の分類の確かめに替えた。
+- S2 の型: S2 の 15 行の全部で、周りの名前を現物と照らして列に書いた。現物と違ったのは次の 5 つで、どれもその行の直し方に入れた。
+  - S2-1: tree の component の 7 file が無い、29 行の「runtime 実装を含まない」、`find_active_stocktake` の呼出し元。
+  - S2-2: v1.0.0。
+  - S2-8: 上限の検査の担い手。
+  - S2-9: 識別の列が (b)。
+  - S2-11: `isEditableTarget` は非公開の関数。
