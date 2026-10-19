@@ -175,25 +175,25 @@ TD-327 の規則（Status は決定の状態だけ。実装が済んだかは co
 
 | # | D | 今の Status（要旨） | 直し方 | 結果 |
 |---|---|---|---|---|
-| S3-1 | D-117・D-118・D-119・D-120・D-121・D-122 | `proposed（design lane … の design の出力。… owner の決定は … 正本は … runtime は後続の lane）` | 先頭の `proposed` を `accepted` にし、末尾の「runtime は後続の lane」（実装の状態）を外す。出所（design lane・Plan Packet・owner の決定の TD・正本の一覧）は残す | — |
-| S3-2 | D-116 | `proposed（…runtime は後続の lane）`、別の行に `Superseded by: D-118` | `superseded（by D-118。…）` にし、「runtime は後続の lane」を外す | — |
-| S3-3 | D-056・D-058・D-079・D-084・D-087 | `accepted（…）`。D-092 の Compatibility が「全面 superseded」と書くが、各 D に Superseded の行が無い | 各 D に `- Superseded by: D-092（2026-09-25）。…` の行を足し、Status を `superseded（by D-092。元の出所）` にする（D-116 の行の形） | — |
-| S3-4 | D-085 | Status の行が無い | `- Status: accepted（…）` の行を足す。出所は git log・archive・本文の Activation の行で確かめた所だけ書く | — |
-| S3-5 | D-040 | `accepted. … Phase B remains a separately gated R4 migration.` | 実装の状態の語（remains）を外す。Phase B を R4 で別に通すことが決定の中身なら、時点の語を除いた形で残す | — |
-| S3-6 | D-041 | `… the later migration execution remains R4.` | 同じ | — |
-| S3-7 | D-043 | `accepted; Plan Gate passed and implementation completed …, pending Final Review and Human Gate.` | 実装・review の状態を外し、決定の出所だけを残す | — |
-| S3-8 | D-048 | `accepted（design phase、実装は未着手）` | 「実装は未着手」を外す | — |
-| S3-9 | D-049 | `accepted（2026-07-18。… 実装は R3 packet で進行）` | 「実装は R3 packet で進行」を外す | — |
-| S3-10 | D-066 | `accepted（…。導入と DEV_SETUP_CHECKLIST 追随は merge 後の follow-up）` | 「導入と … 追随は merge 後の follow-up」を外す | — |
-| S3-12 | D-034 | `accepted and implementation slice 1 reflected in PR #163. … only PK4/PK5/… remains follow-up slice 2. …` | 実装の状態（slice 1 の反映・slice 2 が残る）を外し、決定の出所を残す。「PR #163」は履歴境界の前の番号なので、残すなら境界の前の注記を付ける。同じ注記を D-035 の Status（「in PR #163 follow-up」）と D-039 の Status（「PR #166.」）にも当てる（どちらも境界の前の番号で、今の repo の #163・#166 と別物。`docs/PROJECT_HANDOFF.md` の履歴境界の節） | — |
-| S3-13 | D-038 | `accepted. D-034 slice 2's future mechanical checks …`（検査の対象に足す語彙の列挙が続く） | 「future mechanical checks」の時点の語を外す。検査の対象に足す語彙は決定の中身なので、時点の語を除いた形で残す | — |
-| S3-14 | D-045 | `accepted during Phase B execution …. The migration and first public hosted CI green are complete.` | 末尾の「… are complete」（実装の状態）を外す。採った時点と決定の中身（D-041/D-042 の裁定の扱い）は残す | — |
-| S3-15 | D-046 | `accepted and implemented by the D-045 follow-up workflow-guards R3 change.` | 「and implemented by …」を外す | — |
-| S3-16 | D-111 | `accepted（…。runtime は後続の lane）` | 「runtime は後続の lane」を外す | — |
-| S3-17 | D-113 | `accepted（…、runtime は後続の単位の lane と原価の lane）` | 「runtime は後続の単位の lane と原価の lane」を外す | — |
-| S3-18 | D-071 の `- Superseded in part by: D-121（2026-10-17、proposed）。…` | D-121 を proposed と書く | 「、proposed」を外す（D-121 は S3-1 で accepted） | — |
-| S3-19 | D-100・D-101・D-102・D-103・D-104・D-105・D-106・D-107 | `accepted（owner … Plan Packet … の設計判断。…（正本・script・test・文書・code）への反映は同 packet の実装の PR で行う）`（D-103・D-105 は「実装は同 packet の PR で行う」、D-104 は「runtime は同 packet の実装の PR」） | 反映の予定の句（実装の後に古くなる実装の状態の一種）だけを外す。決定の内容と出所（owner の判断・Plan Packet・設計判断の ID・plan-first の commit で記録したこと）は残す。D-106・D-107 の「merge で accepted にする。PR #138 で merge、2026-10-04」の類は、accepted になった時点の出所として「PR … の merge で accepted（日付）」の形に残す | — |
-| S3-11 | ADR `docs/adr/2026-10-16-stocktake-count-placement.md` の Status、`docs/adr/README.md` の同 ADR の行 | ADR は `proposed — 2026-10-16、…`、索引は「（proposed）」と「D-118 の design 出力であり未実装」 | ADR の template（`docs/templates/adr.md`）の 3 値は decision-log と同じ意味で、D-118 が accepted になるので ADR も `accepted` にする。索引の「（proposed）」を「（accepted）」に、「であり未実装」を外す | — |
+| S3-1 | D-117・D-118・D-119・D-120・D-121・D-122 | `proposed（design lane … の design の出力。… owner の決定は … 正本は … runtime は後続の lane）` | 先頭の `proposed` を `accepted` にし、末尾の「runtime は後続の lane」（実装の状態）を外す。出所（design lane・Plan Packet・owner の決定の TD・正本の一覧）は残す | 直した |
+| S3-2 | D-116 | `proposed（…runtime は後続の lane）`、別の行に `Superseded by: D-118` | `superseded（by D-118。…）` にし、「runtime は後続の lane」を外す | 直した |
+| S3-3 | D-056・D-058・D-079・D-084・D-087 | `accepted（…）`。D-092 の Compatibility が「全面 superseded」と書くが、各 D に Superseded の行が無い | 各 D に `- Superseded by: D-092（2026-09-25）。…` の行を足し、Status を `superseded（by D-092。元の出所）` にする（D-116 の行の形） | 直した |
+| S3-4 | D-085 | Status の行が無い | `- Status: accepted（…）` の行を足す。出所は git log・archive・本文の Activation の行で確かめた所だけ書く | 直した |
+| S3-5 | D-040 | `accepted. … Phase B remains a separately gated R4 migration.` | 実装の状態の語（remains）を外す。Phase B を R4 で別に通すことが決定の中身なら、時点の語を除いた形で残す | 直した |
+| S3-6 | D-041 | `… the later migration execution remains R4.` | 同じ | 直した |
+| S3-7 | D-043 | `accepted; Plan Gate passed and implementation completed …, pending Final Review and Human Gate.` | 実装・review の状態を外し、決定の出所だけを残す | 直した |
+| S3-8 | D-048 | `accepted（design phase、実装は未着手）` | 「実装は未着手」を外す | 直した |
+| S3-9 | D-049 | `accepted（2026-07-18。… 実装は R3 packet で進行）` | 「実装は R3 packet で進行」を外す | 直した |
+| S3-10 | D-066 | `accepted（…。導入と DEV_SETUP_CHECKLIST 追随は merge 後の follow-up）` | 「導入と … 追随は merge 後の follow-up」を外す | 直した |
+| S3-12 | D-034 | `accepted and implementation slice 1 reflected in PR #163. … only PK4/PK5/… remains follow-up slice 2. …` | 実装の状態（slice 1 の反映・slice 2 が残る）を外し、決定の出所を残す。「PR #163」は履歴境界の前の番号なので、残すなら境界の前の注記を付ける。同じ注記を D-035 の Status（「in PR #163 follow-up」）と D-039 の Status（「PR #166.」）にも当てる（どちらも境界の前の番号で、今の repo の #163・#166 と別物。`docs/PROJECT_HANDOFF.md` の履歴境界の節） | 直した |
+| S3-13 | D-038 | `accepted. D-034 slice 2's future mechanical checks …`（検査の対象に足す語彙の列挙が続く） | 「future mechanical checks」の時点の語を外す。検査の対象に足す語彙は決定の中身なので、時点の語を除いた形で残す | 直した |
+| S3-14 | D-045 | `accepted during Phase B execution …. The migration and first public hosted CI green are complete.` | 末尾の「… are complete」（実装の状態）を外す。採った時点と決定の中身（D-041/D-042 の裁定の扱い）は残す | 直した |
+| S3-15 | D-046 | `accepted and implemented by the D-045 follow-up workflow-guards R3 change.` | 「and implemented by …」を外す | 直した |
+| S3-16 | D-111 | `accepted（…。runtime は後続の lane）` | 「runtime は後続の lane」を外す | 直した |
+| S3-17 | D-113 | `accepted（…、runtime は後続の単位の lane と原価の lane）` | 「runtime は後続の単位の lane と原価の lane」を外す | 直した |
+| S3-18 | D-071 の `- Superseded in part by: D-121（2026-10-17、proposed）。…` | D-121 を proposed と書く | 「、proposed」を外す（D-121 は S3-1 で accepted） | 直した |
+| S3-19 | D-100・D-101・D-102・D-103・D-104・D-105・D-106・D-107 | `accepted（owner … Plan Packet … の設計判断。…（正本・script・test・文書・code）への反映は同 packet の実装の PR で行う）`（D-103・D-105 は「実装は同 packet の PR で行う」、D-104 は「runtime は同 packet の実装の PR」） | 反映の予定の句（実装の後に古くなる実装の状態の一種）だけを外す。決定の内容と出所（owner の判断・Plan Packet・設計判断の ID・plan-first の commit で記録したこと）は残す。D-106・D-107 の「merge で accepted にする。PR #138 で merge、2026-10-04」の類は、accepted になった時点の出所として「PR … の merge で accepted（日付）」の形に残す | 直した |
+| S3-11 | ADR `docs/adr/2026-10-16-stocktake-count-placement.md` の Status、`docs/adr/README.md` の同 ADR の行 | ADR は `proposed — 2026-10-16、…`、索引は「（proposed）」と「D-118 の design 出力であり未実装」 | ADR の template（`docs/templates/adr.md`）の 3 値は decision-log と同じ意味で、D-118 が accepted になるので ADR も `accepted` にする。索引の「（proposed）」を「（accepted）」に、「であり未実装」を外す | 直した |
 
 S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-038・D-046・D-049・D-055・D-062・D-065・D-074・D-085）の `Superseded in part by: D-092` の行（Coordinator の裁定の外）。
 
