@@ -79,7 +79,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **廃番切替:**
 1. product_codeで既存商品を取得
 2. is_discontinuedを反転
-3. 廃番化は `plu_target=0` と slot 解放 trigger を伴う。復帰は `plu_target` を自動で戻さない
+3. 廃番化は `plu_target=0` にする。復帰は `plu_target` を自動で戻さない。枠は D-117 の後は解放しない（下の `PLU対象` の節。今の build は解放する、BIZ-04 の「runtime の状態」）
 4. operation_logsに記録（operation_type='product_discontinue'）
 
 **独自コード発番:**
@@ -100,9 +100,9 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 7. 各商品について初期在庫ありならinventory_movementsにINSERT
 8. operation_logsに記録
 
-**CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で撤去）:**
+**CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で外す。今の build には `bulk_set_plu_target` が残る）:**
 - `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。不正 JAN の `1` は warning + `0`
-- 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117）
+- 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117。今の build は解放する、BIZ-04 の「runtime の状態」）
 
 **前の JAN の別名（D-122、proposed・未実装）:**
 - 上書きで JAN を直す行のうち、前の JAN をその商品だけが持ち、新規の行がその JAN を持たない行に「前の番号のバーコードが付いた現物は店にありますか」を出す（既定「ない」。上書きの選択に依らない条件で広めに出す）。「ある」の行は、commit が実際の上書きの選択で 30 BIZ-01-D9 の判定表を満たすとき（取込みの後にその JAN を誰も持たない等）だけ前の JAN を別名として残し、満たさなければ判定表の error で全体を戻す。商品が JAN を持つと、その JAN の別名は DB の trigger が消す
@@ -296,7 +296,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【データ構造】**
 
 入力データ:
-- DailyReportSourceFile[]（filename, bytes）。標準はレジの SD から読んだ候補の束（IO-09 経由、§37.9 `scan_register_sd_daily_reports`、D-111）、予備は利用者が選んだ 3 ファイル（dialog の path を持ち、自動で見つけた SD の root の下の file は SD の入力として扱う。37 §37.3 手順 1a）。SD の探し方の選択は BIZ-08 の `DailyReportSdSelection`（CMD-12 が作る。IO-09 の型にしない）
+- DailyReportSourceFile[]（filename, bytes）。標準はレジの SD から読んだ候補の束（IO-09 経由、§37.9 `scan_register_sd_daily_reports`、D-111。runtime は未実装〈Draft PR #172〉で、今の build は下の予備の 3 ファイルだけ）、予備は利用者が選んだ 3 ファイル（dialog の path を持ち、自動で見つけた SD の root の下の file は SD の入力として扱う。37 §37.3 手順 1a）。SD の探し方の選択は BIZ-08 の `DailyReportSdSelection`（CMD-12 が作る。IO-09 の型にしない）
 
 段階間受け渡しデータ:
 - DailyReportSdScan（SD の候補の一覧と状態〈取り込める / 取込み済み / 同じ精算を取込み済み / そろわない / 読めない〉、BIZ-08-D3）
@@ -380,6 +380,8 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 ### BIZ-04: PLU書出しロジック
 
 **タスク要求**: 毎日の SD の読取りで Z004 全スロットダンプからレジ占有を照合し、JAN 単位の memory No. を永続予約し、CV17 用 product 行を生成・確認する（D-072 / D-117 / REQ-907）。
+
+> **runtime の状態**: 本節は D-117 の後の形（採用済み）。今の build は、占有を利用者が選ぶ Z004 で照合し（`biz/plu_export_service.rs` の `import_plu_register_snapshot`）、`plu_target` 1→0・廃番化・JAN の変更で枠を解放し（`release_plu_slot_for_jan`、`release_pending`）、Clear 行を書く（`PLU_CLEAR_ROW_ENABLED = true`）。撤去と SD の読取りでの照合への切替えは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。
 
 **データ構造**: `plu_slots`、products、snapshot 用 app_settings、operation_logs。prepare / confirm は exact product_code set と `memory_no` を受け渡す。要修正理由に `no_free_slot` を含む。
 
