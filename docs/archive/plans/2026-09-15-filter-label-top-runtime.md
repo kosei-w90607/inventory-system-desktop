@@ -411,5 +411,5 @@ Sonnet closure = findings 0、GA4 oracle 11 本一致、mutant 2 本 kill（`#is
 ## 後続
 
 - `shrink-0` 恒真 assert（`Badge` / `Button` の base に既存、`StocktakeProgressHeader` の明示 class と test の `toHaveClass("shrink-0")` が恒真。fresh broad Opus P3-3、PR #63）は [Backlog「記録目的」](../../backlog.md#記録目的受容済みリスクrevisit-条件付き)を参照。
-- 一括価格改定の取引先紐付けを既定 off + 文言明示（owner 決定 2026-09-16）は [Backlog「次に動く lane」](../../backlog.md#次に動く-lane順番固定)を参照。
+- 一括価格改定の取引先紐付けを既定 off + 文言明示（owner 決定 2026-09-16）は [Backlog「次に動く lane」](../2026-10-19-backlog-closed.md#次に動く-lane順番固定)を参照。
 - destructive Alert の soft 塗り + 三角 icon（owner 所感 2026-09-15、L3 で確定）は [Backlog「やると決めたもの」](../../backlog.md#やると決めたもの順番未定)を参照。
