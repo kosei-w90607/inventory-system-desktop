@@ -346,7 +346,9 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 ## Implementation Results
 
-実装の後に書く。
+- 「規則の文と置き場」の fenced block（12 個）を、本文を変えずに置き場の 7 file へ入れた: `docs/DEV_WORKFLOW.md`（Wave Operation の Ready の箇条の句と D-124 の箇条）、`docs/DOC_STYLE_GUIDE.md`（頭の「対象」の行と §1 の D-125 の節）、`docs/quality/review-checklist.md`（カテゴリ 8 の参照の行と更新履歴）、`docs/backlog.md`（Final Review の枠の 1 項）、`docs/decision-log.md`（頭の `## Status の書き方`。先頭の BOM を保った。D-124〜D-127 は変えていない）、`AGENTS.md`（Working Rules の 3 箇条、Decision and Approval Boundaries の (f)、Safety の両立の句）、`CLAUDE.md`（(g)(h) の 2 段落）
+- AC1〜AC7 を bash で逐語に実行し、全て実装の後の期待どおり（AC5 の 15 本は指定の節の中の 1 行ずつ。AC6 の hit は baseline の行と足した行だけ）。AC8 の doc check（full・`--target plan`）と `bash scripts/check-workflow-git.sh` は exit 0。Draft の hosted run と PR は [PR #179](https://github.com/kosei-w90607/inventory-system-desktop/pull/179) を参照
+- 直した文の旧い文言（Ready の箇条の「Coordinator は既定案として review 通過順を提示する。」、Safety の「小さく、確認可能な変更を優先する。」で終わる行、DOC_STYLE_GUIDE の旧い「対象」の行）を repo 全体に `rg` で当て、archive を除く live な残りは 0（packet の置き場の説明が旧い文を引く 1 行だけ）
 
 ## Review Response
 

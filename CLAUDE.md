@@ -18,9 +18,13 @@ tracked project hook inventoryは空で、`claude-code-harness`はproject scope�
 
 モデル固有補助は [Anthropicの当該モデル向けガイド](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) と実際の観測で選ぶ。Astraの特性をClaudeへ転記しない。
 
+owner に渡すコピペ物（command・URL の一覧・checklist）は返答の本文に inline で書き、path は省略しない完全な形で書く（WSL は `/home/kosei/...`、Windows は `C:\Users\Owner\...`、Windows から WSL の file は `\\wsl.localhost\Ubuntu-22.04\home\kosei\...`。D-127）。
+
 ## 座組と effort
 
 座組と effort の既定値は [座組表](docs/AGENT_OPERATING_MANUAL.md#座組) が正本で、ここに値を書かない。`.claude/settings.json` の `effortLevel` は main session の値。project設定を読まない `--safe-mode` 等の別セッションでは effort を明示指定し、要求値と取得できた実行metadataを記録する。
+
+安全境界（safe wrapper・path traversal・repo の外の参照・execpolicy）の敵対的な検証は Claude の subagent に発注しない。発注の分野そのものが dual-use の安全の判定に掛かり、model が切り替わって止まる（PR #15 で語の言い換えでも再現した）。この分野の review は Coordinator が source を直接読む inline の review か、Codex への発注で行う。Coordinator の inline の review は fresh context でないので Final Review の本数に数えない。この分野の lane の Claude 側の枠の扱いは、共通の正本で決めるまで、その lane の起票で owner に諮る（D-127。backlog に項目がある）。
 
 ## 再開とmemory
 

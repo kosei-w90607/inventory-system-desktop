@@ -1,7 +1,7 @@
 # ドキュメント書き方ガイド
 
 > **目的**: 設計ドキュメントの書き方ルールを一元管理し、記述のブレを防ぐ
-> **対象**: docs/ 配下の全設計書、src-tauri/src/ 内の doc comment
+> **対象**: docs/ 配下の全設計書、src-tauri/src/ 内の doc comment（§1 の箇所の引き方は `src/` の comment と backlog の申し送りも対象）
 > **自動検証**: `scripts/doc-consistency-check.sh` で機械チェック可能な項目には ✅ を付記
 
 ---
@@ -77,6 +77,16 @@ design-system/README.md（索引）→ design-system/{NN}-{topic}.md（詳細）
 - **要件ID**: `REQ-NNN` 形式
 - テスト関数名に REQ 番号を含める: `test_create_product_req101_normal`
 - テスト内にコメントで仕様ID記載: `// REQ-101-01: JANコード入力で商品登録`
+
+### code と文書の箇所の引き方（行番号で引かない）
+
+設計の正本（`docs/` の設計書・workflow の正本・runbook）と code の comment（`src/`・`src-tauri/src/`）は、箇所を行番号（`path:N`・`` `:N` ``・`#LN`）で引かない。行番号は code や文書の変更で動き、読み手を別の箇所へ導く（D-125）。
+
+- code は repo root からの path と symbol（関数・型・定数・test の名前）で引く。範囲は symbol と、その中の目印の語で書く
+- 文書は節の ID（`§12.3`・`BIZ-01-D8`・`DSR-22` 等）か節の見出しで引く
+- `docs/backlog.md` の申し送りで行番号を使うときは、書いた時点の main の commit を同じ行に添える（例: 「`18db621e` の時点で `src-tauri/src/biz/product_service.rs:965`」）。`docs/Plans.md` は現在地を持つ所で、行番号の申し送りを置かない
+- 時点を書いた記録（commit・library の版・日付を書いた観測、dated の調査・提案・L3 の記録、decision-log の append-only の本文）の行番号は、その時点の観測としてそのまま残す
+- 対象外: dated の Plan Packet と Test Design Matrix（起票の時点の観測）、data の行番号（CSV・EJ の `line_no` 等の製品の契約）、review の finding と subagent の報告の `path:line`（その時点の版に対する一時の出力。[code_review.md](code_review.md)、[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の Subagent Budget）
 
 ---
 

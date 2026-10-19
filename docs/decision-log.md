@@ -5,6 +5,13 @@
 Capture the high-value decisions and their rationale so the project does not re-litigate them after context loss.
 Use concise ADR-style entries.
 
+## Status の書き方
+
+- `Status` は決定の状態だけを書く: `accepted`（決まった）、`superseded`（全体が置き換わった）、`withdrawn`（取り下げた）。`proposed` は owner の決定の前だけに使う。括弧に出所（owner の決定の日付・repo 外の回答台帳の ID・design lane）を添えてよい。superseded は `superseded（by D-xxx。元の出所）` と書く
+- 実装が済んだか、どの lane・PR が反映するかは code と `docs/Plans.md`・Plan Packet が持ち、Status に書かない
+- 決定の本文（Decision・Why・Alternatives ほか）は、main に merge された後は append-only で書き換えない（同じ PR の merge の前の直しは対象外）。全体が置き換わったときは Status を `superseded（by D-xxx。元の出所）` にし、本文の後に `- Superseded by: D-xxx（日付）。置き換わった中身` の行を足す。一部が置き換わったときは `- Superseded in part by: D-xxx（置き換わった所）` の行を足す。後から直してよいのは Status の行（状態の語と出所）と、Status の行が無い D への Status の行の追加と、Superseded の行の追加と、file の移送に伴う link の path の直しだけ
+- 理由と棄却案は D-126
+
 ## D-001
 - Decision: Use `Tauri 2.x + React + TypeScript + SQLite`
 - Status: accepted
