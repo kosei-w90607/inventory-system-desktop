@@ -29,6 +29,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 3. plan-draft（round 1 の是正、2026-10-19、起草役）: Plan Review round 1 の是正（Review Response 参照）。Scope の範囲と方向は変えず、段の中の行と AC を足し・直した。
 4. plan-draft（round 2 の前の追加、2026-10-19、起草役）: Q4 の裁定と S7 の追加（Review Response 参照）。S7 で Scope に 3 file を足した。
 5. plan-draft（round 2 の是正、2026-10-19、起草役）: Plan Review round 2 の是正（Review Response 参照）。S1・S2 の型を意味の側で洗い直し、S1 に行を足した。Owner Effort Budget の上限を改定した。
+6. plan-draft（round 3〈天井〉の是正、2026-10-19、起草役）: Coordinator が round 3 の残りを同型の一括是正に disposition した（Review Response 参照）。S1 の型の語の幅を広げて洗い直し、S4 に採用済みで未実装の決定の型の洗い直しを足した。
 
 ## Owner Effort Budget
 
@@ -96,7 +97,7 @@ PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledge
 | # | file・節 | 今の文（要旨） | 直し方（code の根拠） | 結果 |
 |---|---|---|---|---|
 | S1-1 | `docs/function-design/35-biz-stocktake-service.md` §20.5 処理ステップ 5 g | 差異があれば `update_stock_quantity(actual_count)` の後に `insert_movement` | 補正の `insert_movement`（`business_date` = 確定した日〈Local の今日〉、`settlement_no` = なし）の後に `recompute_stock` で写しを記録から求め直す順に直す（`biz/stocktake_service.rs` の `legacy_complete_stocktake`）。記録の `stock_after` は `actual_count`。写しが記録と一致しているときは求め直しの値も `actual_count` と同じで、一致していなければ写しは求め直しの値になる（記録の `stock_after` は `actual_count` のまま） | — |
-| S1-2 | 同 §20.5「設計判断 — apply_stock_change を使わない理由」の 3 項 | 1 項目が `apply_stock_change` の中を「find → stock計算 → update_stock_quantity → insert_movement」と書き、3 項目が「update_stock_quantity + insert_movement を直接呼び出す」 | `apply_stock_change` の今の中（movement を INSERT → `recompute_stock` → `update_movement_stock_after`、`biz/inventory_service/common.rs`）に合わせ、3 項目を「`insert_movement` で補正の記録を足し、写しは `recompute_stock` で求め直す（`update_stock_quantity` を直に呼ばない）」へ。使わない理由の 1（同じ商品を 2 回読む）は残す。理由の 2（`stock_after` は actual_count そのもの）は S1-1 の条件付きの形（写しが記録と一致しているとき求め直しの値と同じ）に直す | — |
+| S1-2 | 同 §20.5「設計判断 — apply_stock_change を使わない理由」の 3 項 | 1 項目が `apply_stock_change` の中を「find → stock計算 → update_stock_quantity → insert_movement」と書き、3 項目が「update_stock_quantity + insert_movement を直接呼び出す」 | `apply_stock_change` の今の中（movement を INSERT → `recompute_stock` → `update_movement_stock_after`、`biz/inventory_service/common.rs`）に合わせ、3 項目を「`insert_movement` で補正の記録を足し、写しは `recompute_stock` で求め直す（`update_stock_quantity` を直に呼ばない）」へ。使わない理由の 1（同じ商品を 2 回読む）は残す。理由の 2（368 行の「`stock_after` は actual_count そのもので、現在在庫 + 変動量の計算ではない」）は S1-1 の条件付きの形（写しが記録と一致しているとき求め直しの値と同じ）に直す | — |
 | S1-3 | `docs/function-design/32-biz-csv-import-service.md` §15.5 処理ステップ 5 と「在庫補正の詳細」 | 無効にした movement を product_code ごとに合算し、`new_stock = stock + correction` を `update_stock_quantity` で書く | 無効にした movement の商品ごとに `recompute_stock` で求め直し、前後の写しを `StockCorrection` に入れる形へ（`biz/csv_import_service/commit.rs` の `apply_void_stock_corrections`、`rollback.rs` の `legacy_rollback_csv_import`）。値は、写しが記録と一致しているとき「写し − 無効にした数量」と同じ（同関数の doc comment）で、一致していなければ記録から求め直した値になる。補償の movement は作らない | — |
 | S1-4 | 同 §15.5「設計判断 — apply_stock_change を使わない理由」 | 「ここでは直接 update_stock_quantity を使う」 | 「movement を足さず、無効にした記録を除いて `recompute_stock` で求め直す」へ | — |
 | S1-5 | 同 §15.8 対応不変条件の INV-2 の行 | 「rollback 時は直接 update_stock_quantity」 | 「rollback 時は `recompute_stock` で求め直す」へ | — |
@@ -104,21 +105,34 @@ PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledge
 | S1-7 | 同 BIZ-02 の 119 行（共通在庫処理の説明）と BIZ-03「確定」の 266 行 | 「products.stock_quantityの更新とinventory_movementsの記録」「products.stock_quantity更新 + inventory_movementsにINSERT」 | 「movement を足し、その商品を `recompute_stock` で求め直して写しを書く」へ（`biz/inventory_service/common.rs` の `apply_stock_change`）。266 行は旧本体の確定（停止中）の記述と注記する | — |
 | S1-8 | `docs/function-design/24-io-csv-import-repo.md` の `VoidedMovement` の `quantity` の説明（65 行）、`void_movements_by_reference` の戻りの説明（340 行）、「BIZ-03 での在庫補正」の例と式（369〜372 行）、設計判断の SELECT → UPDATE の理由（376 行） | quantity を逆方向に変換して在庫補正に使う、`products.stock_quantity -= voided.quantity` | 「BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない）」へ。戻り値のうち BIZ-03 が使うのは `product_code`（`commit.rs` の `apply_void_stock_corrections` は `vm.product_code` だけを集める）。SELECT → UPDATE の理由は、無効にする movement の商品を BIZ に渡すためと直す。369 行の見出しの語は残してよい | — |
 | S1-9 | `docs/ARCHITECTURE.md` 179 行（BIZ-02 の表の行）、`docs/db-design/pos-tables.md` 414 行（Z004 の確定）、`docs/function-design/44-cmd-inventory.md` 1099・1112 行（層の責務の表と INV-2 の行） | 「products.stock_quantity更新＋inventory_movements記録」「stock_quantity更新+movements記録」「stock_quantity更新とmovements記録の同時性」 | 「movement の記録と、記録からの写しの求め直し（同じ TX）」の向きに直す。pos-tables 414 は旧本体の確定（停止中）と注記する | — |
-| S1-10 | `docs/function-design/35-biz-stocktake-service.md` §20.5 処理ステップ 3a（force_fill） | 未入力の明細に `product.stock_quantity` をそのまま入れる | code（`legacy_complete_stocktake` の `product.product.stock_quantity.max(0)`、コメント「R-3 + P3-7: 負在庫補正。INV-3準拠」）に合わせ、負の在庫は 0 を入れると直す | — |
-| S1-11 | `docs/diagrams/current-system.md` の「在庫の増減と取消」の図（184 行の ROLLBACK の「その増減を戻す」）と「棚卸しの時間と在庫」の図 | 取消で増減を戻す、確定で actual_count へ在庫を合わせる | S4 の H1 で直す（無効にした記録を除いて求め直す、補正の movement を足して求め直す）。ここでは S1 の型の hit として数える | — |
+| S1-10 | `docs/function-design/35-biz-stocktake-service.md` §20.5 処理ステップ 3a（force_fill） | 未入力の明細に `product.stock_quantity` をそのまま入れる | code（`legacy_complete_stocktake` の `product.product.stock_quantity.max(0)`、コメント「R-3 + P3-7: 負在庫補正。INV-3準拠」）に合わせ、負の在庫は 0 を入れると直す。同じ手順の注記「※ 現在のシステム在庫をそのまま actual_count にセット（差異なし扱い）」も、「負の在庫は 0 を入れるので、その商品には差異が出る」に直す | — |
+| S1-11 | `docs/diagrams/current-system.md` の「在庫の増減と取消」の図（176 行の `CHANGE` の節の「products更新 + inventory_movements追加」、184 行の ROLLBACK の「その増減を戻す」）と「棚卸しの時間と在庫」の図 | 増減は products を更新して movement を足す、取消で増減を戻す、確定で actual_count へ在庫を合わせる | S4 の H1 で直す（movement を足して記録から求め直す、無効にした記録を除いて求め直す、補正の movement を足して求め直す）。177〜181 行の矢印の「加算」「減算」は movement の向きの説明で残す。ここでは S1 の型の hit として数える | — |
+| S1-12 | `docs/db-design/pos-tables.md` の Rollback の手順 2（425 行） | 「movement を product_code 別に逆補正」 | 「無効にした movement の商品ごとに `recompute_stock` で求め直す」へ。停止中の旧本体の記述だと注記する | — |
+| S1-13 | `docs/function-design/35-biz-stocktake-service.md` §20.8 対応不変条件の INV-2 の行（540 行） | 「新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す」 | 「新方式」は置き換わった時点証拠 ADR の確定の式。D-118 で置き換わったので、旧本体の今の形（補正の movement の `stock_after` は `actual_count`、写しは `recompute_stock`。S1-1 の条件付きの形）と、D-118 の (b) の確定は 35 の冒頭の D-118 の節を引く形に直す | — |
 
-S1 の型の洗い直し（round 2 の是正で足した。`docs` から `docs/archive/`・`docs/plans/`・`docs/research/`・`docs/evidence/` を除いた範囲と、`src`・`src-tauri/src` の comment を、意味の側の式で全部洗った。起点 `18db621e` と同じ docs の本体、tip `79d51fb1`、2026-10-19）:
+S1 の型の洗い直し（round 2 の是正で足し、round 3 の是正で語の幅を「逆補正・逆方向・相殺・加算・減算・補正の和・在庫 +・在庫 -・`+=`・`-=`」まで広げて洗い直した。`docs` から `docs/archive/`・`docs/plans/`・`docs/research/`・`docs/evidence/` を除いた範囲と、`src`・`src-tauri/src` の comment。docs の本体は起点 `18db621e` と同じ、tip `578a863f`、2026-10-19）:
 
 ```text
-docs:    rg -n --no-heading -e 'stock_quantity\s*[-+]?=' -e 'stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)' -e '(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity' -e 'update_stock_quantity' -e '[-+]=\s*.*quantity' -e '在庫補正' -e '逆方向' -e '(在庫|増減)[^。|]{0,6}を戻す' -e '在庫を[^。|]{0,8}補正' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs
-         → 80 行 / 27 file
-comment: rg -n --no-heading -e '//.*(stock_quantity\s*[-+]?=|stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)|(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity|update_stock_quantity|[-+]=\s*.*quantity|在庫補正|逆方向|(在庫|増減)[^。]{0,6}を戻す|在庫を[^。]{0,8}補正)' src-tauri/src src --glob '!src/lib/bindings.ts'
-         → 18 行
+docs:    rg -n --no-heading -e 'stock_quantity\s*[-+]?=' -e 'stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)' -e '(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity' -e 'update_stock_quantity' -e '[-+]=\s*.*quantity' -e '在庫補正' -e '逆方向' -e '(在庫|増減)[^。|]{0,6}を戻す' -e '在庫を[^。|]{0,8}補正' -e '逆補正' -e '相殺' -e '加算' -e '減算' -e '補正の和' -e '在庫 ?[+＋]' -e '在庫 ?[-−ー]\s?[0-9（(]' -e '\+=' -e '-=' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs
+         → 286 行（round 2 の式の 80 行 + 広げた語で増えた 206 行）
+comment: rg -n --no-heading -e '//.*(stock_quantity\s*[-+]?=|stock_quantity.{0,40}(更新|補正|逆方向|差分|加算|減算|戻す|合わせ|上書き)|(更新|補正|逆方向|差分|加算|減算|上書き).{0,40}stock_quantity|update_stock_quantity|[-+]=\s*.*quantity|在庫補正|逆方向|(在庫|増減)[^。]{0,6}を戻す|在庫を[^。]{0,8}補正|逆補正|相殺|加算|減算|補正の和|在庫 ?[+＋]|在庫 ?[-−ー]\s?[0-9（(])' src-tauri/src src --glob '!src/lib/bindings.ts'
+         → 38 行（round 2 の式の 18 行 + 20 行）
 ```
+
+広げた語で増えた 206 行の分類: 直す 6（pos-tables:425〈S1-12〉、diagrams/current-system:176〈S1-11〉、35:368〈S1-2 の理由の 2〉・540〈S1-13〉、23:245・352〈S1 の型でなく D-118 で外した「相殺の判定」を入力の理由に書く文。S2-16〉）、正しい 49、対象外 151（置き換わった時点証拠 ADR の本文 62、design-system/reference の mockup と原文 25、screen_mockups.html 1、decision-log の本文 6、売上の集計・金額・日付の「加算」と表示の「相殺」と PowerShell の `+=` 50、backlog 7〈S5 の行が扱う〉）。正しい 49 は、movement の向きとしての在庫の加算・減算（入庫・手動販売・廃棄・返品の画面と設計、`戻り（在庫+）`・`渡し（在庫-）` の表示、`pos_stock_sync` の意味）、入力の行の数量の加算、二重減算の問題の記録（transaction-tables・cross-feature-verification・停止 ADR）、旧 ADR の相殺の判定を外したことの記録（23:9、29:423・439・446、32:5・30、55:8）、`docs/function-design/10-common-rules.md` の上限の見積もりの表の「在庫 + 1 明細の数量」「在庫 + 補正の和」（180・181 行。正しい〈上限の見積もり〉。取消は求め直しになったが、求め直しの値は同じ範囲に入る）。
 
 | 分類 | 数 | 行（file:起点の行） |
 |---|---|---|
-| 直す（S1 の行） | 28 | 35:335・367・369（S1-1・S1-2）、32:411・413・421・432・433・434・435・437・530（S1-3〜S1-5。411・413・432 は手順と節の見出しで、語は残し下の本文を直す）、biz-task-specs:278・488（S1-6）、biz-task-specs:119・266（S1-7）、24:65・340・369・370・371・372・376（S1-8）、ARCHITECTURE:179・pos-tables:414・44:1099・44:1112（S1-9）、diagrams/current-system:184（S1-11） |
+| 直す（S1 の行） | 34 | 下の round 2 の 28 行に、広げた語の 6 行（上の段落）を足す |
+| 正しい（残す） | 86 | round 2 の 37 行（下）+ 広げた語の 49 行（上の段落） |
+| 対象外（理由） | 166 | round 2 の 15 行（下）+ 広げた語の 151 行（上の段落） |
+| code の comment | 38 | 37 行は「正しい」か「対象外」（下の round 2 の 18 行、売上・表示の「相殺」「加算」、日付の加算、`ListShell` の隙間の相殺、cfg(test) の時点証拠の comment）。1 行は古い: `src-tauri/src/db/sales_repo.rs:165` の「ロールバック時の逆補正用（product_code + 元のquantity）」（今の BIZ-03 は quantity を使わない）。本 lane は code を変えないので、S5 で backlog に 1 行足す |
+
+round 2 の式の 80 行の分類（round 2 の是正のときの表）:
+
+| 分類 | 数 | 行（file:起点の行） |
+|---|---|---|
+| 直す（S1 の行） | 28 | 35:335・367・369（S1-1・S1-2）、32:411・413・421・432・433・434・435・437・530（S1-3〜S1-5。411・432 は手順と節の見出しで、語は残し下の本文を直す。413 は見出しの語〈在庫補正〉は残し、括弧書き〈product_code でグループ化して集計〉を直す）、biz-task-specs:278・488（S1-6）、biz-task-specs:119・266（S1-7）、24:65・340・369・370・371・372・376（S1-8）、ARCHITECTURE:179・pos-tables:414・44:1099・44:1112（S1-9）、diagrams/current-system:184（S1-11） |
 | 正しい（残す） | 37 | 求め直しの文と写しの書込みの関数の定義: 21:5・10・383・389・392・395、31:7、20:9、master-tables:7・8、transaction-tables:7、ADR（計数の置き場）:16・57、36:213（計数の無い商品に限った正しい等式）、36:159（操作ログの文言）。在庫を変えない・条件の文: 37:296、51:28、35:156・178・268・290・336、biz-task-specs:473、44:784、24:688（責務の所在）、ARCHITECTURE:151（整合性の補正の画面）、75:49（query の無効化）、ACCEPTANCE_SCENARIO:134（符号の説明）、DB_DESIGN:85・101。業務記録の取消・訂正の設計（逆方向の movement を足す、(b) と別の未実装の設計）: transaction-tables:60、tracking-system-tables:99、65:46・206・207・209・210 |
 | 対象外（理由） | 15 | 置き換わった時点証拠 ADR の本文（superseded の記録）: adr/2026-09-18-stocktake-time-evidence:58・180・271・278・284・314・373。decision-log の決定の本文（append-only）: 385・387（D-051、D-118 の Superseded in part の行あり）・397（無関係の「逆方向」）・927・928（D-109）。参照資料: screen_mockups.html:194、design-system/reference/2026-08-20-proposal-A-rules-bound:133。backlog:53（S5 の 53〜55 の行が扱う） |
 | code の comment | 18 | 全部「正しい」か「対象外」（本 lane は code を変えない）。在庫補正の語は取消の補正の結果の名（`commit.rs`・`rollback.rs`・`mod.rs`・`integrity_service.rs`）、test の comment は結果の等式（`stocktake_service.rs` の 1285・1286・1568）、`common.rs:348` は `recompute_stock` の中の `update_stock_quantity` の戻り、`sales_repo.rs:410` は戻り値を BIZ-03 が使うこと。古い手順を書く comment は無かった |
@@ -133,7 +147,7 @@ S2 の型の洗い直し（round 2 の是正で足した）: 「future」「予�
 
 | # | file・起点の行 | 今の文（要旨） | 直し方 | 周りの説明の現物 | 結果 |
 |---|---|---|---|---|---|
-| S2-1 | `docs/function-design/73-ui-stocktake.md` の 18 行（29・33・46・62・86・157・173・174・180・207・210・281・289・291〜295） | 読取りの command・hook・route を「future」と書く | 括弧書きの「future」を外し、29 行の「以降 future と明記した契約は未実装」の文を今の状態に直す（`lib.rs` の command 登録 `get_active_stocktake`・`find_stocktake_item`・`get_last_completed_stocktake`、`src/features/stocktake/hooks/`、`src/routes/stocktake.tsx`）。あわせて UI-10-D7 の決定の文（102 行）と 279 行の「既存 4 command は `#[tauri::command]` だけで `#[specta::specta]` が無く bindings に型が無い」を、今の状態（`src-tauri/src/cmd/stocktake_cmd.rs` の `start_stocktake`・`get_stocktake_items`・`update_count`・`complete_stocktake` に `#[specta::specta]` があり、`src/lib/bindings.ts` に 4 関数がある）に直す。決定の中身（生 invoke を禁じ specta で揃える）は残す。§73.4 の file tree を現物に書き直す（component は別 file でなく `src/features/stocktake/StocktakePage.tsx` の export、route は `src/routes/stocktake.tsx` の layout と `src/routes/stocktake/index.tsx` の `validateSearch`）。29 行の「本書は runtime 実装（route / components / hooks / specta 化）を含まない」と、IO の `find_active_stocktake` を「`start_stocktake` から呼ばれている」とする句も直す | hooks の 6 file は `src/features/stocktake/hooks/` に在る。tree の component の 7 file（`StocktakeStartPanel.tsx` ほか）は無く、7 つとも `StocktakePage.tsx` の export（`StocktakePage`・`StocktakeStartPanel`・`StocktakeProgressHeader`・`StocktakeCountEntry`・`StocktakeItemList`・`StocktakeCompleteDialog`・`StocktakeResultPage`）。route は `src/routes/stocktake.tsx` と `src/routes/stocktake/index.tsx`（`validateSearch`）と記録詳細の `src/routes/stocktake.records.$stocktakeId.tsx`。command は `lib.rs` の登録に在る。BIZ の 3 関数は `biz/stocktake_service.rs`、IO の `find_active_stocktake`・`find_stocktake_item_by_code`・`find_last_completed_stocktake` と型の `LastStocktakeSummary`・`StocktakeItemDetail` は `db/stocktake_repo.rs` に在る。`find_active_stocktake` を呼ぶのは `get_active_stocktake` と旧本体（停止中）で、`start_stocktake` は停止の error を返す | — |
+| S2-1 | `docs/function-design/73-ui-stocktake.md` の 18 行（29・33・46・62・86・157・173・174・180・207・210・281・289・291〜295） | 読取りの command・hook・route を「future」と書く | 括弧書きの「future」を外し、29 行の「以降 future と明記した契約は未実装」の文を今の状態に直す（`lib.rs` の command 登録 `get_active_stocktake`・`find_stocktake_item`・`get_last_completed_stocktake`、`src/features/stocktake/hooks/`、`src/routes/stocktake.tsx`）。あわせて UI-10-D7 の決定の文（102 行）と 279 行の「既存 4 command は `#[tauri::command]` だけで `#[specta::specta]` が無く bindings に型が無い」を、今の状態（`src-tauri/src/cmd/stocktake_cmd.rs` の `start_stocktake`・`get_stocktake_items`・`update_count`・`complete_stocktake` に `#[specta::specta]` があり、`src/lib/bindings.ts` に 4 関数がある）に直す。決定の中身（生 invoke を禁じ specta で揃える）は残す。§73.4 の file tree を現物に書き直す（component は別 file でなく `src/features/stocktake/StocktakePage.tsx` の export、route は `src/routes/stocktake.tsx` の layout と `src/routes/stocktake/index.tsx` の `validateSearch`）。29 行の「本書は runtime 実装（route / components / hooks / specta 化）を含まない」を直し、IO の `find_active_stocktake` を「`start_stocktake` から呼ばれている」とする句は消すだけにする（呼出し元を列挙しない） | hooks の 6 file は `src/features/stocktake/hooks/` に在る。tree の component の 7 file（`StocktakeStartPanel.tsx` ほか）は無く、7 つとも `StocktakePage.tsx` の export（`StocktakePage`・`StocktakeStartPanel`・`StocktakeProgressHeader`・`StocktakeCountEntry`・`StocktakeItemList`・`StocktakeCompleteDialog`・`StocktakeResultPage`）。route は `src/routes/stocktake.tsx` と `src/routes/stocktake/index.tsx`（`validateSearch`）と記録詳細の `src/routes/stocktake.records.$stocktakeId.tsx`。command は `lib.rs` の登録に在る。BIZ の 3 関数は `biz/stocktake_service.rs`、IO の `find_active_stocktake`・`find_stocktake_item_by_code`・`find_last_completed_stocktake` と型の `LastStocktakeSummary`・`StocktakeItemDetail` は `db/stocktake_repo.rs` に在る。`find_active_stocktake` を呼ぶのは `get_active_stocktake` と旧本体（停止中）で、`start_stocktake` は停止の error を返す | — |
 | S2-2 | `docs/DEV_SETUP_CHECKLIST.md` 23・511・513・515・528・544（§14） | Phase 3・4 を「参考、未着手」「着手予定」「v1.0.0 予定」 | 画面の実装が済んだことだけを完了と書く（`docs/SCREEN_DESIGN.md` の Phase 4「完了」、`src/routes/` の画面）。「v1.0.0」は完了と書かない（release は D-070 で自動在庫連動の完成まで待つ）。§14 は見出しの下に画面の実装の完了の 1 行を置き、本文は当時の記録として残す（archive へ移さない） | `src/routes/` に Phase 3・4 の画面の route が在る。tag は public repo に無い（`git tag` 0 件）。v1.0 の release の条件は D-070 | — |
 | S2-3 | `docs/FUNCTION_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」だけ | (a)/(b) の書き分け（一覧の 21・31・36・75・22 §19 は (a)） | (a) は `db/schema_v9.rs`・`biz/stock_ledger.rs` に在る。root の `README.md` が FUNCTION_DESIGN の「現時点の対象モジュール」の見出しを anchor で引くので、その見出しは替えない | — |
 | S2-4 | 同 18・100・177（§今後の追記予定） | 「後続段階は実装進行に合わせて追記」、全項目が取消線の節 | 文を今の状態に直し、節を消す | 節の項目は全部取消線（179〜184 行）。この見出しへの anchor は無い（S5 の anchor の検索） | — |
@@ -141,13 +155,14 @@ S2 の型の洗い直し（round 2 の是正で足した）: 「future」「予�
 | S2-6 | `docs/function-design/60-ui-product-import.md` 3 | 同 | (a)/(b) の書き分け（新規行の初期在庫は初期在庫の movement、写しは求め直し〈`biz/product_service.rs` の `recompute_stock` の呼出し〉は (a)。共有 JAN・連動を始める行の拒否は (b)） | `biz/product_service.rs` に `recompute_stock` の呼出しが 2 か所在る | — |
 | S2-7 | `docs/function-design/61-ui-receiving.md`・`62-ui-manual-sale.md`・`63-ui-return-exchange.md`・`64-ui-disposal.md` 各 3 | 冒頭の注記「（proposed・未実装、D-118）」 | 日付を業務日として movement に書くのは (a)（`biz/inventory_service/` の `validate_business_date`）。計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`、test `biz::stock_ledger::tests::test_stock_ledger_req205_default_count_vs_movement_dates`）も (a) で実装済み。計数を保存する公開の経路・精算の窓・この画面への反映は (b) と書き分ける | `validate_business_date` は `biz/inventory_service/common.rs` に在る（個別の画面の file でない）。`judge`・`from_count`・`derive` と test は `biz/stock_ledger.rs` に在る | — |
 | S2-8 | `docs/function-design/22-mnt-migration.md` 360 | 「`stock_counts.count_value` と写しの範囲の列は、それを足す runtime の lane が上限で検査する」 | 列は (a) の v9 で入った（`db/schema_v9.rs`）。範囲の検査の担い手を code で確かめて今の状態に直す | 写しの値と範囲は `recompute_stock` が書く前に検査する（test `test_stock_ledger_req903_recompute_rejects_out_of_range_value_and_range_end`）。`count_value` の列の CHECK は `>= 0` だけで、上限の検査は計数を保存する経路（(b)）の側 → その形で直す | — |
-| S2-9 | `docs/architecture/io-task-specs.md` 7 | 「新しい SQL / schema は未実装」 | (a) の v9 は入った、Z004 の識別の列は (b) と書き分ける | v9 が足したのは movement の並びの鍵の列・`stock_counts`・写しの列（`db/schema_v9.rs`）。Z004 の取込みの記録の識別の列は schema に無い（`rg -n 'machine_no' src-tauri/src/db` の schema の file は 0 件）→ (b) | — |
+| S2-9 | `docs/architecture/io-task-specs.md` 7 | 「新しい SQL / schema は未実装」 | (a) の v9 は入った、Z004 の識別の列は (b) と書き分ける | v9 が足したのは movement の並びの鍵の列・`stock_counts`・写しの列（`db/schema_v9.rs`）。Z004 の取込みの記録の識別の列は production の schema（`src-tauri/src/db/schema_v*.rs`）に 0 件（`rg -n 'machine_no' src-tauri/src/db -g 'schema_v*.rs'` は 0 件。cfg(test) の `schema_time_evidence.rs` の 2 行は production の schema でないので数えない）→ (b) | — |
 | S2-10 | `docs/UI_TECH_STACK.md` 785、`docs/design-system/02-component-catalog.md` 1041 | 「将来の global text-size / display-scale option」「将来の全体文字サイズ / 表示スケール option」と合わせて調整 | option は入った（`src/components/layout/useDisplayScale.ts`）。「将来の」を外し、商品コードの読みやすさの調整が済んだかは確かめられた所だけ書く。確かめられなければ backlog の 1 行へ送る | `src/components/layout/useDisplayScale.ts` は在る | — |
 | S2-11 | `docs/function-design/54-ui-shortcuts.md` 207 | unit test の見送りの理由「Vitest 初期化が未着手」 | 理由の文を今の状態（Vitest は入った、`useShortcutsDialog`・`isEditableTarget` の unit test はまだ無い。backlog の shortcuts の retroactive unit test の項目）に直す。test は足さない | `useShortcutsDialog` は `src/features/shortcuts/hooks/useShortcutsDialog.ts` の export、`isEditableTarget` は同じ file の非公開の関数（表の「純関数化部分」の句も今の形に直す）。`src/features/shortcuts/` に test の file は無い | — |
 | S2-12 | `docs/function-design/55-ui-csv-import.md` 512 | 「Vitest 未着手のため、本 PR では unit test なし」 | 当時の記録と分かる形に直す（今は `src/features/csv-import/` に test がある） | `src/features/csv-import/` に test の file が 9 つ在る | — |
 | S2-13 | `docs/function-design/56-ui-daily-sales.md` 518・596 | 「TanStack Query Provider mock / Router mock は 7-7b 後続 PR」 | 済んだ（`QueryClientProvider` を使う test がある）と直す | `rg -l QueryClientProvider src --glob '*.test.*'` が 55 file | — |
 | S2-14 | `docs/function-design/51-ui-product-form.md` 28（UI-01b-D5） | 「`stock_unit` も初回 UI-01b 実装では読取専用」、理由の列の「単位変更は … 影響が大きいため別 Design Phase」 | 「単位変更の範囲は D-119 で個数の単位どうしに限って決めた（UI-01b-D23）」の向きに直す（backlog の同じ項目の子、PR #171 の Final Review の P3） | UI-01b-D23 は 51 の 29 行に在る | — |
 | S2-15 | `docs/function-design/29-io-ej-parser.md` の番号行の 4 桁の欄（IO-08 の該当の節）と、未観測の形式を復元不能に倒す列挙 | 4 桁の欄の意味は未検証、未観測の形式（訂正・取消・値引き・番号印字・点検・小数数量・クレジット） | 今の文法表と `src-tauri/src/io/ej_parser.rs` で受理している形式を確かめ、受理済みの形式を列挙から外す。4 桁の欄は持ち帰りデータの観測（`docs/project-memory.md` の該当の行）を書き、観測を対応の規則に使わない注意は残す。code で確かめられない形式は残す | `src-tauri/src/io/ej_parser.rs` は在る。受理している形式の一つ一つは実装 run が文法表と code で照らす | — |
+| S2-16 | `docs/function-design/23-io-z004-parser.md` の 13 桁 JAN の表の行（245 行）と、責務の表の空レコード除外の行（352 行） | 空レコードを「相殺の判定（ADR D4）の入力に残す」「相殺の判定の入力に残すため」 | D-118 で相殺の判定は持たない（23 の冒頭〈9 行〉と 32 の冒頭の D-118 の節が書く。数量・金額とも 0 の行は売上も movement も作らない）。残す理由の句を今の形（BIZ-03 が空レコードとして除外する）に直す | 23:9 が「売上と返品の相殺の判定を持たない。SPEC-STK-CNT-D11」、32:30 が「相殺の判定に使わないので保持しない」と書く。round 3 の S1 の型の語の幅の洗い直しで見つけた | — |
 
 S2 に入れない (2) 済（既に書き分け済み）と (3)（まだ実装なし。正しい）は直さない（調査 A の分類）。D-118 の節のうち全体が (b) の文書（40・41・42・50・51・55・58・65・66・73・SCREEN_DESIGN の画面の節・UI_TECH_STACK の D-118 節ほか）は「（proposed・未実装、D-118）」のまま残す。
 
@@ -167,7 +182,7 @@ TD-327 の規則（Status は決定の状態だけ。実装が済んだかは co
 | S3-8 | D-048 | `accepted（design phase、実装は未着手）` | 「実装は未着手」を外す | — |
 | S3-9 | D-049 | `accepted（2026-07-18。… 実装は R3 packet で進行）` | 「実装は R3 packet で進行」を外す | — |
 | S3-10 | D-066 | `accepted（…。導入と DEV_SETUP_CHECKLIST 追随は merge 後の follow-up）` | 「導入と … 追随は merge 後の follow-up」を外す | — |
-| S3-12 | D-034 | `accepted and implementation slice 1 reflected in PR #163. … only PK4/PK5/… remains follow-up slice 2. …` | 実装の状態（slice 1 の反映・slice 2 が残る）を外し、決定の出所を残す。「PR #163」は履歴境界の前の番号なので、残すなら境界の前の注記を付ける | — |
+| S3-12 | D-034 | `accepted and implementation slice 1 reflected in PR #163. … only PK4/PK5/… remains follow-up slice 2. …` | 実装の状態（slice 1 の反映・slice 2 が残る）を外し、決定の出所を残す。「PR #163」は履歴境界の前の番号なので、残すなら境界の前の注記を付ける。同じ注記を D-035 の Status（「in PR #163 follow-up」）と D-039 の Status（「PR #166.」）にも当てる（どちらも境界の前の番号で、今の repo の #163・#166 と別物。`docs/PROJECT_HANDOFF.md` の履歴境界の節） | — |
 | S3-13 | D-038 | `accepted. D-034 slice 2's future mechanical checks …`（検査の対象に足す語彙の列挙が続く） | 「future mechanical checks」の時点の語を外す。検査の対象に足す語彙は決定の中身なので、時点の語を除いた形で残す | — |
 | S3-14 | D-045 | `accepted during Phase B execution …. The migration and first public hosted CI green are complete.` | 末尾の「… are complete」（実装の状態）を外す。採った時点と決定の中身（D-041/D-042 の裁定の扱い）は残す | — |
 | S3-15 | D-046 | `accepted and implemented by the D-045 follow-up workflow-guards R3 change.` | 「and implemented by …」を外す | — |
@@ -201,13 +216,39 @@ S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-0
 | H2 | `docs/PROJECT_HANDOFF.md` 13 | 「更新の前の版へ戻す管理者の手順（migration v8 以降）」 | 残す（見出しは成り立つ。runbook の本文に v9 の例を足すのは data safety の手順書の変更で、本 lane の外） | — |
 | A1 | `docs/ARCHITECTURE.md` 301 | Q40 は第6段階では保留、詳細は Plans.md Backlog | 置き場を `docs/backlog.md` に直し、S5 で 1 つにまとめた Q40 の項目（包括的な障害時対応の方針の残り。画面ごとの CmdError と retry、共通の Error Boundary は済み）を指す | — |
 | A2 | 同 315 | UI 層は「UI-00、UI-01a〜UI-13」 | `docs/architecture/ui-task-specs.md` の見出しにある番号まで広げる | — |
-| A3 | 同 183 | BIZ-06 の確定は「差異補正の inventory_movements 記録」 | 停止 ADR の注記と、確定の新しい形は (b) と書き足す | — |
+| A3 | 同 183（BIZ-06）と 167（CMD-07）・180（BIZ-03） | BIZ-06 の確定は「差異補正の inventory_movements 記録」、CMD-07 は「商品別売上と`pos_stock_sync`在庫増減は実装済み」、BIZ-03 は「在庫引落し、…、ロールバック」 | 3 行とも停止 ADR の注記（棚卸しの開始・入力・確定と Z004 の業務 commit・取消は今の build で止めている）を足し、確定・取込みの新しい形は D-118 の (b) と書き足す | — |
 | A4 | 同 262〜280、`docs/SCREEN_DESIGN.md` 435・442 | tag と「tag 済み」「tag を作成済み」 | 履歴境界の前の記録（`docs/PROJECT_HANDOFF.md` の履歴境界の節）と分かる注記を付ける | — |
 | D1 | `docs/DB_DESIGN.md` 5・20〜49・124〜138 | 表の一覧と index に v9 の `stock_counts` と新しい index が無い（5 行が「まだ載せていない」） | 一覧に `stock_counts` を、index に `idx_inventory_movements_ledger`・`idx_stock_counts_product_id` を足し、5 行の文を直す（`db/schema_v9.rs`） | — |
 | SC1 | `docs/SCREEN_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（整合性検証〈75〉と操作ログ〈74〉の表示は (a)） | — |
 | SC2 | 「最終更新」の見出しの 8 file: `docs/SCREEN_DESIGN.md`・`docs/plu-export-and-real-csv-verification.md`・`docs/TOOLING_SKILL_COMMANDS.md`・`docs/DEV_SETUP_CHECKLIST.md`・`docs/FUNCTION_DESIGN.md`・`docs/DOCKER_REPAIR_LOG.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/50-ui-product-list.md` | 見出しの日付が git の最終 commit より古い | 見出しの行を消す（更新日は git が持つ） | — |
 | SC3・SC5 | `docs/SCREEN_DESIGN.md` 55・183 | 「PR #164 で実装済み」、UI-11c の fresh 再監査と L3 は未完了 | PR 番号に履歴境界の前の注記を付ける。「未完了」は owner に聞く束（S6）へ回して残す | — |
 | SC4 | 同 444 | Phase 3「タグ目標」 | Phase 3 の画面は実装済みと直す（A4 と同じ注記。v1.0 の release は D-070 で待つので完了と書かない） | — |
+
+S4 の型の洗い直し: 採用済みで未実装の決定と今の build の取り違え（round 3 の是正で足した）。accepted になった決定の中身を、今の build の動きとして書いている live な文を、dashboard の 7 file で洗い直した。直し方の型は 1 つ: その文を「採用済みの方針（D の番号）／今の runtime（code の現物）／残る実装（backlog の runtime の項目）」に書き分ける。採用済みの方針の文そのものは消さない。
+
+今の runtime（code で確かめた、tip `578a863f`）:
+- D-111（SD 直読み）: 未実装。runtime は Draft PR #172。今の日報の取込みは利用者が file を選ぶ（`rg -n 'SD から読む' src --glob '!*.test.*'` は 0 件）。
+- D-117（PLU の書出しの見直し）: 未実装。今の build は商品一覧の一括の PLU 対象化（`src/features/products/ProductListPage.tsx` の `bulkSetPluTarget`）、Clear 行（`src-tauri/src/constants.rs` の `PLU_CLEAR_ROW_ENABLED = true`）、`release_pending` を持つ。正本の 33 §16 の冒頭が「runtime の状態（2026-10-16）」の注記でこれを書いている。
+- D-118 は (a) だけ実装済み（S2・SC1）。D-119 は単位の語の直しだけ実装済み（PR #171）。D-120・D-121・D-122 は未実装で、dashboard の該当の文は「proposed・未実装」か「後続の runtime」と書き分け済み。
+
+```text
+rg -n -e 'D-111|D-117|D-118|D-119|D-120|D-121|D-122' -e 'clear 行|clear行|Clear 行|枠を消さ|枠を解放|解放|段階導入|一括の対象|一括 PLU|占有|照合日時|SD から読|SD を直接|直接読|SD から直接|日報の紙|レシートの控え|一括取込み|前の JAN の別名|別名' docs/Plans.md docs/project-memory.md docs/PROJECT_HANDOFF.md docs/backlog.md docs/ARCHITECTURE.md docs/DB_DESIGN.md docs/SCREEN_DESIGN.md
+→ 120 行（Plans 14、project-memory 17、PROJECT_HANDOFF 0、backlog 56、ARCHITECTURE 7、DB_DESIGN 11、SCREEN_DESIGN 15）
+```
+
+| # | 決定 | file・起点の行 | 今の文（要旨） | 直し方 | 結果 |
+|---|---|---|---|---|---|
+| DR1 | D-111 | `docs/project-memory.md` 40・100・197 | 毎日の売上データはアプリが SD から直接読み、CV17 は PLU の書込みだけ | 採用済みの方針（owner の判断 2026-10-06）として残し、今の runtime（日報は利用者が file を選んで取り込む。SD 直読みは Draft PR #172）と残る実装（SD 直読みの runtime、`XZ_BKUP` へ移す (b)）を書き分ける | — |
+| DR2 | D-111 | `docs/DB_DESIGN.md` 83 | 日報の表は、アプリがレジの SD から直接読む日報を持つ | 同上（今は利用者が選ぶ file から入る） | — |
+| DR3 | D-111 | `docs/SCREEN_DESIGN.md` 81・118・126・127 | 1 日の動線と日報取込みの導線が「SD から読む → 精算を選ぶ → 確認 → 完了」 | 画面の設計（採用済み）であることを残し、今の画面は file を選ぶ導線で、「SD から読む」は SD 直読みの runtime で入ると書き分ける | — |
+| DR4 | D-111 | `docs/ARCHITECTURE.md` 103・200・201・236・237 | IO-09・IO-10 と SD から読む流れ | IO-09・IO-10 の行と流れに「D-111 の runtime は未実装（Draft PR #172）」の注記を 1 か所ずつ足す | — |
+| DR5 | D-117 | `docs/project-memory.md` 43・196 | アプリは段階導入の道具（一括の PLU 対象化等）を持たない | 採用済みの方針として残し、今の build には一括の PLU 対象化の button が残り、撤去は PLU の書出しの見直しの runtime と書き分ける | — |
+| DR6 | D-117 | `docs/project-memory.md` 45・57・225・251、`docs/DB_DESIGN.md` 178・179 | 毎日の締めの SD の読取りで Z004 の全スロットを照合する、アプリは枠を消さない（clear 行を書かない） | 採用済みの方針として残し、今の build は Clear 行を書き（`PLU_CLEAR_ROW_ENABLED = true`）、占有は利用者が選ぶ Z004 で照合する、撤去と切替えは PLU の書出しの見直しの runtime と書き分ける（33 §16 の冒頭の runtime の注記を引く） | — |
+| DR7 | D-117 | `docs/SCREEN_DESIGN.md` 137 | PLU 書出しの画面の上部の「レジの登録状況の最終照合日時（売上データ取込みで SD を読んだとき）」、照合が無ければ書出しを拒む | 同上（今の画面の照合の入口と、D-117 の runtime の後の形を書き分ける） | — |
+| DR8 | D-111 | `docs/backlog.md` 109 | 「標準の入力元はレジの SD の直読みに変わった（D-111、PR #150）」 | PR #150 は設計で、runtime は Draft PR #172 と書き足す | — |
+| DR9 | D-117 | `docs/backlog.md` 215（取消線の項目） | 「段階導入の道具は D-117 で撤去した」 | S5 で archive へ移すとき、閉じた根拠の句を「撤去すると決めた（D-117。runtime は PLU の書出しの見直しの lane）」にする | — |
+
+分類: 直す 25（DR1〜DR9 の 24 行と、S4 の SC1〈SCREEN_DESIGN 3〉）、正しい 95（Plans の 14 行は全部、設計の merge と後続の runtime の lane として書いている。project-memory の 44・113・119・163・198・203・240・243、DB_DESIGN の 3・11・13・25・43・59・146・175、ARCHITECTURE の 3・184、SCREEN_DESIGN の 45・238・241・242・243・245・250・348・367 は「proposed・未実装」か「(a) は実装済み」の書き分け済み、実装済みの D-119 の単位の語、店の事実、または運用の制約〈店が CV17 の取込みを続ける〉。backlog の 54 行は runtime の lane の項目・設計の申し送り・決定の記録で、今の build の動きとして書いていない〈214 の取消線の項目は S5 で archive へ〉）。120 = 25 + 95。
 
 ### S5 backlog の整理
 
@@ -222,9 +263,9 @@ S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-0
 | (2) 前提が変わった 7 | 37・140・231・262・304・337・411 | 37・337・411 は前提が変わったと根拠を書いて archive へ。140（数量 0・金額 0 の行）も archive へ移す。根拠: D-118 の ADR が、同じ精算の中で売れて戻り個数・金額とも 0 になる打ち消し合いを見つけられない限界を受け入れ（TD-265、ADR の「打ち消し合い」の項）、32 の冒頭の D-118 の節が旧い相殺の判定を置き換えた。runtime (b) の未了の義務として戻さない。231（ECR+ の後の精算）・262（tracked の sample）・304（⑤ go-live 検証）は変わった前提を直し、残る部分だけを残す | — |
 | (4) 重複 13 | 50・51・234・275・295・297・312・315・317・351・383・397・414 | 50・51（STK-1・STK-2）・275 は棚卸しの runtime (b) の項目へ寄せ、234 は日報の紙の runtime の項目へ寄せる。295 は 277 と同じ advisory（どちらも済み）、315 は 297、317 は 288、397 は 379、351 は E12 に吸収、383 は Plans の L8-5（P7）と 1 か所にする。312・414（Q40）は生きている項目として 1 つにまとめ（包括的な障害時対応の方針の残り。画面ごとの CmdError と retry、共通の Error Boundary は済み、と書く）、もう一方を消す。ARCHITECTURE の A1 がこの 1 項目を指す | — |
 | 生きている項目として残す | 212（D-023 の POS adapter の境界の実装側の残り） | 閉じない。残りの根拠: `DailyReportSourceKind`（Z001・Z002・Z005）が BIZ と `src/lib/bindings.ts` に出ている、`src-tauri/src/db/schema_v4.rs` の `source_adapter` の CHECK が機種の値 1 つに固定。項目の中の行数・出現数の時点の数は直さない（S6 の T4） | — |
-| 文の直し | 36・93（B1）・110（B3）・143・146・148・153・49 の (8)・54 の (6)（U-R1）・72・53〜55・189・191・247・428 | 93: `(8, 8)` の行の一覧は今 `(8, 8)` と `(9, 9)` が並ぶ。行番号をやめ test 関数名で引く。110: Draft PR #172 を書く。143: 下の Draft PR #155 の 1 行。146・148・153・36: 行き先「⑤」「㉘ 以降の棚卸し実装 lane」を棚卸しの runtime (b) の項目に。49 (8): 29E の今の文に合わせる。54 (6): 精算回数は main では保存していない（足すのは Draft PR #172）と直す。72: 予定は済んだ。53〜55: 残す基準は「D-118 の後も (b) の起票が引く義務か、まだ決まっていない問いを持つ物」で、それだけを (b) の項目の子に残し、それ以外（D-118 で置き換わった ③〜⑤ の段取り）は archive へ移す。189・191: 古い条件・時点の語を、確かめられた所だけ直す。247・428: 履歴境界の前の PR 番号の注記 | — |
+| 文の直し | 36・39・93（B1）・109・110（B3）・143・146・148・153・49 の (8)・54 の (6)（U-R1）・72・53〜55・189・191・247・428 | 93: `(8, 8)` の行の一覧は今 `(8, 8)` と `(9, 9)` が並ぶ。行番号をやめ test 関数名で引く。110: Draft PR #172 を書く。143: 下の Draft PR #155 の 1 行。146・148・153・36: 行き先「⑤」「㉘ 以降の棚卸し実装 lane」を棚卸しの runtime (b) の項目に。49 (8): 29E の今の文に合わせる。54 (6): 精算回数は main では保存していない（足すのは Draft PR #172）と直す。72: 予定は済んだ。53〜55: 残す基準は「D-118 の後も (b) の起票が引く義務か、まだ決まっていない問いを持つ物」で、それだけを (b) の項目の子に残し、それ以外（D-118 で置き換わった ③〜⑤ の段取り）は archive へ移す。189・191: 古い条件・時点の語を、確かめられた所だけ直す。247・428: 履歴境界の前の PR 番号の注記。109: 「標準の入力元は SD の直読みに変わった（PR #150）」に、PR #150 は設計で runtime は Draft PR #172 と書き足す（S4 の DR8）。39: EJ の項目の「EJ の完全性に依る判定〈相殺の判定、…〉」の「相殺の判定」は D-118 で持たなくなったので外す（S4・S2-16 と同じ根拠） | — |
 | owner の決定（TD-327） | 143（PC の外の backup） | 項目に 1 行足す: Draft PR #155（D-114 の design、2026-10-07 から止めている）を残す。PR は Draft のまま。再開の条件は「owner がこの lane を選んだとき。main へ同期し、D-114 の番号が空いているかと D-118・D-123 の後の migration と backup の契約を確かめてから plan-gate を続ける」 | — |
-| 足す 1 行 | 利用者に見える文言（S6 の表の最後の行） | ExportBar の Tooltip「準備中（Phase 4 で実装予定）」の時期の語が古い（日次・月次の 2 file）。製品の文言の変更なので本 lane では直さず、backlog に 1 行足す | — |
+| 足す 1 行 | 利用者に見える文言（S6 の表の最後の行） | ExportBar の Tooltip「準備中（Phase 4 で実装予定）」の時期の語が古い（日次・月次の 2 file）。製品の文言の変更なので本 lane では直さず、backlog に 1 行足す。同じ「code の comment・文言の古い句」の 1 行として、`src-tauri/src/db/sales_repo.rs:165` の doc comment「ロールバック時の逆補正用（product_code + 元のquantity）」（今の BIZ-03 は quantity を使わない。S1 の洗い直しの comment の 1 行）も足す | — |
 
 backlog の残り（調査 C の (3) 生きている 171 項目）は変えない。そのうち workflow の正本と Lane 2〜5 当時の候補の「未照合」37 項目は本 lane で照合しない。
 
@@ -280,7 +321,7 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0。
 - AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-19-docs-contract-refresh.md` が exit 0。
 - AC3: `cargo run --bin generate_traceability -- --check` が exit 0（function-design を触る。REQ の参照は増減させない）と、`cargo test --test design_compliance_test` が PASS（function-design の必須節を見る検査。32・35 の節を書き換えるので回す）。
-- AC-S1-1（直す形が残らない）: `rg -n --no-heading -e 'products\.stock_quantity ?(の)?更新' -e 'stock_quantity更新\+movements|stock_quantity更新とmovements' -e 'stock_quantityを(actual_countに更新|逆方向に補正)' -e 'stock_quantity -= ' -e '::update_stock_quantity\(' -e '直接 update_stock_quantity|update_stock_quantity \+ inventory_repo::insert_movement|1回の update_stock_quantity|stock計算 → update_stock_quantity' -e '逆方向に変換して在庫補正|在庫を [+-]\d+ 補正|在庫補正に product_code と quantity|在庫補正 = [+-]|その増減を戻す|戻り値を使って在庫補正|product_code でグループ化して集計' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs` が何も出さない（exit 1）。S1 の洗い直しの表の「直す」28 行のうち、見出しの語だけの 3 行（24:369、32:411・432）を除く 25 行を拾う式。
+- AC-S1-1（直す形が残らない）: `rg -n --no-heading -e 'products\.stock_quantity ?(の)?更新' -e 'stock_quantity更新\+movements|stock_quantity更新とmovements' -e 'stock_quantityを(actual_countに更新|逆方向に補正)' -e 'stock_quantity -= ' -e '::update_stock_quantity\(' -e '直接 update_stock_quantity|update_stock_quantity \+ inventory_repo::insert_movement|1回の update_stock_quantity|stock計算 → update_stock_quantity' -e '逆方向に変換して在庫補正|在庫を [+-]\d+ 補正|在庫補正に product_code と quantity|在庫補正 = [+-]|その増減を戻す|戻り値を使って在庫補正|product_code でグループ化して集計' -e 'product_code別に逆補正|確定直前現在庫\+\(N-L\)|現在在庫 \+ 変動量|products更新 \+ inventory_movements追加' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' docs` が何も出さない（exit 1）。S1 の洗い直しの「直す」34 行のうち、S1 の型の 32 行（23:245・352 は S2-16）から見出しの語だけの 3 行（24:369、32:411・432）を除く 29 行を拾う式（round 3 の是正で、広げた語の 4 行を拾う句を足した）。
 - AC-S1-2（読んで確かめる）: 35 §20.5 の手順 5 g と 32 §15.5 の手順 5・§15.8 の INV-2 が `recompute_stock` を名指しし、順が code の `legacy_complete_stocktake`・`apply_void_stock_corrections` と同じで、旧本体の記述であること（§15.0・§20.0）が残っている。`stock_after` と求め直しの値の関係が S1-1 の条件付きの形で書かれている。
 - AC-S1-3（洗い直しの式の hit が全部分類済み）: S1 の洗い直しの docs の式と comment の式を同じ範囲で実行し直し、出た行が全部、表の「正しい」「対象外」の行か、直した文（`recompute_stock` を名指しする行、語を残した見出し）である。新しく出た行は分類して表に足す。`rg -n '::update_stock_quantity\(|stock_quantity -= ' src-tauri/src --glob '!*test*'` の production の hit は `biz/stock_ledger.rs` の 1 行だけ（code を変えないことの確かめ）。
 - AC-S2-1: `rg -c 'future' docs/function-design/73-ui-stocktake.md` が何も出さない（exit 1）。
@@ -305,6 +346,8 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 - AC-S4-5: `rg -n '^## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）' docs/SCREEN_DESIGN.md` が何も出さない（exit 1）。
 - AC-S4-6（読んで確かめる）: A4・SC3・SC4・SC5 の履歴境界の前の PR 番号・tag に、`docs/PROJECT_HANDOFF.md` の履歴境界の節を引く注記がある。
 - AC-S4-7: S4 の表の全行の「結果」が「直した」か「残す（理由）」。
+- AC-S4-8（読んで確かめる）: S4 の型の洗い直しの DR1〜DR9 の文が「採用済みの方針（D の番号）／今の runtime／残る実装」に書き分けられ、今の runtime の記述が `docs/function-design/33-biz-plu-export-service.md` §16 の冒頭の「runtime の状態」の注記と backlog の runtime の項目（SD 直読みの runtime、PLU の書出しの見直しの runtime）に合う。洗い直しの式を実行し直して、新しく出た行は分類して表に足す。
+- AC-S2-8: `rg -n '相殺の判定（ADR D4）の入力に残す|相殺の判定の入力に残すため' docs/function-design/23-io-z004-parser.md` が何も出さない（exit 1）。
 - AC-S5-1: `rg -n '^- \[x\]|^- ~~' docs/backlog.md` が何も出さない（exit 1）。
 - AC-S5-2: `docs/archive/2026-10-19-backlog-closed.md` があり、`rg -c '^- ' docs/archive/2026-10-19-backlog-closed.md` が S5 で閉じた項目の数以上で、`rg -n '2026-10-19-backlog-closed.md' docs/backlog.md` が 1 行以上を出す。移した項目の相対リンクの path は全部在る（`rg -o '\]\([^)#]+' docs/archive/2026-10-19-backlog-closed.md` で出した path を 1 つずつ確かめる）。
 - AC-S5-3: `rg -n 'PR #155|pull/155' docs/backlog.md` と `rg -n 'PR #172|pull/172' docs/backlog.md` がそれぞれ 1 行以上を出す。
@@ -319,8 +362,10 @@ backlog の残り（調査 C の (3) 生きている 171 項目）は変えな�
 baseline（docs の本体は起点 `18db621e` から変えていない。起票の時点〈2026-10-19〉に測り、AC-S1-3・AC-S2-1b・AC-S3-4・AC-S5-5・AC-S5-7 は Plan Review round 1 の是正の時点〈2026-10-19、本 branch の tip `6c815f7a`〉に直した command で測り直した。各 command を逐語で実行した。長い行は先頭だけ写した。AC1〜AC3 は PR の Validation の欄）:
 
 ```text
-AC-S1-1  exit=0。25 行（S1 の洗い直しの表の「直す」28 行から見出しの 3 行を除いた行。round 2 の是正で式を替え、tip `79d51fb1` で測った）
-AC-S1-3  docs の式 80 行 / 27 file、comment の式 18 行（同上。分類は S1 の洗い直しの表）/ production の hit: biz/stock_ledger.rs:190 の 1 行
+AC-S1-1  exit=0。29 行（round 3 の是正で句を足し、tip `578a863f` で測った。round 2 の式では 25 行）
+AC-S1-3  docs の式 286 行、comment の式 38 行（round 3 の是正で語の幅を広げ、tip `578a863f` で測った。round 2 の式では 80 行 / 18 行）/ production の hit: biz/stock_ledger.rs:190 の 1 行
+AC-S2-8  exit=0。23:245・23:352 の 2 行（tip `578a863f`）
+AC-S4-8  S4 の型の洗い直しの式: 120 行（tip `578a863f`。分類は S4 の型の洗い直しの表）
 AC-S2-1  18（exit=0）
 AC-S2-1b 前: exit=0。73:102・73:279 の 2 行 / 根拠: rg -c は 4、bindings は 237・243・282・289 の 4 行
 AC-S2-2  FUNCTION_DESIGN 18・100・177・179 の 4 行 / DEV_SETUP_CHECKLIST 23・511・513・515・528 の 5 行
@@ -387,7 +432,7 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 ## Review Focus
 
-- S1: 洗い直しの表の分類（直す 28・正しい 37・対象外 15、comment 18）に取り違えが無いか、式の外に同じ型が残っていないか。直した 35 §20.5・32 §15.5 の順が code の旧本体と同じか。旧本体の記述であること（停止中）が読めるか。D-118 の節（(b)）と §15.5・§20.5（(a) の旧本体）の取り違えが無いか。
+- S1: 洗い直しの表の分類（直す 34・正しい 86・対象外 166、comment 38）に取り違えが無いか、式の外に同じ型が残っていないか。直した 35 §20.5・32 §15.5 の順が code の旧本体と同じか。旧本体の記述であること（停止中）が読めるか。D-118 の節（(b)）と §15.5・§20.5（(a) の旧本体）の取り違えが無いか。
 - S2: (a)/(b) の書き分けで、(b) の契約を実装済みと読める文が出ていないか。S2-15（EJ の未観測の形式）は code で確かめた形式だけを外しているか。
 - S3: Status の行（と D-071 の Superseded in part の 1 行）だけが変わり、決定の本文が変わっていないか（AC-S3-7）。Q2・Q4。
 - S4・S5: 閉じた項目の根拠が確かめられるか。生きている子を落としていないか。Plans から消す段落にしか無い owner の決定を落としていないか。
@@ -468,3 +513,26 @@ Fill after review.
   - S2-8: 上限の検査の担い手。
   - S2-9: 識別の列が (b)。
   - S2-11: `isEditableTarget` は非公開の関数。
+
+### Plan Review round 3（天井、2026-10-19、対象 `578a863f`）
+
+- Codex: GPT-6.1 Sol（発注 440）。受理分は #1（P2: project-memory の D-111・D-117 の記述が今の build と違う。採用済みで未実装の決定と今の build の取り違えの型）。
+- Claude 側: fresh Opus 5.5。受理分は #1（P2: pos-tables の Rollback の「逆補正」が S1 の式の語の幅から漏れた）と #2〜#8（P3）。
+- 天井の disposition（Coordinator、`docs/DEV_WORKFLOW.md` Review Rules の round 天井）: 次の round を開かず、残りを同型の一括是正で反映する。是正の後に追加の review なしで plan-approved へ進めるかは owner の決定（repo 外の回答台帳 TD-330）。
+
+| finding | 要旨 | 反映した所 |
+|---|---|---|
+| Claude #1（P2） | S1 の型の語の幅（逆補正 ほか）が狭い | S1 の洗い直しの式と分類（docs 286 行・comment 38 行）、S1-12（pos-tables:425）、S1-13（35:540）、S1-11 の 176 行、S1-2 の 368 行、S2-16（23:245・352）、AC-S1-1（29 行）・AC-S1-3・AC-S2-8 |
+| Claude #5（P3、#1 に含めた） | 10-common-rules の上限の見積もりの「在庫 + 補正の和」 | S1 の洗い直しで「正しい（上限の見積もり）」と分類 |
+| Codex #1（P2） | 採用済みで未実装の決定と今の build の取り違え | S4 の型の洗い直し（dashboard の 7 file、120 行。直す 25 = DR1〜DR9 の 24 行 + SC1、正しい 95）、AC-S4-8 |
+| Claude #2（P3） | S2-1 の `find_active_stocktake` の呼出し元の句は消すだけ | S2-1 |
+| Claude #3（P3） | 32:413 は見出しの語を残し、括弧書きを直す | S1 の洗い直しの round 2 の表の行 |
+| Claude #4（P3） | 35 §20.5 3a の注記「差異なし扱い」 | S1-10 |
+| Claude #6（P3） | 履歴境界の注記を D-035・D-039 にも | S3-12 |
+| Claude #7（P3） | ARCHITECTURE の CMD-07・BIZ-03 の行に停止 ADR の注記 | S4 の A3 |
+| Claude #8（P3） | S2-9 は production の schema の file に限って数える | S2-9（`rg -n 'machine_no' src-tauri/src/db -g 'schema_v*.rs'` → 出力なし、exit=1） |
+
+同型の洗い直しの結果:
+
+- S1 の型（語の幅を広げた）: docs は 286 行で、直す 34・正しい 86・対象外 166。comment は 38 行で、37 行は正しいか対象外、1 行（`sales_repo.rs:165`）は古い。本 lane は code を変えないので、S5 で backlog に 1 行足す。
+- S4 の型（採用済みで未実装の決定）: D-111・D-117〜D-122 について dashboard の 7 file を洗い、120 行を分類した（直す 25、正しい 95）。取り違えは D-111（SD 直読み）と D-117（PLU の書出しの見直し）に集まり、D-118〜D-122 は書き分け済みか実装済みだった。backlog の 39・109 は S5 の文の直しに足した。
