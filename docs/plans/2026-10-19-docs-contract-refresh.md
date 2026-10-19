@@ -109,7 +109,7 @@ PR #176（D-118 の (a)）で、在庫の写しの書込みは `biz::stock_ledge
 | S1-8 | `docs/function-design/24-io-csv-import-repo.md` の `VoidedMovement` の `quantity` の説明（65 行）、`void_movements_by_reference` の戻りの説明（340 行）、「BIZ-03 での在庫補正」の例と式（369〜372 行）、設計判断の SELECT → UPDATE の理由（376 行） | quantity を逆方向に変換して在庫補正に使う、`products.stock_quantity -= voided.quantity` | 「BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない）」へ。戻り値のうち BIZ-03 が使うのは `product_code`（`commit.rs` の `apply_void_stock_corrections` は `vm.product_code` だけを集める）。SELECT → UPDATE の理由は、無効にする movement の商品を BIZ に渡すためと直す。369 行の見出しの語は残してよい | 直した |
 | S1-9 | `docs/ARCHITECTURE.md` 179 行（BIZ-02 の表の行）、`docs/db-design/pos-tables.md` 414 行（Z004 の確定）、`docs/function-design/44-cmd-inventory.md` 1099・1112 行（層の責務の表と INV-2 の行） | 「products.stock_quantity更新＋inventory_movements記録」「stock_quantity更新+movements記録」「stock_quantity更新とmovements記録の同時性」 | 「movement の記録と、記録からの写しの求め直し（同じ TX）」の向きに直す。pos-tables 414 は旧本体の確定（停止中）と注記する | 直した |
 | S1-10 | `docs/function-design/35-biz-stocktake-service.md` §20.5 処理ステップ 3a（force_fill） | 未入力の明細に `product.stock_quantity` をそのまま入れる | code（`legacy_complete_stocktake` の `product.product.stock_quantity.max(0)`、コメント「R-3 + P3-7: 負在庫補正。INV-3準拠」）に合わせ、負の在庫は 0 を入れると直す。同じ手順の注記「※ 現在のシステム在庫をそのまま actual_count にセット（差異なし扱い）」も、「負の在庫は 0 を入れるので、その商品には差異が出る」に直す | 直した |
-| S1-11 | `docs/diagrams/current-system.md` の「在庫の増減と取消」の図（176 行の `CHANGE` の節の「products更新 + inventory_movements追加」、184 行の ROLLBACK の「その増減を戻す」）と「棚卸しの時間と在庫」の図 | 増減は products を更新して movement を足す、取消で増減を戻す、確定で actual_count へ在庫を合わせる | S4 の H1 で直す（movement を足して記録から求め直す、無効にした記録を除いて求め直す、補正の movement を足して求め直す）。177〜181 行の矢印の「加算」「減算」は movement の向きの説明で残す。ここでは S1 の型の hit として数える | — |
+| S1-11 | `docs/diagrams/current-system.md` の「在庫の増減と取消」の図（176 行の `CHANGE` の節の「products更新 + inventory_movements追加」、184 行の ROLLBACK の「その増減を戻す」）と「棚卸しの時間と在庫」の図 | 増減は products を更新して movement を足す、取消で増減を戻す、確定で actual_count へ在庫を合わせる | S4 の H1 で直す（movement を足して記録から求め直す、無効にした記録を除いて求め直す、補正の movement を足して求め直す）。177〜181 行の矢印の「加算」「減算」は movement の向きの説明で残す。ここでは S1 の型の hit として数える | 直した |
 | S1-12 | `docs/db-design/pos-tables.md` の Rollback の手順 2（425 行） | 「movement を product_code 別に逆補正」 | 「無効にした movement の商品ごとに `recompute_stock` で求め直す」へ。停止中の旧本体の記述だと注記する | 直した |
 | S1-13 | `docs/function-design/35-biz-stocktake-service.md` §20.8 対応不変条件の INV-2 の行（540 行） | 「新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す」 | 「新方式」は置き換わった時点証拠 ADR の確定の式。D-118 で置き換わったので、旧本体の今の形（補正の movement の `stock_after` は `actual_count`、写しは `recompute_stock`。S1-1 の条件付きの形）と、D-118 の (b) の確定は 35 の冒頭の D-118 の節を引く形に直す | 直した |
 
@@ -203,29 +203,29 @@ S3 に入れない: D-092 が部分的に置き換えた D（D-034・D-035・D-0
 
 | # | file・起点の行 | 今の文（要旨） | 直し方 | 結果 |
 |---|---|---|---|---|
-| P1 | `docs/Plans.md` 13・17・18・19 | wave 13・ハーネス刷新・2026-10-04 の 4 lane・wave 14 の段落（全て merge 済み）、次の lane は owner が決めるという当時の文 | 消す。消す前に、段落の中で他に記録の無い owner の決定（例: wave 13 の「同居禁止を適用しない」）が decision-log か archive の packet にあるかを `rg` で確かめ、無ければ段落を `docs/archive/harness-context/2026-09-30-Plans-completed.md` の末尾の節へ移す | — |
-| P2 | 同 22〜24（次の着手順、owner 決定 2026-09-22） | ㉘ の次は ④ 取込み・取消・回復と ⑤ 一括切替 | ㉘ ④⑤ は D-118 で「棚卸しの runtime (b)」（backlog の項目）に置き換わった。今の行き先を指す 1 文にし、済んだ 1 は消す | — |
-| P3 | 同 30 | 製品作業の既定順序は backlog の「次に動く lane（順番固定）」を維持 | その節は完了の行だけ（S5 で移す）なので消す | — |
-| P4 | 同 34 | 「migration vL で …」 | 実体の番号 v9 にする | — |
-| P5 | 同 51（ブロッカー） | 残る原価（C）・数量（P）・棚卸しの再開（⑤）は「単位の拡張」の項目 | ⑤ は棚卸しの runtime (b)、C は原価の lane の項目を指す | — |
-| P6 | 同 55・57・58（`## 製品の` で始まる判断待ちの節） | L8-4 の runtime 反映は表示小修正 batch 2 に同乗 | batch 2 は完了（backlog の完了の行、PR #64）。L8-4 をその節から外す | — |
-| P7 | 同 58 | L8-5 は「④ C5 追跡中」 | 移送前の番号。backlog の L8-5 の項目を指す句にする | — |
-| M1 | `docs/project-memory.md` 46 | 最新のアプリ生成 `.txt` の再確認は Post-UI-08 follow-up として残る | 済んだ（`docs/plu-export-and-real-csv-verification.md` の 2026-07-06 の記録）と直す | — |
-| M2 | 同 50 | 「18 original tables」、日報の表は planned | 日報の表は v4 で実装済み（`db/schema_v4.rs`）。表の数は今の値を書かず DB_DESIGN を引く | — |
-| M3 | 同 67 | 「Fabric may be managed in `cm`」 | 長さの商品は m で入力・表示（D-113）、cm は作り直しの起点で外す（D-119）と直す | — |
-| M4・T1 | 同 250 | 「PLU の小数の Z004 は 2026-09-30 に試す予定」、parser の時点の振舞い | 予定は済んだ（同じ file の店主回答の行、backlog の入力の (e)）と直す。parser の振舞いは今の code（`io/daily_report_parser.rs`・`io/ej_parser.rs`）で確かめた所だけ書く | — |
-| M5 | 同 62 | 「Stocktake may proceed while CSV import remains allowed」 | 設計の事実としては D-118 でも成り立つ。今の build は停止 ADR で両方を止めている注記を足す | — |
-| H1・D2 | `docs/PROJECT_HANDOFF.md` 15、`docs/DB_DESIGN.md` 15 が引く `docs/inventory_system_erd.html`・`docs/diagrams/current-system.md` | ER 図の対象は v1〜v7、v8・v9 の列と `stock_counts` が無い。図面の在庫の流れと棚卸しの確定が「products 更新」「actual_count へ在庫を合わせる」 | ER 図を v9 まで（`stock_counts`、写しの列〈要再確認の印・範囲〉、movement の並びの鍵の列、v8 の単位の CHECK）に合わせ、図面の在庫の流れを「movement を足して記録から求め直す」に直す。列と制約の正本は db-design と `src-tauri/src/db/schema_v8.rs`・`schema_v9.rs` | — |
-| H2 | `docs/PROJECT_HANDOFF.md` 13 | 「更新の前の版へ戻す管理者の手順（migration v8 以降）」 | 残す（見出しは成り立つ。runbook の本文に v9 の例を足すのは data safety の手順書の変更で、本 lane の外） | — |
-| A1 | `docs/ARCHITECTURE.md` 301 | Q40 は第6段階では保留、詳細は Plans.md Backlog | 置き場を `docs/backlog.md` に直し、S5 で 1 つにまとめた Q40 の項目（包括的な障害時対応の方針の残り。画面ごとの CmdError と retry、共通の Error Boundary は済み）を指す | — |
-| A2 | 同 315 | UI 層は「UI-00、UI-01a〜UI-13」 | `docs/architecture/ui-task-specs.md` の見出しにある番号まで広げる | — |
-| A3 | 同 183（BIZ-06）と 167（CMD-07）・180（BIZ-03） | BIZ-06 の確定は「差異補正の inventory_movements 記録」、CMD-07 は「商品別売上と`pos_stock_sync`在庫増減は実装済み」、BIZ-03 は「在庫引落し、…、ロールバック」 | 3 行とも停止 ADR の注記（棚卸しの開始・入力・確定と Z004 の業務 commit・取消は今の build で止めている）を足し、確定・取込みの新しい形は D-118 の (b) と書き足す | — |
-| A4 | 同 262〜280、`docs/SCREEN_DESIGN.md` 435・442 | tag と「tag 済み」「tag を作成済み」 | 履歴境界の前の記録（`docs/PROJECT_HANDOFF.md` の履歴境界の節）と分かる注記を付ける | — |
-| D1 | `docs/DB_DESIGN.md` 5・20〜49・124〜138 | 表の一覧と index に v9 の `stock_counts` と新しい index が無い（5 行が「まだ載せていない」） | 一覧に `stock_counts` を、index に `idx_inventory_movements_ledger`・`idx_stock_counts_product_id` を足し、5 行の文を直す（`db/schema_v9.rs`） | — |
-| SC1 | `docs/SCREEN_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（整合性検証〈75〉と操作ログ〈74〉の表示は (a)） | — |
-| SC2 | 「最終更新」の見出しの 8 file: `docs/SCREEN_DESIGN.md`・`docs/plu-export-and-real-csv-verification.md`・`docs/TOOLING_SKILL_COMMANDS.md`・`docs/DEV_SETUP_CHECKLIST.md`・`docs/FUNCTION_DESIGN.md`・`docs/DOCKER_REPAIR_LOG.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/50-ui-product-list.md` | 見出しの日付が git の最終 commit より古い | 見出しの行を消す（更新日は git が持つ） | — |
-| SC3・SC5 | `docs/SCREEN_DESIGN.md` 55・183 | 「PR #164 で実装済み」、UI-11c の fresh 再監査と L3 は未完了 | PR 番号に履歴境界の前の注記を付ける。「未完了」は owner に聞く束（S6）へ回して残す | — |
-| SC4 | 同 444 | Phase 3「タグ目標」 | Phase 3 の画面は実装済みと直す（A4 と同じ注記。v1.0 の release は D-070 で待つので完了と書かない） | — |
+| P1 | `docs/Plans.md` 13・17・18・19 | wave 13・ハーネス刷新・2026-10-04 の 4 lane・wave 14 の段落（全て merge 済み）、次の lane は owner が決めるという当時の文 | 消す。消す前に、段落の中で他に記録の無い owner の決定（例: wave 13 の「同居禁止を適用しない」）が decision-log か archive の packet にあるかを `rg` で確かめ、無ければ段落を `docs/archive/harness-context/2026-09-30-Plans-completed.md` の末尾の節へ移す | 直した |
+| P2 | 同 22〜24（次の着手順、owner 決定 2026-09-22） | ㉘ の次は ④ 取込み・取消・回復と ⑤ 一括切替 | ㉘ ④⑤ は D-118 で「棚卸しの runtime (b)」（backlog の項目）に置き換わった。今の行き先を指す 1 文にし、済んだ 1 は消す | 直した |
+| P3 | 同 30 | 製品作業の既定順序は backlog の「次に動く lane（順番固定）」を維持 | その節は完了の行だけ（S5 で移す）なので消す | 直した |
+| P4 | 同 34 | 「migration vL で …」 | 実体の番号 v9 にする | 直した |
+| P5 | 同 51（ブロッカー） | 残る原価（C）・数量（P）・棚卸しの再開（⑤）は「単位の拡張」の項目 | ⑤ は棚卸しの runtime (b)、C は原価の lane の項目を指す | 直した |
+| P6 | 同 55・57・58（`## 製品の` で始まる判断待ちの節） | L8-4 の runtime 反映は表示小修正 batch 2 に同乗 | batch 2 は完了（backlog の完了の行、PR #64）。L8-4 をその節から外す | 直した |
+| P7 | 同 58 | L8-5 は「④ C5 追跡中」 | 移送前の番号。backlog の L8-5 の項目を指す句にする | 直した |
+| M1 | `docs/project-memory.md` 46 | 最新のアプリ生成 `.txt` の再確認は Post-UI-08 follow-up として残る | 済んだ（`docs/plu-export-and-real-csv-verification.md` の 2026-07-06 の記録）と直す | 直した |
+| M2 | 同 50 | 「18 original tables」、日報の表は planned | 日報の表は v4 で実装済み（`db/schema_v4.rs`）。表の数は今の値を書かず DB_DESIGN を引く | 直した |
+| M3 | 同 67 | 「Fabric may be managed in `cm`」 | 長さの商品は m で入力・表示（D-113）、cm は作り直しの起点で外す（D-119）と直す | 直した |
+| M4・T1 | 同 250 | 「PLU の小数の Z004 は 2026-09-30 に試す予定」、parser の時点の振舞い | 予定は済んだ（同じ file の店主回答の行、backlog の入力の (e)）と直す。parser の振舞いは今の code（`io/daily_report_parser.rs`・`io/ej_parser.rs`）で確かめた所だけ書く | 直した |
+| M5 | 同 62 | 「Stocktake may proceed while CSV import remains allowed」 | 設計の事実としては D-118 でも成り立つ。今の build は停止 ADR で両方を止めている注記を足す | 直した |
+| H1・D2 | `docs/PROJECT_HANDOFF.md` 15、`docs/DB_DESIGN.md` 15 が引く `docs/inventory_system_erd.html`・`docs/diagrams/current-system.md` | ER 図の対象は v1〜v7、v8・v9 の列と `stock_counts` が無い。図面の在庫の流れと棚卸しの確定が「products 更新」「actual_count へ在庫を合わせる」 | ER 図を v9 まで（`stock_counts`、写しの列〈要再確認の印・範囲〉、movement の並びの鍵の列、v8 の単位の CHECK）に合わせ、図面の在庫の流れを「movement を足して記録から求め直す」に直す。列と制約の正本は db-design と `src-tauri/src/db/schema_v8.rs`・`schema_v9.rs` | 直した |
+| H2 | `docs/PROJECT_HANDOFF.md` 13 | 「更新の前の版へ戻す管理者の手順（migration v8 以降）」 | 残す（見出しは成り立つ。runbook の本文に v9 の例を足すのは data safety の手順書の変更で、本 lane の外） | 残す（見出しは成り立つ。runbook の本文に v9 の例を足すのは data safety の手順書の変更で、本 lane の外） |
+| A1 | `docs/ARCHITECTURE.md` 301 | Q40 は第6段階では保留、詳細は Plans.md Backlog | 置き場を `docs/backlog.md` に直し、S5 で 1 つにまとめた Q40 の項目（包括的な障害時対応の方針の残り。画面ごとの CmdError と retry、共通の Error Boundary は済み）を指す | 直した |
+| A2 | 同 315 | UI 層は「UI-00、UI-01a〜UI-13」 | `docs/architecture/ui-task-specs.md` の見出しにある番号まで広げる | 直した |
+| A3 | 同 183（BIZ-06）と 167（CMD-07）・180（BIZ-03） | BIZ-06 の確定は「差異補正の inventory_movements 記録」、CMD-07 は「商品別売上と`pos_stock_sync`在庫増減は実装済み」、BIZ-03 は「在庫引落し、…、ロールバック」 | 3 行とも停止 ADR の注記（棚卸しの開始・入力・確定と Z004 の業務 commit・取消は今の build で止めている）を足し、確定・取込みの新しい形は D-118 の (b) と書き足す | 直した |
+| A4 | 同 262〜280、`docs/SCREEN_DESIGN.md` 435・442 | tag と「tag 済み」「tag を作成済み」 | 履歴境界の前の記録（`docs/PROJECT_HANDOFF.md` の履歴境界の節）と分かる注記を付ける | 直した |
+| D1 | `docs/DB_DESIGN.md` 5・20〜49・124〜138 | 表の一覧と index に v9 の `stock_counts` と新しい index が無い（5 行が「まだ載せていない」） | 一覧に `stock_counts` を、index に `idx_inventory_movements_ledger`・`idx_stock_counts_product_id` を足し、5 行の文を直す（`db/schema_v9.rs`） | 直した |
+| SC1 | `docs/SCREEN_DESIGN.md` 3 | 見出し「（proposed・未実装、D-118）」 | (a)/(b) の書き分け（整合性検証〈75〉と操作ログ〈74〉の表示は (a)） | 直した |
+| SC2 | 「最終更新」の見出しの 8 file: `docs/SCREEN_DESIGN.md`・`docs/plu-export-and-real-csv-verification.md`・`docs/TOOLING_SKILL_COMMANDS.md`・`docs/DEV_SETUP_CHECKLIST.md`・`docs/FUNCTION_DESIGN.md`・`docs/DOCKER_REPAIR_LOG.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/50-ui-product-list.md` | 見出しの日付が git の最終 commit より古い | 見出しの行を消す（更新日は git が持つ） | 直した |
+| SC3・SC5 | `docs/SCREEN_DESIGN.md` 55・183 | 「PR #164 で実装済み」、UI-11c の fresh 再監査と L3 は未完了 | PR 番号に履歴境界の前の注記を付ける。「未完了」は owner に聞く束（S6）へ回して残す | 直した |
+| SC4 | 同 444 | Phase 3「タグ目標」 | Phase 3 の画面は実装済みと直す（A4 と同じ注記。v1.0 の release は D-070 で待つので完了と書かない） | 直した |
 
 S4 の型の洗い直し: 採用済みで未実装の決定と今の build の取り違え（round 3 の是正で足した）。accepted になった決定の中身を、今の build の動きとして書いている live な文を、dashboard の 7 file で洗い直した。直し方の型は 1 つ: その文を「採用済みの方針（D の番号）／今の runtime（code の現物）／残る実装（backlog の runtime の項目）」に書き分ける。採用済みの方針の文そのものは消さない。
 
@@ -241,13 +241,13 @@ rg -n -e 'D-111|D-117|D-118|D-119|D-120|D-121|D-122' -e 'clear 行|clear行|Clea
 
 | # | 決定 | file・起点の行 | 今の文（要旨） | 直し方 | 結果 |
 |---|---|---|---|---|---|
-| DR1 | D-111 | `docs/project-memory.md` 40・100・197 | 毎日の売上データはアプリが SD から直接読み、CV17 は PLU の書込みだけ | 採用済みの方針（owner の判断 2026-10-06）として残し、今の runtime（日報は利用者が file を選んで取り込む。SD 直読みは Draft PR #172）と残る実装（SD 直読みの runtime、`XZ_BKUP` へ移す (b)）を書き分ける | — |
-| DR2 | D-111 | `docs/DB_DESIGN.md` 83 | 日報の表は、アプリがレジの SD から直接読む日報を持つ | 同上（今は利用者が選ぶ file から入る） | — |
-| DR3 | D-111 | `docs/SCREEN_DESIGN.md` 81・118・126・127 | 1 日の動線と日報取込みの導線が「SD から読む → 精算を選ぶ → 確認 → 完了」 | 画面の設計（採用済み）であることを残し、今の画面は file を選ぶ導線で、「SD から読む」は SD 直読みの runtime で入ると書き分ける | — |
-| DR4 | D-111 | `docs/ARCHITECTURE.md` 103・200・201・236・237 | IO-09・IO-10 と SD から読む流れ | IO-09・IO-10 の行と流れに「D-111 の runtime は未実装（Draft PR #172）」の注記を 1 か所ずつ足す | — |
-| DR5 | D-117 | `docs/project-memory.md` 43・196 | アプリは段階導入の道具（一括の PLU 対象化等）を持たない | 採用済みの方針として残し、今の build には一括の PLU 対象化の button が残り、撤去は PLU の書出しの見直しの runtime と書き分ける | — |
-| DR6 | D-117 | `docs/project-memory.md` 45・57・225・251、`docs/DB_DESIGN.md` 178・179 | 毎日の締めの SD の読取りで Z004 の全スロットを照合する、アプリは枠を消さない（clear 行を書かない） | 採用済みの方針として残し、今の build は Clear 行を書き（`PLU_CLEAR_ROW_ENABLED = true`）、占有は利用者が選ぶ Z004 で照合する、撤去と切替えは PLU の書出しの見直しの runtime と書き分ける（33 §16 の冒頭の runtime の注記を引く） | — |
-| DR7 | D-117 | `docs/SCREEN_DESIGN.md` 137 | PLU 書出しの画面の上部の「レジの登録状況の最終照合日時（売上データ取込みで SD を読んだとき）」、照合が無ければ書出しを拒む | 同上（今の画面の照合の入口と、D-117 の runtime の後の形を書き分ける） | — |
+| DR1 | D-111 | `docs/project-memory.md` 40・100・197 | 毎日の売上データはアプリが SD から直接読み、CV17 は PLU の書込みだけ | 採用済みの方針（owner の判断 2026-10-06）として残し、今の runtime（日報は利用者が file を選んで取り込む。SD 直読みは Draft PR #172）と残る実装（SD 直読みの runtime、`XZ_BKUP` へ移す (b)）を書き分ける | 直した |
+| DR2 | D-111 | `docs/DB_DESIGN.md` 83 | 日報の表は、アプリがレジの SD から直接読む日報を持つ | 同上（今は利用者が選ぶ file から入る） | 直した |
+| DR3 | D-111 | `docs/SCREEN_DESIGN.md` 81・118・126・127 | 1 日の動線と日報取込みの導線が「SD から読む → 精算を選ぶ → 確認 → 完了」 | 画面の設計（採用済み）であることを残し、今の画面は file を選ぶ導線で、「SD から読む」は SD 直読みの runtime で入ると書き分ける | 直した |
+| DR4 | D-111 | `docs/ARCHITECTURE.md` 103・200・201・236・237 | IO-09・IO-10 と SD から読む流れ | IO-09・IO-10 の行と流れに「D-111 の runtime は未実装（Draft PR #172）」の注記を 1 か所ずつ足す | 直した |
+| DR5 | D-117 | `docs/project-memory.md` 43・196 | アプリは段階導入の道具（一括の PLU 対象化等）を持たない | 採用済みの方針として残し、今の build には一括の PLU 対象化の button が残り、撤去は PLU の書出しの見直しの runtime と書き分ける | 直した |
+| DR6 | D-117 | `docs/project-memory.md` 45・57・225・251、`docs/DB_DESIGN.md` 178・179 | 毎日の締めの SD の読取りで Z004 の全スロットを照合する、アプリは枠を消さない（clear 行を書かない） | 採用済みの方針として残し、今の build は Clear 行を書き（`PLU_CLEAR_ROW_ENABLED = true`）、占有は利用者が選ぶ Z004 で照合する、撤去と切替えは PLU の書出しの見直しの runtime と書き分ける（33 §16 の冒頭の runtime の注記を引く） | 直した |
+| DR7 | D-117 | `docs/SCREEN_DESIGN.md` 137 | PLU 書出しの画面の上部の「レジの登録状況の最終照合日時（売上データ取込みで SD を読んだとき）」、照合が無ければ書出しを拒む | 同上（今の画面の照合の入口と、D-117 の runtime の後の形を書き分ける） | 直した |
 | DR8 | D-111 | `docs/backlog.md` 109 | 「標準の入力元はレジの SD の直読みに変わった（D-111、PR #150）」 | PR #150 は設計で、runtime は Draft PR #172 と書き足す | — |
 | DR9 | D-117 | `docs/backlog.md` 215（取消線の項目） | 「段階導入の道具は D-117 で撤去した」 | S5 で archive へ移すとき、閉じた根拠の句を「撤去すると決めた（D-117。runtime は PLU の書出しの見直しの lane）」にする | — |
 

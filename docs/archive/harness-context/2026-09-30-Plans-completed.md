@@ -91,3 +91,17 @@
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](../plans/2026-09-16-home-mockup-c-runtime.md)）
   - lane 2: ㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` = **完了**（PR #71 squash `949a5c4c`、介入 1/3、relay 3/3、[archive](../plans/2026-09-16-disposal-result-detail-link.md)）
+
+## 移した「次の行動」の段落（2026-10-19）
+
+<!-- docs の棚卸し lane 1（Plan Packet 2026-10-19-docs-contract-refresh の S4 の P1・P2）で docs/Plans.md の「次の行動」から本文を変えずに移した。相対リンクの接頭は上の規則で補正した。 -->
+
+wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Plan Review は fresh Opus + Codex、Codex が rate limit の間は fresh Opus のみで進め Final Review だけ Codex を待つ（owner 確認 2026-09-23、Codex 復帰後は両方）。
+
+- ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。5 本すべて merge 済み: PR0（#92）・PR1（#97）・PR2（#113、座組と役割）・PR3（#117、入口と重複）・PR5（#127、gate の穴）・PR4（#128、手続きの軽量化）と、PR4・PR5 より先に起こした並走の摩擦を削る lane（PR #123、owner 2026-09-28 起票承認）。
+- 2026-10-04 の 4 lane（A Z004 取込みの穴・B 日報取込みの穴・D EJ の文法・E 独自コードの採番、owner の lane 選択 TD-104）と、その後に先に入れた helper の守りの lane（owner 2026-10-05）はすべて merge 済み（PR #138〜#142）。次の lane は未定（owner が決める）。
+- wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）と後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（PR #145、2026-10-06）は merge 済み。
+
+次の着手順（owner決定2026-09-22）:
+
+1. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。本laneの起票はworkflowの軽量化1段目文書部分（PR #90）のdogfood対象: templateの `Ordinary Operation` 節を書き、Plan Reviewの冒頭でreviewerが `成立 / 具体的な反例あり / 外部前提が未確認` の3値を返すかを観測する。 → 完了（EJ parser core = PR #94、㉘ の最初の lane = PR #95、2026-09-25）。㉘ はその後 ② 受領・判定・保存の基盤（PR #148、2026-10-07）と ③ 計数と補正（PR #152、2026-10-11）まで merge 済みで、どちらも通常の起動へは配線していない（店の棚卸しは停止のまま）。㉘ の次は ④ 取込み・取消・回復（Square か CASIO かの判断待ちは 2026-10-11 に解けた: しばらくは CASIO のレジでいく。repo 外の回答台帳 TD-221）と ⑤ 一括切替（通常の起動・画面・command・bindings への配線）で、中身は [backlog](../../backlog.md) の「㉘ ③ 〜 ⑤ の申し送り」。次の着手順は未決（owner が決める）。

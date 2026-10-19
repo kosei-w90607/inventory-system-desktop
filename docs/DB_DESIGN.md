@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。現行の ER 図・以下のテーブル一覧はまだ (a) の列と表を載せていない（列と制約の正本は下の各 db-design の同名の節）。(b) の分は proposed・未実装。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。以下のテーブル一覧・インデックス方針と ER 図は (a) の表と列を載せている（列と制約の正本は下の各 db-design の同名の節）。(b) の分は proposed・未実装。
 
 - 写しの列（`stock_recheck`・範囲）と在庫連動・共有 JAN: [master](db-design/master-tables.md)。入出庫の TX との接続: [transaction](db-design/transaction-tables.md)。
 - Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
@@ -45,6 +45,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 | 15 | price_history | 在庫追跡 | REQ-102 | 価格変更履歴 |
 | 16 | stocktakes | 棚卸し | REQ-205 | 棚卸しヘッダ |
 | 17 | stocktake_items | 棚卸し | REQ-205 | 棚卸し明細（商品ごとの実カウント） |
+| 17a | stock_counts | 棚卸し | REQ-205 | 計数の置き場（日付と精算の並びの位置を持つ append-only の計数。migration v9、D-118 の (a)。保存する経路は (b)） |
 | 18 | operation_logs | システム | QR-06 | 操作ログ |
 | 19 | app_settings | システム | QR系 | アプリ設定（キー・バリューストア） |
 
@@ -60,7 +61,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 | PLU slot | [db-design/plu-tables.md](db-design/plu-tables.md) | plu_slots、PLU snapshot 用 app_settings key |
 | トランザクション | [db-design/transaction-tables.md](db-design/transaction-tables.md) | receiving_records/items, return_records/items, manual_sales/items, disposal_records/items |
 | POS連携 | [db-design/pos-tables.md](db-design/pos-tables.md) | csv_imports, csv_import_errors, daily_report_imports, daily_report_summary_lines, daily_report_payment_lines, daily_report_department_lines, B-1/B-2パース仕様, sale_records |
-| 在庫追跡・棚卸し・システム | [db-design/tracking-system-tables.md](db-design/tracking-system-tables.md) | inventory_movements, price_history, stocktakes/items, operation_logs, app_settings |
+| 在庫追跡・棚卸し・システム | [db-design/tracking-system-tables.md](db-design/tracking-system-tables.md) | inventory_movements, price_history, stocktakes/items, stock_counts, operation_logs, app_settings |
 
 ---
 
@@ -80,7 +81,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 - 不整合が起きた場合は操作ログに記録して警告
 
 ### POS日報と商品別売上のデータ境界（D-025 / 2026-06-30）
-- `daily_report_imports` と配下の `daily_report_*_lines` は、アプリがレジの SD から直接読む（D-111。予備は利用者が選ぶファイル）`Z001` / `Z002` / `Z005` の日報集計を、アプリ内部の日報モデルに変換して保存する。別layoutの受理はadapter互換性であり、通常のoperator手順は増やさない。
+- `daily_report_imports` と配下の `daily_report_*_lines` は、アプリがレジの SD から直接読む（D-111 の採用済みの方針。予備は利用者が選ぶファイル。今の build は利用者が選ぶファイルから取り込み、SD 直読みは Draft PR #172 の runtime）`Z001` / `Z002` / `Z005` の日報集計を、アプリ内部の日報モデルに変換して保存する。別layoutの受理はadapter互換性であり、通常のoperator手順は増やさない。
 - `sale_records` は、Z004または手動販売出庫から得られる商品別売上の正本である。Z001/Z002/Z005は商品コード・JAN単位の明細ではないため、`sale_records` や `inventory_movements` へ擬似展開しない。
 - 日報取込みの rollback は日報取込みレコードを `rolled_back` にする論理取消に限定する。在庫変動を作らないため、在庫補正や movement void は発生しない。
 - レジ依存のファイル名、列名、文字コード、改行、PCツール手順は POS adapter の責務とし、DBには app core が使う report_date / section / label / amount / quantity_hundredths（個数の 100 倍の整数）/ count / department mapping だけを保存する。
@@ -133,6 +134,8 @@ jan_codeとfile_hash以外に、以下のインデックスを初期設定する
 - daily_report_department_lines(daily_report_import_id, department_id) — 部門別日報表示と部門マスタ突合用
 - inventory_movements(product_code, created_at) — 在庫変動履歴の商品別時系列表示用
 - inventory_movements(reference_type, reference_id) — 元操作からの逆引き用
+- inventory_movements(product_code, business_date, phase, settlement_no) — `idx_inventory_movements_ledger`。記録から写しを求め直す並びの鍵（migration v9、D-118 の (a)）
+- stock_counts(product_code, id) — `idx_stock_counts_product_id`。商品ごとの効く計数を選ぶ（migration v9、D-118 の (a)）
 - stocktake_items(stocktake_id, product_code) — 棚卸し中の商品検索用
 - products(department_id) — 部門別商品一覧用
 - products(is_discontinued) — 廃番フィルタリング用
@@ -175,8 +178,8 @@ jan_codeとfile_hash以外に、以下のインデックスを初期設定する
 ### D-2: PLU書出し→レジ反映の検知手段（2026-03-29 確定 / 2026-08-18 D-072 更新 / 2026-10-16 D-117 更新）
 - **plu_dirty / plu_exported_at の更新タイミング**: PLUファイル生成だけでは更新しない。UI-08で保存先を選び、PLUファイル保存後に利用者が「この書出しを未反映から外す」と明示確認した時点で、生成時の対象商品だけを `plu_dirty=0` にし、`plu_exported_at` に現在日時を記録する。
 - **plu_dirty の意味の限定（D-028）**: `plu_dirty` は `plu_target=1`（スキャニングPLU書出し対象）の商品についてのみ「レジ未反映」を意味する。`plu_target=0` の商品は `plu_dirty` の値にかかわらず PLU書出し抽出と UI-00 PLU未反映通知の対象外（抽出・通知クエリが `plu_target=1` 条件を持つ）。詳細は [db-design/master-tables.md](db-design/master-tables.md) plu_target 設計意図と decision-log D-028 を参照。
-- **永続 slot と再書出し（D-072 / SPEC-PLS-D1、D5）**: memory No. は `plu_slots` に JAN 単位で永続割当し、書出しごとに再採番しない。Diff / Full はどちらも CV17 へ投入できる。Full は対象の商品の app 管理 slot 全体、Diff は未反映対象を出力する。投入失敗時は Diff / Full の書出し直しで回復する（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる。D-117）。外部登録と free slot は出力しない。アプリは枠を消さず（clear 行を書かない）、別の JAN に使い回さない（D-117 (1)）。
-- **レジ反映の確認**: アプリはその場では確かめられない。次の締めの SD の読取りで Z004 の全スロットを照合すると、レジに入ったコードと名称は分かる（`reserved → active`）が、単価・課税方式・部門リンクの反映は Z004 に無い（D-117 (7)、D-011 の前提の訂正）。`plu_exported_at` は「アプリ側でPLUファイルを保存済みにした日時」であり、PCツール受理やレジ反映の証明ではない。
+- **永続 slot と再書出し（D-072 / SPEC-PLS-D1、D5）**: memory No. は `plu_slots` に JAN 単位で永続割当し、書出しごとに再採番しない。Diff / Full はどちらも CV17 へ投入できる。Full は対象の商品の app 管理 slot 全体、Diff は未反映対象を出力する。投入失敗時は Diff / Full の書出し直しで回復する（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる。D-117）。外部登録と free slot は出力しない。アプリは枠を消さず（clear 行を書かない）、別の JAN に使い回さない（D-117 (1) の採用済みの方針。今の build は Clear 行を書き〈`PLU_CLEAR_ROW_ENABLED = true`〉、撤去は PLU の書出しの見直しの runtime。[33 §16](function-design/33-biz-plu-export-service.md) の冒頭の runtime の注記）。
+- **レジ反映の確認**: アプリはその場では確かめられない。次の締めの SD の読取りで Z004 の全スロットを照合すると（D-117 の採用済みの方針。今の build は PLU 書出しの画面で利用者が選ぶ Z004 で照合する）、レジに入ったコードと名称は分かる（`reserved → active`）が、単価・課税方式・部門リンクの反映は Z004 に無い（D-117 (7)、D-011 の前提の訂正）。`plu_exported_at` は「アプリ側でPLUファイルを保存済みにした日時」であり、PCツール受理やレジ反映の証明ではない。
 - **画面上の注意表示**: UI-08の完了画面に「アプリで確認できるのはPLUファイル保存まで。PCツールへの取込み、SDカード書出し、レジ読込みは手動確認が必要」と常時表示する。
 
 ### D-3: CSV取込み中の排他制御（2026-03-29 確定）

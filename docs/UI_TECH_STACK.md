@@ -8,7 +8,6 @@
 
 > **親文書**: [ARCHITECTURE.md](ARCHITECTURE.md)
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、SCREEN_DESIGN.md（画面設計）、FUNCTION_DESIGN.md（関数設計）
-> **最終更新**: 2026-07-01 / UI-08 PLU書出し native save / confirm 方針更新
 > **位置付け**: 第7段階以降のUI実装で守るべき技術選定・デザイン哲学・運用原則を定める唯一の参照源
 
 ---

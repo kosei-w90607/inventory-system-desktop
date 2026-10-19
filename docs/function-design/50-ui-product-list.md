@@ -1,7 +1,5 @@
 # 50. UI-01a: 商品検索・一覧
 
-> 最終更新: 2026-06-09 / Design Phase readiness trial
->
 > 対応仕様: REQ-103 / REQ-105 / UI-01a
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01a、`docs/SCREEN_DESIGN.md` 商品検索・一覧画面、`docs/function-design/20-io-product-repo.md` `search_products`、`docs/function-design/30-biz-product-service.md` `search_products`、`docs/function-design/40-cmd-product.md` `search_products`
