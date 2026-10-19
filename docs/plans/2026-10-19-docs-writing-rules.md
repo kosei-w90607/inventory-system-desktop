@@ -4,9 +4,9 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 4d33d2df14fe3a61918bb2b88da9e5c2ae5a5caa
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent
@@ -18,7 +18,9 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 - kickoff → spec-check → plan-draft（2026-10-19、起草役、`131c0809`）: owner の決定 TD-324・TD-326・TD-327 で 3 つの規則の中身が決まり、Risk は R3（`docs/DEV_WORKFLOW.md` を変える workflow gate の変更。`scripts/ci/classify-changes.sh` の workflow の一覧に `docs/DEV_WORKFLOW.md` が当たり `workflow=true`）、Final Review Minimum 2。spec-check → plan-draft の skip で進めた
 - plan-draft → design → plan-draft（2026-10-19、起草役、`a84994e5`）: round 1 の是正（Review Response 参照）と、owner の決定 TD-328 による D-127 の追加。spec-check → plan-draft の skip を取り消して design へ戻り、design の出力の D-124〜D-127（durable decision）を plan-first の変更として `docs/decision-log.md` の末尾に置いた。未解決の設計の問いは無い。実装の commit に残るのは、置き場（DEV_WORKFLOW・DOC_STYLE_GUIDE・decision-log の頭・AGENTS.md・CLAUDE.md）へ規則の文を入れることだけ
 - plan-draft（2026-10-19、起草役、`91e00bbd`）: round 2 の是正（Review Response 参照）。Phase は plan-draft のまま。実装の commit の置き場に `docs/quality/review-checklist.md`（D-125 への経路）と `docs/backlog.md`（1 項）を足した
-- plan-draft（2026-10-19、起草役、本 commit）: round 3 の是正（Review Response 参照）。owner の決定 TD-329 で D-124 を先頭で頼む形に置き換えた。Phase は plan-draft のまま
+- plan-draft（2026-10-19、起草役、`4d33d2df`）: round 3 の是正（Review Response 参照）。owner の決定 TD-329 で D-124 を先頭で頼む形に置き換えた。Phase は plan-draft のまま
+- plan-draft → plan-gate（2026-10-19、起草役、本 commit）: Plan Review round 1〜3（Claude 側 fresh Opus 5.5・Codex〈round 1 は Sol が満員で Astra、round 2・3 は Sol〉）。packet と Test Design Matrix は plan-first の commit で揃っている
+- plan-gate → plan-approved（2026-10-19、起草役、本 commit）: owner の決定 TD-330（round 3 の天井の後、直して追加の round なしで進める）。Plan Commit は round 3 の是正の commit `4d33d2df`。plan-first の commit は実装の commit より前に在る
 
 ## Owner Effort Budget
 
