@@ -572,3 +572,24 @@ Fill after review.
 
 - S1 の型（語の幅を広げた）: docs は 286 行で、直す 34・正しい 86・対象外 166。comment は 38 行で、37 行は正しいか対象外、1 行（`sales_repo.rs:165`）は古い。本 lane は code を変えないので、S5 で backlog に 1 行足す。
 - S4 の型（採用済みで未実装の決定）: D-111・D-117〜D-122 について dashboard の 7 file を洗い、120 行を分類した（直す 25、正しい 95）。取り違えは D-111（SD 直読み）と D-117（PLU の書出しの見直し）に集まり、D-118〜D-122 は書き分け済みか実装済みだった。backlog の 39・109 は S5 の文の直しに足した。
+
+### Final Review broad（2026-10-20、対象 `a9ba2f09`）
+
+- Claude 側: fresh Opus 5.5 の 2 本（broad: approve、P3 4。S5 の深掘り: reject、P2 1・P3 4）。Codex: PR #180 の review（reject、P2 1・P3 2）。
+- Coordinator の裁定: 全件を受理（P2 の 2 件は Coordinator が現物で確かめた）。是正は Writer（Opus 5.5 subagent、発注 450）。Scope・AC は変えていない。
+
+| finding | 要旨 | 直した所 |
+|---|---|---|
+| C1（P2） | backlog の P が EJ の小数の数量を D-121 の控えの閲覧の範囲に置く（D-121 Decision (6) と食い違う） | backlog の P を「控えの閲覧（(A)）は小数の数量を拾わない。受理は 29 の単位の拡張の表し方で EJ の取込みの lane が U5 の後に足す」に直した。同型を live な docs で洗い、他は 0 件 |
+| S1（P2） | STK-2 の子の申し送りの (4)（交換を差額だけの戻しで打つ運用、TD-225）が、D-118 で置き換わったという根拠の句のまま archive へ移った | (4) を backlog の (b) の子へ上げ、63 UI-03-D8 の既定との関係を 1 句添えた（直し方は決めない）。archive の根拠の句を (1)〜(6) ごとの行き先に書き直した |
+| S1'（同型） | archive へ移した 102 行の根拠の句の見直し | 102 行を分類した。上げるのは (4) だけで、(3)〈小数の数量〉は P が持つと根拠の句に書いた。ほかは根拠の句と合う（店の前提と owner の決定は project-memory・decision-log・10 に在る） |
+| O1 / C2（P3） | 29 の IO-08.9 の表が観測済みの小数の数量を「未観測の形式」に入れる | 行を「未観測の形式」と「観測済みで受理しない形（小数の数量・点数、`AUTO` / `BT`）」の 2 行に分けた |
+| O2 / S2（P3） | archive へ移した項目を live な docs が旧い項目名で引く | 移した項目名を live な docs・README・src に `rg -F` で当てて全部分類した。Scope の file（23・29E・project-memory）は寄せ先の名へ直し、Scope に無い file（29D・33・37・ADR・runbook）と decision-log は直さず、寄せ先の項目の頭に「旧名」の句を置いた。decision-log の D-105 が引く「EJ の入力 (5)」は archive の根拠の句で辿れるようにした |
+| O3（P3） | 73 の「本書の契約は実装済み」が冒頭の (b) の節まで含む | §73.1 以降（UI-10-D1〜D13）に絞り、冒頭の D-118 の節は (b) と書いた |
+| O4（P3） | backlog の slice 2 が開いたまま | D-039（PR #166、履歴境界の前）と今の script（PK4・PK5・drift test）で実装済みと確かめ、根拠の句をつけて archive へ移した |
+| C3（P3） | IO-04・BIZ-04 に採用済みの設計と今の runtime の区別が無い | IO-04・BIZ-04 に 33 §16 を引く runtime の状態の注記を置き、BIZ-01 の PLU の 3 行を同じ形に直した。同型の IO-09・IO-10・BIZ-08 の SD 直読み（D-111）にも注記を足した。cmd-task-specs・ui-task-specs の同型は Scope の外なので直していない |
+| S3（P3） | archive の根拠の句が起点の backlog の行番号で他の項目を指す | 10 か所を項目名・子の名に替えた |
+| S4（P3） | 本 PR の句が旧 repo の PR 番号を注記なしで使う | archive の PR #84 を「D-072（旧 repo の PR #84）」、backlog の PR #60 を「UI_TECH_STACK §6.10、旧 repo の PR #60」にした。本 PR の新しい句の他の番号は今の repo の PR と合う |
+| S5（P3） | filter-label の packet の 415 行の link が live の backlog の節を指す | 移した先の archive の見出しへ付け替えた |
+
+AC の再実行（是正の後、逐語）: AC1・AC2・AC3 は exit 0。AC-S1-1 は 0 行、AC-S1-3 は docs 256 行・comment 38 行で `a9ba2f09` と同じ行の集合。AC-S4-8 は 121 → 122 行（足したのは (b) の子の (4) の 1 行。書き換えた行は旧名の句と P の行で、採用済みの方針を今の build の動きとして書く行は無い）。AC-S5-2 は 78 → 79（slice 2 を移した）。AC-S5-5 の anchor の列挙は 16 → 15（filter-label の 415 行が archive を指すようになり、式の `backlog\.md` に当たらない）で、全部今ある見出しを指す。AC-S5-7 の D-023 の行は 139 → 140（子を 1 行足した）。ほかの AC は `a9ba2f09` の値と同じ。
