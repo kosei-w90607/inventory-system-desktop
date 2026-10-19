@@ -4,7 +4,7 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 4d33d2df14fe3a61918bb2b88da9e5c2ae5a5caa
 - Amendments: none
@@ -20,7 +20,8 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 - plan-draft（2026-10-19、起草役、`91e00bbd`）: round 2 の是正（Review Response 参照）。Phase は plan-draft のまま。実装の commit の置き場に `docs/quality/review-checklist.md`（D-125 への経路）と `docs/backlog.md`（1 項）を足した
 - plan-draft（2026-10-19、起草役、`4d33d2df`）: round 3 の是正（Review Response 参照）。owner の決定 TD-329 で D-124 を先頭で頼む形に置き換えた。Phase は plan-draft のまま
 - plan-draft → plan-gate（2026-10-19、起草役、本 commit）: Plan Review round 1〜3（Claude 側 fresh Opus 5.5・Codex〈round 1 は Sol が満員で Astra、round 2・3 は Sol〉）。packet と Test Design Matrix は plan-first の commit で揃っている
-- plan-gate → plan-approved（2026-10-19、起草役、本 commit）: owner の決定 TD-330（round 3 の天井の後、直して追加の round なしで進める）。Plan Commit は round 3 の是正の commit `4d33d2df`。plan-first の commit は実装の commit より前に在る
+- plan-gate → plan-approved（2026-10-19、起草役、`a23c51a9`）: owner の決定 TD-330（round 3 の天井の後、直して追加の round なしで進める）。Plan Commit は round 3 の是正の commit `4d33d2df`。plan-first の commit は実装の commit より前に在る
+- plan-approved → implementing（2026-10-19、Coordinator、本 commit。state だけ）: Plan Commit `4d33d2df` は実装の commit より前にある。実装は Writer（Opus 5.5 subagent）への発注 444 で行う
 
 ## Owner Effort Budget
 
