@@ -8,7 +8,7 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R2
 - Plan Commit: ccdf03405dcd495e3db84c3a415dd1b1a821fe0b
 - Amendments: none
@@ -31,7 +31,8 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 5. plan-draft（round 2 の是正、2026-10-19、起草役）: Plan Review round 2 の是正（Review Response 参照）。S1・S2 の型を意味の側で洗い直し、S1 に行を足した。Owner Effort Budget の上限を改定した。
 6. plan-draft（round 3〈天井〉の是正、2026-10-19、起草役）: Coordinator が round 3 の残りを同型の一括是正に disposition した（Review Response 参照）。S1 の型の語の幅を広げて洗い直し、S4 に採用済みで未実装の決定の型の洗い直しを足した。
 7. plan-draft → plan-gate（Plan Review round 1〜3、2026-10-19）: Claude 側 fresh Opus 5.5・Codex（round 1 は Sol が満員で Astra、round 2・3 は Sol）。各 round の是正は Review Response 参照。
-8. plan-gate → plan-approved（2026-10-19、本 commit）: owner の決定（repo 外の回答台帳 TD-330）。round 3 の天井の後、指摘を直して追加の round を開かない。Plan Commit は round 3 の是正の commit（`ccdf0340`）。
+8. plan-gate → plan-approved（2026-10-19、`7f46a212`）: owner の決定（repo 外の回答台帳 TD-330）。round 3 の天井の後、指摘を直して追加の round を開かない。Plan Commit は round 3 の是正の commit（`ccdf0340`）。
+9. plan-approved → implementing（2026-10-19、Coordinator、本 commit。state だけ）: Plan Commit `ccdf0340` は実装の commit より前にある。実装は Writer（Opus 5.5 subagent）への発注 445 で行う
 
 ## Owner Effort Budget
 
