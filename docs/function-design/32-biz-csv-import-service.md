@@ -410,16 +410,12 @@ fn rollback_csv_import(
    - sales_repo::void_sale_records_by_import(&tx, csv_import_id) → voided_sale_count
 4. **inventory_movements の無効化と在庫補正データ取得**
    - sales_repo::void_movements_by_reference(&tx, "csv_import", csv_import_id) → voided_movements: Vec\<VoidedMovement\>
-5. **在庫補正**（product_code でグループ化して集計）
-   a. voided_movements を product_code でグループ化
-   b. 各 product_code について: correction = voided_movements の quantity を合算し符号反転
-      - 例: quantity = -3（販売で3個減）が void → correction = +3（3個戻す）
-      - 例: quantity = +1（返品で1個増）が void → correction = -1（1個引く）
-      - 計算式: correction = -SUM(voided.quantity)  ※同一product_codeの全movementを合算
-   c. product_repo::find_by_product_code(&tx, &product_code) → product
-   d. new_stock = product.stock_quantity + correction
-   e. inventory_repo::update_stock_quantity(&tx, &product_code, new_stock)
-   f. stock_corrections に StockCorrection { product_code, old_stock: product.stock_quantity, new_stock } を追加
+5. **在庫補正**（無効にした movement の商品ごとに求め直す。`csv_import_service/commit.rs` の `apply_void_stock_corrections`）
+   a. voided_movements の product_code を重複なく集める（quantity は使わない）
+   b. 各 product_code について:
+      - product_repo::find_by_product_code(&tx, &product_code) → product（old_stock = product.stock_quantity）
+      - stock_ledger::recompute_stock(&tx, &product_code) → new_stock（[31](31-biz-inventory-service.md)。無効にした記録を除いて記録から求め直し、写しを書く。上限の外は TX 全体を戻す）
+      - stock_corrections に StockCorrection { product_code, old_stock, new_stock } を追加
 6. **csv_imports の status 更新**
    - sales_repo::update_csv_import_status(&tx, csv_import_id, "rolled_back")
    - settlement_dateを条件にせず、指定IDだけを更新する。同日の他importは変更しない
@@ -430,11 +426,10 @@ fn rollback_csv_import(
 9. RollbackResult { success: true, voided_sale_count, voided_movement_count: voided_movements.len(), stock_corrections } を返す
 
 **在庫補正の詳細**:
-- movement.quantity = -3（販売で在庫3個減）→ void 後の在庫補正 = +3（3個戻す）
-- movement.quantity = +1（返品で在庫1個増）→ void 後の在庫補正 = -1（1個引く）
-- 同一 product_code に複数の voided_movement がある場合は合算してから1回の update_stock_quantity で更新する
+- 写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じ（例: quantity = -3〈販売で 3 個減〉の movement を無効にすると 3 個戻り、quantity = +1〈返品で 1 個増〉なら 1 個引かれる）。一致していなければ、記録から求め直した値になる
+- 同一 product_code に複数の voided_movement があっても、求め直しは商品ごとに 1 回
 
-**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない。apply_stock_change は movement を追加する関数のため、ここでは直接 update_stock_quantity を使う。void 対象の movement が取消の記録として残る（is_voided=1）。
+**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない（補償の movement は作らない）。apply_stock_change は movement を追加する関数のため使わず、無効にした記録を除いて recompute_stock で求め直す。void 対象の movement が取消の記録として残る（is_voided=1）。
 
 **入力例**:
 ```
@@ -527,7 +522,7 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-1: quantity 符号変換 | commit_csv_import のステップ7b で inventory_quantity = -row.quantity。売上帳票視点→在庫視点の符号反転を BIZ 層で実施 |
-| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は直接 update_stock_quantity |
+| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は movement を足さず、無効にした movement の商品を recompute_stock で求め直す |
 | INV-3: 負在庫ポリシー | commit 時に apply_stock_change が negative_stock_warning を返す。警告をstock_warningsに蓄積するが処理は続行 |
 | INV-4: is_voided 使用範囲 | rollback_csv_import で void_sale_records_by_import, void_movements_by_reference を呼び出し。is_voided=1 を設定するのはロールバック時のみ |
 | INV-6: file_hash 自然冪等性 | parse_and_validate のステップ5a で find_blocking_import_by_file_hash。commit_csv_import のステップ5で TX 内再チェック（TOCTOU 防止） |

@@ -176,7 +176,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | ID | タスク名 | 対応REQ | 責務 |
 |----|---------|---------|------|
 | BIZ-01 | 商品管理ロジック | REQ-101〜104 | 商品登録・修正・廃番・独自コード発番・売価変更（price_history記録）・一括インポート（エンコーディング判定＋プレビュー）・PLU dirty管理 |
-| BIZ-02 | 在庫変動ロジック | REQ-201〜204, 303 | 入庫・出庫・返品・廃棄の共通在庫処理。products.stock_quantity更新＋inventory_movements記録をセットで実行。返品のregister_processedフラグ分岐。手動販売出庫のPLU登録済み警告判定 |
+| BIZ-02 | 在庫変動ロジック | REQ-201〜204, 303 | 入庫・出庫・返品・廃棄の共通在庫処理。inventory_movements記録と、記録からの写しの求め直し（`recompute_stock`）を同じ TX で実行。返品のregister_processedフラグ分岐。手動販売出庫のPLU登録済み警告判定 |
 | BIZ-03 | Z004商品別CSV取込みパイプライン | REQ-401 | 4段階処理（Parse→Validate→Preview→Commit）。商品別売上、在庫引落し、重複チェック、ロールバック、csv_import_errors記録 |
 | BIZ-04 | PLU書出しロジック | REQ-402 | 商品マスタ→PLU登録候補生成。plu_target=1商品の抽出（三分バケット: 対象/対象外/要修正）、全件/差分モード、同一JAN dedup、adapter提供のレジ制約警告、PLUファイル生成とapp-side書出し済み確認を分離したplu_dirty/plu_exported_at更新制御（D-028） |
 | BIZ-05 | 売上集計ロジック | REQ-501, 502 | 日次・月次の売上集計。商品別売上は sale_records、公式日報集計は daily_report_* を参照し、両者の意味を分けて返す |

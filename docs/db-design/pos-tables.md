@@ -405,13 +405,15 @@ validate_result
 
 ### Stage 4: Commit（トランザクション内で一括書込み）
 
+下の Commit と Rollback は、現行 build では停止中の旧本体の記述（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[32](../function-design/32-biz-csv-import-service.md) §15.0）。
+
 BEGIN TRANSACTION内で:
 1. 同一active `file_hash` を再検査する。
 2. 同一 `settlement_date` のactive import ID一覧を再取得し、preview snapshotと一致することを確認する。不一致なら副作用なしで中断する。
 3. 既存importを変更せずcsv_importsにレコード作成（statusは仮値。ステップ6で確定）
 4. matched_rowsの各行について:
    - sale_recordsにINSERT（source='auto', source_line_no=レコード番号）
-   - pos_stock_sync=1の商品 → products.stock_quantity更新 + inventory_movementsにINSERT
+   - pos_stock_sync=1の商品 → inventory_movementsにINSERTし、その商品の写しを記録から求め直す（`recompute_stock`）
    - pos_stock_sync=0の商品 → sale_recordsのみ（在庫は動かさない）
 5. error_rowsがある場合 → csv_import_errorsテーブルにINSERT
 6. csv_imports.status / total_items / total_amount / skipped_countを確定:
@@ -422,7 +424,7 @@ BEGIN TRANSACTION内で:
 
 **Rollback**:
 1. `csv_imports.id` で対象を特定する。settlement_dateだけで対象を選ばない。
-2. BEGIN TRANSACTION内で対象ID由来の `sale_records` / `inventory_movements` だけをvoidし、movementをproduct_code別に逆補正して対象 `csv_imports.status='rolled_back'` にする。
+2. BEGIN TRANSACTION内で対象ID由来の `sale_records` / `inventory_movements` だけをvoidし、無効にした movement の商品ごとに `recompute_stock` で写しを求め直して（補償の movement は作らない）、対象 `csv_imports.status='rolled_back'` にする。
 3. 同一settlement_dateの他のactive import、sale_records、inventory_movementsは変更しない。すでにrolled_backの対象IDは冪等成功とする。
 4. COMMIT後に対象IDを含む `csv_rollback` operation logをbest-effortで記録する。
 

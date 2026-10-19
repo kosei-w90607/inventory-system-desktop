@@ -62,7 +62,7 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 
 **VoidedMovement構造体**:
 - product_code: String
-- quantity: i64（元の quantity。BIZ-03 がこの値を逆方向に変換して在庫補正に使用）
+- quantity: i64（元の quantity。BIZ-03 の在庫補正は使わない。BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す）
 
 **DailyReportImport構造体**:
 - id: i64
@@ -337,7 +337,7 @@ fn void_sale_records_by_import(conn: &DbConnection, csv_import_id: i64) -> Resul
 
 ### 14.12 void_movements_by_reference
 
-**関数要求**: 指定 reference_type / reference_id の inventory_movements を is_voided=1 に更新し、void 対象の product_code と quantity を返す。BIZ-03 がこの戻り値を使って在庫補正を行う
+**関数要求**: 指定 reference_type / reference_id の inventory_movements を is_voided=1 に更新し、void 対象の product_code と quantity を返す。BIZ-03 は戻り値の product_code で、その商品を記録から求め直す（[32](32-biz-csv-import-service.md) §15.5）
 
 **シグネチャ**:
 ```
@@ -367,13 +367,11 @@ fn void_movements_by_reference(conn: &DbConnection, ref_type: &str, ref_id: i64)
 ```
 
 BIZ-03 での在庫補正:
-- quantity = -3 の movement が void → 在庫を +3 補正（逆方向）
-- quantity = 1（返品で在庫が戻った movement）が void → 在庫を -1 補正
-- 補正計算: `products.stock_quantity -= voided.quantity`（元の quantity を引く = 逆方向補正）
+- BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない。[32](32-biz-csv-import-service.md) §15.5、`csv_import_service/commit.rs` の `apply_void_stock_corrections`）。写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じになる
 
 **設計判断**:
 - movement_type 条件を付与しない理由: INV-7 により reference_type='csv_import' の movements は sale_auto 限定であることが保証されている。冗長な条件は可読性を下げるだけ
-- SELECT → UPDATE の2段階にする理由: BIZ-03 が在庫補正に product_code と quantity を必要とするため。UPDATE の RETURNING 句は SQLite 3.35+ で利用可能だが、rusqlite のサポート状況を考慮して SELECT + UPDATE の安全なパターンを採用
+- SELECT → UPDATE の2段階にする理由: BIZ-03 が求め直す商品（無効にした movement の product_code）を BIZ に渡すため。UPDATE の RETURNING 句は SQLite 3.35+ で利用可能だが、rusqlite のサポート状況を考慮して SELECT + UPDATE の安全なパターンを採用
 
 ---
 

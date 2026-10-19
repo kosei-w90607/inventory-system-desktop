@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）。ほかの項目は (b)（proposed・未実装）で、既存の処理を (b) の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
+SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）と、停止中の旧本体の BIZ-03 の取消・BIZ-06 の確定が、補正した商品・無効にした商品だけを求め直す形。ほかの項目は (b)（proposed・未実装）で、既存の処理を (b) の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。共有 JAN の在庫連動の拒否、在庫連動を始めるときの連動しない間の売上の検査、初期在庫の movement と求め直し。
 - BIZ-02 / BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。並びの鍵付きの movement、求め直しの関数（写しを書く唯一の経路）、要再確認の判定。整合性は写しと求め直しの比較で、補正は求め直しを写しへ書く（操作ログの必須は変えない）。
@@ -116,7 +116,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 ### BIZ-02: 在庫変動ロジック
 
-**タスク要求**: 入庫・返品・手動販売出庫・廃棄による在庫変動を統一的に処理する。products.stock_quantityの更新とinventory_movementsの記録を常にセットで実行し、入庫保存後は原価差分を保存 transaction と独立に返す（REQ-209 / SPEC-PRV-D8）
+**タスク要求**: 入庫・返品・手動販売出庫・廃棄による在庫変動を統一的に処理する。inventory_movementsの記録と、その商品の写し（products.stock_quantity ほか）の記録からの求め直し（`recompute_stock`）を常に同じ TX で実行し、入庫保存後は原価差分を保存 transaction と独立に返す（REQ-209 / SPEC-PRV-D8）
 
 **理由**: 在庫変動は4つの異なる画面（入庫/返品/手動販売/廃棄）から発生するが、「在庫を増減してその履歴を記録する」という共通処理がある。これをBIZ-02に集約することで、在庫整合性のルールが1箇所にまとまる
 
@@ -254,7 +254,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 3. PreviewDataを構築してフロントエンドに返す
 4. **ここでフロントエンドからの利用者操作を待つ**
 
-**Stage 4: Commit**
+**Stage 4: Commit**（以下の Commit とロールバックの手順は、現行 build では停止中の旧本体の記述。[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[32](../function-design/32-biz-csv-import-service.md) §15.0）
 1. preview statusと `additional_import_confirmed` の組合せを検証する
 2. トランザクション内で同一file_hashを再検査し、続けて同日active import ID snapshotを再取得する。不一致は「同日の取込み状況が変わりました。再度プレビューしてください」で副作用なく止める
 3. 既存importを変更せず、トランザクション内で新規分だけ実行
@@ -263,7 +263,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
      - sale_recordsにINSERT（source='auto', csv_import_id=import_id, source_line_no=line_no）
      - pos_stock_sync=1の場合:
        - 在庫視点でquantityを変換（返品:sale_records.quantity<0→inventory_movements.quantity=+|quantity|、通常販売→inventory_movements.quantity=-quantity）
-       - products.stock_quantity更新 + inventory_movementsにINSERT（movement_type='sale_auto', reference_type='csv_import', reference_id=import_id）
+       - inventory_movementsにINSERT（movement_type='sale_auto', reference_type='csv_import', reference_id=import_id）し、その商品を `recompute_stock` で求め直す（BIZ-02 の `apply_stock_change`）
      - pos_stock_sync=0の場合 → sale_recordsのみ、在庫は動かさない
    - error_rowsがある場合 → csv_import_errorsにINSERT
    - csv_imports.status / total_items / total_amount / skipped_countを確定
@@ -275,7 +275,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 2. トランザクション内で実行
    - 関連するsale_recordsをis_voided=1に更新
    - 関連するinventory_movementsをis_voided=1に更新
-   - is_voided=1にした各inventory_movementsについてproducts.stock_quantityを逆方向に補正
+   - is_voided=1にしたinventory_movementsの商品ごとに `recompute_stock` で求め直す（補償の movement は作らない）
    - csv_imports.statusを'rolled_back'に更新
    - operation_logsに記録（operation_type='csv_rollback'）
 3. 同一settlement_dateの他のactive importは変更しない
@@ -477,7 +477,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 1. stocktake_itemsのactual_countを更新、counted_at=現在日時
 2. 差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算（棚卸し中もCSV取込みで在庫が動くため）
 
-**棚卸し確定:**
+**棚卸し確定:**（棚卸しの開始・カウント入力・確定は、現行 build では停止中の旧本体の記述。[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[35](../function-design/35-biz-stocktake-service.md) §20.0）
 1. 未入力（actual_count=NULL）の商品が残っていないかチェック → 残っていれば警告（確定を阻止、または「未入力はシステム在庫と同じとみなす」選択肢）
 2. トランザクション内で実行
    - 各stocktake_itemについて:
@@ -485,7 +485,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
      - difference = products.stock_quantity - actual_count
      - difference ≠ 0 の場合:
        - inventory_movementsにINSERT（movement_type='stocktake', quantity=actual_count - products.stock_quantity, stock_after=actual_count, reference_type='stocktake', reference_id=stocktake_id）
-       - products.stock_quantityをactual_countに更新
+       - 補正の movement を足した後、その商品を `recompute_stock` で求め直す
    - total_cost = 商品別の金額（valuation_cost_price・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
    - stocktakes.total_cost, completed_at, status='completed'を更新
    - operation_logsに記録（operation_type='stocktake_complete', detail_jsonに差異件数・total_cost）
