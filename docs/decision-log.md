@@ -1065,3 +1065,51 @@ Use concise ADR-style entries.
 - Compatibility: D-119 の (8) と同じ趣旨の文、D-118 の (9) の「作り直しは別の承認」、[22 §16](function-design/22-mnt-migration.md) の「DB の作り直しを 1 回にまとめる順」、[ADR](adr/2026-10-16-stocktake-count-placement.md) SPEC-STK-CNT-D10 の作り直しの文を置き換える（D-118・D-119 の Superseded in part の行）。MSI の配布の手順書の lane が初めて入れる版の条件（上の (4)）を同じく書く。
 - owner の決定（repo 外の回答台帳 TD-311、2026-10-17）: DB はまだリリースしていないので、いくら作り直してもよい。必要分・利用できる分なら schema を拡張してもよい。リリースしていない今だけ。
 - Revisit: リリースの日が決まったとき（その前に、最後の作り直しの起点の migration を全部含む版かを確かめる）。店の PC で本番の前に試しに動かすことが決まったとき（その DB を作り直してよいかを決め直す）。
+
+## D-124: 同じ便で先に merge する PR と path を共有する PR の L3 は、merge の順を決めてから 1 回だけ頼む（2026-10-19）
+
+- Status: accepted（owner の決定、repo 外の回答台帳 TD-324、2026-10-19。docs の棚卸しの lane「進め方と書き方の規則」〈Plan Packet `2026-10-19-docs-writing-rules`〉で起票した）
+- Context: 第 2 便の PR #171 が PR #176 の merge の後の base 同期で衝突を解き、manual を再利用できず L3 が 2 回になった。manual の再利用の機械条件（[merge-evidence](agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」）は、base 同期の前後の PR 差分全体の byte 一致で、helper もこの差分全体を比べる。
+- Decision: (1) L3（manual）を頼む PR が、同じ便でそれより先に merge する PR（manual を持たない PR を含む）と path を共有するなら、L3 を持つ PR を merge train の先にするか、前の PR の merge と L3 を持つ PR の base 同期の後に L3 を頼む。どちらにするかは Coordinator が既定案を示し、L3 の依頼と同じ 1 回の問い合わせで owner が決める。(2) path の共有は L3 を頼む時点の各 PR の head で機械で確かめ、確かめられないときは共有ありとして扱う（束ねない）。(3) manual を持つ lane は、backlog の完了の整理のように設計の契約でない共有の更新を closeout へ寄せ、共有の path を減らす。規則の文と確かめ方の手順は [DEV_WORKFLOW](DEV_WORKFLOW.md) `## Wave Operation` の 1 か所が持つ。owner の決定（TD-324）は「衝突する PR の L3 は前の PR の merge と base 同期の後に 1 回だけ」で、判定を merge の衝突から path の共有へ広げたのは、起票の Writer の Contract Probe の結果を Coordinator が採ったもの（owner の決定の目的は L3 を 2 回にしないこと）。
+- Why: 衝突の解消が無くても、両方の PR が触る file は base 同期で hunk の位置と文脈が動き、PR 差分の byte が変わる（PR #171 の `src-tauri/src/biz/product_service.rs` は merge の衝突に出ずに自動で merge されたが、同期の前後で差分の sha256 が違った）。片方だけが触る file の差分は前後で同じだった。先に merge する PR が manual を持たなくても、L3 を持つ後の PR の差分は同じように変わる。L3 を持つ PR を先にすれば追加の L3 は要らず、後に回すなら base 同期の後の 1 回で済む。確かめ方の command が失敗して空の出力を返すと「共有なし」と誤るので、失敗を共有ありとして扱う。
+- Alternatives: `git merge-tree --write-tree --name-only` の衝突だけで判定する（上の `product_service.rs` は衝突なしで差分が変わった。束ねた L3 がまた要る）; 「複数の PR の L3 を束ねる前」だけで確かめる（manual を持たない先の PR との共有を外す）; 便の全 PR の L3 を直列にする（共有の無い PR まで待たせる）; manual の再利用の機械条件を緩める（安全の境界で、D-098 の原則でも緩めない）。
+- Guarantee range: 同じ便（並列の wave）の PR どうし。同じ便の外の PR（前の wave の closeout・R0 の PR 等）が先に同じ path を触って merge すると、後の PR の manual は再利用できない（受け入れる残りのリスク）。stacked train の後続 lane の L3 は対象外（[Stacked train](DEV_WORKFLOW.md#stacked-train) の base 付け替えのまま）。path を共有しないことは manual の再利用の必要条件で、manual の対象への無影響を示さない（merge-evidence の owner の判断は変えない）。
+- Compatibility: D-055 の Wave Operation（lane の独立、起票時の所有表、`Ready 化は merge train 先頭の lane のみ`、`origin/main` の単段 merge）と merge-evidence の再利用の条件は変えない。起票時の所有表（D-098）は予定の file、本決定は L3 を頼む時点の差分を見る。
+- owner の決定（repo 外の回答台帳 TD-324、要旨）: 衝突する PR の L3 は、前の PR の merge と base 同期の後に 1 回だけ頼む。L3 を束ねるのは衝突の無い PR だけ。置き場は `docs/DEV_WORKFLOW.md` `## Wave Operation`。
+- Revisit: manual の再利用の機械条件が変わったとき。便の PR がいつも path を共有して L3 を束ねられない状態が続くとき。同じ便の外の PR による再利用の失敗が繰り返すとき。
+
+## D-125: 設計の正本と code の comment は行番号で引かず、symbol か節の ID で引く（2026-10-19）
+
+- Status: accepted（owner の決定、repo 外の回答台帳 TD-326、2026-10-19。docs の棚卸しの lane「進め方と書き方の規則」〈Plan Packet `2026-10-19-docs-writing-rules`〉で起票した）
+- Context: docs の棚卸しの調査で、正本の設計書と code の comment の行番号の引用が code の変更でずれていた。PR #171 は `src-tauri/src/biz/product_service.rs` を変え、同じ PR で `docs/function-design/10-common-rules.md` の文を直したが、そこにある行番号は直さなかった。
+- Decision: (1) 設計の正本（`docs/` の設計書・workflow の正本・runbook）と code の comment（`src/`・`src-tauri/src/`）は、code と文書の箇所を行番号で引かない。code は repo root からの path と symbol（関数・型・定数・test の名前）で、文書は節の ID か見出しで引く。(2) `docs/backlog.md` の申し送りで行番号を使うときは、書いた時点の main の commit を添える。`docs/Plans.md` は現在地を持つ所で、行番号の申し送りを置かない。(3) 時点を書いた記録（commit・library の版・日付を書いた観測、dated の調査・提案・L3 の記録、dated の Plan Packet と Test Design Matrix、decision-log の append-only の本文）の行番号は、その時点の観測として残す。data の行番号（CSV・EJ の `line_no`）と、review の finding・subagent の報告の行番号は対象外。規則の文は [DOC_STYLE_GUIDE](DOC_STYLE_GUIDE.md) §1（参照の書き方）の 1 か所が持つ。
+- Why: owner の決定の要旨は「ずれても対応できる形で引く。行番号はハードコードと変わらない」。symbol と節の ID は `rg` で今の箇所へ着き、行の挿入では動かない。backlog の申し送りは起票の時点の観測なので、時点の commit があれば `git show` で当時の行を引ける。
+- Alternatives: 行番号を残し、検査で追従させる（検査は行の有無しか分からず、中身のずれを見ない）; 全ての引用に commit を添える（正本は今の code への入口で、古い行を指し続ける）; Plans の申し送りにも commit を添えさせる（Plans は現在地だけを持ち、Post-Merge Closeout の完了の行は SHA を書かない。読み違えを招く）。
+- Guarantee range: 新しく書く・直す引用。既存の引用の書き換えと、検査（path が在る・行番号の禁止か時点の commit の要求）を足すかは、docs の棚卸しの lane 2 が持つ。
+- Compatibility: Evidence Ownership（D-038・D-050）は exact-HEAD の SHA と件数を tracked に写さない規則で、変えない。backlog に添える commit は main に在る観測の時点で、merge の根拠ではない。Post-Merge Closeout の `## 直近の完了` の行に SHA を書かない規則も変えない。DOC_STYLE_GUIDE の R0・R1・R3 の検査は変えない。
+- owner の決定（repo 外の回答台帳 TD-326、要旨）: ずれても対応できる形で引く。行番号はハードコードと変わらない。
+- Revisit: lane 2 が検査を足すとき。
+
+## D-126: decision-log の Status は決定の状態だけを書く（2026-10-19）
+
+- Status: accepted（owner の決定、repo 外の回答台帳 TD-327、2026-10-19。docs の棚卸しの lane「進め方と書き方の規則」〈Plan Packet `2026-10-19-docs-writing-rules`〉で起票した）
+- Context: D-111・D-113 は design の段階で accepted、D-116〜D-122 は design の出力を proposed と書き、2 つの流儀が並ぶ。一部だけ実装した決定（D-118 の runtime (a)）の書き方が決まらない。全体が置き換わった決定の書き方も D ごとに違う。
+- Decision: (1) `Status` は決定の状態だけを書く: accepted（決まった）・superseded（全体が置き換わった。置き換えた D を括弧に書く）・withdrawn（取り下げた）。proposed は owner の決定の前だけ。括弧に出所（owner の決定の日付・回答台帳の ID・design lane）を添えてよい。(2) 実装が済んだか、どの lane・PR が反映するかは code と `docs/Plans.md`・Plan Packet が持ち、Status に書かない。(3) 決定の本文は append-only。全体が置き換わったときは Status を superseded にして本文の後に `Superseded by:` の行を足し、一部が置き換わったときは `Superseded in part by:` の行を足す。Status の行が無い D には Status の行を足してよい。規則の文と書式は decision-log の頭の節の 1 か所が持つ。
+- Why: 実装の状態は code・Plans・packet が持つ。Status に重ねると merge のたびに古くなり、一部の実装の書き方を別に決める必要が出る。全体の置換えの書式を 1 つにすると、置き換わった D から置き換えた D を `rg` で辿れる。
+- Alternatives: proposed を「設計は merge 済み・runtime は未実装」の意味にする（一部の実装を表せず、実装の状態が Status と Plans の 2 か所になる）; Status の行も append-only にする（古い状態が先頭に残り、読み手が最後の行まで読む）; 全体の置換えを `superseded by D-xxx` の 1 語で書く（既存の D-116 と並走の lane の適用の形〈括弧の中に by と出所〉と食い違う）。
+- Guarantee range: decision-log の D。既存の D の Status の直し（適用）は並走の lane `agent/docs-contract-refresh` が持つ。ADR の Status の語（`docs/templates/adr.md`）は本決定で定めない。
+- Compatibility: 既存の `Superseded in part by:` の行と、D-116 の `Superseded by:` の行の形を使う。決定の本文の行は書き換えない。
+- owner の決定（repo 外の回答台帳 TD-327、要旨）: Status は決定の状態だけ（accepted・superseded〈by D-xxx〉・withdrawn、owner の決定の前だけ proposed）。実装が済んだかは code と Plans が持つ。append-only の本文は書き換えず、置き換わったときは Superseded の行を足す。
+- Revisit: ADR の Status の語を decision-log とそろえる事情が出たとき。
+
+## D-127: 既存を出発点として扱い、設計を継ぎ足しで歪ませず、使い手に押しつけない（2026-10-19）
+
+- Status: accepted（owner の決定、repo 外の回答台帳 TD-328、2026-10-19。設計を継ぎ足しで歪ませないは owner 2026-10-15、使い手に押しつけないは TD-310〈owner 2026-10-17〉、規則は環境が変わるたびに変えるは owner 2026-09-24、所感の原文は PR #32〈2026-09〉の後の owner の方針、店主への問いの置き場は owner 2026-09-29、コピペ物は owner 2026-10-06、安全境界の review の経路は PR #15〈2026-07-18〉の後の運用。正本へ上げることは owner 2026-10-19。docs の棚卸しの lane「進め方と書き方の規則」〈Plan Packet `2026-10-19-docs-writing-rules`〉で起票した）
+- Context: 正本を新しい事実や owner の決定に合わせるとき、既存の文や実装に条件や例外を足して合わせる直し方が重なり、設計が読みにくくなっていた。例外の回避を店や owner の手作業へ回す案も出ていた。3 つの考え方は owner の発言として個別にあったが、Claude と Codex の共通の入口に無かった。
+- Decision: (1) 既存の実装・文書・規則は出発点であって制約ではない。新しい事実や owner の決定と合わなければ、条件や例外を継ぎ足して合わせる前に、置き換え・削除で全体を素直な形に戻せないかを見る。既存を残す理由は今も正しいことで、既にあることではない。発注と review の問いに、その変更で不要になる記述・条件が無いかを入れる。安全・データ保護・承認の境界はこの考え方で緩めない（owner 2026-10-15 の「設計を継ぎ足しで歪ませない」と TD-328 を 1 項にまとめた）。(1) には、旧い環境で作った規則が owner の今の決定と衝突したら、止めずに改訂の対象として扱い、packet・PR に owner の決定の日付を書くことを含める（owner 2026-09-24）。(2) 例外の回避を店・owner の手作業に回さない。問題は黙って通さず、起きた画面で原因と直し方を名指しし、その場で直せるようにする（TD-310）。(3) owner の所感・要望は原文を repo の外の回答台帳に残し、Codex・subagent の要約を owner の意図として裁定しない。AI の review から出た要件は出所を書き、owner の確認の前に Human Gate の必須にしない（PR #32 で要約を経た読み替えが重なった）。(4) 店主への問いは GitHub の Issue に書かない。Issue は店の PC の Claude も読む現場の手順書にする（owner 2026-09-29）。(5) (1)〜(3) の規則の文は [AGENTS.md](../AGENTS.md) `## Working Rules`、(4) は同 `## Decision and Approval Boundaries` の owner へ送る問い合わせの項の隣の 1 か所が持つ（Claude と Codex の共通の入口）。`AGENTS.md` Safety の「小さく、確認可能な変更を優先する」には、小ささが差分の量でなく確かめやすさであることを添えて両立させる。(6) Claude だけの運用の 2 つは、この repo の `CLAUDE.md`（Claude だけの補助で、共通の承認・品質の条件を変えない場所）に置く: owner に渡すコピペ物（command・URL の一覧・checklist）は返答の本文に inline で、path を省略しない完全な形で書く（owner 2026-10-06）。安全境界（safe wrapper・path traversal・repo の外の参照・execpolicy）の敵対的な検証は Claude の subagent に発注しない（発注の分野が dual-use の安全の判定に掛かり model が切り替わって止まる。PR #15 で語の言い換えでも再現した）。この分野の review は Coordinator が source を直接読む inline の review か、Codex への発注で行う。委任の範囲は Decision and Approval Boundaries に既にあり、足さない。
+- Why: 継ぎ足しの条件は、読み手が全ての例外を覚えないと正しく読めず、次の変更でまた例外を呼ぶ。置き換え・削除で素直な形に戻せば、正本の量も検査の対象も減る。手作業の回避は店の運用に残り、アプリの外で黙って失敗する。要約を経た所感は読み替わり、AI の review の要件を必須にすると owner の手間が owner の知らない理由で増える。これらは Coordinator の個人の memory（Claude だけが読む）にあり、Codex に届かなかった。
+- Alternatives: 既存の文を残し、新しい事実を例外として足し続ける（上の Why）; 共通の規則を `CLAUDE.md` に置く（Codex が読まず、共通の条件にならない）; 個人の memory に置いたままにする（Codex と別の session に届かない）; 安全の境界も同じ考え方で見直す（D-098 の安全の境界の原則と食い違う）; 安全境界の review の経路の規則で Double Audit の数え方まで `CLAUDE.md` で決める（Claude だけの補助が共通の品質の条件を変える。数え方は [座組表](AGENT_OPERATING_MANUAL.md#座組) と DEV_WORKFLOW の Double Audit のまま）。
+- Guarantee range: 新しく書く・直す正本・実装・発注・review。安全・データ保護・承認の境界（[AGENTS.md](../AGENTS.md) の Decision and Approval Boundaries・Safety・D-098 の安全の境界）は対象外。既存の正本を一斉に書き直す義務は作らない（触る所から適用する）。
+- Compatibility: D-098（止める規則は防ぐ失敗を 1 文で言えるものに絞る）と同じ向きで、変えない。`docs/code_review.md` の finding の `smallest safe fix` は finding の修正案の形で、置き換え・削除の修正案も含み、変えない。
+- owner の決定（repo 外の回答台帳、要旨）: TD-328（既存を尊重し過ぎない。既存は出発点で制約ではなく、合わなければ置き換え・削除で素直な形に戻す。安全・データ保護・承認の境界は除く。本 lane に足して `AGENTS.md` へ）。owner 2026-10-15（設計を継ぎ足しで歪ませない）。TD-310（使い手に押しつけない。問題は黙って通さず、その画面で直せるようにする）。owner 2026-09-24（規則は環境が変わるたびに変える。安全の境界は維持）。owner 2026-09-29（店主への問いは Issue に書かない）。owner 2026-10-06（コピペ物は inline で完全な path）。owner 2026-10-19（memory の方針を棚卸しし、AGENTS.md と CLAUDE.md に分けて上げてよい）。
+- Revisit: 置き換え・削除が安全の境界を緩める形で提案される事情が出たとき。安全境界の review を Claude の subagent に出しても止まらなくなったとき（`CLAUDE.md` の経路の規則を外す）。

@@ -15,7 +15,8 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 - Branch: agent/docs-writing-rules
-- kickoff → spec-check → plan-draft（2026-10-19、起草役、本 commit）: owner の決定 TD-324・TD-326・TD-327 で 3 つの規則の中身が決まり、Risk は R3（`docs/DEV_WORKFLOW.md` を変える workflow gate の変更。`scripts/ci/classify-changes.sh` の workflow の一覧に `docs/DEV_WORKFLOW.md` が当たり `workflow=true`）、Final Review Minimum 2。spec-check → plan-draft は Design Readiness が既存の正本を十分と引く経路で進めた（理由は Design Readiness）。規則の文と置き場は下の「規則の文と置き場」で決め、正本への書込みは plan-approved の後の実装の commit で行う。未解決の設計の問いは無い
+- kickoff → spec-check → plan-draft（2026-10-19、起草役、`131c0809`）: owner の決定 TD-324・TD-326・TD-327 で 3 つの規則の中身が決まり、Risk は R3（`docs/DEV_WORKFLOW.md` を変える workflow gate の変更。`scripts/ci/classify-changes.sh` の workflow の一覧に `docs/DEV_WORKFLOW.md` が当たり `workflow=true`）、Final Review Minimum 2。spec-check → plan-draft の skip で進めた
+- plan-draft → design → plan-draft（2026-10-19、起草役、本 commit）: round 1 の是正（Review Response 参照）と、owner の決定 TD-328 による D-127 の追加。spec-check → plan-draft の skip を取り消して design へ戻り、design の出力の D-124〜D-127（durable decision）を plan-first の変更として `docs/decision-log.md` の末尾に置いた。未解決の設計の問いは無い。実装の commit に残るのは、置き場（DEV_WORKFLOW・DOC_STYLE_GUIDE・decision-log の頭・AGENTS.md・CLAUDE.md）へ規則の文を入れることだけ
 
 ## Owner Effort Budget
 
@@ -25,7 +26,7 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 3（2026-10-19 の TD-324・TD-326・TD-327。decision point ごとに数える） | 2（Ready・merge） | 1 | 6 = 3 + 2 + 1 |
+| 介入 | 6 | 4（2026-10-19 の TD-324・TD-326・TD-327・TD-328。decision point ごとに数える） | 2（Ready・merge） | 0 | 6 = 4 + 2 + 0 |
 
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
@@ -34,7 +35,7 @@ docs 全体の棚卸し（owner 2026-10-18、計画は owner 2026-10-19、repo �
 Risk: R3
 
 Reason:
-`docs/DEV_WORKFLOW.md` `## Wave Operation` に L3 の頼み方の規則を足す。workflow の正本の変更で、DEV_WORKFLOW の Risk Tiers の「workflow gate」に当たる（classifier `workflow=true`）。runtime・DB・wire・script は変えない。
+`docs/DEV_WORKFLOW.md` `## Wave Operation` に L3 の頼み方の規則を、`AGENTS.md` `## Working Rules` に設計の考え方を足す。どちらも workflow の正本の変更で、DEV_WORKFLOW の Risk Tiers の「workflow gate」に当たる（classifier `workflow=true`）。runtime・DB・wire・script は変えない。
 
 ## Goal
 
@@ -42,16 +43,17 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 次の 3 つの規則が、それぞれ 1 か所の正本に、読み手がそのまま従える文で在る: (1) 同じ便の PR どうしで触る path が重なるときの L3 の順（D-124）、(2) 設計の正本と code の comment は行番号で引かず symbol か節の ID で引く（D-125）、(3) decision-log の `Status` は決定の状態だけを書く（D-126）
-- 決定の記録 D-124〜D-126 が `docs/decision-log.md` の末尾に在り、理由と棄却案を持つ
-- 3 つの規則と矛盾する live な規則の文が repo に残っていない
+- 次の 4 つの規則が、それぞれ 1 か所の正本に、読み手がそのまま従える文で在る: (1) L3 を頼む PR が同じ便で先に merge する PR と path を共有するときの L3 の順（D-124）、(2) 設計の正本と code の comment は行番号で引かず symbol か節の ID で引く（D-125）、(3) decision-log の `Status` は決定の状態だけを書く（D-126）、(4) 既存を出発点として扱い設計を継ぎ足しで歪ませず、使い手に押しつけない（D-127）
+- 決定の記録 D-124〜D-127 が `docs/decision-log.md` の末尾に在り、理由と棄却案を持つ（plan-first の変更で置いた）
+- 4 つの規則と矛盾する live な規則の文が repo に残っていない
 
 ### 失敗定義
 
 - 規則が 2 か所以上に書かれる、または置き場が読み手の通る経路から外れて読まれない
-- D-124 の判定が manual 再利用の機械条件（[merge-evidence](../agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」）より緩く、束ねた L3 が base 同期の後にまた要る
+- D-124 の判定が manual 再利用の機械条件（[merge-evidence](../agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」）より緩く、L3 を持つ PR が base 同期の後にまた L3 を要する。または確かめ方の command の失敗を「共有なし」と誤る
 - D-125 が既存の時点つきの記録・data の行番号・review の一時出力まで禁じ、守れない規則になる
-- D-126 が lane 1 の Status の直しと食い違う語を定める
+- D-126 が lane 1 の Status の直しと食い違う語・書式を定める
+- D-127 が安全・データ保護・承認の境界まで「置き換え・削除」で緩めてよいと読める、または `AGENTS.md` Safety の「小さく、確認可能な変更を優先する」と食い違ったまま残る
 
 ### 非目的
 
@@ -68,22 +70,24 @@ workflow の変更なので、規則ごとに通常の作業の列で書く。
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 同じ便の 2 本の PR が Draft で、どちらも L3 を要する | Coordinator が L3 を頼む前に、2 本の PR の触る path の重なりを Wave Operation の command で確かめる | 重なりがあれば owner は前の PR の L3 だけを先に受け、後の PR の L3 は前の PR の merge と後の PR の base 同期の後に 1 回だけ受ける。重なりが無ければ 2 本を 1 回の依頼で受ける | owner の L3 の結果（PASS / FAIL）が各 PR の現在の head に対して記録される | Contract Probe P1・P2 |
+| 同じ便に L3 を持つ PR B と、B より先に merge する PR A（manual の有無を問わない）が Draft で並ぶ | Coordinator が B の L3 を頼む前に、A と B の head で path の共有を Wave Operation の手順で確かめる | 共有があれば、Coordinator が「B を train の先にする」か「A の merge と B の base 同期の後に B の L3」の既定案を L3 の依頼と同じ 1 回の問い合わせで示し、owner が選ぶ。どちらでも owner は B の L3 を 1 回だけ受ける。共有が無ければ、L3 を持つ PR どうしは 1 回の依頼で束ねて受ける | owner の L3 の結果（PASS / FAIL）が B の現在の head に対して記録され、base 同期の後も manual の再利用の機械条件を満たす | Contract Probe P1〜P3 |
+| 確かめ方の command の 1 本が失敗する（ref の取得漏れ・PR の番号の誤り） | 手順は各 PR の終了値を確かめ、失敗したら比べない | 「比べられない」として共有ありと同じに扱い、束ねない | 失敗の原因を直して取り直す | Contract Probe P3 |
 | Writer が設計書か code の comment で code の箇所を引く | DOC_STYLE_GUIDE §1 の新しい節に従い、path と symbol（文書は節の ID）で書く | 後の変更で行が動いても、読み手が `rg` で同じ箇所へ着く | Plan Review・Final Review が行番号の引用を finding にできる | 無し |
-| Coordinator が新しい D を decision-log に足す | owner の決定の前は `Status: proposed`、決定の後は `accepted`。実装の merge では Status を変えない | 読み手が Status から決定の状態だけを読み、実装の状態は code・Plans で見る | 置き換わったときは `Superseded in part by:` の行を足すか、Status を `superseded by D-xxx` にする | 無し |
+| Coordinator が新しい D を decision-log に足す | owner の決定の前は `Status: proposed`、決定の後は `accepted`。実装の merge では Status を変えない | 読み手が Status から決定の状態だけを読み、実装の状態は code・Plans で見る | 全体が置き換わったら Status を `superseded（by D-xxx。…）` にして `- Superseded by:` の行、一部なら `- Superseded in part by:` の行を足す | 無し |
+| 新しい事実で正本か実装を直す（Writer・Coordinator） | 条件や例外を足す前に、置き換え・削除で素直な形に戻せないかを見る。発注と review が「この変更で不要になる記述・条件は無いか」を問う | 正本と実装が継ぎ足しの例外で読みにくくならず、店・owner に手作業の回避が回らない | review が残った継ぎ足し・手作業の回避を finding にできる。安全・データ保護・外部書込みの承認の境界は変えない | 無し |
 
-通常の列（発注 → 停止と訂正 → review → owner 判断）: plan-draft の packet を Plan Review（fresh Opus 5.5 + Codex）に出し、P1/P2 = 0 で plan-approved。実装の run が正本 4 file を直し、Final Review 2 本（Double Audit）の後、owner の Ready・merge の判断を待つ。
+通常の列（発注 → 停止と訂正 → review → owner 判断）: plan-draft の packet を Plan Review（fresh Opus 5.5 + Codex）に出し、P1/P2 = 0 で plan-approved。実装の run が置き場の 3 か所へ規則の文を入れ、Final Review 2 本（Double Audit）の後、owner の Ready・merge の判断を待つ。
 
 ## 規則の文と置き場
 
-実装の run はこの節の文を置き場へ書く（語の小さな直しはよいが、規則の中身を変えるなら Gated Amendment）。同じ規則を 2 か所に書かない。decision-log の D は決定・理由・棄却案を持ち、規則の文は置き場の 1 か所だけが持つ。
+実装の run はこの節の文を置き場へ書く（語の小さな直しはよいが、規則の中身を変えるなら Gated Amendment）。同じ規則を 2 か所に書かない。決定・理由・棄却案は decision-log の D-124〜D-127（plan-first で置いた）が持ち、規則の文と手順は置き場の 1 か所だけが持つ。
 
 ### D-124 の置き場: `docs/DEV_WORKFLOW.md` `## Wave Operation`
 
 置き場の理由: owner の決定（TD-324）が置き場を `## Wave Operation` と指定した。同節は便の PR の並列・Ready の順・base 同期を持ち、L3 の頼み方はその間の手順になる。既存の箇条「先頭 lane の merge 後、後続 lane は main との同期を…」の直後に 1 つの箇条として足す。
 
 ```markdown
-- 同じ便の複数の PR の L3（manual）を 1 回の依頼で束ねる前に、L3 を頼む時点の head で PR どうしが触る path の重なりを機械で確かめる（`comm -12 <(git diff --name-only --no-renames origin/main...origin/A | sort) <(git diff --name-only --no-renames origin/main...origin/B | sort)`。A・B は各 PR の branch。出力が空なら重なりが無い）。重なりがあれば merge の順を先に決め、後の PR の L3 は、前の PR の merge と後の PR の base 同期の後に 1 回だけ頼む。L3 を束ねるのは重なりの無い PR だけにする。防ぐ失敗: 後の PR は base 同期で PR の差分が変わり（衝突の解消が無くても、同じ file の hunk の行番号と文脈が動く）、[merge-evidence](agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」の manual 再利用の機械条件（PR 差分の byte 一致）を満たせず、L3 が 2 回になる（第 2 便の PR #171・#176。D-124）。
+- L3（manual）を頼む PR が、同じ便でそれより先に merge する PR（manual の有無を問わない）と path を共有するなら、L3 を持つ PR を merge train の先にするか、前の PR の merge と L3 を持つ PR の base 同期の後に L3 を頼む。どちらにするかは Coordinator が既定案を示し、L3 の依頼と同じ 1 回の問い合わせで owner が決める。path を共有しない PR どうしの L3 は 1 回の依頼で束ねてよい。共有は L3 を頼む時点の head で確かめる: `git fetch origin` の後、各 PR の `git rev-parse origin/BRANCH` が `gh pr view N --json headRefOid -q .headRefOid` と一致することを確かめ、PR ごとに `git diff --name-only --no-renames origin/main...SHA > FILE` の終了値が 0 であることを確かめ、全ての PR で成功したときだけ `comm -12 <(sort FILE_A) <(sort FILE_B)` で比べる（出力が空なら共有なし）。どれかが失敗したら比べられないとして、共有ありと同じに扱う。manual を持つ lane は、backlog の完了の整理のように設計の契約でない共有の更新を closeout へ寄せ、共有の path を減らす。防ぐ失敗: 後に merge する PR は base 同期で PR の差分が変わり（衝突の解消が無くても、同じ file の hunk の位置と文脈が動く）、[merge-evidence](agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」の manual 再利用の機械条件（PR 差分の byte 一致）を満たせず、L3 が 2 回になる（第 2 便の PR #171・#176。D-124）。
 ```
 
 ### D-125 の置き場: `docs/DOC_STYLE_GUIDE.md` `## 1. 参照の書き方`
@@ -97,65 +101,77 @@ workflow の変更なので、規則ごとに通常の作業の列で書く。
 
 - code は repo root からの path と symbol（関数・型・定数・test の名前）で引く。範囲は symbol と、その中の目印の語で書く
 - 文書は節の ID（`§12.3`・`BIZ-01-D8`・`DSR-22` 等）か節の見出しで引く
-- `docs/backlog.md`・`docs/Plans.md` の申し送りで行番号を使うときは、書いた時点の main の commit を同じ行に添える（例: 「`18db621e` の時点で `src-tauri/src/biz/product_service.rs:965`」）
+- `docs/backlog.md` の申し送りで行番号を使うときは、書いた時点の main の commit を同じ行に添える（例: 「`18db621e` の時点で `src-tauri/src/biz/product_service.rs:965`」）。`docs/Plans.md` は現在地を持つ所で、行番号の申し送りを置かない
 - 時点を書いた記録（commit・library の版・日付を書いた観測、dated の調査・提案・L3 の記録、decision-log の append-only の本文）の行番号は、その時点の観測としてそのまま残す
-- 対象外: data の行番号（CSV・EJ の `line_no` 等の製品の契約）、review の finding と subagent の報告の `path:line`（その時点の版に対する一時の出力。[code_review.md](code_review.md)、[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の Subagent Budget）
+- 対象外: dated の Plan Packet と Test Design Matrix（起票の時点の観測）、data の行番号（CSV・EJ の `line_no` 等の製品の契約）、review の finding と subagent の報告の `path:line`（その時点の版に対する一時の出力。[code_review.md](code_review.md)、[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の Subagent Budget）
 ```
 
-file の頭の「対象」の行は「docs/ 配下の全設計書、src-tauri/src/ 内の doc comment（§1 の箇所の引き方は `src/` の comment と backlog・Plans の申し送りも対象）」にする。
+file の頭の「対象」の行は「docs/ 配下の全設計書、src-tauri/src/ 内の doc comment（§1 の箇所の引き方は `src/` の comment と backlog の申し送りも対象）」にする。
 
 ### D-126 の置き場: `docs/decision-log.md` の頭（`## Purpose` の後）
 
-置き場の理由: Status は decision-log の各 D の書式で、D を足す人が最初に読むのは file の頭の `## Purpose` になる。DEV_WORKFLOW の Design Phase Rules は decision-log を設計の成果物として選ぶ所までを持ち、D の書式は持たない。DOC_STYLE_GUIDE は設計書（function-design・db-design・architecture）の型を持ち、decision-log の型を持たない。`## Purpose` と `## D-001` の間に節を 1 つ足す。
+置き場の理由: Status は decision-log の各 D の書式で、D を足す人が最初に読むのは file の頭の `## Purpose` になる。DEV_WORKFLOW の Design Phase Rules は decision-log を設計の成果物として選ぶ所までを持ち、D の書式は持たない。DOC_STYLE_GUIDE は設計書（function-design・db-design・architecture）の型を持ち、decision-log の型を持たない。`## Purpose` と `## D-001` の間に節を 1 つ足す。全体の置換えの書式は lane 1 の適用（D-116 の形）にそろえる。
 
 ```markdown
 ## Status の書き方
 
-- `Status` は決定の状態だけを書く: `accepted`（決まった）、`superseded by D-xxx`（全体が置き換わった）、`withdrawn`（取り下げた）。`proposed` は owner の決定の前だけに使う。括弧で出典（owner の決定の日付・repo 外の回答台帳の ID）を添えてよい
+- `Status` は決定の状態だけを書く: `accepted`（決まった）、`superseded`（全体が置き換わった）、`withdrawn`（取り下げた）。`proposed` は owner の決定の前だけに使う。括弧に出所（owner の決定の日付・repo 外の回答台帳の ID・design lane）を添えてよい。superseded は `superseded（by D-xxx。元の出所）` と書く
 - 実装が済んだか、どの lane・PR が反映するかは code と `docs/Plans.md`・Plan Packet が持ち、Status に書かない
-- 決定の本文（Decision・Why・Alternatives ほか）は append-only で書き換えない。一部が置き換わったときは `- Superseded in part by: D-xxx（置き換わった所）` の行を足し、全体が置き換わったときは Status を `superseded by D-xxx` に直す。後から直してよいのは Status の行（状態の語と出典）と、Superseded の行の追加だけ
+- 決定の本文（Decision・Why・Alternatives ほか）は append-only で書き換えない。全体が置き換わったときは Status を `superseded（by D-xxx。元の出所）` にし、本文の後に `- Superseded by: D-xxx（日付）。置き換わった中身` の行を足す。一部が置き換わったときは `- Superseded in part by: D-xxx（置き換わった所）` の行を足す。後から直してよいのは Status の行（状態の語と出所）と、Status の行が無い D への Status の行の追加と、Superseded の行の追加だけ
 - 理由と棄却案は D-126
 ```
 
-### D-124〜D-126 の決定の記録（`docs/decision-log.md` の末尾）
+### D-127 の置き場: `AGENTS.md` `## Working Rules`
 
-番号の予約: D-124・D-125・D-126 は本 lane が持つ（[Review Rules](../DEV_WORKFLOW.md#review-rules) の連番 registry。並走の lane 1 は番号を新設しない）。各 D は D-123 と同じ項目（Status・Context・Decision・Why・Alternatives・Guarantee range・Compatibility・owner の決定・Revisit）で書く。中身:
+置き場の理由: owner の決定（TD-328）が置き場を `AGENTS.md` と指定した。`AGENTS.md` は Claude と Codex の共通の入口で、`## Working Rules` は作業の進め方の原則を持つ。この repo の `CLAUDE.md` は Claude だけの補助で共通の条件を変えない場所なので置かない。`## Working Rules` の箇条の最後（「Plan Packet の数値主張は…」の後）に 3 つの箇条を足す。owner 2026-10-15 の「設計を継ぎ足しで歪ませない」と owner 2026-09-24 の「規則は環境が変わるたびに変える」は TD-328 と同じ向きなので 1 つ目の箇条にまとめる。委任の範囲（memory にあった方針）は Decision and Approval Boundaries に既にあるので足さない。
 
-- **D-124: 同じ便で触る path が重なる PR の L3 は、前の PR の merge と base 同期の後に 1 回だけ頼む（2026-10-19）**
-  - Status: accepted（owner 2026-10-19、repo 外の回答台帳 TD-324）
-  - Context: 第 2 便の PR #171 が PR #176 の merge の後の base 同期で衝突を解き、manual を再利用できず L3 が 2 回になった
-  - Decision: 置き場の文のとおり。owner の決定の「衝突」は、PR どうしが触る path の重なりで判定する（merge の衝突を含む）
-  - Why: manual 再利用の機械条件は PR 差分の byte 一致で、衝突の解消が無くても同じ file を両方が触れば base 同期で hunk が動き、条件を満たさない（Contract Probe P2）。path が重ならなければ後の PR の差分は byte で変わらない（P2）
-  - Alternatives: `git merge-tree --write-tree --name-only` の衝突だけで判定する（P2 の `product_service.rs` は衝突なしに merge されたが差分が変わった。束ねた L3 がまた要る）; 便の全 PR の L3 を直列にする（重なりの無い PR まで待たせる）; manual 再利用の機械条件を緩める（安全の境界で、D-098 の原則でも緩めない）
-  - Guarantee range: 同じ便の並列の PR どうし。stacked train の後続 lane の L3 は対象外（[Stacked train](../DEV_WORKFLOW.md#stacked-train) の base 付け替えのまま）。path が重ならないことは manual 再利用の必要条件で、manual 対象への無影響を示さない（merge-evidence の owner の判断は変えない）
-  - Compatibility: D-055 の Wave Operation（lane の独立、起票時の所有表、`Ready 化は merge train 先頭の lane のみ`、`origin/main` の単段 merge）と merge-evidence の再利用の条件は変えない。起票時の所有表（D-098）は予定の file、本規則は L3 を頼む時点の差分を見る
-  - Revisit: manual 再利用の機械条件が変わったとき。便の PR がいつも path を共有して束ねられない状態が続くとき
-- **D-125: 設計の正本と code の comment は行番号で引かず、symbol か節の ID で引く（2026-10-19）**
-  - Status: accepted（owner 2026-10-19、repo 外の回答台帳 TD-326）
-  - Context: docs の棚卸しの調査で、正本の設計書と code の comment の行番号の引用が code の変更でずれていた（PR #171 は `product_service.rs` を変え、同じ PR で `10-common-rules.md` の文を直したが、行番号は直さなかった）
-  - Decision: 置き場の文のとおり。owner の決定の要旨は「ずれても対応できる形で引く。行番号はハードコードと変わらない」
-  - Why: symbol と節の ID は `rg` で今の箇所へ着き、行の挿入では動かない。申し送りは起票の時点の観測なので、時点の commit があれば `git show` で当時の行を引ける
-  - Alternatives: 行番号を残し、検査で追従させる（検査は行の有無しか分からず、中身のずれを見ない）; 全ての引用に commit を添える（正本は今の code への入口で、古い行を指し続ける）
-  - Guarantee range: 新しく書く・直す引用。既存の引用の書き換えと、検査（path が在る・行番号の禁止か時点の commit の要求）を足すかは棚卸しの lane 2
-  - Compatibility: Evidence Ownership（D-038・D-050）は exact-HEAD の SHA と件数を tracked に写さない規則で、変えない。申し送りに添える commit は main に在る観測の時点で、merge の根拠ではない。Post-Merge Closeout の「`## 直近の完了` の行に SHA を書かない」も変えない。DOC_STYLE_GUIDE §1 の R0・R1・R3 の検査は変えない
-  - Revisit: lane 2 が検査を足すとき
-- **D-126: decision-log の Status は決定の状態だけを書く（2026-10-19）**
-  - Status: accepted（owner 2026-10-19、repo 外の回答台帳 TD-327）
-  - Context: D-111・D-113 は design の段階で accepted、D-116〜D-122 は design の出力を proposed と書き、2 つの流儀が並ぶ。一部だけ実装した D（D-118 の runtime (a)）の書き方が決まらない
-  - Decision: 置き場の文のとおり
-  - Why: 実装の状態は code・Plans・packet が持つ。Status に重ねると merge のたびに古くなり、一部の実装の書き方を別に決める必要が出る
-  - Alternatives: `proposed` を「設計は merge 済み・runtime は未実装」の意味にする（一部の実装を表せず、実装の状態が Status と Plans の 2 か所になる）; Status の行も append-only にする（古い状態が先頭に残り、読み手が最後の行まで読む）
-  - Guarantee range: decision-log の D。ADR の Status（[templates/adr.md](../templates/adr.md)）は変えない
-  - Compatibility: 既存の D の Status の直し（適用）は lane 1（`agent/docs-contract-refresh`）が持つ。既存の `Superseded in part by:` の行の形を使う
-  - Revisit: ADR の Status の語を decision-log とそろえる事情が出たとき
+```markdown
+- 継ぎ足さない（D-127）: 既存の実装・文書・規則は出発点であって制約ではない。新しい事実や owner の決定と合わなければ、条件や例外を継ぎ足して合わせる前に、置き換え・削除で全体を素直な形に戻せないかを見る。既存を残す理由は「今も正しいから」で、「既にあるから」ではない。旧い環境で作った規則が owner の今の決定と衝突したら、止めずに改訂の対象として扱い、packet・PR に owner の決定の日付を書く。発注と review の問いに「この変更で不要になる記述・条件は無いか」を入れる。安全・データ保護・外部書込みの承認の境界（Decision and Approval Boundaries・Safety）はこの考え方で緩めない。
+- 使い手に押しつけない（D-127）: 例外の回避を店・owner の手作業（別の file を作る等）に回さない。問題は黙って通さず、起きたその画面で原因と直し方を名指しし、その場で直せるようにする。
+- owner の所感は原文で扱う（D-127）: L3 の所感・要望は原文を repo の外の回答台帳に残し（公開 repo には ID で引く）、Codex・subagent の要約を「owner の意図」として裁定しない。AI の review から出た要件は出所を書き、owner の確認の前に Human Gate の必須にしない。
+```
+
+(f) の置き場は `## Decision and Approval Boundaries` の「owner へ送り、中継を省かない問い合わせ」の箇条の直後（問い合わせの行き先の規則の隣）。
+
+```markdown
+- 店主への問いは GitHub の Issue に書かない。Issue は店の PC の Claude も読む現場の手順書にする（D-127）。
+```
+
+両立の句: `## Safety` の「小さく、確認可能な変更を優先する。」を次の文にする（同じ規則を 2 か所に書かず、Working Rules の箇条を指す）。
+
+```markdown
+- 小さく、確認可能な変更を優先する。小ささは差分の行数でなく、確かめやすさで測る（継ぎ足しより置き換え・削除のほうが小さいことがある。Working Rules の「継ぎ足さない」）。
+```
+
+`docs/code_review.md` の finding の形の `smallest safe fix`（と DEV_WORKFLOW の Commit / PR Messages の同じ句）は finding の修正案の形で、置き換え・削除の修正案も含むので変えない（D-127 の Compatibility）。
+
+### D-127 の Claude だけの運用の置き場: この repo の `CLAUDE.md`
+
+置き場の理由: (g)(h) は Claude の返答の書き方と Claude の subagent の経路の話で、Codex には当たらない。`CLAUDE.md` は Claude だけの補助で、共通の承認・品質の条件を変えない場所。(g) は `## 長い作業の報告`、(h) は `## 座組と effort` の段落の後に 1 段落ずつ足す。
+
+```markdown
+owner に渡すコピペ物（command・URL の一覧・checklist）は返答の本文に inline で書き、path は省略しない完全な形で書く（WSL は `/home/kosei/...`、Windows は `C:\Users\Owner\...`、Windows から WSL の file は `\\wsl.localhost\Ubuntu-22.04\home\kosei\...`。D-127）。
+```
+
+```markdown
+安全境界（safe wrapper・path traversal・repo の外の参照・execpolicy）の敵対的な検証は Claude の subagent に発注しない。発注の分野そのものが dual-use の安全の判定に掛かり、model が切り替わって止まる（PR #15 で語の言い換えでも再現した）。この分野の review は Coordinator が source を直接読む inline の review か、Codex への発注で行う。review の本数の数え方は座組表と DEV_WORKFLOW の Double Audit のまま（D-127）。
+```
+
+### 決定の記録（`docs/decision-log.md` の末尾、plan-first で置いた）
+
+D-127 は owner の決定 TD-328（2026-10-19）で本 lane に足した（Review Response 参照）。D-124・D-125・D-126・D-127 は本 lane が持つ番号で（[Review Rules](../DEV_WORKFLOW.md#review-rules) の連番 registry。並走の lane 1 は番号を新設しない）、D-123 と同じ項目（Status・Context・Decision・Why・Alternatives・Guarantee range・Compatibility・owner の決定・Revisit）で書いた。D の本文は置き場を名指し、規則の文と手順を写さない（AC5）。D-124 の Decision は、判定を merge の衝突から path の共有へ広げたのが起票の Writer の Contract Probe の結果で Coordinator が採ったこと（owner の決定の目的は L3 を 2 回にしないこと）を書く。
 
 ## Scope
+
+plan-first の変更（本 commit まで）: `docs/decision-log.md` の末尾の D-124〜D-127、本 packet、Test Design Matrix。
 
 実装の run（plan-approved の後）が直す file と目的:
 
 - `docs/DEV_WORKFLOW.md` `## Wave Operation`: D-124 の箇条を 1 つ足す（上の文）
 - `docs/DOC_STYLE_GUIDE.md`: §1 の最後に D-125 の節を足し、file の頭の「対象」の行に 1 句足す（上の文）
-- `docs/decision-log.md`: `## Purpose` と `## D-001` の間に `## Status の書き方` を足し、末尾に D-124〜D-126 を足す（先頭の BOM を保つ）
+- `docs/decision-log.md`: `## Purpose` と `## D-001` の間に `## Status の書き方` を足す（先頭の BOM を保つ）。D-124〜D-127 は変えない
+- `AGENTS.md`: `## Working Rules` の最後に D-127 の箇条を 3 つ、`## Decision and Approval Boundaries` に (f) の箇条を 1 つ足し、`## Safety` の「小さく、確認可能な変更を優先する。」に両立の句を足す（上の文）
+- `CLAUDE.md`: `## 長い作業の報告` に (g)、`## 座組と effort` に (h) の段落を 1 つずつ足す（上の文）
 - 本 packet の Workflow State と `## Implementation Results`
 
 隣接の確認（変えない）: `docs/agent-guidance/merge-evidence.md`「base同期だけでheadが変わる場合」（D-124 が引く条件）、DEV_WORKFLOW の `### Stacked train`・Subagent Budget・Commit / PR Messages の `path:line`、`docs/code_review.md` の finding の形、`docs/AGENT_OPERATING_MANUAL.md` の Explorer と報告フォーマットの `file:line`、`docs/templates/adr.md` の Status、`scripts/doc-consistency-check.sh`（新しい h2 の節と箇条は PK・M・R の検査の対象を変えない）。
@@ -164,32 +180,49 @@ file の頭の「対象」の行は「docs/ 配下の全設計書、src-tauri/sr
 
 | file | 本 lane | lane 1（`agent/docs-contract-refresh`） |
 |---|---|---|
-| `docs/decision-log.md` | `## Purpose` と `## D-001` の間の新しい節 `## Status の書き方`、末尾の `## D-124`〜`## D-126` | 既存の D の `- Status:` の行と、既存の D に足す `- Superseded in part by:` の行 |
+| `docs/decision-log.md` | 頭（`## Purpose` と `## D-001` の間に置く節 `## Status の書き方`）と、末尾に足す `## D-124`〜`## D-126` | 既存の D の `- Status:` の行（Status の行が無い D に足す行を含む）と、足す `- Superseded by:` の行（lane 1 の S3） |
 
-merge の順はどちらが先でもよい。後の lane は `origin/main` の単段 merge で両方の行を残す（Wave Operation）。どちらの lane も Human Gate に manual を持たないので、D-124 の L3 の順は当たらない。本 lane の他の file（DEV_WORKFLOW・DOC_STYLE_GUIDE・本 packet と matrix）は lane 1 の対象外（lane 1 は workflow の正本を触らず、DOC_STYLE_GUIDE は同 lane の調査で直す対象に無い）。
+merge の順はどちらが先でもよい。後の lane は `origin/main` の単段 merge で両方の行を残す（Wave Operation）。どちらの lane も Human Gate に manual を持たないので、D-124 の L3 の順は当たらない。本 lane の他の file（DEV_WORKFLOW・DOC_STYLE_GUIDE・`AGENTS.md`・`CLAUDE.md`・本 packet と matrix）は lane 1 の対象外（lane 1 は workflow の正本〈`AGENTS.md`・`CLAUDE.md` を含む〉を触らず、DOC_STYLE_GUIDE は同 lane の調査で直す対象に無い）。
 
 ## Non-scope
 
 - 既存の file:行 の引用の書き換え・file の頭の時点の注記・検査の追加（棚卸しの lane 2）
 - 既存の D の Status の直しと Superseded の行の追加（lane 1）
-- `docs/backlog.md` の項目「同じ便で実装 file が衝突する PR の L3 の頼み方を Wave Operation に足す」を外すこと（本 lane の closeout で外す。本 lane の PR では backlog を触らず、lane 1 と共有する file を増やさない）
+- `docs/backlog.md` の項目「同じ便で実装 file が衝突する PR の L3 の頼み方を Wave Operation に足す」を外すこと（本 lane の closeout で外す。本 lane の PR では backlog を触らず、lane 1 と共有する file を増やさない。D-124 (3) の「共有の更新を closeout へ寄せる」と同じ向き）
 - `docs/backlog.md` の「並走の本数と共有 file の Ready をずらす規則を正本にする」（owner の決定が無く、本 lane の 3 つの決定に入っていない。backlog に残す）
 - stacked train の後続 lane の L3 の頼み方、ADR の Status の語、`docs/Plans.md` の lane の行（D-097）
 - script・hook・CI・runtime の変更
+- Coordinator の個人の auto-memory から上げた方針の項を外すこと（repo の外。Coordinator が行う）、repo の外の発注書の雛形への問いの追加、owner の個人の `~/.claude/CLAUDE.md`
+- D-127 を既存の正本へ一斉に当てはめ直すこと（触る所から適用する。D-127 の Guarantee range）
+- 安全境界の review の Double Audit の数え方を変えること（座組表と DEV_WORKFLOW のまま。変えるなら共通の正本で別に決める）
 
 ## Acceptance Criteria
 
-AC の確認は下の command を repo root で逐語に実行する。`R` は live な規則の文書の一覧: `R="AGENTS.md CLAUDE.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/DOC_STYLE_GUIDE.md docs/ci.md docs/templates docs/agent-guidance docs/code_review.md docs/quality/review-checklist.md docs/adr/README.md .agents/skills/inventory-workflow-start .agents/skills/inventory-implementation .agents/skills/inventory-code-review .agents/skills/inventory-operator-ui"`。baseline は起票の時点（`18db621e`）の出力。
+AC の command は bash で、repo root で逐語に実行する（zsh では `$R` が 1 語のまま渡り exit 2 になる）。先に bash で `R="AGENTS.md CLAUDE.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/DOC_STYLE_GUIDE.md docs/ci.md docs/templates docs/agent-guidance docs/code_review.md docs/quality/review-checklist.md docs/adr/README.md .agents/skills/inventory-workflow-start .agents/skills/inventory-implementation .agents/skills/inventory-code-review .agents/skills/inventory-operator-ui"` と `G='--glob !docs/plans/** --glob !docs/archive/**'`（対話の bash の history 展開を避けて single quote）を置く。baseline は本 commit の tree（D-124〜D-126 を置いた後、置き場の 3 文を入れる前）で、bash で逐語に実行した出力。
 
-- AC1 D-124 の置き場: `awk '/^## Wave Operation/,/^### Stacked train/' docs/DEV_WORKFLOW.md | rg -c 'name-only --no-renames'` が `1`、同じ範囲の `rg -c 'L3 を束ねるのは重なりの無い PR だけ'` が `1`。baseline: `rg -c 'name-only --no-renames' docs/DEV_WORKFLOW.md` は出力なし・exit 1
-- AC2 D-125 の置き場: `rg -n '^## 1\. 参照の書き方|^### code と文書の箇所の引き方|^## 2\. ' docs/DOC_STYLE_GUIDE.md` で新しい節の行番号が §1 と §2 の見出しの間にある。baseline: `rg -c '^### code と文書の箇所の引き方' docs/DOC_STYLE_GUIDE.md` は出力なし・exit 1
+- AC1 D-124 の置き場: `awk '/^## Wave Operation/,/^### Stacked train/' docs/DEV_WORKFLOW.md | rg -c 'name-only --no-renames'` が `1`、同じ範囲の `rg -c 'manual の有無を問わない'` が `1`、`rg -c 'gh pr view'` が `1`、`rg -c 'merge-tree'` が出力なし（exit 1）。baseline: 4 本とも出力なし・exit 1
+- AC2 D-125 の置き場: `rg -n '^## 1\. 参照の書き方|^### code と文書の箇所の引き方|^## 2\. ' docs/DOC_STYLE_GUIDE.md` で新しい節の行番号が §1 と §2 の見出しの間にある。baseline: `35:## 1. 参照の書き方` と `83:## 2. 関数設計書テンプレート（function-design/） ✅M2` の 2 行
 - AC3 D-126 の置き場: `rg -n '^## Status の書き方|^## D-001$|^## Purpose' docs/decision-log.md` が `## Purpose`・`## Status の書き方`・`## D-001` の順の 3 行。baseline: `3:## Purpose` と `8:## D-001` の 2 行
-- AC4 決定の記録: `rg -c '^## D-12[456]: ' docs/decision-log.md` が `3`、各 D の `- Status:` が `accepted（owner 2026-10-19、repo 外の回答台帳 TD-32n）` で始まり、実装の状態の語（`runtime`・`実装の PR`・`merge で`）を含まない。baseline: 出力なし・exit 1
-- AC5 1 か所だけ: `rg -l 'name-only --no-renames' docs AGENTS.md CLAUDE.md --glob '!docs/plans/**' --glob '!docs/archive/**'` が `docs/DEV_WORKFLOW.md` の 1 行、`rg -l 'code と文書の箇所の引き方' docs --glob '!docs/plans/**' --glob '!docs/archive/**'` が `docs/DOC_STYLE_GUIDE.md` の 1 行、`rg -l '^## Status の書き方' docs` が `docs/decision-log.md` の 1 行（D-124〜D-126 の本文は置き場を名指し、規則の文を写さない）
+- AC4 決定の記録: `rg -c '^## D-12[4567]: ' docs/decision-log.md` が `4`。`rg -A2 '^## D-12[4567]: ' docs/decision-log.md | rg -c '^- Status: accepted（owner の決定、repo 外の回答台帳 TD-32[4678]、2026-10-19'` が `4`。`rg -A2 '^## D-12[4567]: ' docs/decision-log.md | rg '^- Status:' | rg 'runtime|実装の PR|merge で'` が出力なし（exit 1）。`rg -n '^- Status: superseded by ' docs/decision-log.md` が出力なし（exit 1。全体の置換えは `superseded（by D-xxx。…）` の形）。baseline: 本 commit で `4`・`4`・出力なし・出力なし
+- AC5 1 か所だけ（正本の中の出現の数を数え、指定の位置の 1 か所と照合する。`rg -l` の file 数でなく `rg -n -o` の出現の行で見る）: 次の 12 本の `rg -n -o 'LITERAL' docs AGENTS.md CLAUDE.md $G` がそれぞれちょうど 1 行を出し、その行が指定の位置に在る:
+  - `name-only --no-renames` → `docs/DEV_WORKFLOW.md`、行番号が `## Wave Operation` と `### Stacked train` の見出しの間
+  - `code と文書の箇所の引き方` → `docs/DOC_STYLE_GUIDE.md` の新しい節の見出し
+  - `書いた時点の main の commit を同じ行に添える` → `docs/DOC_STYLE_GUIDE.md`、行番号が新しい節の見出しと `## 2. ` の間
+  - `## Status の書き方` → `docs/decision-log.md`、行番号が `## Purpose` と `## D-001` の間
+  - `後から直してよいのは Status の行` → `docs/decision-log.md`、行番号が `## Status の書き方` と `## D-001` の間
+  - `継ぎ足さない（D-127）` と `押しつけない（D-127）` → それぞれ `AGENTS.md`、行番号が `## Working Rules` と `## Decision and Approval Boundaries` の見出しの間
+  - `差分の行数でなく` → `AGENTS.md`、行番号が `## Safety` と `## npm 供給網ガード（D-030）` の見出しの間
+  - `所感は原文で扱う（D-127）` → `AGENTS.md`、行番号が `## Working Rules` と `## Decision and Approval Boundaries` の見出しの間
+  - `現場の手順書にする（D-127）` → `AGENTS.md`、行番号が `## Decision and Approval Boundaries` と `## Workspace Access` の見出しの間
+  - `返答の本文に inline で書き` → `CLAUDE.md`、行番号が `## 長い作業の報告` と `## 座組と effort` の見出しの間
+  - `review の本数の数え方は座組表` → `CLAUDE.md`、行番号が `## 座組と effort` と `## 再開とmemory` の見出しの間
+  - baseline: 12 本とも出力なし・exit 1（D-124〜D-127 の本文はこれらの literal を持たない）
 - AC6 矛盾する live な規則の文が無い（下の 3 本の `rg` の各 hit を読んで判定する）:
   - D-124: `rg -n 'L3.{0,30}束ね|束ね.{0,30}L3' $R` が DEV_WORKFLOW `## Wave Operation` の新しい箇条の行だけ。baseline: 出力なし・exit 1
   - D-125: `rg -n 'file:line|path:line|file:行' $R | cut -d: -f1,2` が、baseline の 5 行（`docs/DEV_WORKFLOW.md:198`〈Subagent Budget〉・`docs/DEV_WORKFLOW.md:351`〈Commit / PR Messages〉・`docs/code_review.md:98`・`docs/AGENT_OPERATING_MANUAL.md:21`・`docs/AGENT_OPERATING_MANUAL.md:152`。どれも review・subagent の一時の出力）と、DOC_STYLE_GUIDE の新しい節の対象外の行だけ（DEV_WORKFLOW の行番号は Wave Operation の追記で動いてよい）
   - D-126: `rg -n 'accepted にする|merge で accepted' $R` が出力なし・exit 1（baseline も同じ）。`docs/decision-log.md` の既存の D の Status の行の同じ語は lane 1 の所有（所有表）で、本 lane の AC に入れない
+  - D-127: `rg -n '継ぎ足|不要になる|押しつけ|押し付け|尊重|小さな変更|小さく|smallest|既存の実装|既存を|黙って通さ' $R | cut -d: -f1,2` が、baseline の 3 行（`AGENTS.md:65`〈Safety の「小さく、確認可能な変更を優先する」〉・`docs/code_review.md:98` と `docs/DEV_WORKFLOW.md:351`〈finding の修正案の `smallest safe fix`。D-127 の Compatibility で変えない〉）と、`AGENTS.md` の D-127 の箇条の行だけ（`AGENTS.md` と DEV_WORKFLOW の行番号は追記で動いてよい）。Safety の行は両立の句を持つ
+  - D-127 の (d)〜(h): `rg -n '環境が変わる|原文|Issue|コピペ|dual-use|敵対的' $R | cut -d: -f1,2` が、baseline の 1 行（`docs/DEV_WORKFLOW.md:269`〈reviewer の scope の提案を owner の原文と照合する。(e) と同じ向き〉）と、`AGENTS.md`・`CLAUDE.md` に足した D-127 の行だけ。委任の範囲は Decision and Approval Boundaries の既存の項のままで、同じ趣旨の箇条を足していない
 - AC7 BOM: `head -c3 docs/decision-log.md | od -An -tx1` が ` ef bb bf`（baseline も同じ）
 - AC8 検査: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-19-docs-writing-rules.md` が exit 0、`bash scripts/check-workflow-git.sh` が exit 0、Draft の hosted run（`Draft (no merge evidence)`）が success
 
@@ -198,11 +231,11 @@ AC の確認は下の command を repo root で逐語に実行する。`R` は l
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。当たらない箇条は 1 行の理由で閉じる。
 
 - 引用する設計正本（節まで）: [DEV_WORKFLOW](../DEV_WORKFLOW.md) `## Wave Operation`・`### Stacked train`・Review Rules の連番 registry と Double Audit・Workflow State の Evidence Ownership（D-038）・Plan Packet Rules の Evidence Ownership の design-document extension（D-050）・Post-Merge Closeout の `## 直近の完了`、[merge-evidence](../agent-guidance/merge-evidence.md)「base同期だけでheadが変わる場合」、[DOC_STYLE_GUIDE](../DOC_STYLE_GUIDE.md) `## 1. 参照の書き方`、[decision-log](../decision-log.md) `## Purpose` と D-123 の項目の型
-- 必要な設計成果物: 「Durable cross-cutting choice, workflow gate change」の行 = decision-log の D-124〜D-126（updated in this PR、実装の commit）。ほかの行（BIZ・DTO・DB・画面・CSV）は当たらない
-- plan にしかない durable な判断の昇格先: 3 つの規則は置き場の正本、決定・理由・棄却案は decision-log の D-124〜D-126。どちらも同じ PR の実装の commit で書き、merge の前に揃う
+- 必要な設計成果物: 「Durable cross-cutting choice, workflow gate change」の行 = decision-log の D-124〜D-127（updated in this PR、plan-first の commit で置いた）。ほかの行（BIZ・DTO・DB・画面・CSV）は当たらない
+- plan にしかない durable な判断の昇格先: 決定・理由・棄却案は decision-log の D-124〜D-127（置いた）。規則の文は置き場の正本で、同じ PR の実装の commit で書き、merge の前に揃う
 - 前提・制約と、延期した design gap の follow-up: 既存の引用の書き換えと検査は lane 2、既存の D の Status の直しは lane 1、並走の本数の規則は backlog に残す（Non-scope）
-- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: D-124 の「path が重ならなければ後の PR の差分は byte で変わらない」は Contract Probe P2 で 1 例を確かめた性質で、manual 再利用の必要条件にとどめ、owner の判断を残す（D-124 Guarantee range）
-- 判定（ready / not ready）と理由: ready。この change の成果物は規則の文そのもので、規則の中身は owner の決定 TD-324・TD-326・TD-327 で決まっている。文と置き場は本 packet の「規則の文と置き場」が決め、前提は Contract Probe で確かめた。正本への書込みは発注（plan-approved の後の別の run）に従い実装の commit で行うので、design の段階を挟まず spec-check → plan-draft の経路を使った
+- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: D-124 の「path を共有しなければ後の PR の差分は byte で変わらない」は Contract Probe P2 で 1 例を確かめた性質で、manual 再利用の必要条件にとどめ、owner の判断を残す。同じ便の外の PR が先に同じ path を触る場合は残りのリスク（D-124 の Guarantee range）
+- 判定（ready / not ready）と理由: ready。規則の中身は owner の決定 TD-324・TD-326・TD-327・TD-328 ほか（D-127 の Status の出所）で決まり、design の出力の D-124〜D-127 は plan-first の変更で decision-log に在る。前提は Contract Probe P1〜P3 で確かめた
 
 ## Registration / Generation Obligations
 
@@ -220,19 +253,21 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 [Test Design Matrix](test-matrices/2026-10-19-docs-writing-rules.md) を使う。L3 は無い（docs だけで operator の画面を変えない）。
 
-- targeted tests: AC1〜AC7 の `rg`・`awk`・`od` を実装の後に逐語で実行する
-- negative tests: AC6 の旧い書き方の検索（矛盾する live な規則の文が 0、または既知の一時出力の行だけ）
+- targeted tests: AC1〜AC7 の `rg`・`awk`・`od` を実装の後に bash で逐語に実行する
+- negative tests: AC6 の旧い書き方の検索（矛盾する live な規則の文が 0、または既知の一時出力の行だけ）、AC4 の `superseded by ` の 0 件
 - compatibility checks: `bash scripts/doc-consistency-check.sh` が exit 0（新しい h2・h3 の節が M・R・PK の検査を壊さない）、`bash scripts/check-workflow-git.sh` が exit 0
 - data safety checks: 店の実値・発言の原文を書かない。owner の決定は TD の ID で引く
-- main wiring/integration checks: 置き場の 3 か所が読み手の経路に在る（DEV_WORKFLOW は AGENTS.md の Session Start の R2+ の経路、DOC_STYLE_GUIDE は DEV_WORKFLOW の Source Index、decision-log の頭は D を足すときに開く所）
+- main wiring/integration checks: 置き場が読み手の経路に在る（DEV_WORKFLOW は AGENTS.md の Session Start の R2+ の経路、DOC_STYLE_GUIDE は DEV_WORKFLOW の Source Index、decision-log の頭は D を足すときに開く所、`AGENTS.md` は Claude と Codex の毎 session の入口、`CLAUDE.md` は Claude の毎 session の入口）
 
 ## Review Focus
 
-- D-124 の判定を owner の決定の「衝突」から「触る path の重なり」へ広げたことが、owner の決定の目的（L3 を 2 回にしない）と merge-evidence の再利用の条件に合うか（Contract Probe P1・P2）
-- D-125 の「申し送りに時点の commit を添える」が、Evidence Ownership（D-038・D-050）と Post-Merge Closeout の「SHA を書かない」と食い違わないか
-- 3 つの置き場の選び方と、同じ規則を 2 か所に書いていないか（AC5）
-- lane 1 との所有表（decision-log の頭と末尾 / 既存の D の Status の行）が lane 1 の packet と食い違わないか
-- spec-check → plan-draft の経路（Design Readiness の判定）が Workflow State の遷移の条件を満たすか
+- D-124 の主語（L3 を頼む PR と、同じ便で先に merge する全ての PR の path の共有）と 2 つの手段・owner の選び方が、owner の決定の目的（L3 を 2 回にしない）と merge-evidence の再利用の条件に合うか（Contract Probe P1・P2）
+- D-124 の確かめ方の手順が、command の失敗を「共有なし」と誤らないか（Contract Probe P3）
+- D-125 の申し送りの対象を backlog に絞ったことと、Evidence Ownership（D-038・D-050）・Post-Merge Closeout の「SHA を書かない」の関係
+- D-126 の書式が lane 1 の適用（`superseded（by D-xxx。…）` と `- Superseded by:` の行）と同じか
+- 置き場の選び方と、同じ規則を 2 か所に書いていないか（AC5）
+- D-127 の (a)〜(f) を `AGENTS.md`、(g)(h) を `CLAUDE.md` に分けたことと、(h) が共通の品質の条件（座組表・Double Audit の数え方）を `CLAUDE.md` で変えていないか
+- D-127 の「置き換え・削除」が安全・データ保護・外部書込みの承認の境界を緩めると読めないか、`AGENTS.md` Safety の「小さく、確認可能な変更」との両立の句が足りるか
 
 ## Contract Ledger
 
@@ -240,28 +275,34 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| D-124（新設） | DEV_WORKFLOW `## Wave Operation` | 箇条を 1 つ足す、decision-log に D-124 | AC1・AC5・AC6 の `rg`（matrix の行 1〜3） | L3 なし |
-| D-125（新設） | DOC_STYLE_GUIDE `## 1. 参照の書き方` | 節を 1 つ足す、頭の「対象」の行、decision-log に D-125 | AC2・AC5・AC6 の `rg`（matrix の行 4〜6） | L3 なし |
-| D-126（新設） | decision-log `## Purpose` の後 | 節 `## Status の書き方`、decision-log に D-126 | AC3・AC4・AC5・AC6 の `rg`（matrix の行 7〜9） | L3 なし |
+| D-124（新設） | DEV_WORKFLOW `## Wave Operation`、decision-log D-124 | D-124 は plan-first で置いた。実装は箇条を 1 つ足す | AC1・AC5・AC6 の `rg`（matrix の行 1〜3・13） | L3 なし |
+| D-125（新設） | DOC_STYLE_GUIDE `## 1. 参照の書き方`、decision-log D-125 | D-125 は plan-first で置いた。実装は節を 1 つ足し、頭の「対象」の行 | AC2・AC5・AC6 の `rg`（matrix の行 4〜6） | L3 なし |
+| D-126（新設） | decision-log の頭（`## Purpose` の後）、decision-log D-126 | D-126 は plan-first で置いた。実装は節 `## Status の書き方` | AC3・AC4・AC5・AC6 の `rg`（matrix の行 7〜9・14） | L3 なし |
 | D-055 Wave Operation の既存の箇条 | DEV_WORKFLOW `## Wave Operation` | 変えない（足す位置の前後） | AC8 の doc check | 非対象 |
 | merge-evidence の manual 再利用の条件 | merge-evidence「base同期だけでheadが変わる場合」 | 変えない。D-124 が引く | Contract Probe P2 | 非対象 |
 | D-074 stacked train | DEV_WORKFLOW `### Stacked train` | 変えない（D-124 の対象外） | AC1 の `awk` の範囲の終端 | 非対象 |
-| D-038・D-050 Evidence Ownership | DEV_WORKFLOW Workflow State・Plan Packet Rules | 変えない。D-125 の Compatibility に書く | 無し（文の review） | 非対象 |
-| Post-Merge Closeout の `## 直近の完了` | DEV_WORKFLOW Post-Merge Closeout | 変えない | 無し（文の review） | 非対象 |
+| D-038・D-050 Evidence Ownership | DEV_WORKFLOW Workflow State・Plan Packet Rules | 変えない。D-125 の Compatibility に書いた | 無し（文の review） | 非対象 |
+| Post-Merge Closeout の `## 直近の完了` | DEV_WORKFLOW Post-Merge Closeout | 変えない（D-125 は Plans に行番号の申し送りを置かない） | 無し（文の review） | 非対象 |
 | DOC_STYLE_GUIDE §1 の R0・R1・R3 | DOC_STYLE_GUIDE §1・§6 | 変えない | AC8 の doc check | 非対象 |
-| 連番 registry の番号予約 | DEV_WORKFLOW Review Rules | D-124〜D-126 を本 lane が予約（本 packet） | AC4 の `rg -c` | 非対象 |
+| D-127（新設） | `AGENTS.md` `## Working Rules`・`## Decision and Approval Boundaries`・`## Safety`、`CLAUDE.md` `## 長い作業の報告`・`## 座組と effort`、decision-log D-127 | D-127 は plan-first で置いた。実装は箇条 3 つ・箇条 1 つ・両立の句・段落 2 つ | AC5・AC6 の `rg`（matrix の行 15〜17） | L3 なし |
+| AGENTS.md の委任の範囲 | `AGENTS.md` Decision and Approval Boundaries | 変えない（memory の同じ方針は既にある） | AC6 の (d)〜(h) の `rg` | 非対象 |
+| finding の修正案 `smallest safe fix` | `docs/code_review.md`、DEV_WORKFLOW Commit / PR Messages | 変えない（D-127 の Compatibility） | AC6 の D-127 の `rg` | 非対象 |
+| 座組表と Double Audit の数え方 | AGENT_OPERATING_MANUAL `## 座組`、DEV_WORKFLOW Contract Audit | 変えない（`CLAUDE.md` の (h) は経路だけ） | 無し（文の review） | 非対象 |
+| 連番 registry の番号予約 | DEV_WORKFLOW Review Rules | D-124〜D-127 を本 lane が持つ（plan-first で置いた） | AC4 の `rg -c` | 非対象 |
+| lane 1 の Status の適用の書式 | lane 1 の packet の S3（`superseded（by D-xxx。…）` と `- Superseded by:` の行） | D-126 の書式をそろえた | AC4 の `superseded by ` の 0 件 | 非対象 |
 | ADR の Status | `docs/templates/adr.md` | 変えない（D-126 の対象外） | 無し | 非対象 |
 | D-097 Plans に lane の行を足さない | decision-log D-097、DEV_WORKFLOW Wave Operation | 変えない（Plans を触らない） | 無し | 非対象 |
 
 ## Contract Probe
 
 - P1 `git merge-tree --write-tree --name-only A B` は衝突のとき exit 1 で衝突の path を出し、衝突が無いとき exit 0 で tree だけを出す: 第 2 便の PR #171 の base 同期の前の head `2f71fab1` と PR #176 の head `daa23a40` で実行 → exit 1、衝突の path は `docs/backlog.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/db/product_repo.rs`（実装 file の衝突を含む）。`2f71fab1` と祖先の `44f1e666` で実行 → exit 0、tree の 1 行だけ（git 2.53.0）
-- P2 両方の PR が触る file は、merge の衝突が無くても base 同期で PR 差分の byte が変わり、片方だけが触る file は変わらない: `git diff --binary --full-index --no-ext-diff --no-textconv` の file ごとの sha256 を、同期の前（`44f1e666` → `2f71fab1`）と後（`c1c1c5bf` → `87a96fb9`、PR #171 の最終の head）で比べた。両方が触り P1 で衝突に出なかった `src-tauri/src/biz/product_service.rs` → `5e322fd6…` と `be9481b7…` で不一致（hunk の見出しが `@@ -63,6 +63,8 @@` から `@@ -64,6 +64,8 @@` へ動いた）。#171 だけが触る `src/features/products/components/ProductForm.tsx` と `docs/SCREEN_DESIGN.md` → 前後とも `117a0c11…` で一致。PR が触る path の一覧は `git diff --name-only --no-renames 44f1e666...2f71fab1` と `44f1e666...daa23a40` で取った。結論: merge-tree の衝突だけで束ねる PR を選ぶと、後の PR の manual を再利用できない場合が残るので、D-124 は path の重なりで判定する
+- P2 両方の PR が触る file は、merge の衝突が無くても base 同期で PR 差分の byte が変わり、片方だけが触る file は変わらない: `git diff --binary --full-index --no-ext-diff --no-textconv FROM TO -- FILE | sha256sum` を、同期の前（`44f1e666` → `2f71fab1`）と後（`c1c1c5bf` → `87a96fb9`、PR #171 の最終の head）で file ごとに比べた。両方が触り P1 で衝突に出なかった `src-tauri/src/biz/product_service.rs` → `5e322fd6…` と `be9481b7…` で不一致（hunk の見出しが `@@ -63,6 +63,8 @@` から `@@ -64,6 +64,8 @@` へ動いた）。#171 だけが触る file は前後で一致: `src/features/products/components/ProductForm.tsx` → `ffc8c0c0…`、`docs/SCREEN_DESIGN.md` → `7143e6af…`（起票の版の `117a0c11…` はこの 2 file をまとめた 1 本の差分の sha256 で、前後で一致した）。PR が触る path の一覧は `git diff --name-only --no-renames 44f1e666...2f71fab1` と `44f1e666...daa23a40` で取った。結論: merge-tree の衝突だけで束ねる PR を選ぶと、後の PR の manual を再利用できない場合が残るので、D-124 は path の共有で判定する
+- P3 起票の版の command（`comm -12 <(git diff … origin/main...origin/A | sort) <(…)`）は、ref が無いと `git diff` が `fatal` を出しても `comm` が exit 0 で空を返し、「共有なし」と誤る: `origin/no-such-branch-p3` で実行 → `fatal: ambiguous argument`、全体の exit 0・出力なし。直した手順（PR ごとに `git diff --name-only --no-renames origin/main...SHA > FILE` の終了値を確かめる）は、`gh pr view 179 --json headRefOid` の head では exit 0、無い SHA では exit 128 で、比べずに「比べられない」へ進んだ（probe の script は scratchpad、起票の後の round 1 の是正で実行）
 
 ## Data Safety
 
 - 店の実値・発言の原文・実 POS / 店舗のデータを書かない。owner の決定は repo 外の回答台帳の ID（TD-324・TD-326・TD-327）で引く
-- probe は公開 repo の commit（PR #171・#176）だけを使い、作業の出力は `$TMPDIR` に置いた
+- probe は公開 repo の commit（PR #171・#176・#179）だけを使い、作業の出力は `$TMPDIR` に置いた
 - 調査の報告（repo 外の `.local/`）の全件の表を写さない
 
 ## Implementation Results
@@ -270,4 +311,19 @@ not applicable: JSON・CSV・config・DTO・bindings・DB を触らない。
 
 ## Review Response
 
-review の後に書く。
+### Plan Review round 1（対象 `131c0809`、2026-10-19）
+
+- fresh Opus 5.5（`subagent_type: reviewer`）: reject（P1 0 / P2 3 / P3 5）。Ordinary Operation は「具体的な反例あり」（manual を持たない PR が先に merge して L3 を持つ PR と path を共有すると L3 が 2 回。D-126 の書式が lane 1 と違う）。#1 P2 D-124 の発火が「束ねる前」だけ、#2 P2 D-126 の全体の置換えの書式が lane 1 と違い Status の行の新設が範囲に無い、#3 P2 spec-check → plan-draft の skip が条件を満たさない（D-124〜D-126 は Plan の前に要る）、#4 P3 AC5 が packet に当たる、#5 P3 AC6 が zsh で exit 2、#6 P3 D-125 が Plans に SHA を書かせ読み違えを招く、#7 P3 Plan Packet・Matrix が D-125 の対象か書いていない、#8 P3 (a) Probe P2 の hash の値 (b) 判定の拡張が agent の解釈と書いていない (c) merge の順を誰がいつ決めるか無い
+- Codex（GPT-6 Astra、high。Sol が満員で Astra で走った）: reject（P2 3 / P3 1）。#1 P2 D-124 の command が ref の取得漏れで空出力・exit 0 になり「重なりなし」と誤る、#2 P2 durable decision を packet だけで定義して design を skip した、#3 P2 AC5 が packet を拾い、同じ file の中の重複を拾えない、#4 P3 `117a0c11…` は 2 file をまとめた hash。D-123 は既に accepted、所有表の lane 1 の行の表記（`Superseded by:`）が lane 1 の packet と違う、を確認
+- Coordinator の裁定（全件受理）と反映先:
+  1. 設計の順（Opus #3・Codex #2）→ Workflow State を design へ戻して D-124〜D-126（追加の D-127 も同じ）を plan-first で decision-log の末尾に置き、遷移を plan-draft → design → plan-draft で記録した。実装の commit は置き場の 3 文だけ（Scope、Design Readiness、「決定の記録」の節）。D-123 は D-126 の例に入れていない（D-126 の Context は D-111・D-113 と D-116〜D-122）
+  2. D-124 の発火の範囲（Opus #1・#8c）→ 主語を「L3 を頼む PR が、同じ便でそれより先に merge する PR（manual の有無を問わない）と path を共有するなら」にし、2 つの手段と「Coordinator が既定案を示し、L3 の依頼と同じ問い合わせで owner が決める」、共有の更新を closeout へ寄せる 1 文を足した（規則の文、D-124 の Decision (1)(3)）。同じ便の外の PR の残りのリスクを D-124 の Guarantee range と Matrix の Residual に書いた
+  3. command の頑健さ（Codex #1）→ fetch と `gh pr view` の照合、PR ごとの終了値の確認、全て成功したときだけ `comm -12`、失敗は共有ありと同じ（規則の文、D-124 の Decision (2)、Contract Probe P3）
+  4. D-126 の書式（Opus #2、Codex の所有表）→ `superseded（by D-xxx。元の出所）` と `- Superseded by: D-xxx（日付）。…` の行、一部は `- Superseded in part by:`、Status の行の無い D に足してよい（規則の文、D-126 の Decision (3)）。所有表の lane 1 の行を lane 1 の packet の表記にした。AC4 に `rg -n '^- Status: superseded by '` の 0 件を足した
+  5. AC5（Opus #4・Codex #3）→ packet・archive を除く正本の中の出現の行を `rg -n -o` で数え、指定の位置の 1 か所と照合する形にした
+  6. AC6 の shell（Opus #5）→ AC の頭に bash で実行することと `R`・`G` の置き方を書いた
+  7. D-125 と Plans（Opus #6）→ 申し送りに commit を添える対象を `docs/backlog.md` に絞り、Plans は行番号の申し送りを置かないと書いた（規則の文、D-125 の Decision (2)・Alternatives・Compatibility）
+  8. D-125 の対象（Opus #7）→ 対象外に dated の Plan Packet と Test Design Matrix を足した（規則の文、D-125 の Decision (3)）
+  9. Contract Probe の記録（Opus #8a・b、Codex #4）→ P2 に file ごとの値（`ffc8c0c0…`・`7143e6af…`）と `117a0c11…` が 2 file まとめの値であることを書き、D-124 の Decision に判定の拡張が Writer の probe の結果で Coordinator が採ったことを書いた
+  10. 追加（owner の決定 TD-328、2026-10-19）→ D-127 を本 lane に足した。既存を出発点として扱い設計を継ぎ足しで歪ませない（owner 2026-10-15 の方針を 1 項にまとめた）、使い手に押しつけない（TD-310）。規則の文の置き場は `AGENTS.md` `## Working Rules`、`## Safety` の「小さく、確認可能な変更を優先する」に両立の句（「D-127 の置き場」の節）。D-127 は plan-first で decision-log の末尾に置き、AC5・AC6 に置き場の出現の数と重複・矛盾の `rg` を足した
+  11. 追加 2（owner 2026-10-19、Coordinator の個人の memory の方針を正本へ上げる）→ (d) 規則は環境が変わるたびに変える（owner 2026-09-24）を `AGENTS.md` の「継ぎ足さない」の箇条に、(e) 所感の原文の扱いを `AGENTS.md` Working Rules の箇条に、(f) 店主への問いを Issue に書かないを `AGENTS.md` Decision and Approval Boundaries に、(g) コピペ物の inline と完全な path を `CLAUDE.md` `## 長い作業の報告` に、(h) 安全境界の review の経路を `CLAUDE.md` `## 座組と effort` に置く文を決め、D-127 の Decision (1)(3)〜(6) と出所に足した。委任の範囲は既に Decision and Approval Boundaries にあり足していない。(e) の原文は公開 repo に書かず repo の外の回答台帳に残す形にした。(h) の発注にあった「workflow gate の Double Audit は inline 1 本と Codex 1 本で満たす」は、Claude だけの補助の `CLAUDE.md` が共通の品質の条件（座組表・Double Audit）を変えることになるので（AGENTS.md の「モデル補助は共通の承認・品質条件を変更しない」）、本 packet では入れず、数え方は座組表のままと書いた。入れるなら座組表か DEV_WORKFLOW で別に決める（Coordinator の裁定に返す）
