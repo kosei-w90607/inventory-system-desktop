@@ -8,9 +8,9 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-approved
 - Risk: R2
-- Plan Commit: pending
+- Plan Commit: ccdf03405dcd495e3db84c3a415dd1b1a821fe0b
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は本 run。docs の直しは plan-approved の後の別の run）
@@ -30,6 +30,8 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 4. plan-draft（round 2 の前の追加、2026-10-19、起草役）: Q4 の裁定と S7 の追加（Review Response 参照）。S7 で Scope に 3 file を足した。
 5. plan-draft（round 2 の是正、2026-10-19、起草役）: Plan Review round 2 の是正（Review Response 参照）。S1・S2 の型を意味の側で洗い直し、S1 に行を足した。Owner Effort Budget の上限を改定した。
 6. plan-draft（round 3〈天井〉の是正、2026-10-19、起草役）: Coordinator が round 3 の残りを同型の一括是正に disposition した（Review Response 参照）。S1 の型の語の幅を広げて洗い直し、S4 に採用済みで未実装の決定の型の洗い直しを足した。
+7. plan-draft → plan-gate（Plan Review round 1〜3、2026-10-19）: Claude 側 fresh Opus 5.5・Codex（round 1 は Sol が満員で Astra、round 2・3 は Sol）。各 round の是正は Review Response 参照。
+8. plan-gate → plan-approved（2026-10-19、本 commit）: owner の決定（repo 外の回答台帳 TD-330）。round 3 の天井の後、指摘を直して追加の round を開かない。Plan Commit は round 3 の是正の commit（`ccdf0340`）。
 
 ## Owner Effort Budget
 
@@ -39,7 +41,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 4（round 2 の是正の時点。decision point ごとに数える: TD-327 の棚卸しの計画 1、TD-327 の decision-log の Status の規則 1、TD-327 の Draft PR #155 の扱い 1、S7 の範囲の追加〈owner 2026-10-19 の指示〉1） | 3（Ready 1、merge 1、round 3 は天井なので、そこで P1/P2 が残れば owner の判断 1） | 2 | 9 = 4 + 3 + 2 |
+| 介入 | 9 | 5（plan-approved の時点。decision point ごとに数える: TD-327 の棚卸しの計画 1、TD-327 の decision-log の Status の規則 1、TD-327 の Draft PR #155 の扱い 1、S7 の範囲の追加〈owner 2026-10-19 の指示〉1、TD-330〈round 3 の天井の後、直して追加の round なしで plan-approved〉1） | 2（Ready 1、merge 1） | 2 | 9 = 5 + 2 + 2 |
 
 店の資料・owner に聞く束（下の S6 の分類）は本 lane で問わないので、本 lane の介入に数えない。
 
