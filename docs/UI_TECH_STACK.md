@@ -8,7 +8,6 @@
 
 > **親文書**: [ARCHITECTURE.md](ARCHITECTURE.md)
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、SCREEN_DESIGN.md（画面設計）、FUNCTION_DESIGN.md（関数設計）
-> **最終更新**: 2026-07-01 / UI-08 PLU書出し native save / confirm 方針更新
 > **位置付け**: 第7段階以降のUI実装で守るべき技術選定・デザイン哲学・運用原則を定める唯一の参照源
 
 ---
@@ -713,6 +712,13 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 
 <!-- reviewed: 2026-08-30 -->
 
+### 6.12 class の上書きの罠
+
+共通部品の class を呼出し側で足すときに、typecheck・lint・test が全部 green のまま実 render でだけ崩れる 2 つの型。どちらも owner の Windows native L3 で見つかった。
+
+1. **variant 付きの class は同じ variant で上書きする**: 共通 primitive が size・state の variant 付きの class を持つとき（例 `src/components/ui/alert-dialog.tsx` の `data-[size=default]:sm:max-w-lg`）、呼出し側の素の utility class（例 `sm:max-w-3xl`）は属性 selector の分だけ詳細度で負けて効かない。呼出し側も同じ variant 修飾子を付ける（例 `data-[size=default]:sm:max-w-3xl`。PR #15、2026-08-29、[packet](archive/plans/2026-08-29-ui-polish-batch.md) の owner L3-lite round 3 の是正）。一覧の選択行を `data-[state=selected]:` で固定する例は [catalog](design-system/02-component-catalog.md) の ⑫ 行インライン展開の使用トークンが持つ。
+2. **TanStack Router の `Link` は class の衝突を解かない**: `Link` は base の `className` と `activeProps`（と `inactiveProps`）の `className` を空白でつなぐだけで、tailwind-merge を通さない（`@tanstack/react-router` の `dist/esm/link.js` の className の組み立て。1.168.23 での観測で、lockfile の版 1.170.5 の file は手元で確かめていない）。base と `activeProps` に同じ CSS property の class（例 base の `border-l-transparent` と active の `border-l-primary`）を置くと両方が DOM に残り、生成 CSS の出現順で負けた側が見えない。RTL の `toHaveClass` も、`cn()`（tailwind-merge）を通る別の経路の検査も素通りする（PR #28、2026-09-02、[packet](archive/plans/2026-09-02-ui-current-location-accent.md) の L3 FAIL）。衝突する property は片側だけに置き、「active のときに負け側の class が共存しない」負の assert を test に足す。
+
 ---
 
 ## 7. リスクと保留事項 / 更新履歴
@@ -782,7 +788,7 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 - **Playwright スクショ**: E2E 採用時に追加コスト小で導入可
 - **見送り**: Phase 2 デモで「見た目が毎回同じ」が重視されなければ不要
 
-**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は将来の global text-size / display-scale option と合わせて調整する follow-up として分離した。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
+**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は global text-size / display-scale option と合わせて調整する follow-up として分離し、表示の大きさの option（`src/components/layout/useDisplayScale.ts`）で対応した（[DEV_SETUP_CHECKLIST](DEV_SETUP_CHECKLIST.md) の 8-0、PR #77）。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
 
 **評価タイミング**:
 1. global text-size / display-scale option の実装プラン作成時: typography / density / status 表示の横断変更に対して lightweight screenshot diff が必要か確認する（2026-06-07 follow-up では新規 screenshot-diff gate は追加せず、targeted RTL + Windows native L3 で確認する）

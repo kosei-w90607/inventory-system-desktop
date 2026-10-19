@@ -23,7 +23,7 @@
 <body><main>
 <h1>現行DBのER図</h1>
 <p><a href="diagrams/current-system.md">現行構造・画面遷移・業務フロー</a> · <a href="DB_DESIGN.md">テーブル定義</a> · <a href="research/2026-09-16-diagram-audit.md">図面からの設計点検</a></p>
-<p class="note">対象は <code>src-tauri/src/db/migration.rs</code> が登録する現行 schema（v1〜v7）。実店舗DBは参照していない。図は実装の説明であり、業務上の正しさの保証ではない。採用済み仕様と実装が食い違う点は設計点検に分けて記録する。</p>
+<p class="note">対象は <code>src-tauri/src/db/migration.rs</code> が登録する現行 schema（v1〜v9）。実店舗DBは参照していない。図は実装の説明であり、業務上の正しさの保証ではない。採用済み仕様と実装が食い違う点は設計点検に分けて記録する。</p>
 <ul>
 <li>線は<strong>物理FKのみ</strong>。点線は非識別関係（子の主キーに親キーを含まない）。端の丸は0を許容し、三つ又は複数を表す。親側が0..1の参照はNULL許容。</li>
 <li><code>inventory_movements.reference_type + reference_id</code> と <code>plu_slots.scanning_code = products.jan_code</code> はアプリ側の論理関連で、FKの線を引かない。</li>
@@ -64,6 +64,8 @@
   price_history }o..|| products : product_code
   stocktake_items }o..|| products : product_code
   stocktake_items }o..|| stocktakes : stocktake_id
+  stock_counts }o..|| products : product_code
+  stock_counts }o..o| stocktake_items : stocktake_item_id
 
   departments {
     INTEGER id PK
@@ -92,7 +94,7 @@
     TEXT tax_rate "NOT NULL; default '10'; 10 / 8 / 0"
     TEXT maker_code "NULL allowed"
     INTEGER stock_quantity "NOT NULL; default 0; stock-unit quantity"
-    TEXT stock_unit "NOT NULL; default 'pcs'; pcs / cm"
+    TEXT stock_unit "NOT NULL; default 'pcs'; v8: pcs / sheet / hon / bag / box / roll / kumi / set / ball / cho / m / cm"
     BOOLEAN is_discontinued "NOT NULL; default 0"
     BOOLEAN plu_dirty "NOT NULL; default 1"
     TEXT plu_exported_at "NULL allowed; app confirmation; not register proof"
@@ -100,6 +102,9 @@
     TEXT created_at "NOT NULL"
     TEXT updated_at "NOT NULL"
     BOOLEAN plu_target "NOT NULL; default 0; scanning PLU target"
+    INTEGER stock_recheck "NOT NULL; default 0; 0 / 1; v9 copy flag"
+    INTEGER stock_range_low "NULL allowed; v9; set only when stock_recheck = 1"
+    INTEGER stock_range_high "NULL allowed; v9; set only when stock_recheck = 1"
   }
 
   receiving_records {
@@ -277,6 +282,9 @@
     TEXT note "NULL allowed"
     BOOLEAN is_voided "NOT NULL; default 0"
     TEXT created_at "NOT NULL"
+    TEXT business_date "NOT NULL; v9; YYYY-MM-DD"
+    INTEGER phase "NOT NULL; v9; 0 / 1"
+    INTEGER settlement_no "NULL allowed; v9; NOT NULL only when phase = 1"
   }
 
   price_history {
@@ -305,6 +313,18 @@
     INTEGER actual_count "NULL allowed"
     INTEGER valuation_cost_price "NULL allowed; cost at completion"
     TEXT counted_at "NULL allowed"
+  }
+
+  stock_counts {
+    INTEGER id PK
+    TEXT product_code FK "NOT NULL"
+    INTEGER count_value "NOT NULL; >= 0"
+    TEXT count_kind "NOT NULL; default / fresh"
+    TEXT business_date "NOT NULL; YYYY-MM-DD"
+    INTEGER settlement_no "NULL allowed; NULL when default"
+    INTEGER seen_movement_id "NULL allowed; NOT NULL when fresh"
+    INTEGER stocktake_item_id FK "NULL allowed"
+    TEXT counted_at "NOT NULL"
   }
 
   plu_slots {

@@ -312,8 +312,8 @@ fn complete_stocktake(
    - stocktake_repo::list_uncounted_items(&tx, req.stocktake_id) → Vec\<UncountedItem\> { stocktake_item_id, product_code }
    - 各未入力明細について:
      - product_repo::find_by_product_code(&tx, &product_code) → product
-     - stocktake_repo::update_stocktake_item_count(&tx, stocktake_item_id, product.stock_quantity, now)
-     - ※ 現在のシステム在庫をそのまま actual_count にセット（差異なし扱い）
+     - stocktake_repo::update_stocktake_item_count(&tx, stocktake_item_id, product.stock_quantity.max(0), now)
+     - ※ 現在のシステム在庫を actual_count にセットする。負の在庫は 0 を入れる（INV-3）ので、その商品には差異が出る
 4. **全棚卸し明細の取得**
    - stocktake_repo::get_stocktake_items_for_complete(&tx, req.stocktake_id) → Vec\<StocktakeItemForComplete\>
    - StocktakeItemForComplete: { id, product_code, actual_count }
@@ -332,8 +332,9 @@ fn complete_stocktake(
      f. let difference = product.stock_quantity - actual_count
      g. difference != 0 の場合:
         - let adjustment_quantity = actual_count - product.stock_quantity（在庫視点: 正=増加、負=減少）
-        - inventory_repo::update_stock_quantity(&tx, &item.product_code, actual_count)
-        - inventory_repo::insert_movement(&tx, &NewMovement { product_code: item.product_code, movement_type: MovementType::Stocktake, quantity: adjustment_quantity, stock_after: actual_count, reference_type: Some(ReferenceType::Stocktake), reference_id: Some(req.stocktake_id), note: Some(format!("棚卸し補正: システム在庫{} → 実カウント{}", product.stock_quantity, actual_count)) })
+        - inventory_repo::insert_movement(&tx, &NewMovement { product_code: item.product_code, movement_type: MovementType::Stocktake, quantity: adjustment_quantity, stock_after: actual_count, reference_type: Some(ReferenceType::Stocktake), reference_id: Some(req.stocktake_id), note: Some(format!("棚卸し補正: システム在庫{} → 実カウント{}", product.stock_quantity, actual_count)), business_date: 確定した日（Local の今日）, settlement_no: None })
+        - stock_ledger::recompute_stock(&tx, &item.product_code)（[31](31-biz-inventory-service.md)。写しは補正の movement を入れた後に記録から求め直す）
+        - ※ 記録の `stock_after` は `actual_count`。写しが記録と一致していれば求め直しの値も `actual_count` になる。一致していなければ写しは求め直しの値になる（記録の `stock_after` は `actual_count` のまま）
         - adjusted_items.push(AdjustedItem { product_code: item.product_code, product_name: product.name, system_stock: product.stock_quantity, actual_count, difference, stock_after: actual_count })
 6. **棚卸しヘッダの確定**
    - let total_cost = valuation_total_yen(&line_centis)?（§20.5a。i128 で合計し、円未満を四捨五入して i64 へ検査付きで変換する。合計の桁あふれ・i64 を越える円額 → BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")）
@@ -364,9 +365,9 @@ fn complete_stocktake(
 - DB操作失敗 → RAII自動ROLLBACK → BizError::DatabaseError(DbError)
 
 **設計判断 — apply_stock_change を使わない理由**:
-- 棚卸し確定は「差異補正」であり、通常の在庫変動（入庫/出庫/販売）とは性質が異なる。apply_stock_change は find_by_product_code → stock計算 → update_stock_quantity → insert_movement の4ステップを内部で実行するが、complete_stocktake では既に product を取得済み（ステップ5a）であり、stock_after も actual_count として確定済み。apply_stock_change を使うと同じ商品を2回 find_by_product_code する無駄が生じる
-- また、棚卸し補正の stock_after は「actual_count そのもの」であり、「現在在庫 + 変動量」の計算ではない。apply_stock_change の stock_after 算出ロジック（INV-2）とは意味が異なる
-- よって、inventory_repo::update_stock_quantity + inventory_repo::insert_movement を直接呼び出す
+- 棚卸し確定は「差異補正」であり、通常の在庫変動（入庫/出庫/販売）とは性質が異なる。apply_stock_change は find_by_product_code → movement の INSERT → recompute_stock → update_movement_stock_after を内部で実行するが（[31](31-biz-inventory-service.md)、`biz/inventory_service/common.rs`）、complete_stocktake では既に product を取得済み（ステップ5a）。apply_stock_change を使うと同じ商品を2回 find_by_product_code する無駄が生じる
+- また、棚卸し補正の記録の stock_after は actual_count で、apply_stock_change のように求め直しの値を後から書き直さない。写しが記録と一致しているときは求め直しの値も actual_count と同じになる
+- よって、inventory_repo::insert_movement で補正の記録を足し、写しは stock_ledger::recompute_stock で記録から求め直す（inventory_repo::update_stock_quantity を直に呼ばない）
 
 **設計判断 — total_cost のオーバーフロー対策**:
 - worst case: 4000商品 × 原価999,999円 × 在庫9,999個 = 約40兆円。中間（原価 × 数量 × 100）と1/100円の合計は i128 で checked に計算し、最後の円額だけを i64 へ検査付きで変換する（§20.5a SPEC-STK-VAL-D2 / D5）。worst case は i64 の上限（約9.2 × 10^18）に収まるが、万一の不正データに備えて検査する
@@ -537,7 +538,7 @@ fn get_stocktake_record(
 
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
-| INV-2: stock_after算出責任 | 現行はステップ5gでstock_after=actual_count。新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す。後続移動なしの場合だけstock_after=Nになる |
+| INV-2: stock_after算出責任 | 旧本体（停止中、§20.0）はステップ5gで補正の記録の stock_after=actual_count とし、写しは recompute_stock で記録から求め直す（写しが記録と一致していれば求め直しの値も actual_count）。D-118 の (b) の確定の形は本章の冒頭の「計数の置き場と在庫の求め直しの契約」の「完了（SPEC-STK-CNT-D6）」が持つ |
 | INV-3: 負在庫ポリシー | 現行はactual_count非負へ上書きする。D-118 の新方式は計数（0 以上）の後の記録で在庫が負になり得る。負在庫を許して表示し、評価数量だけ `max(在庫, 0)` とする |
 | INV-8: products物理DELETE禁止 | 本モジュールは products を UPDATE のみ（stock_quantity）。DELETE 操作なし。find_stocktake_eligible_products は is_discontinued フラグで絞り込む |
 | INV-1a: 入力値は常に正数 | update_count で actual_count >= 0 を検証。complete_stocktake の adjustment_quantity は正負どちらもあり得る（棚卸し補正は INV-1a の対象外。INV-1a は Request 構造体の quantity フィールドに適用され、棚卸し補正の adjustment_quantity はBIZ層内部で算出される値） |

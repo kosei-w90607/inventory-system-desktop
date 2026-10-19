@@ -26,11 +26,11 @@
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **入力ドキュメント**: [architecture/ui-task-specs.md](../architecture/ui-task-specs.md) UI-10、[DB_DESIGN.md](../DB_DESIGN.md)、[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17（stocktakes / stocktake_items）、[35-biz-stocktake-service.md](35-biz-stocktake-service.md)、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5、[UI_TECH_STACK.md](../UI_TECH_STACK.md) §7.2（10-4a）、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)、[68-ui-backup-restore.md](68-ui-backup-restore.md) / [69-ui-threshold-settings.md](69-ui-threshold-settings.md)（構成の手本）
 > **対応タスク / 仕様**: UI-10（REQ-205、棚卸し）
-> **Design Phase**: 2026-07-07。運用一次入力は issue #135 Stage 5 ヒアリング（2026-07-07）+ 同日の価値提案訂正コメント。設計判断（UI-10-D1〜D9）は Design Phase packet `docs/archive/plans/2026-07-07-ui10-stocktake-design.md` で固定済み。本書は runtime 実装（route / components / hooks / specta 化）を含まない。以降「future」と明記した契約・コンポーネントは未実装であり、実装 PR（R3）の scope。UI-10-D10 以降は実装 PR #159（`docs/archive/plans/2026-07-07-ui10-stocktake-implementation.md`）のレビュー・契約監査で追記されたもので、future ではなく実装済み。
+> **Design Phase**: 2026-07-07。運用一次入力は issue #135 Stage 5 ヒアリング（2026-07-07）+ 同日の価値提案訂正コメント。設計判断（UI-10-D1〜D9）は Design Phase packet `docs/archive/plans/2026-07-07-ui10-stocktake-design.md` で固定済み。runtime（route / components / hooks / specta 化と、新しい 3 command）は実装 PR #159（private archive、`docs/archive/plans/2026-07-07-ui10-stocktake-implementation.md`）で入り、本書の §73.1 以降（UI-10-D1〜D13 を含む）の契約は実装済み（冒頭の D-118 の節は (b)、proposed・未実装）。UI-10-D10 以降はその実装 PR のレビュー・契約監査で追記された。現行 build では棚卸しの開始・入力・確定は停止中（[35](35-biz-stocktake-service.md) §20.0、[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)）。
 
 ## 73.1 目的
 
-年1回（owner は多くても 2 回と述べた）・大晦日時点の棚卸し（税理士の指示で、報告するのは仕入原価の総額だけ。差異は棚卸しロスとして許容する。店主回答 2026-03、owner 2026-08-27）の作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人で商品マスタ全件（数千点規模）を回り、10月からの準備（値上げ品の原価・売価の訂正、新商品のリストへの追加、原価不明品の問い合わせ。準備の開始は 2026-08-15 の店主回答で前倒しされた）と、年末の正式カウント（大晦日に完了）に分かれる前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20、店の運用の詳細は [project-memory](../project-memory.md) の Store Premises Facts）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加するのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`、いずれも future）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
+年1回（owner は多くても 2 回と述べた）・大晦日時点の棚卸し（税理士の指示で、報告するのは仕入原価の総額だけ。差異は棚卸しロスとして許容する。店主回答 2026-03、owner 2026-08-27）の作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人で商品マスタ全件（数千点規模）を回り、10月からの準備（値上げ品の原価・売価の訂正、新商品のリストへの追加、原価不明品の問い合わせ。準備の開始は 2026-08-15 の店主回答で前倒しされた）と、年末の正式カウント（大晦日に完了）に分かれる前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20、店の運用の詳細は [project-memory](../project-memory.md) の Store Premises Facts）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加したのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
 
 **カウント対象の母集団（issue #91 owner 回答 2026-08-22）**: 画面がカウントさせる母集団は商品マスタ全件（[35-biz-stocktake-service.md](35-biz-stocktake-service.md) `find_stocktake_eligible_products` が返す全商品）であり、年数による除外はしない。実店舗で現物カウントの対象外になるのは、伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目という原価根拠を欠く現物（例年 1〜2 点、多い年で 4〜5 点）で、これらは単品コードを付与せず商品マスタへ未登録のため、システム上は最初から母集団の外にある。除外を表す専用フラグや画面表示は追加しない。
 
@@ -43,7 +43,7 @@
 | UI-10-F3 | 部門フィルタ・未入力のみ toggle・進捗（counted/total）付きの一覧を `get_stocktake_items` で取得・表示する。 |
 | UI-10-F4 | 検索/HID スキャンで商品を特定し、数量入力 → `update_count` で 1 件即保存する。counted 済み商品への再入力（上書き）を同一導線で常時許可する。 |
 | UI-10-F5 | 確定 CTA 押下時、未入力 N 件があれば確認ダイアログ（force_fill 再送信）を経て `complete_stocktake` を呼び、結果画面（`total_cost` 主役 + `adjusted_items` 差異一覧 + `integrity_result`）を表示する。 |
-| UI-10-F6 | 開始前画面・確定結果画面に、前回完了棚卸しの `total_cost` / `completed_at`（future `get_last_completed_stocktake`）を併記する。 |
+| UI-10-F6 | 開始前画面・確定結果画面に、前回完了棚卸しの `total_cost` / `completed_at`（`get_last_completed_stocktake`）を併記する。 |
 | UI-10-F7 | 棚卸し中の商品登録・一括インポートによる明細自動追加（BIZ-01 実装済み）を、query invalidation / 再取得で自然に一覧へ反映する。専用通知は出さない。 |
 | UI-10-F8 | `complete_stocktake` は単一 TX のため IPC channel を使わず、spinner + ボタン disabled で進行中を示す。 |
 
@@ -59,7 +59,7 @@
 
 ### UI-10-D2: カウント主動線は検索/スキャン→数量入力→即保存、counted 済みへの上書き再入力を常時許可
 
-- **決定**: 主動線は「検索/HID スキャンで商品を特定 → 数量入力 → 1 件即保存」で、保存は `update_count`（autocommit）。商品の特定は新規 CMD `find_stocktake_item({ stocktake_id, code })`（future、§73.8。`code` は商品コードまたは JAN の完全一致で該当明細を 1 発解決）で行う。counted 済み（`actual_count` が既に入っている）商品への再入力を、未入力商品と全く同じ導線・確認なしで常時許可する（上書き＝都度訂正の代替）。プレカウント専用の別機能は作らない。
+- **決定**: 主動線は「検索/HID スキャンで商品を特定 → 数量入力 → 1 件即保存」で、保存は `update_count`（autocommit）。商品の特定は新規 CMD `find_stocktake_item({ stocktake_id, code })`（§73.8。`code` は商品コードまたは JAN の完全一致で該当明細を 1 発解決）で行う。counted 済み（`actual_count` が既に入っている）商品への再入力を、未入力商品と全く同じ導線・確認なしで常時許可する（上書き＝都度訂正の代替）。プレカウント専用の別機能は作らない。
 - **Why**: 現運用は部門キー売り中心で、CSV/PLU が未導入の間は商品単位のレジ販売が `sale_records` / `inventory_movements` に反映されない（D-025）。そのため「カウント後に売れた分の訂正」はシステム側にも訂正対象データが存在せず、operator が現物を見て再入力する以外に手段がない（issue #135 の訂正コメント 2026-07-07 で明示）。上書き保存を特別扱いすると、まさに一番必要な訂正導線に確認ダイアログという追加の摩擦を課すことになる。
 - **Rejected**: BIZ 確定ロジック側で `counted_at` 以降の在庫変動を自動織り込む（現運用では織り込むべき商品単位データ自体が存在しないため実装不能。将来 Z004/PLU 運用が始まったら再検討）。上書き時だけ確認ダイアログを挟む（都度訂正が前提の運用で毎回ダイアログを出すのは実質妨害になる。DSR-07 も可逆操作には確認なしを原則としており、`update_count` は何度でも再入力できる可逆操作）。プレカウント専用モード（上書き入力で用が足りる）。クライアント側で全明細ページを順次取得して `product_code → stocktake_item_id` マップを構築する解決方式（`update_count` 成功ごとに一覧 invalidation（§73.11）が走るため 1 件保存のたびに数千件・複数ページの再取得とマップ再構築が反復する。部門を跨いでスキャンする使い方にも弱い。薄い解決 CMD 1 本（BIZ wrapper 込み）の追加コストの方が明確に小さい）。
 - **Revisit trigger**: Z004/PLU 運用が始まり商品単位の販売データが `sale_records` に載るようになった時。
@@ -83,7 +83,7 @@
 
 ### UI-10-D5: 前回完了棚卸しとの比較を軽量 CMD 1 本で追加する
 
-- **決定**: 開始前画面と確定結果画面に、前回完了棚卸しの `total_cost` / `completed_at` を併記する。新規 CMD `get_last_completed_stocktake()`（IO query + BIZ 薄 wrapper + CMD、future）を追加し、戻り値は `Option<LastStocktakeSummary { stocktake_id, completed_at, total_cost }>`。
+- **決定**: 開始前画面と確定結果画面に、前回完了棚卸しの `total_cost` / `completed_at` を併記する。新規 CMD `get_last_completed_stocktake()`（IO query + BIZ 薄 wrapper + CMD）を追加し、戻り値は `Option<LastStocktakeSummary { stocktake_id, completed_at, total_cost }>`。
 - **Why**: ヒアリング⑥「合計が前年と極端に違わないか見る」という既存の目視確認をシステム側で軽く支援する。棚卸し履歴の一覧画面や比較グラフのような重い機能は過剰。
 - **Rejected**: 棚卸し履歴一覧画面の新設（過去複数回分の一覧・詳細は要求されておらず、直近1回との比較で足りる）。前回比較なし（ヒアリングの目視確認要求に応えられない）。
 - **別経路での充足（2026-08-27 owner 裁定）**: `/inventory/records` への横断合流（[65-inventory-record-traceability.md](65-inventory-record-traceability.md) slice 4d）で代替充足し、専用一覧 `/stocktake/records` と `listStocktakeRecords` は runway 残置とする。
@@ -99,7 +99,7 @@
 
 ### UI-10-D7: specta 化は既存 4 + 新規 3、生 invoke 禁止を維持
 
-- **決定**: 既存 4 コマンド（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）は現状 `#[tauri::command]` のみで `#[specta::specta]` が付いておらず、`src/lib/bindings.ts` にも生成型がない（実装 PR 着手前に実コード突合で確認済み）。実装 PR でこの 4 本 + 新規 `get_active_stocktake` / `find_stocktake_item` / `get_last_completed_stocktake` の計 7 本に `#[specta::specta]` を付与し、bindings を再生成する。UI からの生 `invoke()` 直呼びは既存の禁止方針（ADR-004）を維持する。
+- **決定**: 既存 4 コマンド（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）と新規 `get_active_stocktake` / `find_stocktake_item` / `get_last_completed_stocktake` の計 7 本に `#[specta::specta]` を付け、bindings を生成する（実装 PR #159〈private archive〉で付けた。今は `src-tauri/src/cmd/stocktake_cmd.rs` の 7 本に属性があり、`src/lib/bindings.ts` に生成された関数がある。Design Phase の時点では既存 4 本に属性が無かった）。UI からの生 `invoke()` 直呼びは既存の禁止方針（ADR-004）を維持する。
 - **Why**: ADR-004 の生 invoke 禁止方針を UI-10 でも一貫させる。既存 4 本が specta 未対応のまま長期間放置されていた事実は本 Design Phase で顕在化したため、実装 PR の Rust 差分に明記する。
 - **Rejected**: 実装 PR 内での暫定的な生 invoke 経由実装（撤去忘れの前例＝ 7-5c fallback を再演する）。
 
@@ -154,30 +154,34 @@
 - **Rejected**: `UncountedItem`（force_fill 専用の内部構造体、frontend 非公開）への追従（消費者がなく不要）。他 file の既存 secondary badge（`ProductTable.tsx` / `ProductAddSuggest.tsx` 等）への枠 sweep（本 lane の対象外、Lane 3〜5 backlog のまま）。
 - **Revisit trigger**: なし。
 
-## 73.4 Route / 状態遷移 / Components（future）
+## 73.4 Route / 状態遷移 / Components
 
 ```
-src/routes/stocktake.tsx                … route 定義（search param: dept/counted_only/page）
+src/routes/stocktake.tsx                … layout route（Outlet だけ）
+src/routes/stocktake/index.tsx          … 画面の route（validateSearch: dept/counted_only/page、StocktakePage を描画）
+src/routes/stocktake.records.$stocktakeId.tsx … 棚卸し記録の詳細（一覧は `/inventory/records` から入る。[65](65-inventory-record-traceability.md)）
 src/features/stocktake/
-  StocktakePage.tsx                     … 画面本体（状態分岐のエントリポイント）
-  StocktakeStartPanel.tsx               … 未開始時: 開始CTA + 前回完了サマリ
-  StocktakeProgressHeader.tsx           … 進行中: 開始日時 + 進捗（counted/total）+ 前回比較
-  StocktakeItemList.tsx                 … 部門フィルタ + 未入力のみtoggle + 明細テーブル
-  StocktakeCountEntry.tsx               … 検索/スキャン入力 + 数量入力 + 即保存
-  StocktakeCompleteDialog.tsx           … 確定確認ダイアログ（force_fill分岐）
-  StocktakeResultPage.tsx               … 確定結果（total_cost + adjusted_items + integrity_result + 前回比較）
-  hooks/useStocktakeStatus.ts           … 進行中判定（新規CMD get_active_stocktake を叩く。DBが真実のソース。localStorage不使用）
+  StocktakePage.tsx                     … 画面本体と部品を同じ file の export で持つ:
+                                          StocktakePage（状態分岐のエントリポイント）
+                                          StocktakeStartPanel（未開始時: 開始CTA + 前回完了サマリ）
+                                          StocktakeProgressHeader（進行中: 開始日時 + 進捗〈counted/total〉+ 前回比較）
+                                          StocktakeItemList（部門フィルタ + 未入力のみtoggle + 明細テーブル）
+                                          StocktakeCountEntry（検索/スキャン入力 + 数量入力 + 即保存）
+                                          StocktakeCompleteDialog（確定確認ダイアログ〈force_fill分岐〉）
+                                          StocktakeResultPage（確定結果〈total_cost + adjusted_items + integrity_result + 前回比較〉）
+  hooks/useStocktakeStatus.ts           … 進行中判定（CMD get_active_stocktake を叩く。DBが真実のソース。localStorage不使用）
   hooks/useStocktakeItems.ts            … getStocktakeItems を包む useQuery（部門/counted_only/page）
   hooks/useUpdateCount.ts               … updateCount を包む useMutation（1件即保存）
   hooks/useCompleteStocktake.ts         … completeStocktake を包む useMutation
-  hooks/useLastCompletedStocktake.ts    … get_last_completed_stocktake を包む useQuery（future）
-  hooks/useFindStocktakeItem.ts         … find_stocktake_item を包む解決 hook（future、§73.5）
+  hooks/useLastCompletedStocktake.ts    … get_last_completed_stocktake を包む useQuery
+  hooks/useFindStocktakeItem.ts         … find_stocktake_item を包む解決 hook（§73.5）
+  lib/stocktake-formatters.ts           … 表示の整形
 ```
 
 - 共通部品は `patterns/PageHeader` / `patterns/DepartmentFilter` / `patterns/EmptyState` / `patterns/SearchBar`（既存 [59-ui-shared-patterns.md](59-ui-shared-patterns.md)）を再利用する。進捗表示は shadcn/ui `Progress`（[design-system/02-component-catalog.md](../design-system/02-component-catalog.md) 既存カタログ「確定的進捗」用途、CSV 取込み・バックアップに続く 3 例目の採用）。
 - URL state（`dept` / `counted_only` / `page`）は [58-ui-stock-inquiry.md](58-ui-stock-inquiry.md) / [66-ui-stock-movements.md](66-ui-stock-movements.md) の `validateSearch`（zod 4）パターンを踏襲する。開始/未開始/確定結果のような画面全体の局面（`none` / `in_progress` / `completed`）は復元・共有する価値のある表示状態ではないため URL 化しない（ローカル state / query の有無で判定する）。
 
-### シグネチャ（擬似コード、future）
+### シグネチャ（擬似コード）
 
 ```ts
 // 進行中判定（新規CMD get_active_stocktake。DBへ直接問い合わせる。localStorage不使用）
@@ -204,10 +208,10 @@ function useCompleteStocktake(): UseMutationResult<StocktakeResult, InvokeError,
   forceFill: boolean;
 }>
 
-// 前回完了棚卸し（新規CMD、future）
+// 前回完了棚卸し（CMD get_last_completed_stocktake）
 function useLastCompletedStocktake(): UseQueryResult<LastStocktakeSummary | null, InvokeError>
 
-// 検索/スキャン値 → 対象明細解決（新規CMD find_stocktake_item を包む、future）
+// 検索/スキャン値 → 対象明細解決（CMD find_stocktake_item を包む）
 function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, InvokeError, {
   stocktakeId: number;
   code: string; // 商品コードまたは JAN の完全一致
@@ -276,9 +280,9 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 
 `IntegrityResult { mismatches: IntegrityMismatch[], mismatch_count, checked_count }`（`biz::integrity_service` 実装確認済み）。
 
-これら 4 コマンドは現状 `#[tauri::command]` のみで `#[specta::specta]` が付与されておらず、`src/lib/bindings.ts` にも型が生成されていない（実コード突合済み、UI-10-D7）。実装 PR で specta 属性付与・bindings 再生成を行うまでは、UI からの直接利用はできない。
+これら 4 コマンドには `#[specta::specta]` が付いていて、`src/lib/bindings.ts` に生成された関数（`startStocktake` / `getStocktakeItems` / `updateCount` / `completeStocktake`）がある（UI-10-D7）。現行 build では開始・カウント更新・確定は停止の error を返す（§73.15）。
 
-新規コマンド（future、本書で設計。UI → CMD → BIZ → IO の層原則（CMD は「型変換 + BIZ 呼出し + エラー変換」のみ、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5）に従い、BIZ に薄い wrapper を置く。読み取り専用でも BIZ 経由に揃えるのは、`get_stocktake_items` が CMD 直ラップから BIZ wrapper 経由へ修正された経緯（2026-04-13 `882cec6`、[35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.7）との CMD-10 内一貫性のため）:
+新規コマンド（本書で設計し、実装済み。UI → CMD → BIZ → IO の層原則（CMD は「型変換 + BIZ 呼出し + エラー変換」のみ、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5）に従い、BIZ に薄い wrapper を置く。読み取り専用でも BIZ 経由に揃えるのは、`get_stocktake_items` が CMD 直ラップから BIZ wrapper 経由へ修正された経緯（2026-04-13 `882cec6`、[35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.7）との CMD-10 内一貫性のため）:
 
 | 呼び出し | 入力 | 戻り |
 |---|---|---|
@@ -286,13 +290,13 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | `find_stocktake_item({ stocktake_id, code })` | `code`: 商品コードまたは JAN（完全一致） | `Option<StocktakeItemDetail>` |
 | `get_last_completed_stocktake()` | なし | `Option<LastStocktakeSummary { stocktake_id: i64, completed_at: String, total_cost: i64 }>` |
 
-- `get_active_stocktake` BIZ 側（future）: `stocktake_service::get_active_stocktake(conn) -> Result<Option<db::stocktake_repo::Stocktake>, BizError>`。`stocktake_repo::find_active_stocktake` を呼ぶだけの薄い wrapper で業務ルールを持たない（`start_stocktake` の進行中チェックが内部で使うのと同じ関数）。
-- `get_active_stocktake` IO 側: `stocktake_repo::find_active_stocktake(conn) -> Result<Option<Stocktake>, DbError>`（既存、`stocktake_service.rs:220` の `start_stocktake` から呼ばれている実装をそのまま流用）。`Stocktake` 型は PR #159 で既に `specta::Type` 付与済み・`biz::mod` から re-export 済み（実コード確認済み）のため、型定義の追加作業は不要。
-- `find_stocktake_item` BIZ 側（future）: `stocktake_service::find_stocktake_item(conn, stocktake_id, code) -> Result<Option<StocktakeItemDetail>, BizError>`。`stocktake_repo::find_stocktake_item_by_code` を呼ぶだけの薄い wrapper で業務ルールを持たない。
-- `find_stocktake_item` IO 側（future）: `stocktake_repo::find_stocktake_item_by_code(conn, stocktake_id, code) -> Result<Option<StocktakeItemDetail>, DbError>`。SQL は `list_stocktake_items` と同じ SELECT 列に `JOIN products p ON si.product_code = p.product_code` を加え、`WHERE si.stocktake_id = ?1 AND (p.product_code = ?2 OR p.jan_code = ?2) ORDER BY si.id ASC LIMIT 1`。`products.jan_code` / `stocktake_items(stocktake_id, product_code)` の既存インデックスで解決できる。同一 JAN が複数商品に付く場合は `si.id` 最小の 1 件を決定的に返す（既存 `find_by_jan_code` と同じ先勝ちの割り切り + 決定性の担保）。
-- `get_last_completed_stocktake` BIZ 側（future）: `stocktake_service::get_last_completed_stocktake(conn) -> Result<Option<LastStocktakeSummary>, BizError>`。`stocktake_repo::find_last_completed_stocktake` を呼ぶだけの薄い wrapper で業務ルールを持たない。
-- `get_last_completed_stocktake` IO 側（future）: `stocktake_repo::find_last_completed_stocktake(conn) -> Result<Option<LastStocktakeSummary>, DbError>`。SQL は `SELECT id, completed_at, total_cost FROM stocktakes WHERE status = 'completed' ORDER BY completed_at DESC, id DESC LIMIT 1`。`stocktakes.completed_at` / `total_cost` は `complete_stocktake`（IO）が同一 UPDATE で必ず両方書き込むため、`status='completed'` の行では両カラムとも非 NULL であることが保証される（[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17）。DB スキーマ変更なし。
-- CMD 側（future）: いずれも `state.db.lock()` → BIZ 呼出し → `BizError` → `CmdError` 変換のみ（既存 4 コマンドと同型、42-cmd §22.5 の CMD-10 原則）。業務ルールを持たない。
+- `get_active_stocktake` BIZ 側: `stocktake_service::get_active_stocktake(conn) -> Result<Option<db::stocktake_repo::Stocktake>, BizError>`。`stocktake_repo::find_active_stocktake` を呼ぶだけの薄い wrapper で業務ルールを持たない。
+- `get_active_stocktake` IO 側: `stocktake_repo::find_active_stocktake(conn) -> Result<Option<Stocktake>, DbError>`（既存の実装をそのまま流用）。`Stocktake` 型は PR #159 で既に `specta::Type` 付与済み・`biz::mod` から re-export 済み（実コード確認済み）のため、型定義の追加作業は不要。
+- `find_stocktake_item` BIZ 側: `stocktake_service::find_stocktake_item(conn, stocktake_id, code) -> Result<Option<StocktakeItemDetail>, BizError>`。`stocktake_repo::find_stocktake_item_by_code` を呼ぶだけの薄い wrapper で業務ルールを持たない。
+- `find_stocktake_item` IO 側: `stocktake_repo::find_stocktake_item_by_code(conn, stocktake_id, code) -> Result<Option<StocktakeItemDetail>, DbError>`。SQL は `list_stocktake_items` と同じ SELECT 列に `JOIN products p ON si.product_code = p.product_code` を加え、`WHERE si.stocktake_id = ?1 AND (p.product_code = ?2 OR p.jan_code = ?2) ORDER BY si.id ASC LIMIT 1`。`products.jan_code` / `stocktake_items(stocktake_id, product_code)` の既存インデックスで解決できる。同一 JAN が複数商品に付く場合は `si.id` 最小の 1 件を決定的に返す（既存 `find_by_jan_code` と同じ先勝ちの割り切り + 決定性の担保）。
+- `get_last_completed_stocktake` BIZ 側: `stocktake_service::get_last_completed_stocktake(conn) -> Result<Option<LastStocktakeSummary>, BizError>`。`stocktake_repo::find_last_completed_stocktake` を呼ぶだけの薄い wrapper で業務ルールを持たない。
+- `get_last_completed_stocktake` IO 側: `stocktake_repo::find_last_completed_stocktake(conn) -> Result<Option<LastStocktakeSummary>, DbError>`。SQL は `SELECT id, completed_at, total_cost FROM stocktakes WHERE status = 'completed' ORDER BY completed_at DESC, id DESC LIMIT 1`。`stocktakes.completed_at` / `total_cost` は `complete_stocktake`（IO）が同一 UPDATE で必ず両方書き込むため、`status='completed'` の行では両カラムとも非 NULL であることが保証される（[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17）。DB スキーマ変更なし。
+- CMD 側: いずれも `state.db.lock()` → BIZ 呼出し → `BizError` → `CmdError` 変換のみ（既存 4 コマンドと同型、42-cmd §22.5 の CMD-10 原則）。業務ルールを持たない。
 
 ## 73.9 エラー / 回復
 

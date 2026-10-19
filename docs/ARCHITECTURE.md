@@ -100,7 +100,7 @@ POS連携は、レジ固有の adapter とアプリ内共通モデルの境界�
 | Product-sales import | `Z004` after PLU registration | 商品別売上、`pos_stock_sync`に基づく在庫増減・rollback（実装済み。店舗採取layout Aは二形状対応済み） |
 | Optional report tabs | `Z006` / `Z009` / `Z011` | 初期非スコープ。グループ、時間帯別、担当者別の具体的な個人店ニーズが出た時だけ追加 |
 | Operation procedure | SDカード、PCツール、バックアップ、実機確認 | operator workflow、証跡、安全手順 |
-| Register SD source | SD の `CASIO\SR500_550_4000\XZ` / `XZ_BKUP` の配置と名前（IO-09） | 取込みの候補の束（BIZ-08 §37.9）。毎日の売上はアプリが SD を直接読む。CV17 を PLU の書込みだけに使うのは取込み済みを `XZ_BKUP` へ移すアプリの操作（後続の lane）の後で、それまでは店の CV17 の取込みも続く（D-111 の運用の制約） |
+| Register SD source | SD の `CASIO\SR500_550_4000\XZ` / `XZ_BKUP` の配置と名前（IO-09） | 取込みの候補の束（BIZ-08 §37.9）。毎日の売上はアプリが SD を直接読む（D-111 の採用済みの方針。runtime は未実装〈Draft PR #172〉）。CV17 を PLU の書込みだけに使うのは取込み済みを `XZ_BKUP` へ移すアプリの操作（後続の lane）の後で、それまでは店の CV17 の取込みも続く（D-111 の運用の制約） |
 
 `Z001` / `Z002` / `Z004` / `Z005` / `Z006` / `Z009` / `Z011`、CV17、SR-S4000 は CASIO adapter details として扱う。BIZ/CMD/UI の安定 contract へ直接漏らす場合は、該当 source design doc に理由、代替案、将来レジ変更時の影響を記録する。
 
@@ -164,7 +164,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | CMD-04 | 手動販売出庫コマンド群 | BIZ-02 | 手動販売出庫の作成の入口 |
 | CMD-05 | 廃棄・破損コマンド群 | BIZ-02 | 廃棄・破損記録の作成・一覧取得の入口 |
 | CMD-06 | 在庫照会コマンド群 | BIZ-01, BIZ-02 | 在庫照会・変動履歴の取得の入口 |
-| CMD-07 | Z004商品別CSV取込みコマンド群 | BIZ-03 | parse/validate/commit/rollbackの入口。商品別売上と`pos_stock_sync`在庫増減は実装済み。店舗採取layout AはIO-02が二形状対応済み |
+| CMD-07 | Z004商品別CSV取込みコマンド群 | BIZ-03 | parse/validate/commit/rollbackの入口。商品別売上と`pos_stock_sync`在庫増減は実装済みだが、現行 build では業務 commit・取消を停止している（[停止 ADR](adr/2026-09-23-legacy-stocktake-z004-write-stop.md)。新しい取込みの形は D-118 の (b)）。店舗採取layout AはIO-02が二形状対応済み |
 | CMD-08 | PLU書出しコマンド群 | BIZ-04 | PLUファイル生成の入口 |
 | CMD-09 | 売上集計コマンド群 | BIZ-05 | 日次・月次集計データ取得の入口 |
 | CMD-10 | 棚卸しコマンド群 | BIZ-06 | 棚卸し操作の入口 |
@@ -176,11 +176,11 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | ID | タスク名 | 対応REQ | 責務 |
 |----|---------|---------|------|
 | BIZ-01 | 商品管理ロジック | REQ-101〜104 | 商品登録・修正・廃番・独自コード発番・売価変更（price_history記録）・一括インポート（エンコーディング判定＋プレビュー）・PLU dirty管理 |
-| BIZ-02 | 在庫変動ロジック | REQ-201〜204, 303 | 入庫・出庫・返品・廃棄の共通在庫処理。products.stock_quantity更新＋inventory_movements記録をセットで実行。返品のregister_processedフラグ分岐。手動販売出庫のPLU登録済み警告判定 |
-| BIZ-03 | Z004商品別CSV取込みパイプライン | REQ-401 | 4段階処理（Parse→Validate→Preview→Commit）。商品別売上、在庫引落し、重複チェック、ロールバック、csv_import_errors記録 |
+| BIZ-02 | 在庫変動ロジック | REQ-201〜204, 303 | 入庫・出庫・返品・廃棄の共通在庫処理。inventory_movements記録と、記録からの写しの求め直し（`recompute_stock`）を同じ TX で実行。返品のregister_processedフラグ分岐。手動販売出庫のPLU登録済み警告判定 |
+| BIZ-03 | Z004商品別CSV取込みパイプライン | REQ-401 | 4段階処理（Parse→Validate→Preview→Commit）。商品別売上、在庫引落し、重複チェック、ロールバック、csv_import_errors記録。現行 build では業務 commit・取消を停止している（停止 ADR。新しい形は D-118 の (b)） |
 | BIZ-04 | PLU書出しロジック | REQ-402 | 商品マスタ→PLU登録候補生成。plu_target=1商品の抽出（三分バケット: 対象/対象外/要修正）、全件/差分モード、同一JAN dedup、adapter提供のレジ制約警告、PLUファイル生成とapp-side書出し済み確認を分離したplu_dirty/plu_exported_at更新制御（D-028） |
 | BIZ-05 | 売上集計ロジック | REQ-501, 502 | 日次・月次の売上集計。商品別売上は sale_records、公式日報集計は daily_report_* を参照し、両者の意味を分けて返す |
-| BIZ-06 | 棚卸しロジック | REQ-205 | 棚卸し開始（全商品のstocktake_items生成）・カウント入力・確定（total_cost計算、valuation_cost_price記録、差異補正のinventory_movements記録）。進行中は1件まで制約。新規商品登録時の自動追加 |
+| BIZ-06 | 棚卸しロジック | REQ-205 | 棚卸し開始（全商品のstocktake_items生成）・カウント入力・確定（total_cost計算、valuation_cost_price記録、差異補正のinventory_movements記録）。現行 build では開始・カウント入力・確定を停止している（停止 ADR。確定の新しい形は D-118 の (b)）。進行中は1件まで制約。新規商品登録時の自動追加 |
 | BIZ-07 | 整合性チェックロジック | QR系 | 写しの 4 項目（`stock_quantity`・要再確認の印・範囲）と記録から求め直した値（BIZ-02 の `derive_stock`）の突合。補正は `recompute_stock` で写しを書く（D-118 の (a)）。差異発見時の利用者確認フロー |
 | BIZ-08 | 日報取込みロジック | REQ-401 | Z001/Z002/Z005 bundleのParse→Validate→Preview→Commit、日報テーブル保存、論理rollback。sale_records/inventory_movementsへ擬似展開しない |
 | BIZ-09 | システム設定・操作ログロジック | REQ-902, 905 | 設定一覧取得・設定upsert・操作ログ検索（日付validation所有）・operation_type一覧。system_repoを呼ぶBIZ境界（D-060。仕様詳細は38-biz-system-service.md） |
@@ -197,8 +197,8 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | IO-06 | 画像ファイル管理 | レシート画像の保存（アプリ管理下の相対パス）、パス管理 |
 | IO-07 | POS日報bundleパーサー | CASIO SR-S4000 adapter のZ001/Z002/Z005パース。CP932/NEL対応、3ファイル束のsource判定、日報サマリ/支払/部門別行への正規化。業務ロジックなし |
 | IO-08 | EJパーサー | CASIO SR-S4000 adapter の電子ジャーナル（EJ）1 file を記録の列へ構造復元。24バイト固定幅・CP932・CRLF、本文による記録の種類の判定と位置による行分類、記録内照合がそろう取引だけ明細と値引きを復元し、それ以外は記録単位で復元不能として返す。番号の連続・区間の完全性・商品同定・時刻は判断しない。業務ロジックなし |
-| IO-09 | レジの SD の列挙と読取り | レジの SD の root を探し（取外し可能な drive の `CASIO\SR500_550_4000`）、`XZ` / `XZ_BKUP` の Z・EJ の名前を列挙し、指定 file を読取り専用で読んで形を測る。SD に書かない。業務ロジックなし（D-111） |
-| IO-10 | SD から読んだ原本の写しの保存 | 取り込む束の file を、アプリのデータ folder の `pos-sources/casio-sr-s4000/sd/` へ SD の相対 path を保った名前で、上書きせずに書く（一時 file から rename）。SD には書かない。業務ロジックなし（D-111） |
+| IO-09 | レジの SD の列挙と読取り | レジの SD の root を探し（取外し可能な drive の `CASIO\SR500_550_4000`）、`XZ` / `XZ_BKUP` の Z・EJ の名前を列挙し、指定 file を読取り専用で読んで形を測る。SD に書かない。業務ロジックなし（D-111。runtime は未実装〈Draft PR #172〉） |
+| IO-10 | SD から読んだ原本の写しの保存 | 取り込む束の file を、アプリのデータ folder の `pos-sources/casio-sr-s4000/sd/` へ SD の相対 path を保った名前で、上書きせずに書く（一時 file から rename）。SD には書かない。業務ロジックなし（D-111。runtime は未実装〈Draft PR #172〉） |
 
 ### MNT層（保守/診断）
 
@@ -215,7 +215,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ### 実装順序（依存関係に基づく）
 
-以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は [Plans](Plans.md) を参照する。
+以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は [Plans](Plans.md) を参照する。
 
 ```
 第1段階: 基盤
@@ -233,8 +233,8 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 第4段階: POS連携
   IO-02 → BIZ-03 → CMD-07 → UI-07（Z004商品別CSV取込み）
   IO-07 → BIZ-08 → CMD-12 → UI-07（日報取込み）
-  IO-09 → BIZ-08 → CMD-12 → UI-07（SD から読む日報の候補、D-111）
-  IO-10 ← BIZ-08 commit（取り込む束の原本の写し、D-111）
+  IO-09 → BIZ-08 → CMD-12 → UI-07（SD から読む日報の候補、D-111。runtime は未実装〈Draft PR #172〉）
+  IO-10 ← BIZ-08 commit（取り込む束の原本の写し、D-111。runtime は未実装〈Draft PR #172〉）
   IO-04 → BIZ-04 → CMD-08 → UI-08（PLU書出し）
   （レジ連携が動く。日次運用が回る状態）
 
@@ -298,7 +298,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 - **IO-04（PLUフォーマッター）**: 2026-07-03 field gate により、現場ツール CV17 1.1.1 / SR-S4000 向けの `.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と、`CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。
 - **宅急便部門**: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL
-- **Q40（障害時の対応）**: 第6段階では保留。第10段階（Phase 4）の UI-13 整合性検証画面およびエラーバウンダリ実装時に合わせて具体化する。詳細は Plans.md Backlog に追跡項目あり
+- **Q40（障害時の対応）**: 画面ごとの CmdError と retry（UI-13 ほか）と共通の Error Boundary は実装済み。包括的な障害時対応の方針の残りは [backlog](backlog.md) の Q40 の項目が追う
 
 ---
 
@@ -312,7 +312,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | IO層 | [architecture/io-task-specs.md](architecture/io-task-specs.md) | IO-01〜IO-10 |
 | MNT層 | [architecture/mnt-task-specs.md](architecture/mnt-task-specs.md) | MNT-01〜MNT-04 |
 | CMD層 | [architecture/cmd-task-specs.md](architecture/cmd-task-specs.md) | CMD-01〜CMD-12 |
-| UI層 | [architecture/ui-task-specs.md](architecture/ui-task-specs.md) | UI-00、UI-01a〜UI-13 |
+| UI層 | [architecture/ui-task-specs.md](architecture/ui-task-specs.md) | UI-00、UI-01a〜UI-14 |
 
 ---
 

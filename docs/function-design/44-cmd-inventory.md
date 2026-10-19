@@ -1096,7 +1096,7 @@ list_low_stock の処理:
 | やらないこと | 理由 | 責務を持つモジュール |
 |------------|------|-----------------|
 | 入力バリデーション（空items、不正日付等） | BIZ層の責務 | BIZ-02 inventory_service |
-| 在庫変動処理（stock_quantity更新+movements記録） | BIZ層の責務 | BIZ-02 inventory_service |
+| 在庫変動処理（movements記録と、記録からの写しの求め直し） | BIZ層の責務 | BIZ-02 inventory_service |
 | 冪等性チェック（同一キーの重複リクエスト検知） | BIZ層の責務 | BIZ-02 inventory_service |
 | PLU登録済み警告の判定 | BIZ層の責務 | BIZ-02 inventory_service |
 | 閾値の取得と適用 | BIZ層の責務 | BIZ-01 product_service |
@@ -1109,7 +1109,7 @@ list_low_stock の処理:
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-1: quantity符号変換 | BIZ層に委譲。CMD層は符号変換に関与しない |
-| INV-2: stock_quantity更新とmovements記録の同時性 | BIZ層のトランザクション内で保証 |
+| INV-2: movements記録と写しの求め直しの同時性 | BIZ層のトランザクション内で保証 |
 | INV-3: 冪等性（idempotency_key） | BIZ層に委譲。CMD層はキーをそのまま中継 |
 | INV-5: 在庫マイナス警告（エラーではなく警告） | BIZ層が stock_warnings に含めて返す |
 | INV-8: products物理DELETE禁止 | CMD層はproductsのDELETE操作を持たない |

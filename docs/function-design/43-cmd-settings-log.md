@@ -1,8 +1,8 @@
 ## CMD-11残り: 設定・ログ・バックアップ・画像コマンド群
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md) は計数の context（token・DB 世代）を持たないので、§43.9 の DB 接続の交換で失効させるものは無い（旧 ADR〈時点証拠〉の context の失効の契約は置き換えた）。写しは DB の中で記録から求め直すので、復元した DB では復元した記録の写しがそのまま正しい。fix_integrity の command 本体は 42 にあり、写しの書込みは 36 → 31 の求め直しの責務である。
+(a) で入ったのは、写しを記録から求め直す形と、整合性の補正が求め直しの結果を写しへ書く形（`biz/integrity_service.rs` の `recompute_stock` の呼出し、`biz/stock_ledger.rs`）。本節の残りは (a) でも (b) でも同じ。[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md) は計数の context（token・DB 世代）を持たないので、§43.9 の DB 接続の交換で失効させるものは無い（旧 ADR〈時点証拠〉の context の失効の契約は置き換えた）。写しは DB の中で記録から求め直すので、復元した DB では復元した記録の写しがそのまま正しい。fix_integrity の command 本体は 42 にあり、写しの書込みは 36 → 31 の求め直しの責務である。
 
 > CMD-11の整合性チェック部分（run_integrity_check, fix_integrity）は `42-cmd-sales-stocktake.md` に記載済み。
 > 本セクションは設定CRUD・操作ログ閲覧・バックアップ・画像保存コマンドを扱う。

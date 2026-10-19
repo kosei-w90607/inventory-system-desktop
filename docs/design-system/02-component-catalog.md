@@ -1038,7 +1038,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 - 局所的な `text-lg` 化を初手にしない。行高、列幅、`min-w-0`、`truncate`、折り返し可否、主要値の回復手段を同時に設計する（DSR-12）
 - 表示サイズ / webview zoom は全画面横断の別設計とする。Tauri capability、永続化、月次/日次など密画面の L3 を含めて扱う（DSR-13）
-- 2026-06-07 H-6 feedback: daily 5 画面通し確認で、商品コードは小さいが他の視認性問題はないと確認。商品コード readability は Phase 2 blocker にせず、将来の全体文字サイズ / 表示スケール option と合わせて調整する
+- 2026-06-07 H-6 feedback: daily 5 画面通し確認で、商品コードは小さいが他の視認性問題はないと確認。商品コード readability は Phase 2 blocker にせず、全体文字サイズ / 表示スケール option と合わせて調整し、表示の大きさの option（`src/components/layout/useDisplayScale.ts`、PR #77）で対応した
 - 2026-06-07 follow-up: 商品コードは UI-06a / UI-09a の table cell で最小級 `text-xs` から通常 table text に上げる。全体表示は Sidebar footer の 3 段階 WebView zoom（`standard=1`, `large=1.15`, `extra_large=1.3`）で扱い、保存先は `localStorage`（`inventory.displayScale.v1`）とする。UI-11a/b/c の設定画面契約へ DB-backed に移すかは Phase 4 側で別途判断する
 
 ---

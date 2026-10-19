@@ -204,7 +204,7 @@ handler 内で以下を順に評価し、いずれかが true の場合は何も
 | Mac Cmd+/ 描画分岐 | Windows 専用配布方針（CLAUDE.md / [DEV_SETUP_CHECKLIST §1.4](../DEV_SETUP_CHECKLIST.md)）で死にコードになる | Backlog 8-6d（Mac 配布要件確定後 Phase 5+） |
 | `useIsMac` hook | 同上、現状用途なし | 同上 |
 | `Shortcut.screenScope` 型追加 | 最初の画面固有 shortcut 追加時に 1 行拡張で済む、本 PR では category 軸のみで足りる | 各画面 PR で必要になった時点で追加 |
-| Vitest unit test（`useShortcutsDialog` / `isEditableTarget` 純関数化部分） | Phase 1 7-7 Vitest 初期化が未着手のため、本 PR では無し | Phase 1 7-7 → 後続 PR で retroactive 追加 |
+| Vitest unit test（`useShortcutsDialog`、同じ file の非公開の関数 `isEditableTarget`） | 本 PR の時点では Vitest が入っていなかった。Vitest は後に入ったが、この hook の unit test はまだ無い（`src/features/shortcuts/` に test の file が無い） | backlog の shortcuts の retroactive unit test の項目 |
 | Ctrl+S 保存ショートカット | UI_TECH_STACK §5.2 で「明示ボタンのため誤爆リスク大」と確定（採用しない） | プロジェクトスコープ外 |
 
 ---
