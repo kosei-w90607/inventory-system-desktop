@@ -712,6 +712,13 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 
 <!-- reviewed: 2026-08-30 -->
 
+### 6.12 class の上書きの罠
+
+共通部品の class を呼出し側で足すときに、typecheck・lint・test が全部 green のまま実 render でだけ崩れる 2 つの型。どちらも owner の Windows native L3 で見つかった。
+
+1. **variant 付きの class は同じ variant で上書きする**: 共通 primitive が size・state の variant 付きの class を持つとき（例 `src/components/ui/alert-dialog.tsx` の `data-[size=default]:sm:max-w-lg`）、呼出し側の素の utility class（例 `sm:max-w-3xl`）は属性 selector の分だけ詳細度で負けて効かない。呼出し側も同じ variant 修飾子を付ける（例 `data-[size=default]:sm:max-w-3xl`。PR #15、2026-08-29、[packet](archive/plans/2026-08-29-ui-polish-batch.md) の owner L3-lite round 3 の是正）。一覧の選択行を `data-[state=selected]:` で固定する例は [catalog](design-system/02-component-catalog.md) の ⑫ 行インライン展開の使用トークンが持つ。
+2. **TanStack Router の `Link` は class の衝突を解かない**: `Link` は base の `className` と `activeProps`（と `inactiveProps`）の `className` を空白でつなぐだけで、tailwind-merge を通さない（`@tanstack/react-router` の `dist/esm/link.js` の className の組み立て。1.168.23 での観測で、lockfile の版 1.170.5 の file は手元で確かめていない）。base と `activeProps` に同じ CSS property の class（例 base の `border-l-transparent` と active の `border-l-primary`）を置くと両方が DOM に残り、生成 CSS の出現順で負けた側が見えない。RTL の `toHaveClass` も、`cn()`（tailwind-merge）を通る別の経路の検査も素通りする（PR #28、2026-09-02、[packet](archive/plans/2026-09-02-ui-current-location-accent.md) の L3 FAIL）。衝突する property は片側だけに置き、「active のときに負け側の class が共存しない」負の assert を test に足す。
+
 ---
 
 ## 7. リスクと保留事項 / 更新履歴

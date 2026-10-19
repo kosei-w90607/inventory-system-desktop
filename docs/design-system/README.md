@@ -13,7 +13,7 @@
 2. [04-backbone.md](04-backbone.md)（原則）: 11 の原則と旧番号の対応表
 3. [01-decision-rules.md](01-decision-rules.md)（判断ルール）: DSR-01〜24 を話題別の索引から引く
 4. [02-component-catalog.md](02-component-catalog.md)（部品）: 16 パターンの現行実装の canonical
-5. [03-philosophy.md](03-philosophy.md)（出典）: 根拠の出典の一覧
+5. [03-philosophy.md](03-philosophy.md)（出典）: 根拠の出典の一覧と owner の受け取り方
 
 ## 迷ったらここ
 
@@ -54,7 +54,7 @@ runtime lane B（書体）の反映前に新しい画面や修正を作るとき
 | [00-foundations.md](00-foundations.md) | 土台: 色の役割・強調の段階とデザイントークン（色 / タイポ / スペーシング / アイコン）の正典 | 色の役割表（6 役割、見せ方・受け取り方・狙う効果・根拠と現行の実装・移行の列）・強調の段階 0〜4 と段に数えないもの・迷いやすい場面・ラベルと値・書体の選定条件・カラーパレット・セマンティックトークン・タイポグラフィ階層・スペーシングスケール・アイコンサイズ・業務ステータス視認性 |
 | [01-decision-rules.md](01-decision-rules.md) | 判断ルール: DSR-01〜24（話題別の索引から引く） | 主動線 CTA / Tabs vs SegmentedControl / Toast vs Alert 3 階層 / ステータスバッジ配置 / read-only vs disabled / 必須表示 / 確認ダイアログ境界 / semantic 色 / Form セクション / フィルタソース / 空状態・Tooltip / truncate・密度 / 表示スケール / ファイル選択方式 / returnTo 検証 / DSR-21 現在地と選択状態の色分離 / DSR-22 一覧の器・現在行・UI 部品枠のコントラスト / DSR-23 プルダウン統一 / DSR-24 追加導線を伴う master 参照の picker dialog 統一 |
 | [02-component-catalog.md](02-component-catalog.md) | 部品: 16 パターンカタログ（現行実装の canonical。使いどころ / JSX skeleton / トークン / 状態 / a11y / Do-Don't / canonical ファイル参照） | ①ページヘッダ ②サマリカード ③テーブル ④フォームセクション ⑤SegmentedControl ⑥空状態・エラー・ローディング ⑦Toast ⑧Dialog/確認 ⑨検索+フィルタ ⑩ページネーション ⑪日付・月ナビ ⑫行インライン展開 ⑬ステータスバッジ ⑭FilePicker ⑮商品追加欄live候補プレビュー ⑯一覧の器（ListShell） |
-| [03-philosophy.md](03-philosophy.md) | 出典: 根拠の出典の一覧（何を取り、何を取らないか）。原則は持たない | refactoring-ui / ux-principles / GOV.UK / IBM Carbon / Shopify Polaris / Atlassian / Microsoft Fluent 2 / Laws of UX / 原田秀司『UIデザインの教科書［新版］』/ NN/g / WCAG / japanese-webdesign 観点借用 |
+| [03-philosophy.md](03-philosophy.md) | 出典: 根拠の出典の一覧（何を取り、何を取らないか）と owner の受け取り方（L3 の原文から）。原則は持たない | refactoring-ui / ux-principles / GOV.UK / IBM Carbon / Shopify Polaris / Atlassian / Microsoft Fluent 2 / Laws of UX / 原田秀司『UIデザインの教科書［新版］』/ NN/g / WCAG / japanese-webdesign 観点借用 |
 | [04-backbone.md](04-backbone.md) | 原則: 11 の原則（owner 採用 2026-08-20 の 16 の原則と旧 03 の哲学を 2026-09-24 に統合）と旧番号の対応表 | 読める大きさ / 1 色 1 役割 / 強調の段階 / badge 3 種 / 言葉で言い切る / 器は 1 つ / 同じ操作は同じ顔と挙動 / 密度 / 枠と線 / いま扱っているものは進行中 / 低視力の実機確認。お手本 mockup と提案原文は [reference/](reference/README.md) |
 
 ---
