@@ -83,7 +83,7 @@ Keep it factual and stable.
 
 現在のphase・blocker・次の行動は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)。この文書には進行状態を複製しない。
 
-旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録) に残し、関係する作業で成立・解消状況を確認する。
+旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録)（閉じた記録は [archive の同じ節](archive/2026-10-19-backlog-closed.md#過去memoryの未決記録)）に残し、関係する作業で成立・解消状況を確認する。
 
 重要な判断と理由は [decision-log](decision-log.md) と該当design docを参照する。
 
@@ -199,7 +199,7 @@ Keep it factual and stable.
 - v1.0 gates on including the Z004 automatic-inventory-sync path; the app will not ship v1.0 unfinished in that respect — 2026-08-16 owner裁定 — `docs/decision-log.md`（D-070）
 - Long-dormant no-code excluded items are not modeled as a system feature; they stay outside the product master and are re-registered at new price/cost if they come back — 2026-08-22 owner同意 — `docs/decision-log.md`（D-076）
 - The ~80 suppliers are not bulk pre-loaded; they get linked incrementally when chosen in flows like bulk price revision — 2026-08-21/22 owner同意 — `docs/decision-log.md`（D-075）
-- Weight-based units（g・kg）are not used in this app — 2026-09-13 owner原文 — `docs/backlog.md`（単位の拡張 項）
+- Weight-based units（g・kg）are not used in this app — 2026-09-13 owner原文 — [共通規則](function-design/10-common-rules.md) SPEC-UNIT-D1 の単位の一覧の段落、`docs/archive/2026-10-19-backlog-closed.md`（単位の拡張 項）
 - For the question "from how many cm at the shortest do you sell", the store owner chose the option "10 cm 単位"; whether 10 cm is the minimum or the increment is not determined by the answer (in 2026-03 the store owner said length items are also sold in 10 cm units). Remaining stock, purchasing, and price tags are all expressed in `m`（値札は 1 m あたり）. The app accepts lengths to 1 cm and does not enforce a 10 cm increment (D-119) — 2026-09-14 店主回答（LINE の返信を owner が転記。旧記載の最小と刻みの混同と「owner回答」を訂正）— `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
 - Scanning-PLU の「単品売り」setting must always be `いいえ`; setting it to `はい` was confirmed on real hardware to make the register auto-settle and print a receipt on scan-call alone — 2026-08-19 Windows native L3実機確認 — `docs/project-memory.md`
 - 人は間違える前提で、間違えたときに検知・停止・訂正できる仕組み（起きても補える・実行前に止める・そもそも操作できない）で守り、設計で防げるものを運用に任せない — owner 判断 2026-09-18〜2026-09-23
