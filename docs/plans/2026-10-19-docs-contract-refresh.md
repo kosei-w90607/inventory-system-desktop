@@ -446,7 +446,40 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 ## Implementation Results
 
-Fill after implementation.
+実装の run（2026-10-19〜10-20、Writer Opus 5.5 subagent。途中で使用量の上限で切れ、同じ worktree で再開した）。
+
+- commit（Plan Commit `ccdf0340` と state commit `67954ee1` の後）: `43a92702` S1 / `4086f722` S2 / `3cb2d0b4` S3 / `cd7cd041` S4 / `e3b574f8` S2 の追い（29 の未観測の形式の行の語）/ `2d893a42` S5 / `a6095997` S7 / 本 commit（Implementation Results）。
+- 段ごとの結果（各表の「結果」列）: S1 直した 13。S2 直した 16。S3 直した 19。S4 直した 22・残す 1（H2）、型の洗い直しの DR 直した 9。S5 直した 7 行・残す 1 行（212）。S7 直した 2。
+- S5 の数: 閉じた項目を `docs/archive/2026-10-19-backlog-closed.md` へ移した（`rg -c '^- '` = 78）。`docs/backlog.md` は 445 行 → 332 行（`wc -l`）。生きている子を上げた項目: 「実測とPOS系列の対応の入力 1〜5」「単位の拡張の残りの申し送り」「MSI の製品名と upgrade code の固定」「MSI の予行演習」「v8 より後の migration を足す lane の義務」、Z001 の表示の 3 項目。(b) の項目の子に ⑤ への申し送り 4 行と 54 の (6)、原価の lane の子に 88・89 の行。link の付け替えは `docs/archive/plans/2026-09-15-filter-label-top-runtime.md` の 1 つ。
+
+AC（実装の後、逐語で実行）:
+
+```text
+AC1      exit=0（全チェック通過）
+AC2      exit=0
+AC3      generate_traceability --check: exit=0（ERROR 0 / WARN 0）/ design_compliance_test: exit=0（1 passed）
+AC-S1-1  exit=1（0 行）
+AC-S1-3  docs の式 256 行（起点 286）/ comment の式 38 行（起点と同じ）/ production の hit: biz/stock_ledger.rs:190 の 1 行
+AC-S2-1  exit=1 / AC-S2-1b exit=1、根拠: rg -c は 4、bindings は 237・243・282・289 の 4 行
+AC-S2-2  2 本とも exit=1 / AC-S2-3 exit=1 / AC-S2-4 exit=1、7 file とも rg -c は 1
+AC-S2-5  2 本とも exit=1 / AC-S2-8 exit=1
+AC-S3-1  exit=1 / AC-S3-2 superseded 6 行（D-056・D-058・D-079・D-084・D-087・D-116）、Superseded by: D-092 5 行
+AC-S3-3  714:- Status: accepted（2026-09-14、PR #54。…）（## D-085 の 2 行下）
+AC-S3-4  exit=1 / AC-S3-5 2 本とも exit=1 / AC-S3-7 後ろの rg が exit=1
+AC-S4-1  exit=1 / AC-S4-2 2 本とも exit=1 / AC-S4-3 erd 3・current-system 1、v1〜v7 は exit=1
+AC-S4-4  48（stock_counts の行）・137・138（2 つの index）/ AC-S4-5 exit=1
+AC-S4-8  洗い直しの式 121 行（起点 120）
+AC-S5-1  exit=1 / AC-S5-2 rg -c は 78、backlog から 4 行、相対 link の path は全部在る
+AC-S5-3  #155 は 1 行、#172 は 3 行 / AC-S5-4 exit=1
+AC-S5-5  2 本とも exit=1 / anchor 16 件が全部今ある見出しを指す（GitHub の slug で照合）
+AC-S5-7  Q40 は 226 の 1 行、D-023 は 139 の 1 行
+AC-S7-1  data-[size=default]:sm:max-w-lg は 1、activeProps は 1（(2) の 1 行に 2 回）/ AC-S7-2 は 1
+```
+
+- AC-S1-3 の新しい行: 起点と内容で突き合わせて新しく出た 10 行は、直した文 8（24:65・370、23:245・352、diagrams/current-system:176、35:335・370、51:28）、語を残した見出し 1（32:413）、S5 で足した backlog の 1 行（179。code の comment の古い句を記録する行で対象外）。
+- AC-S4-8 の新しい行: 起点と内容が違う 51 行は全て S4・S5 で書き換えた行（DR1〜DR8 の書き分け、SC1、D1、P1〜P7、S5 の組み直し）。採用済みの方針を今の build の動きとして書く新しい行は無い。
+- 読んで確かめた AC: AC-S1-2（35 の 336・370 行と §20.8 の INV-2、32 の 417 行と §15.8 の INV-2 が `recompute_stock` を名指しし、§15.0・§20.0 は残る）。AC-S2-6（22 の 360 行の `count_value` の CHECK は `schema_v9.rs:80` の `>= 0`、test は `stock_ledger.rs:527`。S2-15 は 29 の文法表と `ej_parser.rs` の `EjRecordKind`）。AC-S3-6（D-116〜D-122 の Status に出所が残り、実装の状態の語が無い）。AC-S5-6（S5 の表の全行の結果と、archive の各項目の下の根拠の句）。AC-S7-3（S7-2 の表の結果の欄）。AC-S4-6 は S4 の commit `cd7cd041` の注記（`docs/PROJECT_HANDOFF.md` の履歴境界の節を引く）、S5 の 247・428 も同じ形。
+- 計画からの外れ: S5 の「文の直し」の 72・39・49 の (8) は、親（71・37・47）を archive へ移すときに子として一緒に移したので、archive の本文を変えず、各親の根拠の句に今の形を書いた。37 は全体を移さず、正本が引く入力 1〜5 を backlog に残した（前提が変わったのは lane の状態の部分）。
 
 ## Review Response
 
