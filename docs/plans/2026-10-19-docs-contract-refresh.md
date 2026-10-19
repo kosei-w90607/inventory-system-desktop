@@ -576,11 +576,11 @@ Fill after review.
 ### Final Review broad（2026-10-20、対象 `a9ba2f09`）
 
 - Claude 側: fresh Opus 5.5 の 2 本（broad: approve、P3 4。S5 の深掘り: reject、P2 1・P3 4）。Codex: PR #180 の review（reject、P2 1・P3 2）。
-- Coordinator の裁定: 全件を受理（P2 の 2 件は Coordinator が現物で確かめた）。是正は Writer（Opus 5.5 subagent、発注 450）。Scope・AC は変えていない。
+- Coordinator の裁定: 全件を受理（P2 の C1・S1 は Coordinator が現物で確かめた）。是正は Writer（Opus 5.5 subagent、発注 450）。Scope・AC は変えていない。
 
 | finding | 要旨 | 直した所 |
 |---|---|---|
-| C1（P2） | backlog の P が EJ の小数の数量を D-121 の控えの閲覧の範囲に置く（D-121 Decision (6) と食い違う） | backlog の P を「控えの閲覧（(A)）は小数の数量を拾わない。受理は 29 の単位の拡張の表し方で EJ の取込みの lane が U5 の後に足す」に直した。同型を live な docs で洗い、他は 0 件 |
+| C1（P2） | backlog の P が EJ の小数の数量を D-121 の控えの閲覧の範囲に置く（D-121 Decision (6) と食い違う） | backlog の P を「控えの閲覧（(A)）は小数の数量を拾わない。受理は 29 の単位の拡張の表し方で EJ の取込みの lane が U5 の後に足す」に直した。同型を live な docs で洗い、ほかに直す行は無かった（式と出力は表の下） |
 | S1（P2） | STK-2 の子の申し送りの (4)（交換を差額だけの戻しで打つ運用、TD-225）が、D-118 で置き換わったという根拠の句のまま archive へ移った | (4) を backlog の (b) の子へ上げ、63 UI-03-D8 の既定との関係を 1 句添えた（直し方は決めない）。archive の根拠の句を (1)〜(6) ごとの行き先に書き直した |
 | S1'（同型） | archive へ移した 102 行の根拠の句の見直し | 102 行を分類した。上げるのは (4) だけで、(3)〈小数の数量〉は P が持つと根拠の句に書いた。ほかは根拠の句と合う（店の前提と owner の決定は project-memory・decision-log・10 に在る） |
 | O1 / C2（P3） | 29 の IO-08.9 の表が観測済みの小数の数量を「未観測の形式」に入れる | 行を「未観測の形式」と「観測済みで受理しない形（小数の数量・点数、`AUTO` / `BT`）」の 2 行に分けた |
@@ -592,4 +592,8 @@ Fill after review.
 | S4（P3） | 本 PR の句が旧 repo の PR 番号を注記なしで使う | archive の PR #84 を「D-072（旧 repo の PR #84）」、backlog の PR #60 を「UI_TECH_STACK §6.10、旧 repo の PR #60」にした。本 PR の新しい句の他の番号は今の repo の PR と合う |
 | S5（P3） | filter-label の packet の 415 行の link が live の backlog の節を指す | 移した先の archive の見出しへ付け替えた |
 
+C1 の同型の洗い直し（tip `73fd18e4` の後の作業木で実行）: `rg -n '(小数|数量)' docs README.md -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/research/**' -g '!docs/evidence/**' | rg '(EJ|Z004)' | rg '(D-121|控え|閲覧|一括取込み)'` → 9 行（`backlog.md:46`〈直した P の行〉、`Plans.md:18`、`37:693`・`37:694`、`decision-log.md` の D-121 の本文 4 行、`mockup-d-home-sales-admin.html:271`）。直した P の行の他は、控えの閲覧に小数の復元が要らないと書く正しい行か、語が並ぶだけの対象外の行。
+
 AC の再実行（是正の後、逐語）: AC1・AC2・AC3 は exit 0。AC-S1-1 は 0 行、AC-S1-3 は docs 256 行・comment 38 行で `a9ba2f09` と同じ行の集合。AC-S4-8 は 121 → 122 行（足したのは (b) の子の (4) の 1 行。書き換えた行は旧名の句と P の行で、採用済みの方針を今の build の動きとして書く行は無い）。AC-S5-2 は 78 → 79（slice 2 を移した）。AC-S5-5 の anchor の列挙は 16 → 15（filter-label の 415 行が archive を指すようになり、式の `backlog\.md` に当たらない）で、全部今ある見出しを指す。AC-S5-7 の D-023 の行は 139 → 140（子を 1 行足した）。ほかの AC は `a9ba2f09` の値と同じ。
+
+追い（2026-10-20）: base 同期は Coordinator の単一 merge（`73fd18e4`、origin/main `8cff232a`〈PR #179、D-124〜D-127〉、衝突なし）。その後、S3 の前文に従い、decision-log の頭の「Status の書き方」（D-126）を正本に、S3 で触った D の Status の行のうち 27 行（D-034・D-035・D-038〜D-041・D-043・D-045・D-046・D-085・D-087・D-100〜D-107・D-111・D-113・D-116〜D-121）を `accepted（出所）` / `superseded（by D-xxx。出所）` の形に揃えた（実装・review の状態の句を外し、出所を括弧へ。D-038・D-040・D-041 の中身の句は D-039・D-041 の本文が持つので外した）。S3 で触っていない D の Status の行で同じ形でないものは 15 行（`rg -n '^- Status:' docs/decision-log.md | rg -v '^[0-9]+:- Status: (accepted|withdrawn|proposed)(（.*）)?$|^[0-9]+:- Status: superseded（by D-[0-9]+(。.*)?）$' | wc -l` → `15`。D-042・D-075・D-086・D-088・D-090〜D-094・D-096〜D-099・D-109・D-123。多くは括弧の後の「。」の余り、D-042 は英文、D-075・D-091 ほかは括弧の後に中身の文が続く）で、直していない（Follow-up）。PK6 の WARN は上の 2 行を直して 0。
