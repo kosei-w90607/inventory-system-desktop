@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-第 1 便（PR #170・#173・#174・#175）と第 2 便（PR #171・#176）は着地した（2026-10-19）。次 = 新しい lane を起こす前に、前提の更新と docs 全体の棚卸し（owner 2026-10-18。設計だけ先に入った「proposed・未実装」の記述、file:行 の引用、decision-log の proposed の Status、数えた時点付きの事実・未確認の前提を 2026-10-18 の SD の写しと在庫 Excel で当たる、`docs/project-memory.md`・`docs/PROJECT_HANDOFF.md`・backlog の申し送り。[backlog](backlog.md) に足した 51 UI-01b-D5 の句と Wave Operation の L3 の頼み方の規則もここで）。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。
+第 1 便（PR #170・#173・#174・#175）と第 2 便（PR #171・#176）は着地した（2026-10-19）。次 = 新しい lane を起こす前に、前提の更新と docs 全体の棚卸し（owner 2026-10-18。設計だけ先に入った「proposed・未実装」の記述、file:行 の引用、decision-log の proposed の Status、数えた時点付きの事実・未確認の前提を 2026-10-18 の SD の写しと在庫 Excel で当たる、`docs/project-memory.md`・`docs/PROJECT_HANDOFF.md`・backlog の申し送り。契約の文を今に合わせる lane 1 は packet `docs/plans/2026-10-19-docs-contract-refresh.md`。[backlog](backlog.md) に足した 51 UI-01b-D5 の句と Wave Operation の L3 の頼み方の規則もここで）。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。
 
 wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Plan Review は fresh Opus + Codex、Codex が rate limit の間は fresh Opus のみで進め Final Review だけ Codex を待つ（owner 確認 2026-09-23、Codex 復帰後は両方）。
 
