@@ -375,7 +375,7 @@ fn complete_stocktake(
 
 **設計判断 — force_fill パラメータ**:
 - 年末棚卸しは10月〜大晦日の長期作業。全4000商品のカウントが現実的に完了しない場合がある（特に端切れ布やボタンの小物）
-- force_fill=true で「未入力の商品は現在のシステム在庫をそのまま確定」を許可する。差異なしとして処理されるため、カウント漏れがあっても棚卸しを完了できる
+- force_fill=true で「未入力の商品は現在のシステム在庫をそのまま確定」を許可する。未入力の商品は差異なしとして処理されるため、カウント漏れがあっても棚卸しを完了できる。ただし負の在庫の商品は 0 を入れるので、その商品だけは差異が出て補正の movement が作られる（手順 3a、INV-3）
 - force_fill=false がデフォルト（CMD層が渡す）。UI-10の確定ボタンで未入力がある場合に確認ダイアログを表示し、利用者が「未入力をシステム在庫と同じとみなす」を選択した場合のみ force_fill=true で再呼出し
 
 **設計判断 — valuation_cost_price のタイミング**:
@@ -539,7 +539,7 @@ fn get_stocktake_record(
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-2: stock_after算出責任 | 旧本体（停止中、§20.0）はステップ5gで補正の記録の stock_after=actual_count とし、写しは recompute_stock で記録から求め直す（写しが記録と一致していれば求め直しの値も actual_count）。D-118 の (b) の確定の形は本章の冒頭の「計数の置き場と在庫の求め直しの契約」の「完了（SPEC-STK-CNT-D6）」が持つ |
-| INV-3: 負在庫ポリシー | 現行はactual_count非負へ上書きする。D-118 の新方式は計数（0 以上）の後の記録で在庫が負になり得る。負在庫を許して表示し、評価数量だけ `max(在庫, 0)` とする |
+| INV-3: 負在庫ポリシー | 旧本体（停止中、§20.0）は actual_count を 0 以上に限り（update_count の検証）、force_fill は負の在庫の商品に 0 を入れる（手順 3a）。写しは actual_count へ上書きせず、recompute_stock で記録から求め直す（INV-2。写しが記録と一致していれば求め直しの値も actual_count）。D-118 の新方式は計数（0 以上）の後の記録で在庫が負になり得る。負在庫を許して表示し、評価数量だけ `max(在庫, 0)` とする |
 | INV-8: products物理DELETE禁止 | 本モジュールは products を UPDATE のみ（stock_quantity）。DELETE 操作なし。find_stocktake_eligible_products は is_discontinued フラグで絞り込む |
 | INV-1a: 入力値は常に正数 | update_count で actual_count >= 0 を検証。complete_stocktake の adjustment_quantity は正負どちらもあり得る（棚卸し補正は INV-1a の対象外。INV-1a は Request 構造体の quantity フィールドに適用され、棚卸し補正の adjustment_quantity はBIZ層内部で算出される値） |
 

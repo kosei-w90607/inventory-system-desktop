@@ -139,7 +139,7 @@ COMMIT
 
 **backfill の判定範囲**: JAN/EAN-13 チェックディジット検証は SQL で行わない。チェックディジット不正は BIZ-04 prepare の「要修正」バケット（PluExcludedReason::InvalidCheckDigit）がアプリ側で捕捉する。
 
-**廃番商品の扱い**: backfill は廃番商品を plu_target=0 にする（レジ登録対象に戻さない）。廃番切替時に plu_target を自動で 0 にするかは、スロット解放と不可分のため PLUスロット永続割当の設計（Plans.md backlog）で決める。
+**廃番商品の扱い**: backfill は廃番商品を plu_target=0 にする（レジ登録対象に戻さない）。廃番切替時に plu_target を自動で 0 にするかは、スロット解放と不可分のため PLUスロット永続割当の設計で決めるとした。今の正本は [30 §4.5](30-biz-product-service.md) の手順 4（廃番化は `plu_target=0` も同時に更新する）と、枠の扱いの [33 §16.6](33-biz-plu-export-service.md)（BIZ-04-D6、D-117 (1)。枠を解放しない形の runtime は backlog の「PLU の書出しの見直しの runtime」）。
 
 ## 11. MNT-03 追加: migration v4（日報取込みテーブル）
 

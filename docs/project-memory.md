@@ -64,7 +64,7 @@ Keep it factual and stable.
 ## Key Domain Rules
 
 - Products can use JAN-based codes or department-prefix custom codes
-- Length products (fabric etc.) are entered and shown in `m` (D-113); `cm` is removed at the rebuild starting point of the development and test DB (D-119)
+- Length products (fabric etc.) are entered and shown in `m` (D-113); removing `cm` at the rebuild starting point of the development and test DB is decided (D-119, when its precondition holds); the current build still accepts `cm` until the cost lane's rebuild-starting-point migration (vB, [22 §16](function-design/22-mnt-migration.md))
 - Some products must not auto-decrement stock from POS sales import
 - Register-processed returns are reflected through CSV import
 - Manual return/exchange exists for non-register cases
