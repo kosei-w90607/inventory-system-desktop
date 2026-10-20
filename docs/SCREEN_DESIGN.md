@@ -50,7 +50,7 @@
 | 15 | PLU書出し | REQ-402 | — | 実装済み（10-3、CV17 1.1.1 / SD カード経由実機確認 10-3a） |
 | 16 | 在庫整合性検証 | REQ-904 | — | 実装済み（10-6、UI-13。画面固有の CmdError / retry を実装、アプリ共通の Q40 障害時対応は本画面の対象外 — 75-ui §参照）。REQ-403 の POS 部門別売上照合は別 task として deferred |
 | 17 | バックアップ・復元 | QR-05 | — | 実装済み（10-5b、復元前強制バックアップ + 二段確認 + cache clear） |
-| 18 | 操作ログ | QR-06 / REQ-902 | — | PR #164（履歴境界の前の番号で private archive の記録）で実装済み。閲覧MVP: 期間/種別filter + pagination + detail_json安全表示。CSV出力・保持設定変更・削除は別task |
+| 18 | 操作ログ | QR-06 / REQ-902 | — | PR #164（履歴境界の前の番号で private archive の記録。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）で実装済み。閲覧MVP: 期間/種別filter + pagination + detail_json安全表示。CSV出力・保持設定変更・削除は別task |
 | 19 | 設定（在庫少の基準） | QR系 | — | 実装済み（10-5a、在庫少基準 2 key + 部分失敗表示） |
 | 20 | 一括価格改定 | REQ-105/106 | — | 実装済み（UI-14、取引先・部門・keyword 絞り込み + 行単位確定） |
 | 21 | 取引先管理 | REQ-106/107 | — | 実装済み（UI-15、取引先の追加・インライン改名・重複統合） |
@@ -132,7 +132,7 @@
 - **対応仕様**: REQ-402（商品マスタからPLU登録用データを生成し、レジに書き出せること）
 - **レイアウト判断**:
   - route は `/products/plu-export`。商品管理エリアの独立画面として扱う
-  - 上部に差分件数、最終書出し目安、レジの登録状況の最終照合日時（売上データ取込みで SD を読んだとき。D-117 の採用済みの方針。今の画面は利用者が選ぶ Z004 で照合し、切替えは PLU の書出しの見直しの runtime。[33 §16](function-design/33-biz-plu-export-service.md) の冒頭の runtime の注記）、レジ反映はその場では確認できない注意を表示する。一度も照合していなければ売上データ取込みへの導線を出し、書出しを拒む
+  - 上部に差分件数、最終書出し目安、レジの登録状況の最終照合日時（売上データ取込みで SD を読んだとき。D-117 の採用済みの方針。今の画面は利用者が選ぶ Z004 で照合し、切替えは PLU の書出しの見直しの runtime。[33 §16](function-design/33-biz-plu-export-service.md) の冒頭の runtime の注記）、レジ反映はその場では確認できない注意を表示する。一度も照合していなければ書出しを拒む（今の画面はその場で照合の Z004 を選ぶ導線を出す。D-117 の runtime の後は売上データ取込みへの導線）
   - 書出しモードは `差分を書き出す` / `全件を書き出す` の二択 SegmentedControl とする。既定は差分
   - 差分対象一覧は商品コード、JANコード、商品名、売価、在庫を表示する。JAN未登録の商品は「未登録」と表示し、prepare失敗時に商品マスタ確認へつなげられるようにする。0件なら「差分はありません」と表示し、Full書出し導線は残す
   - `prepare_plu_export` でCV17 1.1.1向けPLUタブ区切りテキストを生成し、Tauri native save dialog で `.txt` 保存する。保存キャンセル・保存失敗では未反映状態を変えない
@@ -178,7 +178,7 @@
 ### 操作ログ画面
 - **対応仕様**: QR-06 / REQ-902（ログ管理: 操作ログ記録/一覧/自動削除）/ TRACE-D3（操作ログは業務記録の代替にしない）
 - **レイアウト判断**:
-  - UI-11c はシステム管理エリアの独立画面として扱う。PR #164（履歴境界の前の番号で private archive の記録）でroute（`/settings/logs`）と`src/config/navigation.ts`の`ui-11c` active化を実装済み。DraftのP2/P3 remediationは完了し、fresh再監査とWindows native L3は未完了である。
+  - UI-11c はシステム管理エリアの独立画面として扱う。PR #164（履歴境界の前の番号で private archive の記録。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）でroute（`/settings/logs`）と`src/config/navigation.ts`の`ui-11c` active化を実装済み。DraftのP2/P3 remediationは完了し、fresh再監査とWindows native L3は未完了である。
   - 本画面は**閲覧 MVP**。CSV出力、ログの保持設定変更・手動削除、診断ログファイル/ディレクトリ導線（MNT-04）は別 task とする（365日超の自動削除は既存 `72-mnt-log-manager.md` の起動時 cleanup のまま、archive は作らない）。
   - 期間（開始日・終了日、JST暦日、片側指定可）と個別 operation_type で絞り込み、既定は直近30暦日・全種別。operation_type の選択肢は現在ページ/現在の絞り込み結果からではなく、保持中ログ全体の distinct 値から生成する。
   - 各行の明示的な「詳細を表示」ボタンで直下に detail_json を展開し、展開中は可視text「詳細を閉じる」に変える。Enter / Spaceはnative button契約で動作し、行全体clickは追加しない。既知フィールドの日本語要約を優先し、生JSONは既定で折りたたみの「技術情報」に隠す。
@@ -430,7 +430,7 @@
 
 ### 実装フェーズ分類（Plans.md 第8〜10段階と整合）
 
-**Phase 2: 毎日使う5画面（完了。`v0.8.0-ui-daily` の tag は履歴境界の前の private archive の記録で、public repo に tag は無い）**
+**Phase 2: 毎日使う5画面（完了。`v0.8.0-ui-daily` の tag は履歴境界の前の private archive の記録で、public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）**
 1. UI-00 ホーム画面（実装プラン → [docs/archive/plans/2026-05-09-phase-2-ui-00.md](archive/plans/2026-05-09-phase-2-ui-00.md) 完了済、PR #56 squash merge `e6da3d8` 2026-05-09）
 2. UI-07 CSV取込み（REQ-401、PR #62 `b8db619`。状態管理は `useReducer + discriminated union` 採用済み）
 3. UI-09a 日次売上レポート（REQ-501、PR #65 `8c2be51`）
@@ -439,7 +439,7 @@
 
 Phase 2 完了判断で daily 5 画面の追加実装は不要。H-6 5 画面通しの Windows native 利用者 OK は通過済み。UI_TECH_STACK §7.2 の E2E / visual regression 採否は 8-9 として完了し、Phase 2 tag gate にはしない。`typedInvoke` fallback 撤去も Phase 2 closeout で完了済み。PR #75 closeout merge `f44f99a` に `v0.8.0-ui-daily` tag を作成済み（PR #75・`f44f99a`・tag は履歴境界の前の private archive の記録。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。
 
-**Phase 3: 商品管理 + 入出庫7画面（画面は実装済み。計画の時点の tag の目標 `v0.9.0-ui-product-inventory` は履歴境界の前の記録で、public repo に tag は無い）**
+**Phase 3: 商品管理 + 入出庫7画面（画面は実装済み。計画の時点の tag の目標 `v0.9.0-ui-product-inventory` は履歴境界の前の記録で、public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）**
 - UI-01a/b/c 商品検索・一覧 / 登録 / 修正 / 一括インポート（REQ-103/101/102/104）
 - UI-02 入庫記録（REQ-201、バーコードスキャン + 複数商品一括）
 - UI-03 返品・交換（REQ-202、レジ戻し済みフラグ + レシート添付）。詳細な route / command / validation / L3 確認項目は `docs/function-design/63-ui-return-exchange.md` を正とする。

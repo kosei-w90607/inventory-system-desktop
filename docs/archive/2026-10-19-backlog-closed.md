@@ -1,6 +1,6 @@
 # Backlog の閉じた項目（2026-10-19）
 
-[backlog](../backlog.md) から、docs の棚卸し lane 1（2026-10-19）で閉じた項目を移した。本文は移す前のまま（相対 link の path だけをこの file の位置に合わせた）で、各項目の下に閉じた根拠を 1 句足した。節の見出しは backlog の元の節。生きている子は backlog に独立の項目か、別の項目の子として残した。
+[backlog](../backlog.md) から、docs の棚卸し lane 1（2026-10-19）と、その後の closeout（2026-10-20）で閉じた項目を移した。本文は移す前のまま（相対 link の path だけをこの file の位置に合わせた）で、各項目の下に閉じた根拠を 1 句足した。節の見出しは backlog の元の節。生きている子は backlog に独立の項目か、別の項目の子として残した。
 
 ## 次に動く lane（順番固定）
 
@@ -117,6 +117,8 @@
   - 閉じた根拠（2026-10-19）: 本文のとおり完了（PR #132、D-101）
 - ~~**日報の file を 1 つずつ選び足し、選んだものを個別に外せるようにする**（起源: PR #145 の L3 で owner が挙げた要望、2026-10-06）: 今の日報の取込みは Z001 / Z002 / Z005 の file を一度に選ぶ。SD 直読みの design lane（branch `agent/sd-direct-read`、2026-10-06 起票）の入力にする。~~ → SD 直読みの設計（PR #150）の UI-07-D16（`docs/function-design/55-ui-csv-import.md`）に吸収済み（2026-10-08 整理）。runtime は「SD 直読みの runtime」の lane が持つ。
   - 閉じた根拠（2026-10-19）: 本文のとおり SD 直読みの設計（PR #150）の UI-07-D16 に吸収。runtime は backlog の「SD 直読みの runtime」
+- **同じ便で実装 file が衝突する PR の L3 の頼み方を Wave Operation に足す**（owner 2026-10-19、repo 外の回答台帳 TD-324。起源: 第 2 便の PR #171 が PR #176 の merge の後の base 同期で衝突を解き、manual を再利用できず L3 が 2 回になった）: 衝突する PR の L3 は、前の PR の merge と base 同期の後に 1 回だけ頼む。L3 を束ねるのは衝突の無い PR だけにする。次の docs の棚卸しで `docs/DEV_WORKFLOW.md` `## Wave Operation` に足す。
+  - 閉じた根拠（2026-10-20、規則の lane〈PR #179〉の closeout）: D-124（TD-329）で先頭で頼む・path の共有で判定へ置き換え済み（`docs/DEV_WORKFLOW.md` `## Wave Operation` の D-124 の箇条）
 
 ## ⑰ 起票の小 runtime（次の小 lane に同乗可）
 

@@ -8,7 +8,7 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Plan Commit: ccdf03405dcd495e3db84c3a415dd1b1a821fe0b
 - Amendments: none
@@ -42,7 +42,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 5（plan-approved の時点。decision point ごとに数える: TD-327 の棚卸しの計画 1、TD-327 の decision-log の Status の規則 1、TD-327 の Draft PR #155 の扱い 1、S7 の範囲の追加〈owner 2026-10-19 の指示〉1、TD-330〈round 3 の天井の後、直して追加の round なしで plan-approved〉1） | 2（Ready 1、merge 1） | 2 | 9 = 5 + 2 + 2 |
+| 介入 | 9 | 7（closeout 時点。decision point ごとに数える: plan-approved までの 5〈TD-327 の棚卸しの計画 1、TD-327 の decision-log の Status の規則 1、TD-327 の Draft PR #155 の扱い 1、S7 の範囲の追加〈owner 2026-10-19 の指示〉1、TD-330〈round 3 の天井の後、直して追加の round なしで plan-approved〉1〉、Final Review に Codex を入れる判断〈2026-10-20〉1、Ready・merge の指示〈2026-10-20、1 回の指示〉1） | 0 | 2 | 9 = 7 + 0 + 2 |
 
 店の資料・owner に聞く束（下の S6 の分類）は本 lane で問わないので、本 lane の介入に数えない。
 
@@ -396,7 +396,7 @@ AC-S7-2  出力なし（exit=1）（同上）
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D7）、[31](../function-design/31-biz-inventory-service.md) の「計数の置き場と在庫の求め直しの契約」（`recompute_stock`）、[32](../function-design/32-biz-csv-import-service.md) §15.0・§15.5・§15.8、[35](../function-design/35-biz-stocktake-service.md) §20.0・§20.5、[22](../function-design/22-mnt-migration.md) §19（v9）、[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[decision-log](../decision-log.md) の D-092 の Compatibility と D-116〜D-122、[DB 設計](../DB_DESIGN.md) と db-design の「計数の置き場と在庫の求め直しの契約」、[引き継ぎ案内](../PROJECT_HANDOFF.md) の履歴境界の節。S7 は [UI 技術 stack](../UI_TECH_STACK.md) §6、design-system の [出典](../design-system/03-philosophy.md)・[判断の規則](../design-system/01-decision-rules.md)（DSR-08・DSR-16）・[土台](../design-system/00-foundations.md)（色の役割表・書体の節）、decision-log の D-091・D-094、owner の L3 の原文 `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`。
+- 引用する設計正本（節まで）: [棚卸しの数の置き場と在庫の求め直しの ADR](../../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D7）、[31](../../function-design/31-biz-inventory-service.md) の「計数の置き場と在庫の求め直しの契約」（`recompute_stock`）、[32](../../function-design/32-biz-csv-import-service.md) §15.0・§15.5・§15.8、[35](../../function-design/35-biz-stocktake-service.md) §20.0・§20.5、[22](../../function-design/22-mnt-migration.md) §19（v9）、[停止 ADR](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[decision-log](../../decision-log.md) の D-092 の Compatibility と D-116〜D-122、[DB 設計](../../DB_DESIGN.md) と db-design の「計数の置き場と在庫の求め直しの契約」、[引き継ぎ案内](../../PROJECT_HANDOFF.md) の履歴境界の節。S7 は [UI 技術 stack](../../UI_TECH_STACK.md) §6、design-system の [出典](../../design-system/03-philosophy.md)・[判断の規則](../../design-system/01-decision-rules.md)（DSR-08・DSR-16）・[土台](../../design-system/00-foundations.md)（色の役割表・書体の節）、decision-log の D-091・D-094、owner の L3 の原文 `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。直すのは文と実装・決定の食い違いだけ。
 - plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) D-056・D-058・D-079・D-084・D-087 の Status を superseded にする（S3-3）、(2) ADR の Status を decision-log と同じ規則で直す（S3-11）、(3) 閉じた backlog の項目の置き場（`docs/archive/2026-10-19-backlog-closed.md`）。(1)(2) は TD-327 の規則の適用で、規則の正本は D-126（並走）。(3) は backlog の頭の文に置く。S7 は個人の memory にあった内容の昇格で、置き場は `docs/UI_TECH_STACK.md` §6.12（実装の注意）と `docs/design-system/03-philosophy.md`（owner の受け取り方の出典）。2026-09-24 の canvas の判断のうち repo に記録の無い項は「repo に記録なし（owner の canvas 2026-09-24、未照合）」と明記して要旨だけを置き、決まりの根拠にはしない。
 - 前提・制約と延期した gap: S6 の束は次の段へ延期する。延期しても安全な理由: 本 lane は S6 の文を変えず、確かめていない事実を確かめたように書き換えない。
@@ -446,40 +446,13 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 ## Implementation Results
 
-実装の run（2026-10-19〜10-20、Writer Opus 5.5 subagent。途中で使用量の上限で切れ、同じ worktree で再開した）。
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
-- commit（Plan Commit `ccdf0340` と state commit `67954ee1` の後）: `43a92702` S1 / `4086f722` S2 / `3cb2d0b4` S3 / `cd7cd041` S4 / `e3b574f8` S2 の追い（29 の未観測の形式の行の語）/ `2d893a42` S5 / `a6095997` S7 / 本 commit（Implementation Results）。
-- 段ごとの結果（各表の「結果」列）: S1 直した 13。S2 直した 16。S3 直した 19。S4 直した 22・残す 1（H2）、型の洗い直しの DR 直した 9。S5 直した 7 行・残す 1 行（212）。S7 直した 2。
-- S5 の数: 閉じた項目を `docs/archive/2026-10-19-backlog-closed.md` へ移した（`rg -c '^- '` = 78）。`docs/backlog.md` は 445 行 → 332 行（`wc -l`）。生きている子を上げた項目: 「実測とPOS系列の対応の入力 1〜5」「単位の拡張の残りの申し送り」「MSI の製品名と upgrade code の固定」「MSI の予行演習」「v8 より後の migration を足す lane の義務」、Z001 の表示の 3 項目。(b) の項目の子に ⑤ への申し送り 4 行と 54 の (6)、原価の lane の子に 88・89 の行。link の付け替えは `docs/archive/plans/2026-09-15-filter-label-top-runtime.md` の 1 つ。
-
-AC（実装の後、逐語で実行）:
-
-```text
-AC1      exit=0（全チェック通過）
-AC2      exit=0
-AC3      generate_traceability --check: exit=0（ERROR 0 / WARN 0）/ design_compliance_test: exit=0（1 passed）
-AC-S1-1  exit=1（0 行）
-AC-S1-3  docs の式 256 行（起点 286）/ comment の式 38 行（起点と同じ）/ production の hit: biz/stock_ledger.rs:190 の 1 行
-AC-S2-1  exit=1 / AC-S2-1b exit=1、根拠: rg -c は 4、bindings は 237・243・282・289 の 4 行
-AC-S2-2  2 本とも exit=1 / AC-S2-3 exit=1 / AC-S2-4 exit=1、7 file とも rg -c は 1
-AC-S2-5  2 本とも exit=1 / AC-S2-8 exit=1
-AC-S3-1  exit=1 / AC-S3-2 superseded 6 行（D-056・D-058・D-079・D-084・D-087・D-116）、Superseded by: D-092 5 行
-AC-S3-3  714:- Status: accepted（2026-09-14、PR #54。…）（## D-085 の 2 行下）
-AC-S3-4  exit=1 / AC-S3-5 2 本とも exit=1 / AC-S3-7 後ろの rg が exit=1
-AC-S4-1  exit=1 / AC-S4-2 2 本とも exit=1 / AC-S4-3 erd 3・current-system 1、v1〜v7 は exit=1
-AC-S4-4  48（stock_counts の行）・137・138（2 つの index）/ AC-S4-5 exit=1
-AC-S4-8  洗い直しの式 121 行（起点 120）
-AC-S5-1  exit=1 / AC-S5-2 rg -c は 78、backlog から 4 行、相対 link の path は全部在る
-AC-S5-3  #155 は 1 行、#172 は 3 行 / AC-S5-4 exit=1
-AC-S5-5  2 本とも exit=1 / anchor 16 件が全部今ある見出しを指す（GitHub の slug で照合）
-AC-S5-7  Q40 は 226 の 1 行、D-023 は 139 の 1 行
-AC-S7-1  data-[size=default]:sm:max-w-lg は 1、activeProps は 1（(2) の 1 行に 2 回）/ AC-S7-2 は 1
-```
-
-- AC-S1-3 の新しい行: 起点と内容で突き合わせて新しく出た 10 行は、直した文 8（24:65・370、23:245・352、diagrams/current-system:176、35:335・370、51:28）、語を残した見出し 1（32:413）、S5 で足した backlog の 1 行（179。code の comment の古い句を記録する行で対象外）。
-- AC-S4-8 の新しい行: 起点と内容が違う 51 行は全て S4・S5 で書き換えた行（DR1〜DR8 の書き分け、SC1、D1、P1〜P7、S5 の組み直し）。採用済みの方針を今の build の動きとして書く新しい行は無い。
-- 読んで確かめた AC: AC-S1-2（35 の 336・370 行と §20.8 の INV-2、32 の 417 行と §15.8 の INV-2 が `recompute_stock` を名指しし、§15.0・§20.0 は残る）。AC-S2-6（22 の 360 行の `count_value` の CHECK は `schema_v9.rs:80` の `>= 0`、test は `stock_ledger.rs:527`。S2-15 は 29 の文法表と `ej_parser.rs` の `EjRecordKind`）。AC-S3-6（D-116〜D-122 の Status に出所が残り、実装の状態の語が無い）。AC-S5-6（S5 の表の全行の結果と、archive の各項目の下の根拠の句）。AC-S7-3（S7-2 の表の結果の欄）。AC-S4-6 は S4 の commit `cd7cd041` の注記（`docs/PROJECT_HANDOFF.md` の履歴境界の節を引く）、S5 の 247・428 も同じ形。
+- 結果: 実装の run（2026-10-19〜10-20、Writer Opus 5.5 subagent。途中で使用量の上限で切れ、同じ worktree で再開した）が S1〜S5・S7 を段ごとに直し、各表の「結果」列を埋めた（残すのは S4 の H2 と S5 の D-023 の項目だけ）。S1 は旧本体（停止中）の確定・取消と共通在庫処理の記述を、movement を足して `recompute_stock` で写しを求め直す今の code の順に直した。S2 は (a) で入った所を実装済みの契約へ、(b) を proposed・未実装のまま書き分けた。S3 は decision-log と ADR の Status を決定の状態と出所だけにし（base 同期の後に D-126 の形へ揃えた）、置き換わった D に Superseded の行を足した。S4 は dashboard と図面を今の schema と runtime に合わせ、採用済みで未実装の決定（D-111・D-117）を「採用済みの方針／今の runtime／残る実装」に書き分けた。S5 は閉じた backlog の項目を `docs/archive/2026-10-19-backlog-closed.md` へ根拠の句を付けて移し、生きている子を独立の項目か寄せ先の子に上げた。S7 は class の上書きの罠（`docs/UI_TECH_STACK.md` §6.12）と owner の受け取り方（`docs/design-system/03-philosophy.md`）を正本へ置いた。
+- 検証: AC1〜AC3（doc check・traceability・design_compliance_test）と段ごとの AC は実装の後と是正の後の期待どおり。読んで確かめる AC（AC-S1-2・AC-S2-6・AC-S3-6・AC-S4-6・AC-S5-6・AC-S7-3）は実読で確かめた（AC-S4-6 の SCREEN_DESIGN の 4 か所の注記の link は closeout で足した。下の Review Response の Closeout）。
 - 計画からの外れ: S5 の「文の直し」の 72・39・49 の (8) は、親（71・37・47）を archive へ移すときに子として一緒に移したので、archive の本文を変えず、各親の根拠の句に今の形を書いた。37 は全体を移さず、正本が引く入力 1〜5 を backlog に残した（前提が変わったのは lane の状態の部分）。
+- review・CI・merge（closeout、2026-10-20）: Final Review は broad の 3 本（Claude 側 fresh Opus 5.5 の全体 = approve〈P3 4〉と S5 の深掘り = reject〈P2 1〉、Codex〈6.1 Sol〉= reject〈P2 1〉）。Coordinator が全件を受理して是正し、base 同期の後の closure 3 本（Codex Sol・Claude 側 Opus の closure・S1/S4 の深掘り）で P1/P2 の残りは 0、P3 は closeout の PR で直した。hosted CI の Merge gate は Ready の後の run で pass、専用 record の review は pass、manual・R4 は無い。[PR #180](https://github.com/kosei-w90607/inventory-system-desktop/pull/180) は helper 経由で 2026-10-20 に merge（PR #179 の merge の後の base 同期を経た）。
+- 後続: 棚卸しの lane 2「file:行 の引用の書き換えと検査」と S6 の束（`docs/Plans.md` の次の行動）。D-126 の形でない Status の行 15 行・名前で引く参照の残り・task-specs の runtime の注記・archive の link は `docs/backlog.md` の次の docs の lane の候補。
 
 ## Review Response
 
@@ -597,3 +570,7 @@ C1 の同型の洗い直し（tip `73fd18e4` の後の作業木で実行）: `rg
 AC の再実行（是正の後、逐語）: AC1・AC2・AC3 は exit 0。AC-S1-1 は 0 行、AC-S1-3 は docs 256 行・comment 38 行で `a9ba2f09` と同じ行の集合。AC-S4-8 は 121 → 122 行（足したのは (b) の子の (4) の 1 行。書き換えた行は旧名の句と P の行で、採用済みの方針を今の build の動きとして書く行は無い）。AC-S5-2 は 78 → 79（slice 2 を移した）。AC-S5-5 の anchor の列挙は 16 → 15（filter-label の 415 行が archive を指すようになり、式の `backlog\.md` に当たらない）で、全部今ある見出しを指す。AC-S5-7 の D-023 の行は 139 → 140（子を 1 行足した）。ほかの AC は `a9ba2f09` の値と同じ。
 
 追い（2026-10-20）: base 同期は Coordinator の単一 merge（`73fd18e4`、origin/main `8cff232a`〈PR #179、D-124〜D-127〉、衝突なし）。その後、S3 の前文に従い、decision-log の頭の「Status の書き方」（D-126）を正本に、S3 で触った D の Status の行のうち 27 行（D-034・D-035・D-038〜D-041・D-043・D-045・D-046・D-085・D-087・D-100〜D-107・D-111・D-113・D-116〜D-121）を `accepted（出所）` / `superseded（by D-xxx。出所）` の形に揃えた（実装・review の状態の句を外し、出所を括弧へ。D-038・D-040・D-041 の中身の句は D-039・D-041 の本文が持つので外した）。S3 で触っていない D の Status の行で同じ形でないものは 15 行（`rg -n '^- Status:' docs/decision-log.md | rg -v '^[0-9]+:- Status: (accepted|withdrawn|proposed)(（.*）)?$|^[0-9]+:- Status: superseded（by D-[0-9]+(。.*)?）$' | wc -l` → `15`。D-042・D-075・D-086・D-088・D-090〜D-094・D-096〜D-099・D-109・D-123。多くは括弧の後の「。」の余り、D-042 は英文、D-075・D-091 ほかは括弧の後に中身の文が続く）で、直していない（Follow-up）。PK6 の WARN は上の 2 行を直して 0。
+
+### Closeout（2026-10-20）
+
+closure 3 本の P3 は PR の Follow-up で closeout へ寄せ、本 lane の closeout の PR で直した。直した所: `docs/function-design/22-mnt-migration.md` の廃番の扱いの参照先（archive へ移した「PLUスロット永続割当」の項目を指していた句を、今の正本の 30 §4.5 と 33 §16.6〈D-117 (1)〉へ）、29 IO-08.9 の小数の理由句（IO-08.5 の「単位の拡張の表し方」〈D-113〉を EJ の取込みの lane が実装するまで受理しない形へ）、decision-log の D-035・D-038・D-040・D-041・D-045・D-085 の Status の括弧（owner の決定、repo 外の回答台帳 TD-337。括弧には出所だけを残し、中身の句を外した。外した関係のうち本文に無いもの〈D-040 と D-041 の Phase B の実行の契約の関係、D-045 が D-041・D-042 の証跡の要求の裁定に効き D-040 の clone の役割の分離を変えないこと〉は足し直さず、backlog の次の docs の lane の候補に 1 句で記した）、35 §20.8 の INV-3 と §20.5 の force_fill の設計判断（写しは `recompute_stock` で求め直す、負の在庫は 0 を入れて差異が出る）、10 の上限から導ける範囲の表の差分の経路の 2 行（求め直しの値の 1 行へ）、SCREEN_DESIGN の DR7 の末尾（今の画面はその場で Z004 を選ぶ導線）と履歴境界の注記 4 か所（引き継ぎ案内の履歴境界の節への link。AC-S4-6）、project-memory の cm の現在形（今の build は原価の lane の作り直しの起点の migration まで `cm` を持つ）。各型の旧い句を docs と code の comment で洗い直し、同型の live な残りは直した所だけだった。backlog へ回したのは PR の Follow-up の残り（D-126 の形でない Status の行 15 行、名前で引く参照の残り、task-specs の runtime の注記、archive の link 3 file）で、次の docs の lane の候補として 1 項目にまとめた。
