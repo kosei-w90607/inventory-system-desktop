@@ -8,14 +8,14 @@
 
 ## 次の行動
 
-docs の棚卸しの lane 1（PR #180、設計・dashboard・backlog・decision-log の Status を今の実装と決定に合わせる）と規則の lane（PR #179、D-124〜D-127）は着地した（2026-10-20）。次 = lane 2「file:行 の引用の書き換えと検査」（D-125〈repo 外の回答台帳 TD-326〉。正本と code の comment の引用は行番号を外して symbol・節 ID で引き、backlog の引用は起票の SHA を添え、時点の記録はそのまま。path が在る・行数の内・曖昧でないを検査する）。並行の段: 棚卸しの S6 の束（[lane 1 の packet](archive/plans/2026-10-19-docs-contract-refresh.md) の S6。店の資料〈2026-10-18 の SD の写しと在庫 Excel〉で確かめる事実・owner に聞く束・外部仕様の確認日）、[backlog](backlog.md) に足した「次の docs の lane の候補」。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。
+docs の棚卸しの lane 1（PR #180、設計・dashboard・backlog・decision-log の Status を今の実装と決定に合わせる）と規則の lane（PR #179、D-124〜D-127）は着地した（2026-10-20）。次 = lane 2「file:行 の引用の書き換えと検査」（D-125〈repo 外の回答台帳 TD-326〉。正本と code の comment の引用は行番号を外して symbol・節 ID で引き、backlog の引用は起票の SHA を添え、時点の記録はそのまま。path が在る・行数の内・曖昧でないを検査する）。並行の段: 棚卸しの S6 の束（[lane 1 の packet](archive/plans/2026-10-19-docs-contract-refresh.md) の S6。店の資料〈2026-10-18 の SD の写しと在庫 Excel〉で確かめる事実・owner に聞く束・外部仕様の確認日）、[backlog](backlog.md) に足した「次の docs の lane の候補」。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。初回の導入の前に決め切るものは [導入の前の関門](#導入の前の関門)。
 
 active な lane の Plan Packet は `docs/plans/` の dated packet が正本（lane の branch は各 packet の `Branch` 行、現在地は helper status）。lane の起票・closeout はこの節へ lane ごとの行を足さない（D-097）。
 
 - SD を直接読む設計（PR #150、2026-10-07）は merge 済み。次 = 後続の「SD 直読みの runtime」の lane（PR #172、Draft で進行中。R3、[backlog](backlog.md) の該当項目。起票時に Final Review の P3 4 件を直し、L3 の前に packet の Contract Probe の確認を行う）、その後に取込み済みを `XZ_BKUP` へ移す (b) の lane（D-111 (1)(b)、backlog の該当項目）。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
 - 棚卸しと Z004 の業務 commit の次の runtime は D-118 の (b)（[backlog](backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」）。2026-09-22 の owner 決定の着手順（㉘ ①〜⑤）は D-118 で置き換わった。移した記録は [完了履歴](archive/harness-context/2026-09-30-Plans-completed.md) の「移した「次の行動」の段落」。
 
-設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせる）の結果を正本へ置き換える design lane は、PLU の書出し（PR #163、D-117）・棚卸しの数の置き場と在庫数の求め直し（PR #167、D-118）・単位・数量・原価の精度（PR #168、D-119）の 3 本が merge 済み。見直しで分けた残りの design lane 2 本、「日報の紙と意味づけ」（PR #173、D-120）と「売上の SD からの一括取込みと EJ の控えの閲覧」（PR #175、D-121）も 2026-10-18 に merge 済みで、runtime は [backlog](backlog.md) の「日報の紙の runtime」「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」の項目。runtime の順: 開発・試験 DB はリリースの前まで作り直してよいので（D-123、[22 §16](function-design/22-mnt-migration.md)）、棚卸しの数の置き場と在庫数の求め直しの runtime は原価の lane（vB）を待たない（(a) は PR #176 で 2026-10-19 に merge、残りは (b)）。原価の lane は店の答え（原価の税、repo 外の回答台帳 TD-297 の U6）を待つ。PLU 側の後続（SD を直接読む runtime の後に PLU の書出しの見直しの runtime）と、TD-284 の設計 lane（PR #174、2026-10-18 merge、D-122）の後続の「JAN の別名の runtime」（PLU の書出しの見直しの runtime と同じ lane か、その後）は [backlog](backlog.md) の各項目。デザインの刷新は v1.0 の前に入れる（機能が固まった後に画面を一新する。owner の決定 TD-296）。
+設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせる）の結果を正本へ置き換える design lane は、PLU の書出し（PR #163、D-117）・棚卸しの数の置き場と在庫数の求め直し（PR #167、D-118）・単位・数量・原価の精度（PR #168、D-119）の 3 本が merge 済み。見直しで分けた残りの design lane 2 本、「日報の紙と意味づけ」（PR #173、D-120）と「売上の SD からの一括取込みと EJ の控えの閲覧」（PR #175、D-121）も 2026-10-18 に merge 済みで、runtime は [backlog](backlog.md) の「日報の紙の runtime」「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」の項目。runtime の順: 開発・試験 DB はリリースの前まで作り直してよいので（D-123、[22 §16](function-design/22-mnt-migration.md)）、棚卸しの数の置き場と在庫数の求め直しの runtime は原価の lane（vB）を待たない（(a) は PR #176 で 2026-10-19 に merge、残りは (b)）。原価の lane の店の答え（原価の税、repo 外の回答台帳 TD-297 の U6）は TD-331 で出た（税抜き）。原価の lane は初回の導入の版の条件（[導入の前の関門](#導入の前の関門)）。PLU 側の後続（SD を直接読む runtime の後に PLU の書出しの見直しの runtime）と、TD-284 の設計 lane（PR #174、2026-10-18 merge、D-122）の後続の「JAN の別名の runtime」（PLU の書出しの見直しの runtime と同じ lane か、その後）は [backlog](backlog.md) の各項目。デザインの刷新は v1.0 の前に入れる（機能が固まった後に画面を一新する。owner の決定 TD-296）。
 
 D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: owner 2026-09-22の再確認。店は当面、用意済みのExcelシートで大まかな在庫管理を続けられるため、アプリのv1.0は自動在庫連動の完成まで待つ（先行導入版は出さない）。実機確認（番号印字が電子ジャーナルに載るか）は 2026-09-28 の訪店で済み、番号印字が電子ジャーナルに載り売上に影響しないことを確かめた。owner は 2026-10-11 に番号印字を採らないと決めた（[decision-log](decision-log.md) D-116）ので、番号印字は v1.0 の条件ではない。v1.0 の自動在庫連動に残る条件は、時点証拠 ADR を置き換えた [ADR](adr/2026-10-16-stocktake-count-placement.md)（D-118）の後続の runtime の (b)（[backlog](backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」。(a) は PR #176 で merge 済み）。
 
@@ -39,6 +39,19 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 ## ブロッカー
 
 次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃い（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）、設計（PR #154、2026-10-11、D-113）と単位の runtime（PR #158、2026-10-15）は merge 済み。残る原価の lane（C）は [backlog](backlog.md) の「原価の lane（C）」、Z004 と EJ の数量（P）は backlog の「単位の拡張の残りの申し送り」の項目、棚卸しの再開は D-118 の (b)（backlog の「棚卸しの数の置き場と在庫数の求め直しの runtime」）。
+
+## 導入の前の関門
+
+店の PC に入れて本物のデータが溜まり始めた後では直しにくいものを、初回の導入の前に決め切る（owner の決定、repo 外の回答台帳 TD-345）。各項目の中身は [backlog](backlog.md) の名前を挙げた項目に置く。
+
+- 関門（confirmed）:
+  1. 原価の lane の起点の migration（vB、[22 §16](function-design/22-mnt-migration.md)）を初回の導入の版に入れる（D-123 (4)。vB は行のある DB で止まるので、初回の版に無いと店の DB はその後の更新で止まる）。U6 は TD-331 で答えが出て、残る前提は U1。backlog の「原価の lane（C）」。
+  2. D-118 の (b)（D-070 で v1.0 の条件）。今年の年末の棚卸しは在庫 Excel を埋めれば終わる（TD-347）ので、年末に間に合わせる必要は無い。backlog の「棚卸しの数の置き場と在庫数の求め直しの runtime」。
+  3. backup の PC の外の控えと復元の予行（Draft の [PR #155](https://github.com/kosei-w90607/inventory-system-desktop/pull/155)、D-114）。他の機能の前提ではないので、導入の直前（店でアプリに本物のデータが溜まり始める前）まででよい。外の控えの USB は用意済み（TD-346）。間に合わないときの方針は未回答。backlog の「backup に、PC の外のコピーと復元の実証が運用として設計されていない」。
+  4. MSI の製品名と upgrade code の固定、`identifier` の確定（データの folder の名になり、変えると空の DB で起動する）、予行演習 M1〜M8 と店の PC の M9。backlog の「MSI の製品名と upgrade code の固定」「MSI の予行演習」。
+- 関門（candidate、owner が選んで足す）: 初期投入の手順（backlog の「初期投入の手順」）、操作ログの保持を 7 年程度へ（TD-348、backlog の「操作ログの保持を 7 年程度に延ばす」）、installer の種類を MSI に絞る（backlog の「MSI の製品名と upgrade code の固定」）。
+- 関門（precondition-dependent）: SD 直読み（PR #172）を初回の版に入れるのは、導入の初日からアプリで日報を取り込む場合（#172 より前の経路の取込みは精算回数が NULL のまま二重取込みの拒否の外に残る）。PLU をレジへ書くのは、PLU の書出しの見直しの runtime と repo 外の回答台帳の未回答の問い Q-055 の後（レジに書いたものは DB を戻しても戻らない）。
+- 導入の後でよいと確かめたもの: ECR+ のサービス終了（2028 年 12 月末予定）、二重起動・途中の電源断（対策済み）、v8 より後の migration を足す lane の義務（初回の版の後から当たる）。
 
 ## 製品の未決判断
 
