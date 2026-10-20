@@ -1,0 +1,465 @@
+# Plan Packet: 原価の lane（C）— 原価を 1/100 円の列にし、巻・cm を単位から外す起点の migration（vB）
+
+wave に属さない単独の lane（導入の前の関門 1。`docs/Plans.md` の `## 導入の前の関門`、owner の決定は repo 外の回答台帳 TD-345）。owner の決定 TD-355（2026-10-21）で、lane 2a（PR #183、docs の file:行 の引用の書き換え）の Plan Review と並べて起票した。設計は [共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1・D5（D-113・D-119）、[22](../function-design/22-mnt-migration.md) §16 の vB（MNT-03-D14）、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」、[51](../function-design/51-ui-product-form.md) UI-01b-D24 にあり、本 lane はその契約を実装する。branch は `agent/cost-lane-c`（main `6a25f63f` から）。新しい決定は D-128（本 commit。下の「owner の判断事項」）。本 run は起票（packet・Matrix・plan-first の正本の直し）と Draft PR までで、runtime の実装は plan-approved の後の別の run。
+
+**規模と手法（1 lane・1 PR のまま。実装は S1〜S7 の順に積み、S1〜S6 を 1 つの compile・回帰の検証の単位にする）**: 2026-10-21 に本 worktree（HEAD `6a25f63f`）で数えた（command と出力は下の AC の baseline と Scope の各表）。
+
+- 触る設計正本: plan-first（本 commit）で 6 file（decision-log・10・22・51・master-tables・backlog と Plans の pointer）、実装の PR の S7 で 20 file 前後（下の S7 の表。数は S7 の command の出力で決める）。
+- 画面: 原価を入力・表示する画面 9（商品登録・修正、価格改定、入庫と原価差分の dialog、廃棄、入庫・廃棄・棚卸しの記録詳細、商品一覧、在庫照会の詳細、価格の履歴）と、単位の select を持つ商品フォーム。新しい route・画面は無い。
+- migration: 1（vB）。
+- wire の型: 原価の field を持つ型 13（`CostDiff`・`DisposalItemInput`・`DisposalRecordDetailItem`・`ImportRow`・`PriceHistoryEntry`・`PriceRevisionInput`・`Product`・`ProductCreateRequest`・`ProductResponse`・`ProductUpdateRequest`・`ReceivingItemInput`・`ReceivingRecordDetailItem`・`StocktakeRecordDetailItem`）と、単位の enum `ProductStockUnit` の 1。command の名前と引数の数は変えない。内部の型（wire に出ない）は 6（`NewProduct`・`ProductUpdates`・`NewPriceHistory`・`NewReceivingItem`・`NewDisposalItem`・`ProductForStocktake`）。
+- 横断の約束（範囲・0・失敗の時点と順序・単位や種類の混在）がかかる経路は 12: 商品の create・update・価格改定・商品 CSV の preview と commit、入庫と廃棄の create、入庫の原価差分の検出、入庫・廃棄・棚卸しの記録詳細の読取り（行の金額と合計）、価格の履歴、在庫少の単位の並び、migration（vB）。ほかに test だけが呼ぶ旧本体（棚卸しの確定、`#[cfg(test)]` の時点証拠の確定）が同じ原価の関数を通る。下の「横断の約束」の表に Y1〜Y10 で置く。
+- 既存の code の hit（S1〜S6 の作業量の目安）: 原価の旧い名前を持つ Rust 34 file・TS 46 file、巻・cm の variant と文字列を持つ Rust 18 file・TS 36 file（Scope の各表の command）。
+
+分け方の判断（`1 lane のまま段に分ける` と `lane を分ける〈C1 原価の centi と vB、C2 巻・cm の除去〉` を比べた）: 分ける条件は、前の段だけが merge された main で (1) 店の画面と保存の値が壊れない (2) DB の列の名前と意味が食い違わない (3) 全 gate が緑、の 3 つ。巻・cm の除去は vB の手順 4（`products` の作り直しで CHECK を 10 個にする）で、22 §16 と D-119 (2) は「外すのはその起点だけで、今の DB に新しい migration で外すことはしない」と決めている。よって、vB を持つ lane が巻・cm の CHECK も持つ。C1（vB の全部と原価）を先に入れると、CHECK が `roll`・`cm` を拒むのに enum と画面の select が 12 個のまま残り、巻・cm を選んだ商品の保存が DB の CHECK の error で落ちる（(1) が破れる）。C2（enum と画面から巻・cm を外す）を先に入れるには vB が要り、vB は原価の 6 列の改名を同じ migration に持つので、原価の code が古い列名のまま壊れる（(3) が破れる）。vB を「改名だけ」と「CHECK だけ」の 2 本に割ると、作り直しの起点の migration が 2 本になり、D-119 (2) と、作り直しを要する起点を初回の導入の版に全部入れる条件（D-123 (4)）の範囲を広げる。原価の列の改名と意味の変更（1/100 円）を分ける切れ目は、改名だけが入った main で `_centi` の列に円の値が溜まり、後の段で値の変換を持たない vB の前提（D-119 (1)）が破れる。どの切れ目でも (1)〜(3) のどれかが破れるので分けない。初回の導入の版に vB が入る条件（導入の前の関門 1）は、1 lane のまま満たす。
+
+1 PR の大きさの目安: 書き換える test の多くは機械的な追随（struct の field 名の `_centi`、SQL の列名、円の fixture の値を 1/100 円の値へ、`cm` の fixture を `m` へ）で、振舞いの判断を含む新しい test は S1（vB）・S3（原価の上限と CSV の解析）・S5（原価の入力・表示・補助）・S6（10 個の一覧）に集まる。既存の test の分類（書き換える / 変えない / 期待を変える）と数える command は [Matrix](test-matrices/2026-10-21-cost-lane-c.md) の「既存の test の移し方」（T1〜T5）の 1 か所に置き、Scope の各段はそこを引く。
+
+## Workflow State
+
+- Phase: plan-draft
+- Risk: R3
+- Plan Commit: pending
+- Amendments: none
+- Coordinator: Opus 5.5 main session
+- Writer: Opus 5.5 subagent（起票は fresh context の Writer。実装の Writer は plan-approved の後に Coordinator が発注する）
+- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
+- Final Reviewer: Fable 5.1（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Review Minimum: 2
+- Human Gate: ready,merge,manual
+- Branch: agent/cost-lane-c
+
+遷移の記録:
+
+1. kickoff → spec-check（2026-10-21、起草役）: Coordinator の発注（導入の前の関門 1、TD-355）を Scope にし、規模を数えて 1 lane・1 PR のままと決め、Risk を R3 と記録した（下の Risk）。
+2. spec-check → design（2026-10-21、起草役）: 対象の設計正本は SPEC-UNIT-D1〜D3・D5・D6・D9〜D11 と「入力の上限と安全な整数の範囲」、22 §16（vB・作り直しの手順）と §19、master-tables の「単位と原価の精度の契約」、51 UI-01b-D22〜D24、61 UI-02-D7・D15、64 UI-05-D8、77 の新原価（案）、30・31・35 の原価の注記。設計の更新が要る点が 6 つあった（下の Design Readiness の「必要な設計成果物」）。
+3. design → plan-draft（2026-10-21、起草役、本 commit）: 上の 6 つを本 packet と同じ commit で正本に置いた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
+
+本 commit で変えた正本（plan-first）:
+
+- `docs/decision-log.md`: D-128（原価は税抜、巻・cm は vB で必ず外す、10 cm は刻みで検査は店主の答えの後）と、D-119 の `Superseded in part by: D-128` の行。
+- `docs/function-design/10-common-rules.md`: SPEC-UNIT-D1 の巻・cm の前提が成り立ったこと、D2 の理由、D5 の税の区分（未決 → 税抜）と表示の記号・入力の欄の初期値の文字列、更新履歴。
+- `docs/function-design/22-mnt-migration.md` §16: vB の番号の決め方、手順 2 の止まりの文（原因と直し方を名指す）、手順 4 の条件の分岐を外して §19 の写しの 3 列と §18 の規則を足したこと、止まった後の起動の画面、「確かめていない前提」（WebView の保存の置き場と確かめ方）、vB の test の文。
+- `docs/function-design/51-ui-product-form.md`: UI-01b-D22 の原価の lane の後の label と価格の節の説明、UI-01b-D24 の補助を開き直すと空から始まること、更新履歴。
+- `docs/db-design/master-tables.md`: `cost_price` の税の区分（税抜）、巻・cm の前提、vB の番号の決め方。
+- `docs/backlog.md`・`docs/Plans.md`: 原価の lane の項目と導入の前の関門 1・次の行動に packet への pointer と、揃った前提（U6・U1）の 1 句。lane の行は足さない（D-097）。
+
+## Owner Effort Budget
+
+- 介入回数上限: 6（既定）
+- 実働時間上限: 30 分（既定）
+- Plan Review round 天井: 3（既定）
+
+| 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
+|---|---|---|---|---|---|
+| 介入 | 6 | 0（起票の時点。TD-355 は本 lane の前の判断で数えない） | 3（L3 1〈owner の L3 用の DB の作り直しを含む 1 round〉、Ready 1、merge 1） | 3（Plan Review の round 天井の判断 1、L3 の 2 round 目 1、その他 1） | 6 = 0 + 3 + 3 |
+
+plan-approved は Coordinator が進める（TD-296 の 4a）。L3 が 2 round 目に入るか、Plan Review が round 天井に達するときは、その判断と上限の改定を同じ 1 回で諮る。owner は 2026-10-21 から数日は手が使いにくいので、L3 は Draft のまま溜め、作り直しの file の移動は owner の指示で Coordinator が行う（下の Data Safety）。
+
+既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
+承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
+
+## Risk
+
+Risk: R3
+
+Reason:
+DB の列（原価の 6 列の改名、`products` の作り直しで `stock_unit` の CHECK を 10 個に）、Tauri command の DTO と generated bindings（原価の field を持つ 13 型、`ProductStockUnit`）、operator の入力（原価の小数 2 桁、袋の値段 ÷ 入り数の補助、単位の select）を変える（`docs/DEV_WORKFLOW.md` Risk Tiers の R3 の行）。vB は原価の列を持つ 5 つの表に行の無い DB にだけ当たり、値を書き換えない（行のある DB は何も変えずに止まる）。止まった開発・試験 DB の作り直しは、22 §16 の作り直しの手順のとおり古い file を消さずに日付の付いた folder へ移す（D-123 でリリースの前まで包括で承認済み）ので、不可逆な local の片付けにならない（R4 に当たらない。backlog の項目の最後の文の条件）。本番の DB は無い（`docs/project-memory.md`）。実店舗データの露出は無い。
+
+required gate の green / red: gate の定義は変えない。実装は bindings と traceability の再生成を伴い、落とせば既存の required gate（Rust・bindings・traceability・frontend）が red になる（下の Registration / Generation Obligations）。S7 の正本の同期で `docs/project-profile.md`（`scripts/ci/classify-changes.sh` の workflow の一覧に入る file。今の「Fabric stock can use `cm`」の 1 行が巻・cm を外した後の事実と合わなくなる）を直すので、実装の PR の分類は `workflow=true` になり、共有の workflow の suite が走る。よって Final Review Minimum 2（workflow gate の Double Audit）。plan-first の本 commit は `docs/project-profile.md` に触れない（下の検証の分類の出力）。
+
+## Goal
+
+Goal Invariant:
+
+### 最小完了条件
+
+- 新しい版を、商品と原価の記録の無い DB（作り直した開発・試験 DB、初回の導入の空の DB）で起動すると vB が当たり、原価の 6 列が `_centi` の名前になり、`products.stock_unit` の CHECK が個数の単位 9 個と `m` になる。商品か原価の記録のある DB では何も変えずに止まり、起動の画面が原因と直し方（作り直しの手順）を名指しする（22 §16 MNT-03-D14、D-127 (2)）。
+- 原価を持つ全ての入口（商品の登録・修正・価格改定・商品 CSV、入庫・廃棄）が 1/100 円の整数を `0`〜`99999999` で受け、画面は小数 2 桁までの円で入力・表示し（`83.33` → 8333 → `¥83.33`）、入庫・廃棄・棚卸しの行の金額と合計は 1/100 円の原価から求める（SPEC-UNIT-D5・D6）。
+- 商品フォームの原価の欄に「袋の値段から出す」の補助があり、個数の単位の商品で `1000` 円 ÷ 12 → `83.33` を入れる（UI-01b-D24）。原価の label は税抜（D-128）。
+- 単位の一覧が 10 個（個数の単位 9 個と `m`）になり、enum・bindings・formatter・商品 CSV の `在庫単位`・商品フォームの select・在庫少の単位の並び・seed が同じ一覧を使う（SPEC-UNIT-D1・D10）。
+
+### 失敗定義
+
+- vB が行のある DB で何かを変える、止まったときに原因と直し方を出さない、§19 の写しの 3 列・CHECK・index・外部キーのどれかを作り直しで落とす。
+- 円の値が 1/100 円の列・wire に入る経路が残る（変換なしで円の整数を `_centi` に渡す、`i128::from(円) * 100` の呼出しが原価の列の値に残る）、または 1/100 円の値を円として出す画面が残る（`¥8,333` と出る）。
+- 浮動小数を通る原価の解析・補助の割り算が残る（`0.29` → 28、`1000` ÷ 12 → 83.34）。
+- `roll`・`cm` を受ける経路（enum の variant、bindings、商品 CSV の語、select の選択肢）が残る、または DB の CHECK と enum の一覧が食い違う。
+- 既存の test を、期待を弱めて通す（Matrix の T1〜T5 の「期待を変える」以外で `assert` の右辺・件数・message を変える）。
+
+### 非目的
+
+- 売価の精度（円の整数のまま。SPEC-UNIT-D5 の不採用 (d)）。在庫・数量の契約（SPEC-UNIT-D2〜D4 は変えない。10 cm の刻みの検査は店主の答え〈Q-098〉の後）。
+- 棚卸しの評価額の出力の文に税抜と書くこと、棚卸し記録詳細のロス原価を BIZ へ移すこと（D-118 の (b)。本 lane は単位を 1/100 円に合わせるだけ）。
+- 初期投入の手順（backlog の「初期投入の手順」）。Z004・EJ の数量（P、SPEC-UNIT-D8）。
+- 既存の file:行 の引用の書き換え（lane 2a、PR #183）。
+
+Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
+
+## Ordinary Operation
+
+設計を含む変更の実装なので、開発の DB の更新と、店の通常の操作列を置く。例の値は説明用の合成の値。本 lane の merge の後に下の列が成り立つ。棚卸し（計数と確定）は停止中のまま（D-118 の (b) の後）で、**この文書を完了できる**ことと、**棚卸しの評価額を税抜と書いて出す通常運用を達成できる**ことは別（後者は (b)）。
+
+| 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
+| --- | --- | --- | --- | --- |
+| 商品の行のある開発・試験 DB（owner の L3 用の DB） | 新しい版を起動する | 起動が止まり、「データベースの準備に失敗」の文に「商品か原価の記録がある DB はこの版へ移せません。原価を 1/100 円で持つ版は空の DB から始めます。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）: products・…」が添えられる。DB は変わらない | 作り直しの手順（アプリの data の folder を `%APPDATA%`・`%LOCALAPPDATA%` とも丸ごと消さずに移す）の後に起動すると、空の DB で開く | 22 §16、D-123、Contract Probe P1・P5 |
+| 空の DB（作り直しの後） | 商品登録で単位 `玉`・売価 `100`・原価 `83.33` の商品を登録する | 保存できる。商品一覧・在庫照会の詳細の原価が `¥83.33` | 保存できる | SPEC-UNIT-D5 |
+| 商品登録の画面（単位 `個`） | 原価の下の「袋の値段から出す」を開き、袋の値段 `1000`・入り数 `12` で「原価に入れる」 | 原価の欄が `83.33` になる。保存の request に袋の値段と入り数は入らない。閉じて開き直すと 2 つの欄は空 | 保存できる | UI-01b-D24 |
+| 商品登録の画面 | 単位の select を開く | 個・枚・本・袋・箱・組・セット・玉・丁・m の 10 個（巻・cm が無い）。`m` を選ぶと補助が閉じて隠れ、原価の label が `原価（税抜、必須、1 m あたり）` | — | SPEC-UNIT-D1、UI-01b-D22 |
+| 上の `玉` の商品 | 入庫（数量 `3`・原価 `83.33`）を保存する | 記録詳細の原価 `¥83.33`・原価小計 `249.99 円`・原価合計 `¥250` | 保存できる | SPEC-UNIT-D6 |
+| 同じ商品 | 入庫（数量 `1`・原価 `85`）を保存する | 保存の後に原価差分の dialog（マスタ原価 `¥83.33`・今回の実原価 `¥85`）。「マスタ原価をこの実原価に更新する」で商品の原価が `¥85`、価格の履歴に `¥83.33 → ¥85` | — | UI-02-D15、31 §12.3 |
+| 同じ商品（原価 `¥85`・売価 `100`） | 価格改定で新売価 `110` を入れる | 現掛率 `85.0`、新原価（案）`93`（`floor(110 × 8500 ÷ 10000) × 100` = 9300） | 確定できる | 77 の新原価（案） |
+| 商品 CSV（原価 `83.33`・在庫単位 `玉` の行と、在庫単位 `巻`・`cm` の行） | 取り込む（preview） | 前の行は原価 8333 で取り込める。後の 2 行は `在庫単位` の行の error | — | SPEC-UNIT-D10 |
+
+失敗と再試行: 原価の欄の入力が `^[0-9]+(\.[0-9]{1,2})?$` に合わない（小数 3 桁、指数、符号、空）か上限 `999999.99` を越えると、その欄に入力の error（`原価は0以上で、小数は2桁までで入力してください`・`原価が大きすぎます`）を出し、保存の command を呼ばない。UI を通らない command は BIZ が同じ上限で `ValidationFailed` にし、何も書かない（TX の中なら TX 全体を戻す）。vB が止まった DB は何も変わらないので、作り直すまで旧版でそのまま開ける（その起動の最初の migration で止まったとき）。
+
+Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
+
+## owner の判断事項
+
+無い。製品の振舞いの判断は D-113・D-119・D-123 と D-128（店の答え TD-331・TD-332、owner の決定 TD-345・TD-355）で決まり、正本にある。本 lane で owner が答えるのは Human Gate（L3〈owner の L3 用の DB の作り直しの指示を含む〉、Ready、merge）だけ。
+
+前提の答え（claim として使う。Coordinator の発注の要旨）: U6（原価の税の区分）= 税抜き（TD-331、2026-10-20）。U1 = 2026-10-18 版の在庫 Excel でも巻 0 行・cm 0 行（repo 外の調査、2026-10-20）。開発・試験 DB の作り直しは承認済み（TD-297、古い file は消さずに移す。D-123 でリリースの前まで包括）。
+
+起票時に起草役が決めたこと（設計の値を変えない配布の割当てと細部。Coordinator が覆せる。正本へは本 commit で置いた）:
+
+- D-128 を新しい決定にした（D-119 に置換えの行を足すだけにしなかった）理由: U6 の答えは D-119 (5) の既定（原価の lane を起票しない）を置き換え、U1 の答えは (2) の前提を満たし、10 cm の刻みの答えは (4) の理由を置き換える。3 つを 1 つの決定にまとめ、10・22・51・master-tables が 1 つの ID で引けるようにした。
+- vB の手順 4 の条件の分岐を外した（D-127「継ぎ足さない」の問い「この変更で不要になる記述・条件は無いか」）。同じく不要になった記述: SPEC-UNIT-D1 の「起票の前に確かめる。0 でなければ外さず聞き直す」、D5 の「答えが無い間は原価の lane を起票しない」、master-tables の「税抜か税込かは決めていない」、Plans の「残る前提は U1」、backlog の「起票時に決める」の 2 件（決めた先を書いた）。
+- 止まりの文（22 §16 手順 2）を §19 と同じ形で名指しにした（D-127 (2)。22 §16 は `作り直し` と表名を含めるとだけ書いていた）。
+- 原価の表示の記号（D5）: 正本の例は `1,000 円` の形だったが、今の画面は原価を `¥1,000` の形で出す（`src/features/products/components/ProductTable.tsx` の `yenFormatter`、`src/features/inventory-records/types.ts` の `formatYen`）。数の規則（割り切れれば円の整数、そうでなければ小数 2 桁）だけを正本の契約にし、記号は画面の今の形のまま、と D5 に書いた。入力の欄の初期値の文字列（`83.33`）も同じ規則で決めた。
+- UI-01b-D24 の「開き直すと空」: D-119 の Matrix にだけあった期待（backlog の「起票時に決める」(1)）を正本に置いた（保存しない値を画面に残すと、別の商品の袋の値段で原価を入れうる）。
+- 棚卸し記録詳細のロス原価（今は画面が `|差異| × 評価原価` を number で掛ける。35 §20.5a の既知の不整合）: 本 lane は単位だけを合わせ、`BigInt(|差異|) × BigInt(評価原価(1/100 円))` を 1/100 円の十進の文字列にして入庫の記録詳細と同じ `formatCentiYen` で出す（1/100 円の後は number の積が安全な整数の範囲を越えうる: `99999999 × 999999999`）。基準数量で割ることと BIZ へ移すことは (b)。正本へは S7 で 35 §20.5a の「範囲の外」の段に 1 文を足す。
+
+店主に新しく聞く必要がある事項: 無い（10 cm の刻みを検査するかの問い Q-098 は本 lane の振舞いに効かない）。
+
+## 横断の約束（DB・wire に出す値ごとに、どこが保証するか）
+
+symbol は 2026-10-21 の HEAD `6a25f63f` の現物。Contract Ledger と Matrix はこの表の # を引く。
+
+| # | 値（DB の列 / wire） | 範囲と、保証する所 | 0 と符号 | 失敗の時点と順序 | 単位・種類の混在 |
+|---|---|---|---|---|---|
+| Y1 | 原価（DB の 6 列 `*_centi`、wire の 13 型の原価の field） | 1/100 円の整数、`0`〜`99999999`（`constants.rs` の新しい定数 `MAX_COST_PRICE_CENTI`。今の `MAX_COST_PRICE` 円 `999_999` を置き換える）。BIZ の検証: `product_service.rs` の `validate_create_request`・`validate_update_request`・`revise_product_price`・商品 CSV の preview と commit（`price_range_error` の原価の呼出し）、`receiving.rs`・`disposal.rs` の明細の検証。画面も同じ上限（`src/lib/unit-quantity.ts` の新しい定数 `MAX_COST_PRICE_CENTI`） | 0 を受ける。負は今の文（`原価は0以上で入力してください`・明細の文）で拒む | DB を見ない検証の段で `ValidationFailed`（`原価が大きすぎます`・`明細{n}: 原価が大きすぎます`）。何も書かない。商品 CSV は行の error、commit は TX の中で再検証して TX 全体を戻す（BIZ-01-D8） | 原価は価格の基準数量あたり（個数 1、`m` は 1 m）。単位に依らず同じ上限 |
+| Y2 | 原価の入力の文字列 → 1/100 円 | `^[0-9]+(\.[0-9]{1,2})?$`（前後の空白を除いた文字列）を、浮動小数を通さず整数部 × 100 + 小数部（右を 0 で埋めた 2 桁）にする。TS は `src/lib/unit-quantity.ts` の新しい関数 1 つ（商品フォーム・価格改定・入庫・廃棄・補助の袋の値段が使う）、Rust は商品 CSV の `原価` の列の解析 1 つ（`i64` の checked の演算） | `0`・`0.00` は 0 で受ける | 合わなければその欄の入力の error（TS）・行の error `原価が不正です`（CSV、今の文）。丸めない | — |
+| Y3 | 原価の表示 | 割り切れれば円の整数、そうでなければ小数 2 桁、記号は画面の今の形（`¥`）。TS の新しい formatter 1 つ（`src/features/stock-inquiry/lib/format-stock-display.ts` の今の `formatCentiYen` の隣）。入力の欄の初期値は同じ規則で記号と桁区切りを付けない | `¥0` | 読取りは範囲で拒まない（共通規則 (d)） | — |
+| Y4 | 行の金額（`line_cost_centi`・`line_loss_cost_centi`、十進の文字列）と円の合計（`total_cost`・`total_loss_cost`） | `biz::unit_amount::cost_line_centi` に DB の 1/100 円を `i128::from` で渡す（今の `i128::from(円) * 100` の 5 か所: `list.rs` の 2、`receiving.rs`・`disposal.rs`・`stocktake_service.rs` の各 1。`#[cfg(test)]` の `time_evidence.rs` も同じ）。合計は `cost_total_yen` と `check_safe_integer`（今のまま） | 0 は 0 | 合計が `±9007199254740991` の外なら保存の前に `ValidationFailed`（`合計金額が大きすぎます`、今のまま） | 基準数量で割る（今のまま） |
+| Y5 | 袋の値段 ÷ 入り数（UI だけ） | 袋の値段は Y2 の規則、入り数は 1〜`9999999` の整数。`P ÷ n` を商 q・余り r で `2r >= n` なら q + 1（TS の純関数 1 つ）。結果は P 以下なので Y1 の上限を越えない | 入り数 0 は error | 入力の error で原価の欄を変えない | 個数の単位の商品だけに出す |
+| Y6 | 原価差分（`CostDiff` の `master_cost_price_centi`・`received_cost_price_centi`） | 1/100 円どうしの完全一致で比べる（31 §12.3）。COMMIT の後に検出し、保存に影響させない（今のまま） | — | 読取りの失敗は空の配列（今のまま） | — |
+| Y7 | 入庫・廃棄の fingerprint の item 行の原価 | 1/100 円の整数の十進の文字列（31 §12.8。値の意味だけが変わり、組み立ての code は field 名の追随） | — | — | — |
+| Y8 | 新原価（案）と現掛率（価格改定の画面） | 新原価（案）= `floor(新売価 × 現原価(1/100 円) ÷ (現売価 × 100)) × 100`、現掛率 = `現原価(1/100 円) ÷ (現売価 × 100)` を % の小数 1 桁（77）。number の積は `999999 × 99999999` 以下で安全な整数の範囲（共通規則 (b)） | 現売価 0 は今どおり（現原価を初期値、掛率 `—`） | 案が上限を越えたら欄の error（今のまま） | — |
+| Y9 | 単位の code（`products.stock_unit`、wire `ProductStockUnit`） | 10 個（`pcs` `sheet` `hon` `bag` `box` `kumi` `set` `ball` `cho` `m`）。DB の CHECK（vB の手順 4）と enum `ProductStockUnit::ALL` が同じ一覧（vB の test で止める）。商品 CSV の `在庫単位` は 10 個の code と 10 個の表示の語、在庫少の並びは `ALL` を `stock_unit_kind` で 9 と 1 に分ける | 空の `在庫単位` は `pcs`（今のまま） | 一覧に無い値は、CSV は preview の行の error、DB の読取りは `parse_stock_unit` の error（今のまま） | 個数 9・長さ 1 |
+| Y10 | vB の起点の検査 | `products`・`receiving_items`・`disposal_items`・`stocktake_items`・`price_history` を別々に数え、1 行でもあれば止まる（22 §16 手順 2） | — | 何かを変える前に ROLLBACK し、`foreign_keys` を戻し、版を記録せず `MigrationFailed`（手順 2 の文と行のある表名の全部） | — |
+
+## Scope
+
+本 lane が変える file と目的（symbol は 2026-10-21 の HEAD `6a25f63f`）。実装は S1 → S7 の順に積むが、S1〜S6 は 1 つの compile・回帰の検証の単位にする。理由: S1 で列の名前を変えると S2 で SQL を直すまで原価を読む test が全部落ち、S4 で wire の field 名を変えると S5 で TS を直すまで typecheck が落ち、S6 で enum から variant を外すと fixture を直すまで compile が通らない。途中の段は Test Plan の targeted tests のうち、その段の module の test で進み具合を見る。S6 の終わりで AC1〜AC10 を全部通し、S7（docs）の後に AC9 の gate をもう一度通す。既存の test をどう移すかは Matrix の「既存の test の移し方」（T1〜T5）を引く。着手時に各表の command を逐語で回し、表と違えば表を直してから進める（2026-10-17〜19 の数え方と今の base の差を埋めた先例: 下の T1）。
+
+### 設計正本（本 packet の commit で済み）
+
+上の「本 commit で変えた正本」。S7 で、実装した範囲の `proposed・未実装` を現行の記述に直す。
+
+### S1 migration vB
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| migration vB | 22 §16 の vB の手順 1〜6（MNT-03-D14）。関数は `pub(crate)`。`foreign_keys` の退避と復元、COMMIT・ROLLBACK は共有の helper（`db/migration_tx.rs` の `commit_transaction`・`rollback_after_error`・`restore_foreign_keys`）だけを使う（MNT-03-D1）。手順 4 の `products_new` は vB の時点の `products`（v9 の後: v8 の列と §19 の写しの 3 列、`stock_range_high` の列の CHECK）を写し、`stock_unit` の CHECK を 10 個にする。index は `idx_products_jan_code`・`idx_products_department_id`・`idx_products_is_discontinued`（と、その時点で `products` にあるほかの index。着手時に `rg -n 'ON products' src-tauri/src/db` で数え直す）を作り直す。§18 の migration が先に merge されていれば §18 の規則（trigger の消去と作り直し）を入れる | `src-tauri/src/db/schema_v{N}.rs`（新設。N は merge の時点の次の番号。起票の時点の最大は v9: `db/migration.rs` の `migrations()` の `schema_v9::apply_v9_stock_ledger`）、`src-tauri/src/db/mod.rs`（module の宣言）、`src-tauri/src/db/migration.rs` の `migrations()`（登録。description は `原価を1/100円の列へ、単位から巻・cmを外す（作り直しの起点）`） | MNT-03-D1 の構造の test（`migration.rs` の、migration の file を `include_str!` で列挙して共有の helper だけを使うことを確かめる test）の列挙に新しい file を足す。`expected_tables` は変えない（表を足さない） |
+| 既存の migration の test（版の期待・migrate の呼び方・開き直し・CHECK の一覧） | Matrix の T1 のとおり（新しい番号へ書き換える 12 行、`migrate_up_to(&conn, 9)` に替えて期待を変えない 8 か所、呼び方か期待を変える 2 か所、変えない所）。v8 の履歴の test の 2 つは T4。`migrate_up_to` は (a) の lane が足した test だけの helper（`migration.rs` の `pub(crate) fn migrate_up_to`）をそのまま使う | `src-tauri/src/db/migration.rs`・`src-tauri/src/db/schema_v2.rs`・`src-tauri/src/db/schema_v8.rs`・`src-tauri/src/db/schema_v9.rs` の test | 並走の §17（PR #172）・§18 の lane も版の期待の行を書き換える（下の所有表） |
+| 新しい test | Matrix の B1〜B9 | `schema_v{N}.rs` の test | — |
+| 作り直しの手順の起動の test | 22 §16 の「テスト」の作り直しの手順の (i)(ii)(iii) と対照（一時の `{app_data}` と作業フォルダを `prepare_database_with_init` に渡す）。Matrix の R1〜R4 | `src-tauri/src/lib.rs` の test（`prepare_database_with_init` を呼ぶ既存の test の隣。着手時に `rg -n 'prepare_database_with_init\(' src-tauri/src/lib.rs` で置き場を決める） | — |
+
+### S2 DB の列名と内部の型（repo・seed・test の support）
+
+数える command（着手時に逐語で回す）: `rg -l -w 'cost_price|valuation_cost_price|old_cost|new_cost|old_cost_price|new_cost_price|master_cost_price|received_cost_price|MAX_COST_PRICE' src-tauri/src src-tauri/tests | sort`（起票の時点で 34 file）。
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| SQL の列名 | 6 列を `_centi` で読み書きする | `src-tauri/src/db/product_repo.rs`（`products.cost_price`、`price_history.old_cost`・`new_cost`）、`receiving_repo.rs`・`disposal_repo.rs`（明細の `cost_price`）、`stocktake_repo.rs`（`valuation_cost_price` と `ProductForStocktake` の読取り）、`sales_repo.rs`（test の商品の INSERT） | 各 repo の test。`#[cfg(test)]` の `db/schema_time_evidence.rs`（`stocktake_items` を作り直す SQL が `valuation_cost_price` を写す。vB の後の DB に当てるので `_centi` へ）と `db/test_support.rs` |
+| 内部の型の field | `NewProduct.cost_price`・`ProductUpdates.cost_price`・`NewPriceHistory.old_cost`/`new_cost`・`NewReceivingItem.cost_price`・`NewDisposalItem.cost_price`・`ProductForStocktake.cost_price` を `_centi` に | 上の repo の struct 定義 | 構築する所: `rg -n -w 'cost_price:' src-tauri/src src-tauri/tests`（起票の時点で 81 行・22 file。production の構築と test の fixture の両方）。値は円の fixture を 1/100 円の値へ書き換えるか（期待の金額が変わる所は Matrix の T2）、意味が問われない fixture は値を変えない |
+| demo の seed | 原価を `selling_price as f64 * 0.6` の円から、浮動小数を通さない 1/100 円 `selling_price * 60` へ（同じ値の 100 倍）。生地の部門の単位 `cm` を `m` に | `src-tauri/src/seed_demo.rs` | `src-tauri/tests/seed_test.rs` の `stock_unit = 'cm'` の 2 か所を `'m'` に（在庫少の閾値の条件。期待は変えない） |
+
+### S3 BIZ の原価
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| 上限の定数 | `MAX_COST_PRICE: i64 = 999_999` を `MAX_COST_PRICE_CENTI: i64 = 99_999_999` に置き換える（名前に単位を付け、古い読み手を compile error で止める。D5 の `_centi` と同じ理由） | `src-tauri/src/constants.rs` | 使う所: `product_service.rs`・`receiving.rs`・`disposal.rs`（`rg -n -w 'MAX_COST_PRICE' src-tauri/src` の production の行）。`schema_v8.rs` の自分の定数 `MAX_COST_PRICE`（v8 の履歴の円の上限）は変えない |
+| v8 の上限の test の原価の行 | `test_v8_req903_limits_match_runtime_constants` の `assert_eq!(MAX_COST_PRICE, constants::MAX_COST_PRICE)` を `assert_eq!(MAX_COST_PRICE * 100 + 99, constants::MAX_COST_PRICE_CENTI)`（v8 の円の上限 `999999` と今の上限 `999999.99` 円が円の桁で同じことを止める。共通規則「掛ける lane」の「桁が増えるだけで、円での上限は同じ桁」） | `src-tauri/src/db/schema_v8.rs` の test | Matrix の T4 |
+| 商品の検証 | create・update・価格改定・商品 CSV の preview と commit の原価の上限を `MAX_COST_PRICE_CENTI` で検査する（文は今のまま） | `src-tauri/src/biz/product_service.rs`（`price_range_error` の原価の呼出し 3 と commit の `import_row_commit_error`） | 既存の上限の test（`1_000_000` で `原価が大きすぎます` を期待する case: `rg -n '1_000_000' src-tauri/src/biz/product_service.rs`）は、1/100 円の境界（`99_999_999` は受け、`100_000_000` は error）に書き換える（Matrix の T2。境界の意味は変えない） |
+| 商品 CSV の `原価` | `row.fields.get("原価").and_then(|v| v.parse::<i64>().ok())` を、Y2 の規則で 1/100 円にする関数に替える（`83.33` → 8333、`1000` → 100000、`83.333`・`1e3`・`-1`・空 → `原価が不正です`）。`ImportRow.cost_price` → `cost_price_centi` | `product_service.rs` の商品 CSV の preview（必須の列 `原価` の読取り）と `ImportRow` | `src-tauri/src/io/product_csv_importer.rs` は文字列のまま渡す（変えない）。CSV の test の原価の値の期待（Matrix の T2） |
+| 入庫・廃棄の明細 | 原価の上限を `MAX_COST_PRICE_CENTI` で。行の金額は `cost_line_centi(i128::from(item.cost_price_centi), …)`（`* 100` を外す）。原価差分は 1/100 円どうしで比べ、`CostDiff` の field を `master_cost_price_centi`・`received_cost_price_centi` に | `src-tauri/src/biz/inventory_service/receiving.rs`（`ReceivingItemInput`・`CostDiff`・明細の検証・行の金額・差分の検出）、`disposal.rs`（`DisposalItemInput`・明細の検証・行の金額） | `receiving.rs` の `cost_diffs` の test（`master_cost_price` 500・`received_cost_price` 501 の期待）は 1/100 円の値で同じ形に（Matrix の T2） |
+| 記録詳細の行の金額 | `list.rs` の入庫・廃棄の記録詳細の 2 か所で `* 100` を外す | `src-tauri/src/biz/inventory_service/list.rs` | 記録詳細の test の金額の期待（Matrix の T2） |
+| 価格改定・価格の履歴 | `PriceRevisionInput.new_cost_price` → `new_cost_price_centi`、`PriceHistoryEntry.old_cost_price`/`new_cost_price` → `_centi` | `product_service.rs`（`PriceRevisionInput`）、`product_repo.rs`（`PriceHistoryEntry`） | 価格改定の test |
+| 棚卸し（旧本体、test だけが呼ぶ） | 確定時評価原価を `valuation_cost_price_centi` で書き読みし、評価額の `cost_line_centi` に `* 100` を付けずに渡す | `src-tauri/src/biz/stocktake_service.rs`、`#[cfg(test)]` の `stocktake_service/time_evidence.rs` | 旧本体と時点証拠の test の評価額の期待（Matrix の T2。円の原価 a を 1/100 円の `a * 100` で入れれば評価額は今と同じ） |
+| 商品の型 | `Product.cost_price`・`ProductCreateRequest.cost_price`・`ProductUpdateRequest.cost_price` を `_centi` に。BIZ-01-D7 の更新の log の key（`cost_price`）も `cost_price_centi` に | `product_repo.rs`（`Product`）、`product_service.rs`（Request の 2 つと update の log） | `product-update-patch-contract.test.ts` の field の一覧（S5） |
+
+### S4 wire と bindings
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| 13 型の原価の field 名 | S2・S3 で変えた field が specta で `_centi` の名前になる。`plu_export_cmd.rs` の `ProductResponse.cost_price` も `_centi` に | `src-tauri/src/cmd/plu_export_cmd.rs`（`ProductResponse` と変換）、ほかは S2・S3 の struct | `cmd` の test（`inventory_cmd.rs`・`sales_cmd.rs`・`csv_import_cmd.rs`・`plu_export_cmd.rs` の fixture） |
+| bindings | `cd src-tauri && cargo run --bin generate_bindings` で `src/lib/bindings.ts` を再生成する（手で直さない）。`ProductStockUnit` も S6 の後に 10 個の union になる | `src/lib/bindings.ts` | AC6 |
+
+### S5 画面の原価（入力・表示・補助）
+
+数える command: `rg -l -w 'cost_price|valuation_cost_price|old_cost_price|new_cost_price|master_cost_price|received_cost_price|MAX_COST_PRICE' src | sort`（起票の時点で 46 file。bindings を含む）。
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| 原価の解析・表示・補助の関数（TS） | Y2 の解析（`parseCostInput`。結果は 1/100 円 / `"too_large"` / null）、Y3 の表示（原価の formatter と、入力の欄の初期値の文字列の関数）、Y5 の補助（`unitCostFromPack`）、定数 `MAX_COST_PRICE_CENTI = 99_999_999`（今の `MAX_COST_PRICE` を置き換える）。売価は今の `parsePriceInput` のまま | `src/lib/unit-quantity.ts`、`src/features/stock-inquiry/lib/format-stock-display.ts`（formatter） | `src/lib/unit-quantity.test.ts` の `MAX_COST_PRICE` の期待（`999999`）は `MAX_COST_PRICE_CENTI` の `99999999` へ（Matrix の T4）。新しい golden は Matrix の C10〜C13 |
+| 商品フォーム | 原価の欄を Y2 で読み（create・update）、修正の画面の初期値を Y3 の初期値の文字列にする。label と価格の節の説明を UI-01b-D22（原価の lane の後）の文に。UI-01b-D24 の補助（個数の単位の商品だけ。開き直すと空、`m` に変えたら閉じて隠す） | `src/features/products/components/ProductForm.tsx`、`src/features/products/lib/product-form-request.ts`（`readPrice` の原価の呼出し 2 と request の field） | `ProductForm.test.tsx`・`product-form-request.test.ts`・`product-update-patch-contract.test.ts`（field の一覧に `cost_price_centi`）。新しい RTL は Matrix の C14 |
+| 価格改定 | 現原価・新原価（案）・現掛率を Y8 の式で求め、新原価の欄を Y2 で読む。表示は Y3 | `src/features/products/components/PriceRevisionTable.tsx`、`src/features/products/lib/price-revision-math.ts` | `PriceRevisionPage.test.tsx`、`usePriceRevisionList.test.tsx`。77 の例（現原価 8333・現売価 100・新売価 110 → 9100）を Matrix の C15 |
+| 入庫 | 行の原価の初期値を商品の原価の Y3 の初期値の文字列に、原価の欄を Y2 で読み `cost_price_centi` で送る | `src/features/receiving/lib/receiving-row-utils.ts`・`receiving-request.ts`・`ReceivingPage.tsx`・`types.ts` | `receiving-request.test.ts`・`receiving-row-utils.test.ts`・`ReceivingPage.test.tsx`・`src/lib/request-helpers.test.ts` |
+| 原価差分の dialog | マスタ原価・今回の実原価を Y3 で出し、更新は `new_cost_price_centi: diff.received_cost_price_centi` で送る | `src/features/receiving/CostDiffDialog.tsx` | `ReceivingPage.test.tsx` の `cost_diffs` の case |
+| 廃棄 | 行の原価の初期値・欄の解析・候補の一覧の原価の表示（今の `formatYen(candidate.cost_price)`）・入力画面の合計の BigInt の twin（共通規則 (c)。原価を 1/100 円のまま `BigInt` で掛ける） | `src/features/disposal/lib/disposal-row-utils.ts`・`disposal-request.ts`・`DisposalPage.tsx`・`types.ts` | `disposal-request.test.ts`（1/100 円の原価の BigInt の例: 共通規則 (c) の `10999998790000049`）、`DisposalPage.test.tsx` |
+| 記録詳細 | 入庫・廃棄の明細の原価を Y3 で（行の金額は今の `formatCentiYen` のまま）。棚卸しの明細の評価原価を Y3 で、ロス原価を上の「起票時に起草役が決めたこと」の BigInt の形で | `src/features/inventory-records/ReceivingRecordDetailPage.tsx`・`DisposalRecordDetailPage.tsx`・`StocktakeRecordDetailPage.tsx` | 各 test の原価の表示の期待（Matrix の T2） |
+| 商品一覧・在庫照会の詳細・価格の履歴 | 原価の表示を Y3 の formatter に | `src/features/products/components/ProductTable.tsx`・`src/features/stock-inquiry/components/StockDetailContent.tsx`・`src/features/products/components/PriceHistorySection.tsx` | 各 test |
+| test の fixture | 原価の field 名を `_centi` に（値は表示の期待に合わせる） | `src/features/products/lib/test-fixtures.ts`・`src/features/stock-inquiry/lib/test-fixtures.ts` ほか上の command の test file | Matrix の T2 |
+
+### S6 巻・cm を単位から外す
+
+数える command: Rust `rg -n -w 'Roll|Cm' src-tauri/src src-tauri/tests`（起票の時点で 21 行・5 file）と `rg -l "[\"']cm[\"']|[\"']roll[\"']" src-tauri/src src-tauri/tests | sort`（17 file）、TS `rg -l "[\"']cm[\"']|[\"']roll[\"']|\broll:|\bcm:" src | sort`（36 file）。
+
+| 対象 | 変更 | 作る所 | 読む所・test |
+|---|---|---|---|
+| enum | `ProductStockUnit` から `Roll`・`Cm` を外し、`ALL` を `[Self; 10]` に、`as_str` の 2 行を外す | `src-tauri/src/db/product_repo.rs` | `finite_enum_contract_tests.rs`（`ALL` の数と対の表）、`unit_amount.rs` の `stock_unit_kind`・`price_basis_quantity` の match と golden（`(U::Roll, Count, 1)`・`(U::Cm, Length, 100)` の 2 行を外す） |
+| 商品 CSV の語 | `stock_unit_label` の 2 行を外す（`巻`・`cm` を受けなくなる。`normalize_stock_unit` は `ALL` から引くので自動） | `src-tauri/src/biz/product_service.rs` | 12 個の code と語が通る test（`("roll", "巻")` を含む表）を 10 個に、`roll`・`巻`・`cm` が行の error になる case を足す（Matrix の U4） |
+| 在庫少の並び | `ALL` を `stock_unit_kind` で分ける今の形のまま（9 と 1） | 変えない | `product_service.rs` の 2 つの並びが合わせて 12 個の test を 10 個に（`vec![ProductStockUnit::M, ProductStockUnit::Cm]` の期待を `vec![ProductStockUnit::M]` に）、`inventory_cmd.rs` の「12 個の単位を 1 つずつ在庫 0 で置くと 12 個とも出る」を 10 個に（Matrix の T3） |
+| v8 の CHECK の test | `test_v8_req903_check_codes_match_enum` を、v8 の CHECK を固定の 12 個の一覧（v8 の履歴）と比べる形に直す（v8 の SQL は変えない）。enum との一致は vB の CHECK の test（B3）へ移す（backlog の (i)） | `src-tauri/src/db/schema_v8.rs` の test | Matrix の T4 |
+| formatter・単位の関数（TS） | `STOCK_UNIT_LABELS` の `roll`・`cm` を外す（型の網羅で compile が通らなくなるので自動で気づく）。`priceBasisQuantity`・`isLengthUnit` の `case "roll"`・`case "cm"` を外す。`cm` の商品の入力の分岐（cm の整数）を外す | `src/features/stock-inquiry/lib/format-stock-display.ts`、`src/lib/unit-quantity.ts` | `format-stock-display.test.ts`・`unit-quantity.test.ts` の 12 個の表を 10 個に |
+| 商品フォームの select | `STOCK_UNIT_LABELS` から作るので自動で 10 個 | `src/features/products/components/StockUnitField.tsx`（変えない見込み。comment の「12 個」を直す） | `StockUnitField.test.tsx`・`ProductForm.test.tsx` の 12 個の語の期待を 10 個に（Matrix の T3） |
+| `cm` を fixture にする test | 長さの商品の fixture を `cm` から `m` に替える（`m` と `cm` は在庫・価格・POS の意味が同じで、違いは入力と表示だけ: SPEC-UNIT-D1）。`cm` の入力の分岐（cm の整数）だけを確かめる case は、契約（SPEC-UNIT-D3 の `cm` の入力）ごと外し、同じ意味の `m` の case があることを Matrix の T3 に 1 対 1 で並べる | 上の command の file（Rust・TS） | Matrix の T3 |
+| 在庫少の閾値の単位 | 変えない（`extract-thresholds.ts` の `unit: "cm"` は在庫少の基準の単位の語で、SPEC-UNIT-D10 は「基準の画面の語と cm の入力は変えない」） | — | AC5 の除外 |
+
+### S7 正本の同期・traceability・ERD（実装と同じ PR）
+
+実装した範囲の `proposed・未実装` を現行の記述に直し、巻・cm の記述を外す。対象は次の command の出力で全部（起票の時点の出力は下の AC の baseline）:
+
+- `rg -n '10 種|10 単位|10 個|個数の 10' . --glob '!docs/archive/**' --glob '!docs/decision-log.md'` の単位の数の記述（起票の時点の live な hit: 10 の SPEC-UNIT-D2 の続きの項・D3 の集計の規則・D10、35 §20.5a の単位の拡張の段、44 の在庫少の SQL、34 の冒頭、`DB_DESIGN.md` の在庫少の適用ルール、master-tables の価格の基準数量、`src/lib/unit-quantity.test.ts` の test 名）を 9 個・9 単位へ。`10 個` の数量の表示の例（58・`format-stock-display` の `10 個`、10 の (c) の「10 個で越える」）は単位の数でないので変えない。
+- `rg -n '12 個|12 種|12 単位|12 語|12 の語|12 個の code' . --glob '!docs/archive/**' --glob '!docs/decision-log.md'` の単位の一覧の記述（起票の時点で 47 行。10・22・30・51・58・master-tables・`migration-recovery-runbook.md`・code の comment と test 名）を 10 個へ。v8 の履歴を書いた所（22 §16 の vU、`schema_v8.rs`、`migration-recovery-runbook.md` の v8 の説明、`docs/evidence/` の聞き取り記録）は時点の記録なので変えない。
+- `rg -c '\`cm\`|\`roll\`' docs --glob '!docs/archive/**' --glob '!docs/decision-log.md' --glob '!docs/evidence/**'` の巻・cm の記述（起票の時点で 20 file）を、vB の後の一覧に合わせて直す（10 の D1 の表から `roll`・`cm` の行、D3 の `cm` の入力、61・62・63・64 の「`cm` の商品は整数」、master-tables の布の 5 パターン表の `cm`、`SCREEN_DESIGN.md`、`project-memory.md`、`project-profile.md`〈workflow の file〉ほか）。
+- `rg -n -w 'cost_price|valuation_cost_price|old_cost|new_cost' docs --glob '!docs/archive/**' --glob '!docs/decision-log.md'` の原価の列名の記述（起票の時点で 26 file）を `_centi` に（master-tables の各表のカラム定義、20・21・30・31・35・40・44・51・61・64・76・77、`architecture/*-task-specs.md`、tracking・transaction ほか）。
+- 35 §20.5a の「範囲の外」の段に、棚卸し記録詳細のロス原価を 1/100 円の BigInt で出すこと（上の「起票時に起草役が決めたこと」）を 1 文足す。
+- `docs/inventory_system_erd.html` の原価の列名と単位の CHECK（実装と同じ PR。JAN の別名の lane の先例）。
+- `docs/function-design/90-traceability.md` は `cd src-tauri && cargo run --bin generate_traceability` で再生成する（手で直さない）。
+
+新しく書く引用は D-125・`docs/DOC_STYLE_GUIDE.md` §1 の形（path と symbol・節 ID）。触る文の中の既存の file:行 の引用は lane 2a（PR #183）が直すので、本 lane では直さない。
+
+### 節の所有表（並走の lane と重なる file）
+
+| file | 並走の lane が所有する節・行 | 本 lane が触る所 | merge の後に揃える所 |
+|---|---|---|---|
+| `docs/function-design/22-mnt-migration.md` | SD 直読み（PR #172）: §17（MNT-03-D15）。JAN の別名（未起票、22 §18 MNT-03-D16 を予約）。backup の外の控え（PR #155）: §3.2 の MNT-03-D11「復元への波及」の 1 行。lane 2a（PR #183）: 全体の file:行 の引用 | §16（vB の段・作り直しの手順・確かめていない前提・テスト）。新しい節は作らない（要れば §20・MNT-03-D18） | 後から merge する側が `origin/main` の単段 merge で両方を残す。lane 2a が先なら、本 lane の §16 の文の中の書き換え済みの引用を保つ |
+| `src-tauri/src/db/migration.rs` | §17・§18 の lane: `migrations()` の登録と版の期待の行 | 登録・版の期待の行（T1）・MNT-03-D1 の構造の test の列挙 | 版の番号は先に merge した側が若い番号。後の側が file 名・`migrations()` の登録の順・版の期待の行（T1）を取り直す（22 §16 の vB の番号の段、`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項） |
+| `src-tauri/src/db/schema_v9.rs`・`schema_v2.rs` の test | §17・§18 の lane: 版の期待の行 | T1 の行 | 同上 |
+| `src-tauri/src/db/sales_repo.rs`・`src-tauri/src/biz/sales_service.rs`・`src-tauri/src/cmd/sales_cmd.rs`・`src-tauri/src/biz/daily_report_import_service/tests.rs` | SD 直読み（PR #172）: `NewDailyReportImport.settlement_no` の構築と INSERT | test の商品の fixture の原価の field 名と値、`ProductStockUnit::Cm` の fixture | 隣の行。後から merge する側が両方を残す |
+| `docs/decision-log.md` | backup の外の控え（PR #155）: D-114 の本文と D-113 の近くの 1 行 | D-119 の末尾の Superseded in part の行、末尾の D-128 | 末尾への追記は merge の順で両方を残す |
+| `docs/backlog.md` | lane 2a: file:行 の引用。PR #155・#172: 各項目の文 | 「原価の lane（C）」の項目の 4 か所の句 | 他の行を並べ替えない |
+| `docs/function-design/10-common-rules.md` 他の function-design | lane 2a: file:行 の引用 | 本 commit の SPEC-UNIT-D1・D2・D5 の句と更新履歴、S7 の同期 | 同上 |
+| `docs/db-design/pos-tables.md` | SD 直読み（PR #172）: §12b の `settlement_no` | 触らない | — |
+| `docs/Plans.md` | lane 2a・各 lane: 次の行動の文（lane の行は足さない。D-097） | `## 次の行動` と `## 導入の前の関門` の原価の lane の句 | — |
+
+重なりを避けるために本 lane の範囲は変えない（発注書の指示）。
+
+## Non-scope
+
+- 上の Goal の「非目的」の全部（売価、数量の契約、10 cm の刻みの検査、棚卸しの評価額の出力の文と記録詳細のロス原価の BIZ への移動、初期投入、Z004・EJ、既存の file:行 の引用）。
+- 原価の基準数量（入り数）を商品に持つこと（SPEC-UNIT-D5 の不採用 (a)）。
+- 円の値を 1/100 円へ移す migration（D-119 (1)。vB は値を変換しない）。
+- 起動の失敗の画面の文の種類を増やすこと（vB の止まりは今の `DatabaseInit` の文に手順 2 の message を添える。§19 と同じ。下の残りの危険）。
+- 停止 ADR の入口（棚卸しの開始・保存・確定、Z004 の確定・取消）の振舞いと文言。
+
+## Acceptance Criteria
+
+- AC1（migration）: `cd src-tauri && cargo test --lib db::` が全 PASS し、Matrix の B1〜B9 と R1〜R4 の test 名が `rg -n 'fn <名前>' src-tauri/src/db` で 1 件ずつ見つかる。`rg -n 'MigrationKind::Custom\(schema_v' src-tauri/src/db/migration.rs | wc -l` が起票の時点の 7 に、本 lane の vB と、先に merge した並走の lane の migration（`MigrationKind::Custom` のもの）の数を足した値。
+- AC2（原価の旧い名前）: `rg -l -w 'cost_price|valuation_cost_price|old_cost|new_cost|old_cost_price|new_cost_price|master_cost_price|received_cost_price' src-tauri/src src-tauri/tests src | sort` が、履歴の migration と vB の前の版に行を入れる migration の test の file（`src-tauri/src/db/schema_v1.rs`・`schema_v2.rs`・`schema_v8.rs`・`schema_v9.rs`・`migration.rs`）と vB の file（`schema_v{N}.rs`）だけ。出力を PR の本文に貼り、各 file の hit が履歴の SQL・vB の前の版の fixture・vB の改名の SQL のどれかであることを表にする。
+- AC3（上限）: `rg -n -w 'MAX_COST_PRICE' src-tauri/src src` が `src-tauri/src/db/schema_v8.rs` の行だけ。`rg -n 'pub const MAX_COST_PRICE_CENTI: i64 = 99_999_999;' src-tauri/src/constants.rs` と `rg -n 'export const MAX_COST_PRICE_CENTI = 99_999_999;' src/lib/unit-quantity.ts` が 1 行ずつ。Matrix の C1〜C3 の境界（`99999999` は受け、`100000000` は `原価が大きすぎます`）が PASS。
+- AC4（円を 1/100 円にする掛け算）: `rg -n 'i128::from\([^)]*cost[^)]*\) \* 100' src-tauri/src` が `src-tauri/src/biz/unit_amount.rs` の test の 1 行（円の原価で 35 §20.5a の golden を確かめる helper）だけ。
+- AC5（巻・cm）: `rg -n -w 'Roll|Cm' src-tauri/src src-tauri/tests` が 0 行。`rg -n 'pub const ALL: \[Self; 10\]' src-tauri/src/db/product_repo.rs` が 1 行。`rg -n "[\"']roll[\"']|[\"']cm[\"']" src --glob '!*.test.*'` が `src/features/threshold-settings/lib/extract-thresholds.ts` の在庫少の基準の単位の 1 行だけ。Rust の `"cm"`・`'cm'`・`"roll"`・`'roll'` の残りは、`rg -l "[\"']cm[\"']|[\"']roll[\"']" src-tauri/src src-tauri/tests | sort` の出力を PR に貼り、履歴の migration（`schema_v1.rs`・`schema_v8.rs`）、vB の前の版の fixture（`migration.rs`）、vB が拒む値の test（`schema_v{N}.rs`）、行の error を確かめる商品 CSV の case（Matrix の U4）のどれかであることを表にする。
+- AC6（wire）: `src/lib/bindings.ts` で `rg -n 'export type ProductStockUnit = "pcs" \| "sheet" \| "hon" \| "bag" \| "box" \| "kumi" \| "set" \| "ball" \| "cho" \| "m";' src/lib/bindings.ts` が 1 行、`rg -n '\b(cost_price|valuation_cost_price|old_cost_price|new_cost_price|master_cost_price|received_cost_price)\??:' src/lib/bindings.ts` が 0 行、`rg -c '_centi\??:' src/lib/bindings.ts` が起票の時点の 2（`line_cost_centi`・`line_loss_cost_centi`）に 13 型の 16 field を足した 18。
+- AC7（画面の原価）: `npm test -- src/lib src/features/products src/features/receiving src/features/disposal src/features/inventory-records src/features/stock-inquiry` が全 PASS し、Matrix の C10〜C17 と U5・U6 の test 名が見つかる。`rg -n '原価（税抜、必須' src/features/products/components/ProductForm.tsx` が 1 行以上、`rg -F -n '原価は税抜の円で小数 2 桁まで入力します' src/features/products/components/ProductForm.tsx` が 1 行。
+- AC8（既存の test の移し方）: Matrix の T1〜T5 の command を実装の後に逐語で回し、出力の各行を T1〜T5 の分類（と本 lane で足した test）に当てた表を PR の本文に貼る。「書き換える」「変えない」の所で、意味の期待（境界の位置、件数、message、行の error の有無）が変わっていない（値の単位の書き換え〈円 → 1/100 円〉と `cm` → `m` は T2・T3 の表の 1 対 1 の対応で示す）。
+- AC9（gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`、`cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts`、`cargo run --bin generate_traceability -- --check`、`cargo test --test design_compliance_test`、`npm run typecheck && npm run lint && npm run format:check && npm test && npm run build`、`bash scripts/doc-consistency-check.sh` と `--target plan` が exit 0。L3 を含むので Writer は `cd src-tauri && cargo check --release` を通す。
+- AC10（正本の同期）: S7 の 4 つの command を実装の後に逐語で回し、残る hit が S7 の「変えない」の条件（時点の記録、数量の表示の例、v8 の履歴）だけであることを PR の本文に表で貼る。`rg -n 'proposed・未実装' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md' | rg '原価の lane|D-119|D-128' | rg -v '^\S+:[0-9]+:\| 20'`（更新履歴の行を除いた原価の lane の `proposed・未実装` の注記）が 0 行（起票の時点で 24 行）。
+
+AC の数の baseline（AC は AC1〜AC10 の 10。2026-10-21、本 worktree〈code は main `6a25f63f` と同じ〉で逐語で実行した。rg の file の順は実行ごとに変わる）:
+
+```
+$ rg -n 'MigrationKind::Custom\(schema_v' src-tauri/src/db/migration.rs | wc -l
+7
+$ rg -l -w 'cost_price|valuation_cost_price|old_cost|new_cost|old_cost_price|new_cost_price|master_cost_price|received_cost_price' src-tauri/src src-tauri/tests src | sort | wc -l
+77
+$ rg -n -w 'MAX_COST_PRICE' src-tauri/src src | wc -l
+32
+$ rg -n 'i128::from\([^)]*cost[^)]*\) \* 100' src-tauri/src
+src-tauri/src/biz/inventory_service/list.rs:119:                    i128::from(item.cost_price) * 100,
+src-tauri/src/biz/inventory_service/list.rs:201:                    i128::from(item.cost_price) * 100,
+src-tauri/src/biz/stocktake_service.rs:510:            i128::from(valuation_cost_price) * 100,
+src-tauri/src/biz/inventory_service/receiving.rs:152:            i128::from(item.cost_price) * 100,
+src-tauri/src/biz/inventory_service/disposal.rs:155:            i128::from(item.cost_price) * 100,
+src-tauri/src/biz/unit_amount.rs:140:        cost_line_centi(i128::from(cost_yen) * 100, quantity, basis, "L")
+src-tauri/src/biz/stocktake_service/time_evidence.rs:706:            i128::from(product.cost_price) * 100,
+$ rg -n -w 'Roll|Cm' src-tauri/src src-tauri/tests | wc -l
+21
+$ rg -n 'pub const ALL: \[Self; (10|12)\]' src-tauri/src/db/product_repo.rs
+52:    pub const ALL: [Self; 12] = [
+$ rg -n "[\"']roll[\"']|[\"']cm[\"']" src --glob '!*.test.*'
+src/lib/unit-quantity.ts:26:    case "roll":
+src/lib/unit-quantity.ts:33:    case "cm":
+src/lib/bindings.ts:1296:export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "roll" | "kumi" | "set" | "ball" | "cho" | "m" | "cm";
+src/features/threshold-settings/lib/extract-thresholds.ts:53:    unit: "cm",
+src/features/stock-inquiry/lib/format-stock-display.ts:25:  cm: "cm",
+$ rg -n '\b(cost_price|valuation_cost_price|old_cost_price|new_cost_price|master_cost_price|received_cost_price)\??:' src/lib/bindings.ts | wc -l
+16
+$ rg -c '_centi\??:' src/lib/bindings.ts
+2
+$ rg -n 'migrate\(&conn\)' src-tauri/src | wc -l
+34
+$ rg -n 'proposed・未実装' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md' | rg '原価の lane|D-119|D-128' | rg -v '^\S+:[0-9]+:\| 20' | wc -l
+24
+```
+
+完了時の期待: AC2 の file が 6（履歴の 4 と `migration.rs` と vB の file）。AC3 の `MAX_COST_PRICE` が `schema_v8.rs` の行だけ。AC4 が 1 行。AC5 の `Roll|Cm` が 0、`ALL` が 10、TS の production の hit が `extract-thresholds.ts` の 1 行。AC6 の旧い名前が 0、`_centi` が 18。`migrate(&conn)` の行の数は T1 の書換え（`migrate_up_to` への置換え 8 行）の後に 26 前後（数そのものは AC にしない。T1 の表との対応で確かめる）。test の本数は AC にしない（PR と runner の出力を参照）。
+
+## Design Readiness
+
+設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。
+
+- 引用する設計正本（節まで）: [共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1（一覧と作り直しの起点の項）・D2・D3（`cm` の入力と表示を外す）・D5（精度・入れ方・税の区分・入力の補助・入力・表示）・D6（`cost_line_centi` の引数）・D9（formatter の網羅）・D10（在庫少と商品 CSV）・D11（wire の enum）と「入力の上限と安全な整数の範囲」の (a)〜(c)。[22](../function-design/22-mnt-migration.md) §16（MNT-03-D14 vB、作り直しの手順、DB の作り直しと順、テスト）と §3.2 MNT-03-D1・§18 の規則・§19。[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」と `products` の表。[51](../function-design/51-ui-product-form.md) UI-01b-D22・D23・D24。[61](../function-design/61-ui-receiving.md) UI-02-D7・D15、[64](../function-design/64-ui-disposal.md) UI-05-D8、[77](../function-design/77-ui-bulk-price-revision.md) の新原価（案）、[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)（§12.3 の原価差分、§12.8 の fingerprint）・[35](../function-design/35-biz-stocktake-service.md) §20.5a の原価の注記、[40](../function-design/40-cmd-product.md)・[44](../function-design/44-cmd-inventory.md) の原価の注記。D-113・D-119・D-123・D-128。
+- 必要な設計成果物（状態）: (1) 原価の税の区分（U6 → 税抜）と画面の文 = updated in this PR（D-128、SPEC-UNIT-D5、master-tables、UI-01b-D22）。(2) 巻・cm を外す前提の確定と vB の手順 4 の分岐の除去 = updated in this PR（D-128、SPEC-UNIT-D1、22 §16、master-tables）。(3) vB の止まりの文（原因と直し方）と起動の画面 = updated in this PR（22 §16 手順 2・止まった後の進め方）。(4) 作り直しの手順の確かめていない前提（WebView の保存）= updated in this PR（22 §16）。(5) 原価の表示の記号と入力の欄の初期値の文字列 = updated in this PR（SPEC-UNIT-D5）。(6) 補助を開き直すと空 = updated in this PR（UI-01b-D24）。(7) 棚卸し記録詳細のロス原価の単位の合わせ方 = 本 packet で決め、実装と同じ PR で 35 §20.5a へ（S7）。ほかの振舞い（vB の手順、原価の入力・上限・表示の数の規則、補助、行の金額、原価差分、fingerprint、新原価〈案〉、単位の 10 個）は既存の正本で足りる（D-119 の design lane で `proposed・未実装` として書いた）。
+- plan にしかない durable な判断の昇格先: 上の (1)〜(6) は正本と D-128 に置いた。packet にだけあるのは、規模と手法、S1〜S7 の順、所有表、既存の test の移し方（Matrix の T1〜T5）、横断の約束の表（Y1〜Y10 の保証する所の symbol）、定数と関数の名前（`MAX_COST_PRICE_CENTI`・`parseCostInput`・`unitCostFromPack`）、(7)（実装の PR で 35 へ）。
+- 前提・制約と、延期した design gap の follow-up: 10 cm の刻みの検査（Q-098 の答えの後。D-128 (3)）。棚卸しの評価額の出力の税抜の文と記録詳細のロス原価の BIZ への移動（D-118 の (b)）。WebView の保存の置き場は L3 の作り直しで確かめる（Contract Probe P5）。
+- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「vB は行のある DB で何も変えない」は手順 2 の検査が DDL の前にあり、失敗は ROLLBACK と `foreign_keys` の復元（B4・B6）。「円の値が `_centi` に入らない」の例外は、vB の前の版の DB（vB で止まる）と、test だけの helper `cost_line_centi(i128::from(円) * 100, …)`（AC4、35 §20.5a の golden）。「巻・cm を受ける経路は無い」の例外は、vB の前の版の DB（vB で止まる。止まらずに `cm` の行が残る DB は、vB が `products` に行が無いことを求めるので作れない）と、履歴の migration の SQL（v1・v8）。
+- 判定: ready。owner に聞く設計の問いは無く、Scope の全ての振舞いが正本か本 packet（(7) と名前）から決まる。
+
+## Registration / Generation Obligations
+
+| 変更対象 | 登録・生成義務 |
+|---|---|
+| Tauri command（frontend から呼ぶ） | command の追加・改名は無い。DTO の field 名と `ProductStockUnit` が変わるので `cd src-tauri && cargo run --bin generate_bindings` で `src/lib/bindings.ts` を再生成する（S4） |
+| function-design doc 新設 | 該当なし（新しい doc は無い）。新しい `db::schema_v{N}` の関数は `pub(crate)` にする（`design_compliance_test.rs` は `pub fn` だけを見る）。TS の新しい関数（`parseCostInput`・`unitCostFromPack`・原価の formatter）は design compliance の対象外 |
+| source / workflow doc 新設・改名・削除 | 該当なし（S7 は既存の文書の文を直すだけ。`docs/project-profile.md` は workflow の分類に入る: 上の Risk） |
+| REQ / coverage の追加・変更・削除 | 新しい test に REQ-101・REQ-102・REQ-105・REQ-201・REQ-204・REQ-209・REQ-903 を付ける（新しい REQ は無い）。`cd src-tauri && cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` を再生成する（S7） |
+| route 新設・改名・削除 | 該当なし |
+| operator 画面新設・改名・削除 | 該当なし（既存の画面の中身だけを変える。到達の導線は今のまま） |
+
+## Impact Review Lenses
+
+| Lens | Question to answer | Evidence home | Applicability / finding | Follow-up artifact |
+|---|---|---|---|---|
+| Adapter / core boundary | Which concepts belong to replaceable external adapters, and which concepts are stable app-core contracts? | Architecture, function design, decision-log, Plan Packet | 当たらない。POS の adapter（PLU・Z004・EJ）に触れない（PLU の単価は売価で、原価は出ない） | — |
+| Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 当たる。店の答え（U6 = 税抜、10 cm は刻み）と調べ（U1 = 巻・cm 0 行）は事実として D-128 に置き、税の区分を原価の列に持たせることと vB の分岐を外すことはアプリの決定として D-128 に置いた。SQLite の振舞いは Contract Probe P1〜P4 で観測した | D-128、Contract Probe |
+| Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | 当たる。vB は 1 TX で、失敗は全部戻り `foreign_keys` を戻す（B4〜B6）。再実行で重複適用しない（B7）。止まった DB は作り直す（R1〜R4）。原価の入力の失敗は保存の前（C1〜C3・C10） | Matrix の State Lifecycle |
+| Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 当たる。店の操作は原価を小数 2 桁で入れられることと補助が増えるだけ。開発者は止まった DB を作り直す（22 §16）。商品 CSV の `原価` は小数 2 桁まで受ける | L3-1〜L3-3 |
+| Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | 当たらない（外部の system に触れない） | — |
+| Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 当たる。fixture は全部合成。owner の L3 用の DB は作り直しで消さずに移す（下の Data Safety）。U1 の調べは行の数だけを claim にし、店の商品の名前を書かない | Data Safety |
+| Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 当たる。原価は税抜で、入庫の原価合計・廃棄のロス原価・棚卸しの評価額は税抜の値（D-128）。行の金額は 1/100 円の原価から求め、円の合計は今の丸め（SPEC-UNIT-D6） | C4〜C6 |
+| Manual verification | Which assertions cannot be proven by automated tests and require Windows native L3, external tool import, or real-device confirmation? | Plan Packet, Test Matrix, PR body | 当たる。Windows の実 DB での vB の止まり方と作り直しの後の起動（L3-1）、商品フォームの原価の小数・補助・単位の select の見た目（L3-2）、入庫と原価差分・価格改定の原価の表示（L3-3） | Test Plan の L3 |
+| 環境・再現性 | 新設の環境依存（toolchain / CI runner / OS 差異等）を repo-pinned config で強制するか、明示的に defer するか | repo-pinned config, Plan Packet | 当たる。`ALTER TABLE … RENAME COLUMN` は SQLite 3.25 以降（同梱は `libsqlite3-sys` 0.28.0 の 3.45.0。`src-tauri/Cargo.toml` の `rusqlite = { version = "0.31", features = ["bundled"] }` で固定）。B1 が改名の後の列名を確かめるので、同梱の SQLite を下げれば red になる | B1 |
+
+## Boundary / Wire Contract
+
+- producer: DB の 6 列（vB の後）、BIZ の `Product`・`PriceHistoryEntry`・`ImportRow`・`CostDiff`・記録詳細の明細の型、cmd の `ProductResponse`。frontend の Request（`ProductCreateRequest`・`ProductUpdateRequest`・`PriceRevisionInput`・`ReceivingItemInput`・`DisposalItemInput`）。
+- consumer: frontend の商品フォーム・価格改定・入庫と原価差分の dialog・廃棄・記録詳細・商品一覧・在庫照会の詳細・価格の履歴。BIZ の検証と金額の関数。
+- wire type: 13 型の原価の field を `cost_price_centi`・`valuation_cost_price_centi`・`old_cost_price_centi`・`new_cost_price_centi`・`master_cost_price_centi`・`received_cost_price_centi`（`number`、`ProductUpdateRequest` は `cost_price_centi?: number | null` と Serialize の `number | null` の今の形）。行の金額 `line_cost_centi`・`line_loss_cost_centi`（十進の文字列）と円の合計 `total_cost`・`total_loss_cost`（`number`）は今のまま。`ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "kumi" | "set" | "ball" | "cho" | "m"`。
+- internal type: Rust の原価は `i64`（1/100 円）、金額の計算は `i128`（`cost_line_centi`）。TS の原価は `number`（1/100 円。上限 `99999999` で安全な整数）、廃棄の合計と棚卸し記録詳細のロス原価は `BigInt`。
+- precision/range: Y1（`0`〜`99999999`）。行の金額は十進の文字列のまま（棚卸しの行は number の範囲を越えうる。SPEC-UNIT-D6）。
+- round-trip path: 画面の文字列 → `parseCostInput` → 1/100 円の number → specta → BIZ の検証 → DB → 読取り → bindings → 原価の formatter（`¥83.33`）と入力の欄の初期値（`83.33`）。入力の欄の初期値を `parseCostInput` に戻すと同じ 1/100 円になる（C12）。
+- invalid input: Y2 に合わない文字列は画面で止まる。UI を通らない command は BIZ が上限と負を拒む。商品 CSV の `原価` は行の error。`roll`・`cm` は enum に無いので deserialize で拒まれ（command の引数）、商品 CSV では行の error、DB の CHECK でも拒む。
+- compatibility: 旧い名前の field を受ける互換は置かない（vB の前の版の DB は vB で止まり、bindings は同じ PR で再生成する。名前の違いで古い読み手を止めるのが `_centi` の目的。SPEC-UNIT-D5）。記録済みの操作ログの detail_json に原価の key（`cost_price`）を持つ行は書き換えない（作り直した DB には無い。今の画面は原価の key を出さない: `rg -n 'cost' src/features/operation-logs --glob '!*.test.*'` が 0 行）。
+
+## Test Plan
+
+Test Design Matrix: [2026-10-21-cost-lane-c](test-matrices/2026-10-21-cost-lane-c.md)。
+
+- If the Human Gate includes L3, Writer completion includes `cargo check --release` before the owner native build; this is not a CI gate.
+- targeted tests: `cd src-tauri && cargo test --lib db::` / `cargo test --lib biz::product_service` / `cargo test --lib biz::inventory_service` / `cargo test --lib biz::unit_amount` / `cargo test --lib biz::stocktake_service` / `cargo test --lib cmd::` / `cargo test --test seed_test`、`npm test -- src/lib src/features/products src/features/receiving src/features/disposal src/features/inventory-records src/features/stock-inquiry`。
+- negative tests: Matrix の B4〜B6（vB が止まる・戻る）、C1〜C3・C7・C10（上限・解析の error）、U4（巻・cm の語の行の error）。
+- compatibility checks: v8 の CHECK と上限の履歴の test（T4）、vB の前の版に行を入れる migration の test を上限 9 で回す（T1）。
+- data safety checks: fixture は全部合成。L3 の DB の作り直しは消さずに移す（Data Safety）。
+- main wiring/integration checks: B1（`init_database` の新規の DB で vB まで当たる）、R1〜R4（作り直しの後の起動）、C14〜C17（画面が command の新しい field を送り・出す）。
+
+L3（Human Gate `manual`。owner は 2026-10-21 から数日は手が使いにくいので、Draft のまま溜め、1 round で PASS / FAIL を返してもらう。作り直しの file の移動は owner の指示で Coordinator が行う）:
+
+| # | 到達経路 | 入力物 | 観測可能な合格基準 | 依存する既知 backlog |
+|---|---|---|---|---|
+| L3-1 | (1) 新しい版を起動する（owner の今の L3 用の DB のまま）。(2) 止まったら、Coordinator が 22 §16 の作り直しの手順で移す（下の Data Safety。移す前に `%APPDATA%\com.kosei.inventory` と `%LOCALAPPDATA%\com.kosei.inventory` の中の folder の名前の一覧を取る）。(3) もう一度起動する | owner の今の L3 用の DB（商品の行がある） | (1) で起動が止まり、「データベースの準備に失敗」の文の下に「商品か原価の記録がある DB はこの版へ移せません。原価を 1/100 円で持つ版は空の DB から始めます。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）」と行のある表名が出る。(3) で空の DB で開く（商品一覧が空）。(2) の一覧で WebView の保存の folder がどちらにあったかを Coordinator が記録する（Contract Probe P5） | 作り直しの手順は 22 §16（D-123） |
+| L3-2 | 起動した版で、商品登録を開く → 単位の select を開く → 単位 `個` で原価の下の「袋の値段から出す」を開き、袋の値段 `1000`・入り数 `12` で「原価に入れる」→ 補助を閉じて開き直す → 単位を `m` に変える → `個` に戻して保存する | 画面の入力だけ | select が 10 個（巻・cm が無い）。原価の欄が `83.33`。開き直した補助の 2 つの欄が空。`m` で補助が隠れ、label が `原価（税抜、必須、1 m あたり）`。価格の節の説明が `売価は税込の円の整数、原価は税抜の円で小数 2 桁まで入力します。長さ（m）の商品は 1 m あたりの値段です。`。保存の後、商品一覧の原価が `¥83.33` | — |
+| L3-3 | L3-2 の商品で、入庫（数量 `3`・原価 `83.33`）を保存 → 記録詳細を開く → 入庫（数量 `1`・原価 `85`）を保存し、原価差分の dialog で「マスタ原価をこの実原価に更新する」→ 価格改定で新売価 `110` を入れる | 画面の入力だけ | 記録詳細の原価 `¥83.33`・原価小計 `249.99 円`・原価合計 `¥250`。dialog のマスタ原価 `¥83.33`・今回の実原価 `¥85`、更新の後の商品の原価 `¥85`。価格改定の新原価（案）`93`・現掛率 `85.0`（売価 `100` で登録したとき） | — |
+
+- 原価の上限・解析の error の見た目と、廃棄・商品 CSV の preview・在庫照会の詳細・価格の履歴の原価の表示は自動 test（C1〜C17、U4〜U6）に任せ、Coordinator が Ready の依頼と同時に frontend の test の render か Vite の dev の画面の写しを owner に渡し、見た目の確認（Human Visual Confirmation）を L3 と同じ 1 回の PASS / FAIL に含める。写しを作れなければ、その残りの危険を PR の本文に書き、受け入れを Ready の判断に含める。
+- fixture: L3-1 は owner の今の DB を使う（新しい fixture は要らない）。L3-2・L3-3 は画面の入力だけ（商品 CSV の取込みは L3 に入れないので、CP932 の fixture は要らない）。
+
+## Review Focus
+
+- vB: 起点の検査が DDL の前にあるか、手順 4 が §19 の写しの 3 列・CHECK・index・外部キーを落とさないか、止まりの文が原因と直し方を名指すか、版の番号と並走の §17・§18 の migration との順（取り直しの対象が Scope と T1 にあるか）。
+- 円の値が 1/100 円の列・wire に入る経路、または 1/100 円を円として出す画面が残っていないか（Y1〜Y4、AC2〜AC4）。浮動小数の経路（Y2・Y5、demo の seed）。
+- 既存の test の移し方（T1〜T5）で、期待を弱めていないか。`cm` の入力の分岐の case を外すとき、同じ意味の `m` の case があるか（T3）。
+- 単位の 10 個が DB の CHECK・enum・bindings・formatter・商品 CSV・select・在庫少の並び・seed で同じか（Y9）。
+- D-128 と正本の直し（税抜、手順 4 の分岐の除去、10 cm の刻み）が、店の答えの要旨を超えていないか。この変更で不要になる記述・条件が残っていないか（D-127）。
+- 公開 repo に実データを書いていないか。並走の lane の節を触っていないか（所有表）。
+
+## Contract Ledger
+
+触る設計正本の節の契約を行にした（隣接の契約の sweep: SPEC-UNIT-D1〜D11 と「入力の上限と安全な整数の範囲」、22 §3.2・§16・§18・§19、master-tables の「単位と原価の精度の契約」と `products`・tracking・transaction の原価の列、20・21・30・31・34・35・40・44・51・58・61・62・63・64・77 の原価と単位の節を当て、Scope が触り得ないものは下の「除外」に理由つきで書いた）。
+
+| 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
+|---|---|---|---|---|
+| MNT-03-D14（vB の手順 1〜6・止まりの文・番号） | 22 §16 | S1 | B1〜B9 | L3-1 |
+| MNT-03-D1（共有の helper） | 22 §3.2 | S1 | 構造の test（file の列挙に足す） | — |
+| 22 §16 の作り直しの手順と確かめていない前提 | 22 §16 | S1（起動の test）、Data Safety | R1〜R4 | L3-1（P5） |
+| MNT-03-D16 の `products` を作り直す規則（§18 が先に入ったとき） | 22 §18 | S1（条件つき） | B9（条件つき） | 非対象: §18 が後なら §18 の lane の義務 |
+| SPEC-UNIT-D1（10 個の一覧、巻・cm を外す） | 共通規則 | S1（CHECK）、S6 | B3・U1〜U3 | L3-2 |
+| SPEC-UNIT-D2（理由の更新、振舞いは変えない） | 共通規則 | — | 既存の数量の test（変えない） | 非対象: 刻みの検査（Q-098） |
+| SPEC-UNIT-D3（`cm` の入力と表示の分岐を外す） | 共通規則 | S6 | T3 の `m` の case | — |
+| SPEC-UNIT-D5（精度・入れ方・税・補助・入力・上限・表示） | 共通規則 | S3・S5 | C1〜C3・C7・C10〜C17 | L3-2・L3-3 |
+| SPEC-UNIT-D6（`cost_line_centi` に 1/100 円をそのまま） | 共通規則 | S3 | C4〜C6 | — |
+| SPEC-UNIT-D9（formatter の網羅） | 共通規則 | S6 | U5 | — |
+| SPEC-UNIT-D10（在庫少の並び、商品 CSV の `在庫単位`・`原価`） | 共通規則 | S3・S6 | C7・U3・U4 | — |
+| SPEC-UNIT-D11（wire の enum） | 共通規則 | S4・S6 | AC6、U1 | — |
+| 入力の上限と安全な整数の範囲の原価の行・(b)・(c) | 共通規則 | S3・S5 | C1〜C3・C6・C11 | — |
+| 単位と原価の精度の契約・`products` の列 | master-tables | S1・S2 | B1・B3 | — |
+| UI-01b-D22（原価の label と説明、上限）・D23（個数の単位どうしの変更、候補 9 個）・D24（補助） | 51 | S5・S6 | C14・U6 | L3-2 |
+| UI-02-D7（入庫の原価の入力）・UI-02-D15（原価差分の dialog） | 61 | S5 | C16 | L3-3 |
+| UI-05-D8（廃棄の原価の入力） | 64 | S5 | C17 | — |
+| 77 の新原価（案）と現掛率（SPEC-PRV-D4） | 77 | S5 | C15 | L3-3 |
+| BIZ-01（原価の検証、商品 CSV の `原価` の小数、update の log の key） | 30 | S3 | C1・C7 | — |
+| BIZ-02（明細の原価の検証、§12.3 の原価差分、§12.8 の fingerprint、記録詳細の金額） | 31 | S3 | C2・C4・C5・C8・C9 | — |
+| SPEC-STK-VAL-D3・D4 の評価原価（旧本体、test だけ） | 35 §20.5a | S3 | 旧本体の test（T2） | 非対象: 評価額の出力の文と記録詳細のロス原価の BIZ への移動（(b)） |
+| CMD の DTO の原価の field（`ProductResponse` ほか） | 40・44 | S4 | AC6 | — |
+| D-128（税抜、手順 4 の分岐の除去、10 cm の刻み） | decision-log | 本 commit の正本、S3・S5 | C14 | L3-2 |
+| D-123（作り直しの承認と順） | decision-log、22 §16 | Data Safety | — | L3-1 |
+
+除外（触らない契約と理由）: SPEC-UNIT-D4（価格の基準数量と POS の数量 1。変えない）、D7（売価 × 数量。売価は円のまま）、D8（Z004・EJ の数量）。22 §17（SD 直読みの migration、PR #172）・§19 の手順（vL は v9 で済み。本 lane は §19 の列を写すだけ）。58 の在庫照会の数量の表示（原価の行だけを Y3 にする。数量の表示は変えない）。62・63（手動販売・返品は原価を持たない。`cm` の入力の記述だけを S7 で直す）。PLU の書出し（25。単価は売価）。停止 ADR の SPEC-STOP-D1〜D6 は変えない。
+
+## Contract Probe
+
+本 lane が依る外部の前提（同梱の SQLite の振舞い）を、2026-10-21 に scratch の crate（`rusqlite = "=0.31.0"` bundled。repo の外の作業 folder。commit しない）で確かめた。
+
+- P1 原価の 6 列の `RENAME COLUMN`（`foreign_keys = OFF`、1 つの transaction）: `sqlite_version()` -> `3.45.0`。`products`・`receiving_items`・`disposal_items`・`stocktake_items`・`price_history` の 6 列を改名 -> ok、`pragma_table_info` に新しい名前だけがある（`products`: `product_code,department_id,selling_price,cost_price_centi,stock_unit,stock_recheck`、`price_history`: `…,old_cost_centi,new_cost_centi`）。行のある表の改名は値を変えず（`8333` のまま）、古い名前の `SELECT` は `no such column` で止まる（`_centi` の名前が古い SQL を止める前提。SPEC-UNIT-D5）。
+- P2 改名の後の `products` の作り直し（`products_new` を作って写し、`DROP TABLE products`、`ALTER TABLE products_new RENAME TO products`、index の作り直し）: 同じ transaction で ok。`PRAGMA foreign_key_check` 0 行、COMMIT の後の `integrity_check` -> `ok`。子の表の外部キー（`receiving_items` -> `products(product_code)`、`stock_counts` -> `products`・`stocktake_items`）は残り、存在しない商品の子の行は `FOREIGN KEY constraint failed`。index は `sqlite_autoindex_products_1`・`idx_products_department_id`。
+- P3 作り直しの後の CHECK: `pcs` `sheet` `hon` `bag` `box` `kumi` `set` `ball` `cho` `m` -> ok、`roll`・`cm`・`kg` -> `CHECK constraint failed: stock_unit IN ('pcs','sheet','hon','bag','box','kumi','set','ball','cho','m')`。
+- P4 §19 の写しの 3 列の CHECK（`stock_range_high` の列の CHECK が他の列を参照する）を作り直しで写す: (a) の lane の Contract Probe P1 で、同じ SQLite で列の CHECK が他の列を参照できることを確かめた（`docs/archive/plans/2026-10-18-stocktake-count-runtime-a.md`）。本 lane の作り直しは CREATE TABLE の中に同じ CHECK を書くので、列の追加の制約（P1 の 3.37.0 以降）に依らない。B5 で作り直しの後に CHECK が効くことを確かめる。
+- P5 WebView の保存（localStorage）が Windows で `%LOCALAPPDATA%\com.kosei.inventory` の下（WebView2 の既定では `EBWebView`）に置かれる: Tauri の既定の振舞いで、本 run は確かめていない -> 未確認。作り直しの手順は識別子の名前の folder を `%APPDATA%` と `%LOCALAPPDATA%` の両方とも丸ごと移すので、置き場がどちらでも移る（22 §16 の「確かめていない前提」）。L3-1 の (2) で folder の名前の一覧を取って確かめる。
+
+## Data Safety
+
+- commit しない物: 実 POS / 店舗データ、DB、backup、log、receipt。fixture は全部合成（商品コード・JAN・原価・日付は合成の値）。U1 の調べの対象（在庫 Excel）の中身と、店の商品の名前・原価の実値を書かない（行の数だけ）。
+- local だけの場所: owner の PC の `%APPDATA%\com.kosei.inventory`（DB と `-wal`・`-shm`、`backups`、`logs`、`images/receipts`、復元の遺物）と `%LOCALAPPDATA%\com.kosei.inventory`（WebView の保存）、アプリを起動する方法ごとの作業フォルダの旧 DB 一式、設定した backup の保存先（`app_settings` の key `backup_path`）の backup の file。
+- 作り直し（L3-1 で vB が止まったとき。D-123 でリリースの前まで包括で承認済み）: 対象は上の local だけの場所の全部。保全は 22 §16 の作り直しの手順のとおり、日付の付いた 1 つの folder（例 `%USERPROFILE%\inventory-db-moved\2026-10-2x\`）の下に元の場所ごとの sub folder を分けて**消さずに移す**（手順 1 の `backup_path` の控え、手順 2 のアプリの停止、手順 4 の移した元が残っていないことの確認を含む）。(a) の lane で作り直した folder があれば、別の日付の folder にし、上書きしない。実行は owner の指示で Coordinator（WSL の `/mnt/c/Users/...` から移す。消す command を使わない）。移した folder は残す（消すかは owner の判断）。
+- 合成だけの場所: Rust と TS の test の fixture、demo の seed、L3-2・L3-3 の画面の入力。
+
+## 残りの危険（起票の時点）
+
+- vB の止まりは、起動の画面の今の `DatabaseInit` の文（「アプリを再起動してもう一度お試しください」を前置きに持つ）に原因と直し方を添えて出す。前置きは再起動で直らない止まりに合わないが、§19 と同じで、出会うのは開発者だけ（本番の DB は無く、店の PC へ初めて入れる版は空の DB で始まる。D-123 (4)）。文の種類を分けるのは (a) の lane の残りの危険と同じ候補。
+- vB の前の版で作った backup を新しい版で復元すると、open の migrate が vB で止まり、復元は巻き戻る（[71](../function-design/71-mnt-backup.md) §71.7。利用者には失敗に見える。22 §16 の「作り直しの後に残す物」の文のとおり。開発・試験 DB にだけ起きる）。
+- 並走の §17・§18 の migration と番号を取り合う。後から merge する側が file 名・登録・版の期待を取り直す（所有表）。取り直しの漏れは版の期待の test が red にする。
+- 1/100 円の原価で `売価 × 原価` を TS の number で掛ける所（価格改定の twin）は、共通規則 (b) のとおり `999999 × 99999999` 以下で安全な整数の範囲に入る。上限を変える lane はこの式を見直す。
+
+## Implementation Results
+
+Fill after implementation.
+
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+## Review Response
+
+Fill after review.
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。

@@ -1,0 +1,222 @@
+# Test Design Matrix: 原価の lane（C）— 原価の 1/100 円と巻・cm を外す起点の migration（vB）
+
+対象 packet: [2026-10-21-cost-lane-c](../2026-10-21-cost-lane-c.md)。基準版は `6a25f63f`（main）。oracle は設計正本（[共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1・D5・D6・D10、[22](../../function-design/22-mnt-migration.md) §16、[51](../../function-design/51-ui-product-form.md) UI-01b-D22・D24、[77](../../function-design/77-ui-bulk-price-revision.md) の新原価〈案〉）の例と規則から写し、実装の定数から写さない。
+
+## Risk
+
+Risk: R3
+
+## Contracts Under Test
+
+- MNT-03-D14（vB）: 原価の列を持つ 5 つの表に行の無い DB にだけ当たり、6 列を `_centi` に改名し、`products` を作り直して `stock_unit` の CHECK を 10 個にする。行のある DB は何も変えずに止まり、原因と直し方を名指す（22 §16 手順 1〜6、packet の Y10）。
+- 22 §16 の作り直しの手順: アプリの data の folder と作業フォルダの旧 DB を移した後の起動は、取込みも復元の補完も起こさず空の DB で vB まで当たる。
+- SPEC-UNIT-D5 と「入力の上限と安全な整数の範囲」の原価の行: 原価は 1/100 円の整数で `0`〜`99999999`。入力は浮動小数を通さない。表示は割り切れれば円の整数、そうでなければ小数 2 桁（記号は画面の今の `¥`）。補助は `P ÷ n` を 1/100 円未満で四捨五入（packet の Y1〜Y3・Y5）。
+- SPEC-UNIT-D6: 行の金額は 1/100 円の原価をそのまま `cost_line_centi` に渡して求め、合計は今の丸めと安全な整数の検査（Y4）。
+- 31 §12.3・§12.8: 原価差分は 1/100 円どうしの完全一致、fingerprint の原価は 1/100 円の十進の文字列（Y6・Y7）。
+- 77 の新原価（案）と現掛率（Y8）。
+- SPEC-UNIT-D1・D9・D10・D11: 単位は 10 個で、DB の CHECK・enum・bindings・formatter・商品 CSV の `在庫単位`・select・在庫少の並びが同じ一覧（Y9）。
+- D-128: 原価の label と価格の節の説明は税抜。
+
+## Failure Modes
+
+- FM1: vB が行のある DB で何か（列名・CHECK・版・`foreign_keys`）を変える、または止まりの文が原因と直し方を出さない。
+- FM2: vB の作り直しが §19 の写しの 3 列・その CHECK・`products` の index・子の表の外部キーを落とす。
+- FM3: DB の CHECK と enum の一覧が食い違う（片方だけが `roll`・`cm` を持つ）。
+- FM4: 円の値が 1/100 円の列・wire に入る（`* 100` の取り残し、円の上限 `999999` で検査する）、または 1/100 円の値を円として出す（`¥8,333`）。
+- FM5: 原価の解析・補助が浮動小数を通る（`0.29` → 28、`1.15` → 114、`1000` ÷ 12 → 83.34）、`.5` の境界で切り捨てる。
+- FM6: 原価の上限の境界がずれる（`99999999` を拒む、`100000000` を受ける）。
+- FM7: 補助の袋の値段・入り数が DB か wire に出る、開き直すと前の値が残る、長さの単位の商品で補助が出る。
+- FM8: 原価差分を円と 1/100 円で比べる（83.33 と 83 を同じとみなす）、fingerprint が 83.33 と 83.34 を区別しない。
+- FM9: 新原価（案）が 1 円未満を出す、現掛率が 100 倍ずれる。
+- FM10: `roll`・`巻`・`cm` を商品 CSV が受ける、select に出る、在庫少の並びから単位が漏れる。
+- FM11: 既存の test を期待を弱めて通す（版の期待を消す、境界の値を緩める、`cm` の case を `m` の case なしで消す）。
+- FM12: 作り直しの後の起動で作業フォルダの旧 DB が取り込まれる、確定済みの復元の記録が新しい DB の操作ログに書かれる。
+
+## Test Matrix
+
+- Before citing an existing test as regression coverage, use `rg` or an equivalent repository search to verify that the cited test exists.
+- helper と mock の実装を読み、実際に通る境界と置換される境界を確認して Test Type / coverage を選ぶ。helper 名だけで実 router / integration と分類しない。
+- `Would fail if...` は壊れる振舞いを観測できる入力・経路と結びつける。状態 reset なら初回 mount に加え同値再選択等の別経路を確認し、対象契約が行使されるものを選ぶ。
+- oracle の anchor は定義文にしか現れない literal を選び、`rg -c` で対象 file 内 1 件を file ごとに確かめる（複数 file を 1 本の `rg` で数えない）。不変の guard にも感度の実測行を置き、文言を改訂した後は「新しい文言が exact で 1 件 + 旧い文言が 0 件」の対にする。
+- oracle は検証対象と独立の正本から転記し、mutation は production 側だけを変える。
+- 結果を空にする注入で、期待が空集合の case だけが kill を主張していないかを確かめ、各組合せに非空の期待を 1 件置く。
+
+test の名前は実装の Writer が REQ・契約 ID を付けて決め、PR の本文にこの表の ID との対応を書く（下の名前は目安）。
+
+| Contract | Failure Mode | Test Type | Test Name | Would fail if... |
+|---|---|---|---|---|
+| MNT-03-D14 手順 3（B1） | FM4 | schema（Rust） | `test_migration_req903_vb_fresh_database_renames_cost_columns` | `init_database` の新規の DB で、6 列の新しい名前（`cost_price_centi`・`valuation_cost_price_centi`・`old_cost_centi`・`new_cost_centi`）が `pragma_table_info` に無いか、古い名前が残る。版が vB の番号でない |
+| MNT-03-D14 手順 4（B2） | FM2 | schema（Rust） | `test_migration_req903_vb_rebuild_keeps_columns_indexes_and_fk` | v9 で止めた空の DB（`migrate_up_to(&conn, 9)`）に vB を当てた後、`products` の列の並び（改名した 1 列を除いて v9 と同じ、§19 の 3 列が末尾）、3 つの index、`receiving_items`・`disposal_items`・`stocktake_items`・`price_history`・`stock_counts` ほか `products` を参照する表の `pragma_foreign_key_list` のどれかが変わる |
+| MNT-03-D14 手順 4・SPEC-UNIT-D1（B3） | FM3 | schema（Rust） | `test_migration_req903_vb_check_codes_match_enum` | vB の SQL の `CHECK(stock_unit IN (…))` が `ProductStockUnit::ALL` から組んだ文字列と違う。最新の版の DB で 10 個の code の INSERT のどれかが拒まれ、`roll`・`cm`・`kg` のどれかが受かる |
+| MNT-03-D14 手順 2（B4） | FM1 | schema（Rust） | `test_migration_req903_vb_stops_on_rows_in_each_table_without_changes` | 5 つの表のどれか 1 つだけに 1 行ある v9 の DB（表ごとに 1 case。子の表の行は `foreign_keys = OFF` で入れる）で、vB が成功する、message が手順 2 の文（`商品か原価の記録がある DB はこの版へ移せません。原価を 1/100 円で持つ版は空の DB から始めます。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）: {表名}`）と完全に一致しない、schema（6 列の名前と `products` の定義）・版・`PRAGMA foreign_keys` のどれかが変わる |
+| MNT-03-D14 手順 2（B5） | FM1 | schema（Rust） | `test_migration_req903_vb_stop_message_lists_all_tables_with_rows` | `products` と `price_history` に行のある DB で、message の表名が片方だけ（`products・price_history` の形でない） |
+| MNT-03-D14 手順 5・6、MNT-03-D1（B6） | FM1 | schema（Rust） | `test_migration_req903_vb_verify_or_commit_failure_rolls_back` | 手順 5 の検証の失敗と COMMIT の失敗（`migration_tx::fail_operations` の failpoint）で、6 列の名前・CHECK・版のどれかが残る、`foreign_keys` が元の値に戻らない |
+| MNT-03-D14（B7） | FM1 | schema（Rust） | `test_migration_req903_vb_rerun_is_noop` | `migrate` を 2 回呼ぶと vB の版の行が 2 つになる、または 2 回目が失敗する |
+| §19 の CHECK を写す（B8） | FM2 | schema（Rust） | `test_migration_req903_vb_keeps_stock_range_check` | vB の後の `products` に `stock_recheck = 1`・範囲 NULL の行、または `stock_range_low > stock_range_high` の行を入れられる |
+| MNT-03-D16 の規則（B9、§18 が先に merge したときだけ） | FM2 | schema（Rust） | §18 の lane の「最新の版までの migrate の後に 3 つの trigger がある」test | vB の後に `product_jan_aliases` の 3 つの trigger のどれかが `sqlite_master` に無い（§18 が後なら、この行は §18 の lane の義務） |
+| 22 §16 作り直しの手順 (i)（R1） | FM12 | integration（Rust、起動） | `test_startup_req903_rebuild_moves_app_data_and_legacy_db_then_empty_vb` | 作業フォルダに行のある旧 DB、`{app_data}` に行のある DB がある状態から、両方を移して `prepare_database_with_init` で起動すると、取込みが起きる、空の DB でない、vB まで当たらない |
+| 22 §16 作り直しの手順 (ii)（R2） | FM12 | integration（Rust、起動） | `test_startup_req903_rebuild_with_committed_manifest_writes_no_restore_log` | `{app_data}` に確定済み（phase = committed）の manifest と行のある DB がある状態から `{app_data}` を丸ごと移して起動すると、新しい DB の `operation_logs` に `backup_restore` の行がある |
+| 22 §16 作り直しの手順 (iii)（R3） | FM1 | integration（Rust、起動） | `test_startup_req903_vb_stop_after_earlier_commit_backup_path_readable_from_copy` | 行のある v7 の DB（既定でない `backup_path`、棚卸し・Z004 の行なし）を起動すると v8・v9 が COMMIT した後に vB で止まり、写しを読み取りだけで開いた `SELECT value FROM app_settings WHERE key='backup_path'` が保存先を返さない、または元の DB の file が変わる |
+| 22 §16 作り直しの手順の対照（R4） | FM12 | integration（Rust、起動） | `test_startup_req903_unmoved_legacy_db_is_imported_and_vb_stops` | 作業フォルダの旧 DB を移し忘れた状態で、取込みが起きずに空の DB で開く（対照が対照にならない） |
+| SPEC-UNIT-D5 上限・BIZ-01（C1） | FM6 | unit（Rust） | `test_product_req101_cost_centi_upper_bound` | create・update・価格改定で、原価 `99999999` が拒まれる、`100000000` が受かる（文 `原価が大きすぎます`）、負が受かる |
+| SPEC-UNIT-D5 上限・BIZ-02（C2） | FM6 | unit（Rust） | `test_receiving_disposal_req201_req204_item_cost_centi_upper_bound` | 入庫・廃棄の明細で、`99999999` が拒まれる、`100000000` が受かる（文 `明細{n}: 原価が大きすぎます`） |
+| SPEC-UNIT-D5 上限・BIZ-01-D8（C3） | FM6 | unit（Rust） | `test_import_req103_cost_centi_upper_bound_preview_and_commit` | 商品 CSV の preview で `999999.99` が行の error になる、`1000000` が通る。commit の再検証が `100000000` の `ImportRow` を通す |
+| SPEC-UNIT-D6（C4） | FM4 | unit（Rust） | `test_receiving_req201_line_cost_uses_centi_directly` | 原価 8333・数量 3 の個数の商品の行の金額が `"24999"`、合計が `250` でない。原価 8333（1 m あたり）・数量 130 の `m` の商品の行が `"10833"`、合計が `108` でない（`* 100` が残れば 100 倍） |
+| SPEC-UNIT-D6（C5） | FM4 | unit（Rust） | `test_record_detail_req206_line_amounts_from_centi` | 入庫・廃棄の記録詳細（`list.rs`）の行の金額と合計が C4 と同じ値でない |
+| 共通規則 (c)（C6） | FM6 | unit（Rust） | `test_receiving_disposal_req903_total_safe_integer_with_centi_limits` | 上限の明細（数量 `9999999`、原価 `99999999`）900 行の入庫・廃棄が通らない（合計 `8999999010000009` 円）、901 行（`9009999008900009` 円）が `合計金額が大きすぎます` にならない |
+| SPEC-UNIT-D10・Y2（C7） | FM5・FM6 | unit（Rust） | `test_import_req103_cost_column_parses_two_decimals` | `原価` の `83.33` → 8333、`1000` → 100000、`0` → 0、`0.5` → 50、`999999.99` → 99999999 のどれかが違う。`83.333`・`1e3`・`+5`・`.5`・`5.`・空が `原価が不正です` にならない。`-1` が `原価は0以上で入力してください` にならない（今の preview の負の文を保つ） |
+| 31 §12.3（C8） | FM8 | unit（Rust） | `test_receiving_req209_cost_diff_compares_centi` | 商品の原価 8333 に入庫の原価 8334 で差分が出ない、8333 で差分が出る。`CostDiff` の `master_cost_price_centi`・`received_cost_price_centi` が 8333・8334 でない |
+| 31 §12.8（C9） | FM8 | unit（Rust） | `test_receiving_req201_fingerprint_distinguishes_centi_cost` | 同じ idempotency key で原価 8333 と 8334 の要求が同じ fingerprint になる（冪等の再送と扱われる） |
+| SPEC-UNIT-D5 入力（C10） | FM5・FM6 | unit（TS） | `parseCostInput` の golden | `83.33` → 8333、`1000` → 100000、`0`・`0.00` → 0、`0.29` → 29、`1.15` → 115、`4.35` → 435、`999999.99` → 99999999、` 83.33 ` → 8333 のどれかが違う。`1000000` が `"too_large"` でない。`83.333`・`1e3`・`-1`・`+5`・`.5`・`5.`・空が null でない |
+| SPEC-UNIT-D5 表示（C11） | FM4 | unit（TS） | 原価の formatter と入力の欄の初期値の golden | 100000 → `¥1,000`、8333 → `¥83.33`、5 → `¥0.05`、10 → `¥0.10`、0 → `¥0`、99999999 → `¥999,999.99` のどれかが違う。初期値の文字列 100000 → `1000`、8333 → `83.33`、5 → `0.05`、10 → `0.10`、0 → `0` のどれかが違う |
+| 往復（C12） | FM4 | unit（TS） | 初期値の文字列の往復 | C11 の各値で `parseCostInput(初期値の文字列(x))` が x に戻らない |
+| UI-01b-D24・SPEC-UNIT-D5 補助（C13） | FM5 | unit（TS） | `unitCostFromPack` の golden | `"1000"` ÷ `"12"` → 8333、`"0.29"` ÷ `"2"` → 15、`"1"` ÷ `"3"` → 33、`"0.05"` ÷ `"2"` → 3（2.5 の切り上げ）、`"0.04"` ÷ `"3"` → 1、`"999999.99"` ÷ `"1"` → 99999999 のどれかが違う。入り数 `"0"`・`"1.5"`・空・`"10000000"` が error でない（D-119 の Matrix の golden を写した） |
+| UI-01b-D22・D24、D-128（C14） | FM7 | RTL | `ProductForm cost centi, label and pack helper` | 個数の単位で補助が出ない、`m` で出る（create で `m` に変えた後も開いたまま）。「原価に入れる」の後に原価の欄が `83.33` でない、保存の request に袋の値段か入り数が入る、request の `cost_price_centi` が 8333 でない。閉じて開き直した 2 つの欄が空でない。label が `原価（税抜、必須）`・`原価（税抜、必須、1 m あたり）`、価格の節の説明が UI-01b-D22 の文でない。修正の画面を原価 8333 の商品で開くと欄が `83.33` でない |
+| 77（C15） | FM9 | unit（TS）+ RTL | 新原価（案）と現掛率 | 現原価 8333・現売価 100・新売価 110 で新原価（案）が 9100 でない（77 の例）。現原価 8500・現売価 100・新売価 110 で 9300 でない。現掛率が `83.3`・`85.0` でない。現売価 0 で案が現原価、掛率が `—` でない |
+| UI-02-D7・D15（C16） | FM4・FM8 | RTL | 入庫の原価の初期値・送信・原価差分の dialog | 原価 8333 の商品を行に足したときの欄が `83.33` でない、送る `cost_price_centi` が 8333 でない。dialog がマスタ原価 `¥83.33`・今回の実原価 `¥85` を出さない、更新が `new_cost_price_centi: 8500` を送らない |
+| UI-05-D8・共通規則 (c) の TS の twin（C17） | FM4 | unit（TS）+ RTL | 廃棄の原価の初期値・合計の BigInt | 上限の明細 11 行と原価 `0.38`（38）・数量 1 の 1 行の合計が `109999987900000` 円でない（1/100 円の和 `10999998790000049`）。候補の一覧の原価が `¥83.33` の形でない |
+| 棚卸し記録詳細のロス原価（C18） | FM4 | RTL | 評価原価とロス原価の表示 | 評価原価 8333 が `¥83.33` でない。評価原価 99999999・差異 -999999999 のロス原価が `999,999,989,000,000.01 円` でない（number の積なら丸まる） |
+| SPEC-UNIT-D1・D11（U1） | FM3 | unit（Rust） | `finite_enum_contract_tests` の `ALL` | `ALL` が 10 個でない、重複がある、`from_code("roll")`・`from_code("cm")` が `None` でない |
+| SPEC-UNIT-D1・D4（U2） | FM3 | unit（Rust） | `unit_amount` の種類と基準数量の golden | 10 行（個数 9 は基準 1、`m` は 100）のどれかが違う |
+| SPEC-UNIT-D10（U3） | FM10 | unit（Rust） | 在庫少の 2 つの並び | 個数の並びが 9 個、長さの並びが `[M]` でない、和が `ALL` と違う |
+| SPEC-UNIT-D10（U4） | FM10 | unit（Rust） | `test_import_req103_stock_unit_accepts_ten_codes_and_words` | 10 個の code と 10 個の語のどれかが通らない、`roll`・`巻`・`cm` のどれかが行の error にならない |
+| SPEC-UNIT-D9（U5） | FM10 | unit（TS） | `format-stock-display`・`unit-quantity` の 10 個の表 | `STOCK_UNIT_LABELS` が 10 個でない、`priceBasisQuantity`・`isLengthUnit` が 10 個の表と違う |
+| UI-01b-D22・D23（U6） | FM10 | RTL | `StockUnitField` の select | create の select が 10 個（個・枚・本・袋・箱・組・セット・玉・丁・m の順）でない、edit の個数の単位の商品の select が 9 個でない |
+
+## 既存の test の移し方（T1〜T5）
+
+実装の Writer は着手時に各 command を逐語で回し、下の表と違えば表を直してから進める（AC8）。「書き換える」「変えない」の所で意味の期待（境界の位置、件数、message、行の error の有無）を変えない。
+
+### T1 版の期待と migrate の呼び方（vB を登録すると変わるもの）
+
+数える command: `rg -n 'migrate\(&conn\)|migrate_up_to\(' src-tauri/src` と `rg -n 'assert_eq!\(.*\b9\b' src-tauri/src/db | rg -i 'version|\bv\b|v1|v2|count'`（起票の時点の出力は `migrate(&conn)` が 34 行、版の期待の行が下の (a)〜(c) と、版と関係の無い `app_settings` の件数の 2 行〈`migration.rs`・`schema_v2.rs` の `9`〉）。`test_migration_req903_is_idempotent` の件数の `assert_eq!` は複数行に分かれていて 2 つ目の command に当たらないので、(a) の各関数は中を読んで確かめる。
+
+| 分類 | test（file と関数） | 理由 | 変え方 |
+|---|---|---|---|
+| (a) 新しい番号へ書き換える（12 行） | `migration.rs` の `test_migration_req903_is_idempotent`（`v1`・`v2`・件数の 3 行）、`test_migration_req401_v4_creates_daily_report_tables_and_indexes`、`test_migration_req907_v5_seeds_all_plu_slots`、`test_migration_req907_upgrades_v4_database_and_seeds_all_plu_slots`、`test_migration_req903_v8_fresh_database_and_empty_tables` の前半の `init_database` の後の `(9, 9)`。`schema_v2.rs` の `test_v2_req903_applied_on_fresh_db`、`test_v2_req903_idempotent_rerun`（`v` の 2 行と件数）。`schema_v9.rs` の `test_migration_req903_vl_fresh_database_has_keys_counts_and_copy_columns` | 新規の DB か、5 つの表に行の無い DB（`setup_v4_only_db` は `schema_versions` にしか行を入れない）を最新の版まで当て、最新の版と件数を期待する | 版と件数を vB の番号に（件数の message の `v1+…+v9` も） |
+| (b) `migrate_up_to(&conn, 9)` に替え、期待を変えない（8 か所） | `migration.rs` の `test_migration_req903_v3_adds_plu_target_and_backfills_valid_ean13`（`products` に 2 行）、`test_migration_req903_v8_fresh_database_and_empty_tables` の後半（行 0 の v7 の DB。期待の列の定義が `cost_price` の名前を持つ）。`schema_v2.rs` の `test_v2_req903_backfill_with_parent_child_fk`（`products`・`receiving_items` に行）。`schema_v9.rs` の `test_migration_req201_vl_backfills_business_date_and_keeps_ids_and_sequence`、`test_migration_req903_vl_stops_when_recomputed_stock_out_of_range` の成功の端の loop、`test_migration_req904_vl_fixes_copy_and_logs_trigger_migration`（2 か所）、`test_migration_req903_vl_commit_failure_rolls_back_everything` の再実行（どれも `seed_product` で `products` に行） | 行を入れてから最新の版まで当てるので vB で止まる。test の目的は v9 以前の migration で、期待は v9 の版 | 呼び方だけを替える。`(9, 9)`・`version == 9` の期待は変えない |
+| (c) 呼び方か期待を変える（2 か所） | `migration.rs` の `test_migration_req903_v8_fresh_database_and_empty_tables` の前半の 12 個の code の INSERT の loop | 最新の版の CHECK は 10 個で、`roll`・`cm` が拒まれる。loop が確かめるのは v8 の CHECK | loop を、新しい接続に `migrate_up_to(&conn, 8)` で v8 まで当てた新規の DB に移す（12 個が入り `kg` が拒まれる期待は変えない）。最新の版の CHECK は B3 が持つ |
+| (c) | `migration.rs` の `test_migration_req903_v8_commit_and_fk_restore_failures` の (3) の開き直し | `init_database` が最新の版まで当てるが、`seed_v7_products_with_children` の商品と子の表の行があるので vB で止まる | 開き直しの前に、棚卸しの行を消している今の形を広げ、fixture が入れた全ての表の行を子から順に消す（`foreign_key_check` が 0 行のまま）。期待 `(9, 9)` を vB の番号に。「v8 を当て直さずに開ける」の確かめ（`foreign_keys` 1、版の行の数）は変えない |
+| (d) 変えない | `migration.rs` の v6・v7 の test（`suppliers`・日報の表だけに行。最新まで当てても版を期待しない）、v8 で止まる・戻る test（`test_migration_req903_v8_fk_check_failure_rolls_back`、`test_migration_req903_v8_commit_and_fk_restore_failures` の (1)(2)(4)、`test_migration_req903_v8_limit_check_rejects_*`）、`migrate_up_to(&conn, 8)` の 3 つ、MNT-03-D11 の 2 つ（`app_max_version()` で比べる）。`schema_v9.rs` の `setup_v8_db` と v9 で止まる test。`cmd`・`biz` の `setup_db` の 5 つと `db/mod.rs` の `configure_database`（新規の DB に当ててから行を入れる） | vB に届かないか、届いても行が無く版を期待しない | — |
+
+### T2 原価の値と名前（Rust）
+
+数える command: `rg -c -w 'cost_price|valuation_cost_price|old_cost|new_cost|old_cost_price|new_cost_price|master_cost_price|received_cost_price|MAX_COST_PRICE' src-tauri/src src-tauri/tests | sort`（起票の時点で 34 file。多いのは `product_service.rs` 86、`migration.rs` 41、`product_repo.rs` 35、`receiving.rs` 22、`disposal_repo.rs` 20）。
+
+| 分類 | 所 | 変え方 |
+|---|---|---|
+| 変えない（履歴） | `schema_v1.rs`・`schema_v8.rs` の SQL と自分の定数、`migration.rs`・`schema_v2.rs`・`schema_v9.rs` の vB の前の版に入れる fixture（`can_insert_unit`・`seed_v7_products_with_children`・`seed_v8_limit_line_records`・v8 の上限の test の INSERT・`seed_product`） | vB の前の版の DB には古い列名しか無い |
+| 名前だけ書き換える | 原価の値が金額・表示・境界の期待に効かない fixture（例: 商品を作るだけの `NewProduct { cost_price: 50, … }`） | field 名を `_centi` に。値は変えない（意味は 1/100 円になるが、どの期待にも効かない） |
+| 名前と値を書き換える（1 対 1） | 原価から求める期待のある test: 入庫・廃棄の行の金額と合計（`receiving.rs`・`disposal.rs`・`list.rs`）、原価差分（`receiving.rs` の `cost_diffs` の 500・501・499）、棚卸しの評価額（`stocktake_service.rs`・`time_evidence_tests.rs`）、価格改定と価格の履歴、商品 CSV の原価の値 | fixture の円の原価 a を `a * 100` の 1/100 円にし、円の金額・合計の期待は変えない（1/100 円の行の金額の文字列の期待は 100 倍の値に変わる所だけを表にする） |
+| 境界の値を書き換える | 原価の上限の test（`product_service.rs` の `1_000_000` で `原価が大きすぎます` を期待する case、`receiving.rs`・`disposal.rs` の `lim-*-cost`、v8 の上限の test を除く） | `999_999`/`1_000_000` を `99_999_999`/`100_000_000` に（境界の位置は変えない: 上限は受け、1 つ外は error）。文は変えない |
+
+### T3 巻・cm と単位の数（Rust と TS）
+
+数える command: Rust `rg -n -w 'Roll|Cm' src-tauri/src src-tauri/tests`（21 行・5 file）と `rg -c "[\"']cm[\"']|[\"']roll[\"']" src-tauri/src src-tauri/tests | sort`（17 file）、TS `rg -c "[\"']cm[\"']|[\"']roll[\"']|\broll:|\bcm:" src | sort`（36 file）。単位の数の test は `rg -n '12 個|12 種|12 単位' src src-tauri/src` の test の行。
+
+| 分類 | 所 | 変え方 |
+|---|---|---|
+| 変えない（履歴・別の意味） | `schema_v1.rs`・`schema_v8.rs` の CHECK、`migration.rs` の v7・v8 の fixture の `'cm'`、`extract-thresholds.ts`・`extract-thresholds.test.ts` の在庫少の基準の単位 `cm` | vB の前の版、在庫少の基準の語（SPEC-UNIT-D10） |
+| 一覧の数を 12 → 10 | `finite_enum_contract_tests.rs`、`unit_amount.rs` の golden、`product_service.rs` の 12 個の code と語の test・在庫少の 2 つの並びの test（`vec![ProductStockUnit::M, ProductStockUnit::Cm]`）、`inventory_cmd.rs` の在庫少の 12 個の test、`format-stock-display.test.ts`・`unit-quantity.test.ts` の 12 個の表、`StockUnitField.test.tsx`・`ProductForm.test.tsx`・`product-form-request.test.ts` の 12 個の語の期待 | 一覧から巻・cm の 2 つを外す。並び・種類・基準数量の期待はそのほかで変えない |
+| `cm` の fixture を `m` に（1 対 1） | 長さの商品の fixture として `cm` を使う test（Rust: `disposal.rs`・`list.rs`・`manual_sale.rs`・`receiving.rs`・`returns.rs`・`sales_service.rs`・`stocktake_service.rs`・`time_evidence_tests.rs`・`inventory_cmd.rs`・`seed_demo.rs`・`seed_test.rs`。TS: 日次売上・月次売上・廃棄・手動販売・返品交換・入庫・在庫変動・整合性・記録詳細・操作ログの test） | `m` と `cm` は在庫・価格・POS の意味が同じ（SPEC-UNIT-D1）なので、数量・金額・表示の期待（`1.3 m` 等）は変えない |
+| `cm` の入力の分岐の case を契約ごと外す（1 対 1 の対を表にする） | `cm` の商品の入力が cm の整数であることだけを確かめる case（例: `unit-quantity.test.ts`・`*-request.test.ts`・`*-row-utils.test.ts` の `cm` の入力の case、`ProductForm.test.tsx` の `cm` の初期在庫） | SPEC-UNIT-D3 の `cm` の入力の契約が無くなるので case を外す。同じ欄の `m` の入力の case（小数 2 桁、上限、0 の扱い）が残ることを PR の本文に表で示す。`m` の case が無い欄があれば、外す前に `m` の case を足す |
+
+### T4 v8 の履歴の test（backlog の (i) と「U から C へ送るもの」）
+
+| test | 理由 | 変え方 |
+|---|---|---|
+| `schema_v8.rs` の `test_v8_req903_check_codes_match_enum` | enum から `Roll`・`Cm` を外すと、v8 の CHECK（12 個、履歴）と食い違って red になる | v8 の CHECK を固定の 12 個の一覧（`'pcs','sheet','hon','bag','box','roll','kumi','set','ball','cho','m','cm'`）と比べる形にする（v8 の SQL は変えない）。enum との一致は B3 へ移す |
+| `schema_v8.rs` の `test_v8_req903_limits_match_runtime_constants` の原価の行 | runtime の原価の上限が 1/100 円の `MAX_COST_PRICE_CENTI` になる | `assert_eq!(MAX_COST_PRICE * 100 + 99, constants::MAX_COST_PRICE_CENTI)`（v8 の円の上限と今の上限が円の桁で同じ）。他の行は変えない |
+
+### T5 原価の値と名前（TS）
+
+数える command: `rg -c -w 'cost_price|valuation_cost_price|old_cost_price|new_cost_price|master_cost_price|received_cost_price|MAX_COST_PRICE' src | sort`（起票の時点で 46 file。多いのは `ReceivingPage.test.tsx` 21、`bindings.ts` 16、`PriceRevisionPage.test.tsx` 14、`ProductForm.test.tsx` 8）。
+
+| 分類 | 所 | 変え方 |
+|---|---|---|
+| 名前だけ書き換える | 原価の値が表示・金額の期待に効かない mock（`BackupRestorePage.flow.test.tsx`・`HomePage.test.tsx`・`useHomeSummary.test.tsx`・`PluExportPage.test.tsx`・`ProductImportPreview.test.tsx`・`reducer.test.ts`・`StockMovementsPage.test.tsx`・`ReturnToFlow.test.tsx` ほか） | field 名を `_centi` に。値は変えない |
+| 名前と値を書き換える（1 対 1） | 原価の表示・送信・金額の期待のある test（`PriceRevisionPage.test.tsx`・`ProductForm.test.tsx`・`product-form-request.test.ts`・`ReceivingPage.test.tsx`・`receiving-request.test.ts`・`receiving-row-utils.test.ts`・`disposal-request.test.ts`・`DisposalPage.test.tsx`・記録詳細の test・`PriceHistorySection.test.tsx`・`ProductTable.test.tsx`・`src/lib/request-helpers.test.ts`） | 円の原価 a の mock を `a * 100` にし、表示の期待（`¥500` 等）は変えない。入力の文字列から送る値の期待は 1/100 円に（`"500"` → 50000） |
+| 定数の test | `unit-quantity.test.ts` の `expect(MAX_COST_PRICE).toBe(999999)` と `parsePriceInput(…, MAX_COST_PRICE)` の 3 行 | `MAX_COST_PRICE_CENTI` の `99999999` に。原価の解析の case は C10 の `parseCostInput` へ移し、`parsePriceInput` の case は売価の上限で残す |
+| field の一覧 | `product-update-patch-contract.test.ts` の `ProductUpdateRequest` の field の一覧 | `cost_price` を `cost_price_centi` に（単位の語の直しの lane が入れた `stock_unit` を含む 10 field の形の上で。backlog の申し送り） |
+
+## State Lifecycle Matrix
+
+| State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
+|---|---|---|---|---|---|---|---|---|---|---|
+| vB（DB の版） | v9 の DB | migrate の中 | 版が vB、6 列が `_centi`、CHECK が 10 個 | — | — | 再起動で再実行しない | 次の起動は vB を当て直さない | 行のある DB・検証・COMMIT の失敗で全部戻る | 作り直した空の DB で起動し直す | B1〜B8、R1〜R4 |
+| 原価の補助（UI-01b-D24） | 閉じている | 袋の値段と入り数を入れた | 原価の欄に値が入る | 単位を `m` に変えると閉じて隠れる（原価の欄は変えない） | — | 開き直すと 2 つの欄が空 | 画面を離れると消える（保存しない） | 入力の error で原価の欄を変えない | 直して押す | C13・C14 |
+| 原価差分の dialog（UI-02-D15） | 保存の前 | 保存の後に差分を検出 | 「更新する」で商品の原価が今回の実原価に | 価格改定の query の無効化（今のまま） | 商品の再取得 | — | — | 更新の失敗は行ごとの error（今のまま） | 行ごとに押し直す | C16 |
+
+## Adjacent Pattern Audit
+
+| Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
+|---|---|---|---|---|
+| 原価の入力の解析（Y2） | 商品フォーム（`product-form-request.ts` の `readPrice` の原価の 2 か所）、価格改定（`PriceRevisionTable.tsx`）、入庫（`receiving-request.ts`）、廃棄（`disposal-request.ts`）、補助の袋の値段、商品 CSV（`product_service.rs` の `原価` の列） | 全部 | 売価の欄（`parsePriceInput` のまま。円の整数） | C7・C10・C14〜C17 |
+| 原価の表示（Y3） | `ProductTable.tsx`・`StockDetailContent.tsx`・`PriceHistorySection.tsx`・`PriceRevisionTable.tsx`・`CostDiffDialog.tsx`・`DisposalPage.tsx` の候補の一覧・`ReceivingRecordDetailPage.tsx`・`DisposalRecordDetailPage.tsx`・`StocktakeRecordDetailPage.tsx` | 全部 | 行の金額（`formatCentiYen` のまま）、円の合計（`formatYen` のまま）、売価の表示 | C11・C14〜C18 |
+| `cost_line_centi` の呼出し（Y4） | `rg -n 'cost_line_centi\(' src-tauri/src` の production 5 と `#[cfg(test)]` 1 | 全部（`* 100` を外す） | `unit_amount.rs` の test の helper（円の原価で 35 §20.5a の golden を確かめる） | C4〜C6、AC4 |
+| 単位の網羅（Y9） | Rust の match（`as_str`・`stock_unit_kind`・`price_basis_quantity`・`stock_unit_label`）、TS の `Record<ProductStockUnit, …>` と switch（`STOCK_UNIT_LABELS`・`priceBasisQuantity`・`isLengthUnit`） | 全部 | — | U1〜U6 |
+
+## Negative Paths
+
+- missing input: 原価の欄が空 → 入力の error（TS）、商品 CSV の `原価` が空 → `原価が不正です`。補助の入り数・袋の値段が空 → 補助の欄の error、原価の欄を変えない。
+- invalid input: 小数 3 桁・指数・`+`・`.5`・`5.` → error（C7・C10）。入り数 `0`・`1.5` → error（C13）。`roll`・`巻`・`cm` の `在庫単位` → 行の error（U4）。
+- duplicate/ambiguous input: 同じ idempotency key で原価だけ違う入庫 → fingerprint が違い、冪等の再送と扱わない（C9）。
+- unknown reference: vB の起点の検査は外部キーに頼らず表ごとに数える（子の表だけに行のある DB でも止まる。B4）。
+- dependency missing: 該当なし（新しい依存は無い）。
+- permission/write failure: vB の COMMIT の失敗で全部戻る（B6）。
+- dry-run side effect: 商品 CSV の preview は DB に書かない（今のまま）。vB が止まった DB は何も変わらない（B4）。
+
+## Boundary Checks
+
+- threshold: 原価 `99999999` は受け `100000000` は error（C1〜C3）。合計 900 行は通り 901 行は error（C6）。
+- null/default: `valuation_cost_price_centi` は NULL 可のまま（棚卸し記録詳細の評価原価 NULL は `—`。今のまま）。
+- empty/non-empty: vB は 5 つの表が全部空のときだけ当たる（B1・B4）。
+- min/max: 原価 0（`¥0`、補助の結果が 0 になる `"0.01"` ÷ `"3"` → 0）。
+- status/policy enum: `ProductStockUnit` の 10 個（U1・B3）。
+- wire type: 原価は `number`（1/100 円）、行の金額は十進の文字列、合計は `number`（円）。
+- internal type: Rust の原価 `i64`、計算 `i128`。TS の廃棄の合計と棚卸しのロス原価は `BigInt`。
+- producer/consumer: BIZ → specta → bindings → 画面の formatter（C11）。
+- round-trip token: 入力の欄の初期値の文字列 → `parseCostInput`（C12）。
+- precision/range: 1/100 円の上限 `99999999` は安全な整数。`売価 × 原価` は `999999 × 99999999` 以下（Y8）。
+- cross-language parse: Rust（商品 CSV）と TS（画面）の原価の解析は同じ規則（C7 と C10 の共通の例: `83.33` → 8333、`83.333` は error）。
+
+## Compatibility Checks
+
+- old schema/input: vB の前の版の DB は、5 つの表に行があれば vB で止まる（B4）。行が無ければ vB が当たる（B2）。v8 の CHECK と上限の履歴は変えない（T4）。
+- new schema/input: 新規の DB は v1 から vB まで当たる（B1）。商品 CSV の `原価` は小数 2 桁まで受ける（C7）。
+- output order: 単位の select の順は D1 の表の順から巻・cm を外した順（U6）。
+- optional field behavior: `ProductUpdateRequest.cost_price_centi` は省略・null・値の今の区別のまま（`product-update-patch-contract.test.ts`）。
+
+## Data Safety Checks
+
+- source-derived data: 店の在庫 Excel の中身・原価の実値・商品の名前を fixture にしない（U1 の調べは行の数だけ）。
+- generated outputs: `src/lib/bindings.ts`・`docs/function-design/90-traceability.md` は生成の command で作る。
+- secrets: 該当なし。
+- local-only files: owner の L3 用の DB と移した folder（packet の Data Safety）。
+- synthetic sample boundaries: Rust と TS の fixture、demo の seed は合成の値。
+
+## Main Wiring / Integration Checks
+
+- helper connected to main path: vB が `migrations()` に登録され、`init_database` の新規の DB で当たる（B1）。`parseCostInput` と原価の formatter が 9 つの画面から呼ばれる（Adjacent Pattern Audit、C14〜C18）。
+- output reaches manifest/report: 行の金額と合計が記録詳細に届く（C5・C18）。
+- effective config reaches runtime: `MAX_COST_PRICE_CENTI` を BIZ の全ての原価の検証が使う（C1〜C3、AC3）。
+- CLI arg reaches implementation: 該当なし。
+
+## Mutation-style Adequacy Questions
+
+- If a mock value is changed so it differs from the design-doc expected value, which assertion proves the implementation used the correct source and not the mock's accidental constant? → 原価の golden（`83.33` → 8333、`1000` ÷ 12 → 8333、77 の 8333/100/110 → 9100）は設計正本の例から写す（C10・C13・C15）。
+- If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → 原価差分の dialog の更新の後の商品の原価（C16）。
+- If a key branch is inverted, which test fails? → 補助を個数の単位でだけ出す分岐（C14）、vB の起点の検査の分岐（B4）。
+- If a threshold comparison changes, which test fails? → C1〜C3・C6（`>` と `>=` の取り違え）、C13（`2r >= n` の取り違えは `"0.05"` ÷ `"2"` → 3 で落ちる）。
+- If a guard is removed, which test fails? → vB の起点の検査を外すと B4、原価の上限の検査を外すと C1〜C3。
+- If an output field is omitted, which test fails? → B2（§19 の 3 列・index・外部キー）、AC6（bindings の field）。
+- If output order changes, which test fails? → U6（select の順）、B5（行のある表名の並び）。
+- If dry-run performs a side effect, which test fails? → B4（止まった DB の schema・版・`foreign_keys` の比較）。
+- If a JSON number crosses JavaScript safe integer range, which test fails? → C17（廃棄の合計の BigInt）、C18（棚卸しのロス原価の BigInt）。
+- If a state token is round-tripped through browser/client code, which test fails? → C12（入力の欄の初期値の往復）。
+
+## Residual Test Gaps
+
+- Windows の実機での vB の止まり方と作り直しの後の起動、WebView の保存の置き場は L3-1 で確かめる（packet の Contract Probe P5）。
+- 商品フォームの補助・label・select の見た目と、入庫・原価差分・価格改定の表示は L3-2・L3-3 と Human Visual Confirmation。
+- 棚卸し記録詳細のロス原価は基準数量で割らないまま（35 §20.5a の既知の不整合。D-118 の (b)）。C18 は単位を 1/100 円に合わせたことだけを確かめる。
