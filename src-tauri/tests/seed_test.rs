@@ -282,7 +282,7 @@ fn seed_produces_low_stock_products() {
             "SELECT COUNT(*) FROM products \
              WHERE stock_quantity > 0 \
                AND ((stock_unit = 'pcs' AND stock_quantity <= 3) \
-                 OR (stock_unit = 'cm' AND stock_quantity <= 500))",
+                 OR (stock_unit = 'm' AND stock_quantity <= 500))",
             [],
             |row| row.get(0),
         )
@@ -318,7 +318,7 @@ fn seed_stockout_low_distributed_across_departments() {
             "SELECT COUNT(DISTINCT department_id) FROM products \
              WHERE stock_quantity > 0 \
                AND ((stock_unit = 'pcs' AND stock_quantity <= 3) \
-                 OR (stock_unit = 'cm' AND stock_quantity <= 500))",
+                 OR (stock_unit = 'm' AND stock_quantity <= 500))",
             [],
             |row| row.get(0),
         )

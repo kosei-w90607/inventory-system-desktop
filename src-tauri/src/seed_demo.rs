@@ -47,7 +47,7 @@ pub const RNG_SEED: u64 = 42;
 /// 他 4 部門は schema_v1 初期投入の `code_prefix` と揃えた。
 pub const DEPARTMENT_SEED_PLAN: &[(i64, u32, &str, &str, &str)] = &[
     (3, 17, "KE", "pcs", "毛糸"),
-    (8, 17, "NU", "cm", "無地生地"),
+    (8, 17, "NU", "m", "無地生地"),
     (4, 17, "SY", "pcs", "手芸材料"),
     (18, 17, "BT", "pcs", "ボタン"),
     (19, 16, "FS", "pcs", "ファスナー"),
@@ -233,7 +233,7 @@ fn seed_products(
     let mut stmt = conn.prepare(
         "INSERT INTO products (
             product_code, jan_code, name, department_id, supplier_id,
-            selling_price, cost_price, tax_rate, stock_quantity, stock_unit,
+            selling_price, cost_price_centi, tax_rate, stock_quantity, stock_unit,
             is_discontinued, plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
             created_at, updated_at
         ) VALUES (
@@ -259,7 +259,8 @@ fn seed_products(
             let supplier_idx = rng.gen_range(0..supplier_ids.len());
             let supplier_id = supplier_ids[supplier_idx];
             let selling_price: i64 = rng.gen_range(100..=5000);
-            let cost_price: i64 = (selling_price as f64 * 0.6) as i64;
+            // 原価は売価 × 0.6 円を 1/100 円で正確に持つ（浮動小数を通さない。SPEC-UNIT-D5）
+            let cost_price_centi: i64 = selling_price * 60;
             // 在庫数は normal 値を draw した上で index i bucket で上書きする (PR-3 (e))。
             // drawn_stock は normal 件 (i>=3) で実際に使うことで rng カーソルを保持し、
             // 後続の jan_code/selling_price の rng 列を不変に保つ
@@ -289,7 +290,7 @@ fn seed_products(
                 dept_id,
                 supplier_id,
                 selling_price,
-                cost_price,
+                cost_price_centi,
                 stock_quantity,
                 stock_unit,
                 true,
