@@ -936,7 +936,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - backlog の句は、同じ行の同じ版の引用を 1 つの句にまとめた（例「`7e0ccf1b` の時点で `…InventoryRecordsPage.tsx:156-245`、`…ReceivingPage.tsx:393`」）。
 - library の行（S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011）は、引用を足した hit の時点の lock の版を、`K` の綴りで同じ行に書いた。
 
-AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿）— link は投稿の後に置く。
+AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿。目次と `CHECK` の一覧の後に全文を 13 本に分けた）— https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6309869869
 
 AC-S5-2 の抜き取り（35 行。各行の最初の引用。抜き取りに当たった library の S2-009 は S2-013 で代えた。S1-015・S1-080 は S1-016・S1-081 で、S1-020 は S1-021 で代えた）:
 
