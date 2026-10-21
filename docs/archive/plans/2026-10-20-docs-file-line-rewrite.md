@@ -2,13 +2,13 @@
 
 wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18、計画は repo 外の回答台帳 TD-327〉の lane 2 の前半。owner の決定〈repo 外の回答台帳 TD-353、2026-10-20〉で lane 2 を 2 つに分けた: 2a = 既存の引用の書き換え〈本 lane、R2〉、2b = 違反 0 の状態から検査を足す〈`scripts/doc-consistency-check.sh` を変える R3 の別 lane、2a の merge の後〉）。docs と code の comment だけ。code の振舞い・migration・bindings・画面は変えない。
 
-出所: 書き換えの規則は D-125 と [DOC_STYLE_GUIDE](../DOC_STYLE_GUIDE.md) §1「code と文書の箇所の引き方（行番号で引かない）」（規則の lane、PR #179）。D-125 の Guarantee range が「既存の引用の書き換えと検査は lane 2 が持つ」とする。起点 `18db621e` の read-only の調査（repo 外の報告。live な引用 505〈正本 221・backlog 121・code の comment 14・時点の記録 149〉、抜き取り 150 のずれ率 45%〈正本 29%・backlog 56%・comment 73%〉。調査の手の分類で command の出力ではない）の後に #179〜#182 で docs が動いたので、AC の baseline は本 packet の起票で今の base（`6a25f63f`）を command で数え直した出力（下の Acceptance Criteria、D-062）。
+出所: 書き換えの規則は D-125 と [DOC_STYLE_GUIDE](../../DOC_STYLE_GUIDE.md) §1「code と文書の箇所の引き方（行番号で引かない）」（規則の lane、PR #179）。D-125 の Guarantee range が「既存の引用の書き換えと検査は lane 2 が持つ」とする。起点 `18db621e` の read-only の調査（repo 外の報告。live な引用 505〈正本 221・backlog 121・code の comment 14・時点の記録 149〉、抜き取り 150 のずれ率 45%〈正本 29%・backlog 56%・comment 73%〉。調査の手の分類で command の出力ではない）の後に #179〜#182 で docs が動いたので、AC の baseline は本 packet の起票で今の base（`6a25f63f`）を command で数え直した出力（下の Acceptance Criteria、D-062）。
 
 規模と手法: 書き換える対象は正本 79 行・code の comment 22 行・backlog 31 行（下の数え直し）。1 lane のまま、作業を S1〜S5 に分け、段ごとに AC を置く。本 run（起票）は packet と `docs/Plans.md` の pointer の 1 句だけを置き、引用の書き換えは plan-approved の後の別の run で行う。
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Plan Commit: 7b525591464c86520db9f2a7efad27438097e2ff
 - Amendments: none
@@ -870,7 +870,7 @@ $ { AC-S5-5 の loop; } | rg -c '^CHECK'
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: [DOC_STYLE_GUIDE](../DOC_STYLE_GUIDE.md) §1「code と文書の箇所の引き方（行番号で引かない）」、[decision-log](../decision-log.md) の D-125（Decision の (1)〜(3)、Guarantee range）、[DEV_WORKFLOW](../DEV_WORKFLOW.md) Workflow State の `Final Review Minimum`（workflow gate の変更は 2）と Wave Operation（base の同期）、`scripts/ci/classify-changes.sh` の workflow の path の一覧。
+- 引用する設計正本（節まで）: [DOC_STYLE_GUIDE](../../DOC_STYLE_GUIDE.md) §1「code と文書の箇所の引き方（行番号で引かない）」、[decision-log](../../decision-log.md) の D-125（Decision の (1)〜(3)、Guarantee range）、[DEV_WORKFLOW](../../DEV_WORKFLOW.md) Workflow State の `Final Review Minimum`（workflow gate の変更は 2）と Wave Operation（base の同期）、`scripts/ci/classify-changes.sh` の workflow の path の一覧。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。
 - plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) 書かれた時点の意図の取り戻し方（`git log -S` の全 hit と親を候補に古い順に歩き、行 N を含む最も内側の要素・文が引用の文の名指す語を含む最古の版を採る）、(2) 外部 library の引用は版を同じ行に書いて行番号を残す、(3) workflow の 2 件を lane 2b へ送る。(1) は書き換えの手順で、規則でない（D-125 の文は変えない）。(2) は DOC_STYLE_GUIDE §1 の「library の版を書いた観測はそのまま」の当てはめ。(3) は lane の範囲の分け方。どれも lane 2b が検査を足すときに、2b の packet が検査の形として引き継ぐ（D-125 の Revisit「lane 2 が検査を足すとき」）。
 - 前提・制約と延期した gap: workflow の 2 件は lane 2b へ延期する。延期しても安全な理由: 2 件は今も指す先が合っている（起点の調査の抜き取りで `docs/ci.md:29` と `merge-evidence.md:160` は「合う」）うえ、2b は検査を入れる前に直す。
@@ -921,13 +921,11 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
-段ごとの結果（処置は分類表の行の数）:
-
-- S1（正本 86 行）: 書き換えた 67、残す 11（起票で決めた 5 行と、版を足した library の 6 行）、lane 2b へ送る 2、消えた 6（S1-070・S1-072・S1-075・S1-082・S1-084・S1-085）。
-- S2（code の comment 22 行）: 書き換えた 16、残す 3（版を足した library の行）、消えた 3（S2-004・S2-005・S2-007）。直した comment に bindings に出る doc comment は無い。
-- S3（backlog 31 行）: 書き換えた 30（版ごとに「`{sha8}` の時点で `{path}:{N}`」の句）、曖昧 1（S3-018）。S3-031 の `):642-648` は取り戻せない引用として行の中で外した（Final Review の是正で、S3-014 の `:70` は書かれた時点の `docs/Plans.md` の行、S3-024 は `{errors.items}` の段落として取り戻した）。
-- S4: 消えた・曖昧は、引用を外すか、引用の文が名指す語から今の symbol への最小の言い換え（`prev_month_comparison = Some(prev_items)` → `get_monthly_sales`、`max-lines-per-function` → `ReturnExchangePage`）にした。引用が支える文と今の code・正本の食い違い 3 件（S1-013・S1-067・S1-082）は文を直さず、backlog の「次の docs の lane の候補」の (8) に 1 句を足した。
+- 結果（PR #183、2026-10-21 merge）: 設計の正本と code の comment の file:行 の引用を path と symbol・節で、backlog の引用を「`{sha8}` の時点で `{path}:{N}`」の句で引き直した。版の決め方は方法の 1〜2（path で絞らない候補と親を古い順に歩く）で、各行の採った版と書き換え先は分類表に、repo の中の引用ごとの照合は照合の入力と下の PR の comment にある。
+- 段ごと: S1 は書き換えのほかに、起票で決めた残す行、版を足した外部 library の観測（残す）、lane 2b へ送る workflow の 2 file、取り戻せない行（S1-070・S1-072・S1-075・S1-082・S1-084・S1-085）に分かれた。S2 は書き換えのほかに、版を足した library の行（残す）と取り戻せない行（S2-004・S2-005・S2-007）で、直した comment に bindings に出る doc comment は無い。S3 は 1 行（S3-018 の曖昧）を除いて版ごとの句で書き換え、S3-031 の `):642-648` は取り戻せない引用として行の中で外した（Final Review の是正で、S3-014 の `:70` は書かれた時点の `docs/Plans.md` の行、S3-024 は `{errors.items}` の段落として取り戻した）。
+- S4: 消えた・曖昧は、引用を外すか、引用の文が名指す語から今の symbol への最小の言い換え（`prev_month_comparison = Some(prev_items)` → `get_monthly_sales`、`max-lines-per-function` → `ReturnExchangePage`）にした。引用が支える文と今の code・正本の食い違い（S1-013・S1-067・S1-082）は文を直さず、backlog の「次の docs の lane の候補」の (8) に 1 句を足した。
 - S5: 分類表の全行の処置を埋め、照合の入力に repo の中の引用を 1 行ずつ書いた。
+- 後続: lane 2b「file:行 の検査」（R3 見込み、`docs/backlog.md` の項目）。
 
 計画からの外れと判断（reviewer が見る所）:
 
@@ -935,8 +933,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - code の comment の bare `:N` の target は、語の要素を定義する file を採った（S2-019 は `registerOptionClass` の在る `ReturnExchangePage.tsx`、S2-020 は商品情報の card の在る `StockMovementsPage.tsx`。test file には test の名前や assertion の文字列として語が出るだけ）。S2-021・S2-022 の X は comment の印を含めた `// :133`。
 - backlog の句は、同じ行の同じ版の引用を 1 つの句にまとめた（例「`7e0ccf1b` の時点で `…InventoryRecordsPage.tsx:156-245`、`…ReceivingPage.tsx:393`」）。
 - library の行（S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011）は、引用を足した hit の時点の lock の版を、`K` の綴りで同じ行に書いた。
+- S3-014 の `:70` の target は、手順 1 の「同じ文が語で名指す file」でなく、書かれた時点の文書自身（backlog がその中にあった時点の `docs/Plans.md`）にした（手順の書き方からの外れ。Final Review の closure の P3 で closeout に記した）。
 
-AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿）— 目次と `CHECK` の一覧 https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6309869869 、全文は続く 13 本（`2cab6441`）、Final Review の是正で変わった S3-014・S3-024 の塊の差し替え https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6311300061
+AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿）— 目次と `CHECK` の一覧 https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6309869869 、全文は続く 13 本、Final Review の是正で変わった S3-014・S3-024 の塊の差し替え https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6311300061
 
 AC-S5-2 の抜き取り（35 行。各行の最初の引用。抜き取りに当たった library の S2-009 は S2-013 で代えた。S1-015・S1-080 は S1-016・S1-081 で、S1-020 は S1-021 で代えた）:
 
@@ -1095,3 +1094,7 @@ S3-001 44f1e666 src-tauri/src/seed_demo.rs 462 inventory_movements seed_demo.rs:
 ```
 
   上から T5、V0、V1、V2、正しい S1-028、S1-030 の 2 行、S1-086、S3-001。
+
+### Final Review・merge・closeout（2026-10-21）
+
+Final Review は broad の 3 本（Codex〈発注 478〉= approve〈P3 1〉、Claude 側 fresh Opus 5.5 の全体 = approve〈P3 1〉、fresh Opus 5.5 の深掘り = reject〈P2 2・P3 3〉）で、是正の後の closure 2 本（Codex〈発注 481〉= approve〈指摘 0〉、fresh Opus 5.5 = approve〈P3 1〉）で P1/P2 の残りは 0。broad と closure は専用 record に記録し、Ready の後の Merge gate は pass、Human Gate の ready・merge は owner の承認（repo 外の回答台帳 TD-369）で、PR #183 は helper 経由で 2026-10-21 に merge した。finding の disposition: closure の P3（S3-014 の `:70` の target を、同じ文の別の file でなく書かれた時点の文書自身に決めたのは手順の書き方からの外れ）は本 closeout で Implementation Results の「計画からの外れと判断」に 1 句を足した。broad の深掘りの #3 の P3（AC-S5-5 の loop は target が `docs/archive/**` の file の古い候補を改名前の path で読まない。`git log --follow` で改名前の path も読む形）は lane 2b の候補として `docs/backlog.md` の lane 2b の項目に入れた。他の P3 は是正の commit で直した。
