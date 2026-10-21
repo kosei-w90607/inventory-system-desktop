@@ -53,7 +53,7 @@ struct DailyReportSourceFileRequest {
 }
 ```
 
-`source_path` は BIZ-08 §37.3 手順 1a が、選んだ file がレジの SD の上にあるかを確かめるためだけに使う（CMD は path を解釈しない）。CMD は `DailyReportInputFile { filename, bytes, sd_relative_path: None, source_path: source_path.map(PathBuf::from) }` を作って渡す。空文字の `source_path` は `None` と同じに扱う。今の構築（`src-tauri/src/cmd/daily_report_import_cmd.rs:43`）と test の `request`（同 `:242`）に field を足す。
+`source_path` は BIZ-08 §37.3 手順 1a が、選んだ file がレジの SD の上にあるかを確かめるためだけに使う（CMD は path を解釈しない）。CMD は `DailyReportInputFile { filename, bytes, sd_relative_path: None, source_path: source_path.map(PathBuf::from) }` を作って渡す。空文字の `source_path` は `None` と同じに扱う。今の構築（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `parse_and_validate_daily_report` の `DailyReportInputFile`）と test の `request`（同 `tests` の module）に field を足す。
 
 **出力型**:
 
@@ -239,11 +239,11 @@ fn get_ej_record(state: State<AppState>, id: i64) -> Result<EjRecordDetail, CmdE
 | DatabaseError(_) | internal | データベースエラーが発生しました。もう一度お試しください |
 | SourceCopyFailed(kind)（D-111、BIZ-08-D5） | internal（`CmdError::internal`、`error_id` つき。io error の kind は診断にだけ出す） | SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。 |
 
-`SourceCopyFailed` を `import_error` にしない: UI は commit の `import_error` を最初へ戻す（`src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:35` の `decideRecoverTo`）ので、`import_error` にすると preview と token を失う。`internal` なら `decideRecoverTo` が `preview` を返し、§45.4 手順 7 の「通常の失敗は cache を残す」で token も残るので、同じ preview・同じ token で再試行できる（55 の日報取込みの利用者フローの手順 2）。`impl From<BizError> for CmdError`（`src-tauri/src/cmd/mod.rs:130`）に分岐を足す。
+`SourceCopyFailed` を `import_error` にしない: UI は commit の `import_error` を最初へ戻す（`src/features/daily-report-import/hooks/useDailyReportImportFlow.ts` の `decideRecoverTo`）ので、`import_error` にすると preview と token を失う。`internal` なら `decideRecoverTo` が `preview` を返し、§45.4 手順 7 の「通常の失敗は cache を残す」で token も残るので、同じ preview・同じ token で再試行できる（55 の日報取込みの利用者フローの手順 2）。`impl From<BizError> for CmdError`（`src-tauri/src/cmd/mod.rs`）に分岐を足す。
 
 ### 45.8 生成bindings
 
-SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs:277`）と runtime の `tauri::generate_handler!`（同 `:1272`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。件数は正本に書かず、この 4 つの集合が一致することだけを契約にする）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
+SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs` の `export_bindings_to`）と runtime の `tauri::generate_handler!`（同 `run`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。件数は正本に書かず、この 4 つの集合が一致することだけを契約にする）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
 
 対象:
 - `parse_and_validate_daily_report`

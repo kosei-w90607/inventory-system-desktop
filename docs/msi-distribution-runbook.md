@@ -24,7 +24,7 @@ repo の現物で確かめた（2026-10-17、`src-tauri/tauri.conf.json`・`.git
 | 起動時の自動の backup | migration の後に作られる。その起動で DB の版が前の版の扱える版を超えていれば、その backup は前の版では開けない | 71 §71.9、22 §16「回復」手順 1 |
 | migration の当たり方 | 起動のたびに、DB の版より新しい migration を 1 つずつ当て、1 つごとに COMMIT する。失敗した migration だけが戻り、同じ起動で先に COMMIT した migration の版は残る。COMMIT の後の後始末の失敗でも起動は止まり、そのときは版が記録済み | 22 §3.2 の処理ステップ 5・MNT-03-D1、22 §16「回復」、`src-tauri/src/db/migration.rs` の `migrate` |
 | 新しすぎる DB | アプリが扱える版より DB の版が新しいと、DB の論理内容を変えずに起動を止め、「このデータは、より新しい版のアプリで使われています。…」を出す。文言の末尾に「（データの版: *N*、このアプリが扱える版: *M*）」が付く | 22 §3.2 MNT-03-D11・§12.4 の文言の表、`src-tauri/src/db/mod.rs` の `DbError` の表示 |
-| 起動を止めた文言の控え | 診断ログ（データの folder の `logs`）が使えれば、起動を止めた文言は表示と同じものがそこにも記録される。データの folder の確認・作成で止まったときはログの初期化の前なので記録されず、ログの初期化が失敗したとき（起動は続く）も記録されない。画面に出た文言は必ず全文を控える | `src-tauri/src/lib.rs` の `record_pre_window_fatal`（`:201`〜`:203`）と setup の順（データの folder の確認・作成 `:1214`〜`:1223` → ログの初期化 `:1225`〜`:1233` → DB の準備 `:1241`）、22 §12.4 の MNT-03-D6 |
+| 起動を止めた文言の控え | 診断ログ（データの folder の `logs`）が使えれば、起動を止めた文言は表示と同じものがそこにも記録される。データの folder の確認・作成で止まったときはログの初期化の前なので記録されず、ログの初期化が失敗したとき（起動は続く）も記録されない。画面に出た文言は必ず全文を控える | `src-tauri/src/lib.rs` の `record_pre_window_fatal` と `run` の setup の順（データの folder の確認・作成〈`StartupFailureKind::AppDataDir`・`CreateAppDataDir`〉 → ログの初期化〈`DiagnosticLogConfig`〉 → DB の準備〈`prepare_database`〉）、22 §12.4 の MNT-03-D6 |
 
 ## 初回の導入の前に決めること
 

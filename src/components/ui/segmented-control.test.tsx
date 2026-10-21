@@ -4,7 +4,7 @@
 // visual primitive while exposing a non-color selected state.
 // SC6（Gated Amendment 2 S9、Final Review round 1 owner L3 FAIL-1）: 操作群の
 // affordance として群 wrapper に border-border-strong の 1 枠を持つこと（DSR-22
-// `:443` の segmented 対象化）と、file から stone-300 直書きが 0 になっていること。
+// の segmented 対象化）と、file から stone-300 直書きが 0 になっていること。
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

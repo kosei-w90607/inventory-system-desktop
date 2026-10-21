@@ -553,7 +553,7 @@ fn exists_same_date_daily_report_import_without_settlement_no(
 ```
 
 **SQL方針**:
-`SELECT EXISTS (SELECT 1 FROM daily_report_imports WHERE report_date = ? AND status = 'completed' AND settlement_no IS NULL)`。`status` の条件は §14.18 の同日の一覧（`src-tauri/src/db/sales_repo.rs:760` の `status = 'completed'`）と同じで、取り消した（`rolled_back`）取込みは数えない。
+`SELECT EXISTS (SELECT 1 FROM daily_report_imports WHERE report_date = ? AND status = 'completed' AND settlement_no IS NULL)`。`status` の条件は §14.18 の同日の一覧（`src-tauri/src/db/sales_repo.rs` の `find_daily_report_imports_by_report_date` の `status = 'completed'`）と同じで、取り消した（`rolled_back`）取込みは数えない。
 
 ---
 
@@ -702,7 +702,7 @@ fn get_monthly_official_department_totals(
 
 `ej_records`（[pos-tables](../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」）を読み書きする。呼ぶのは BIZ-08 §37.11 だけ。TX は BIZ-08 が持つ。runtime（後続の lane A）は置き場の module を決め、`design_compliance_test.rs` の本書の行に足す。
 
-型の所有: repo が受け返しする型（下の `NewEjRecord` と、37 §37.11 に形を書いた `EjRecordSummary`・`EjRecordDetail`・`EjRecordRef`・`EjNumberGap`・`EjRecordModeCode`・`EjRecordKindCode`）は db の module に定義し、`src-tauri/src/biz/mod.rs` で re-export する（既存の形: `CsvImport`〈`src-tauri/src/biz/mod.rs:26`〉、`Stocktake` ほか〈同 `:28`〜`:30`〉）。CMD は BIZ の re-export を使い db を直接参照しない。BIZ だけが組み立てる型（`EjImportPlan`・`EjImportResult`・`EjConflict`・`EjRecordDay`・`EjSourceFile`）は BIZ-08 に置く。mode・kind は db の列では TEXT + CHECK のまま、型では enum で持ち、書くときは enum の文字列、読むときは明示の match で変える（外れた値は `DbError`。D-061 (c)、先例 `CsvImportStatus`〈`src-tauri/src/db/sales_repo.rs:13`〜`:19`・`:862`〜`:873`〉）。
+型の所有: repo が受け返しする型（下の `NewEjRecord` と、37 §37.11 に形を書いた `EjRecordSummary`・`EjRecordDetail`・`EjRecordRef`・`EjNumberGap`・`EjRecordModeCode`・`EjRecordKindCode`）は db の module に定義し、`src-tauri/src/biz/mod.rs` で re-export する（既存の形: `CsvImport`〈`src-tauri/src/biz/mod.rs`〉、`Stocktake` ほか〈同 `stocktake_repo` の re-export〉）。CMD は BIZ の re-export を使い db を直接参照しない。BIZ だけが組み立てる型（`EjImportPlan`・`EjImportResult`・`EjConflict`・`EjRecordDay`・`EjSourceFile`）は BIZ-08 に置く。mode・kind は db の列では TEXT + CHECK のまま、型では enum で持ち、書くときは enum の文字列、読むときは明示の match で変える（外れた値は `DbError`。D-061 (c)、先例 `CsvImportStatus`〈`src-tauri/src/db/sales_repo.rs` の `CsvImportStatus` と `row_to_csv_import` の `match`〉）。
 
 ```rust
 struct NewEjRecord {

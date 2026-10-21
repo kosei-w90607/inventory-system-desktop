@@ -255,7 +255,7 @@ pub fn run() {
 }
 ```
 
-`app_data_dir` 取得・作成の失敗、および DB 初期化系の失敗はいずれも `.expect()` によるパニックではなく `run_startup_step` / `handle_run_failure` を介した fail-closed 経路（利用者向け固定文言表示 + プロセス終了）に統一されている（`src-tauri/src/lib.rs` `run_startup_step` L84 定義）。操作ログ自動削除（MNT-02）と自動バックアップチェック（MNT-01）は DB 初期化後・State 管理前に実行され、いずれも失敗してもアプリ起動は継続する。
+`app_data_dir` 取得・作成の失敗、および DB 初期化系の失敗はいずれも `.expect()` によるパニックではなく `run_startup_step` / `handle_run_failure` を介した fail-closed 経路（利用者向け固定文言表示 + プロセス終了）に統一されている（`src-tauri/src/lib.rs` `run_startup_step` 定義）。操作ログ自動削除（MNT-02）と自動バックアップチェック（MNT-01）は DB 初期化後・State 管理前に実行され、いずれも失敗してもアプリ起動は継続する。
 
 **app_data_dirの取得方針（2026-04-13 設計変更）**:
 - Tauri 2.0 の setup hook 内で `app.path().app_data_dir()` を使用する

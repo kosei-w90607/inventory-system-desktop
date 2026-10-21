@@ -153,7 +153,7 @@ describe("useMonthlySalesReport (REQ-502 sort 結線)", () => {
   });
 
   it("REQ-502: prev_month_comparison: [] (BIZ contract Some(空Vec)) で全行 prev_month_diff が null になる", async () => {
-    // BIZ contract: sales_service.rs:196-197 で前月データなしも Some(空Vec) を返す常時セット。
+    // BIZ contract: src-tauri/src/biz/sales_service.rs の get_monthly_sales で前月データなしも Some(空Vec) を返す常時セット。
     // `null` は specta `Option<Vec<T>>` 境界の defensive guard で UI 側 compute-comparison が
     // 両ケースを safely 扱うが、本 test は通常 path の空配列ケース (Some(空Vec)) を test で固定。
     // compute-comparison.ts は prev === [] のとき各 cur item で prevMap.get() === undefined →

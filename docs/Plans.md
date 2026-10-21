@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-docs の棚卸しの lane 1（PR #180、設計・dashboard・backlog・decision-log の Status を今の実装と決定に合わせる）と規則の lane（PR #179、D-124〜D-127）は着地した（2026-10-20）。次 = lane 2「file:行 の引用の書き換えと検査」（D-125〈repo 外の回答台帳 TD-326〉。正本と code の comment の引用は行番号を外して symbol・節 ID で引き、backlog の引用は起票の SHA を添え、時点の記録はそのまま。path が在る・行数の内・曖昧でないを検査する）。並行の段: 棚卸しの S6 の束（[lane 1 の packet](archive/plans/2026-10-19-docs-contract-refresh.md) の S6。店の資料〈2026-10-18 の SD の写しと在庫 Excel〉で確かめる事実・owner に聞く束・外部仕様の確認日）、[backlog](backlog.md) に足した「次の docs の lane の候補」。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。初回の導入の前に決め切るものは [導入の前の関門](#導入の前の関門)。
+docs の棚卸しの lane 1（PR #180、設計・dashboard・backlog・decision-log の Status を今の実装と決定に合わせる）と規則の lane（PR #179、D-124〜D-127）は着地した（2026-10-20）。次 = lane 2「file:行 の引用の書き換えと検査」（D-125〈repo 外の回答台帳 TD-326〉。正本と code の comment の引用は行番号を外して symbol・節 ID で引き、backlog の引用は起票の SHA を添え、時点の記録はそのまま。path が在る・行数の内・曖昧でないを検査する。repo 外の回答台帳 TD-353 で 2a〈書き換え、[packet](plans/2026-10-20-docs-file-line-rewrite.md)〉と 2b〈検査、2a の merge の後〉に分けた）。並行の段: 棚卸しの S6 の束（[lane 1 の packet](archive/plans/2026-10-19-docs-contract-refresh.md) の S6。店の資料〈2026-10-18 の SD の写しと在庫 Excel〉で確かめる事実・owner に聞く束・外部仕様の確認日）、[backlog](backlog.md) に足した「次の docs の lane の候補」。棚卸しの後の lane の候補（順は owner が決める）: 棚卸しの runtime (b)、PR #172 SD 直読みの runtime（SD の写しの確かめ〈Contract Probe〉の後）、JAN の別名の runtime、日報の紙の runtime、SD 一括取込みと EJ の控えの runtime、原価の lane（C、U6 の店の答えの後）。初回の導入の前に決め切るものは [導入の前の関門](#導入の前の関門)。
 
 active な lane の Plan Packet は `docs/plans/` の dated packet が正本（lane の branch は各 packet の `Branch` 行、現在地は helper status）。lane の起票・closeout はこの節へ lane ごとの行を足さない（D-097）。
 

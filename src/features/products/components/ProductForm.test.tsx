@@ -912,7 +912,7 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker�
     // onValuesChange は React.Dispatch<SetStateAction<...>> なので functional updater
     // (prev) => ({ ...prev, departmentId: Number(value) }) を受け取る。updater を解決して
     // departmentId が number（"1" でなく 1）であることを検査する
-    // （ProductForm.tsx:284 の Number() 欠落 mutant を kill する）。
+    // （src/features/products/components/ProductForm.tsx の部門の Select の onValueChange の Number() 欠落 mutant を kill する）。
     const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
       prev: ProductFormValues,
     ) => ProductFormValues;
@@ -921,7 +921,7 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker�
     );
 
     // P2-4: 部門選択後に親が departmentId を null へ reset した経路
-    // （ProductForm.tsx:282 の controlled value "" → undefined mutant を kill する）。
+    // （src/features/products/components/ProductForm.tsx の部門の Select の controlled value "" → undefined mutant を kill する）。
     act(() => {
       setValues((prev) => ({ ...prev, departmentId: null }));
     });
