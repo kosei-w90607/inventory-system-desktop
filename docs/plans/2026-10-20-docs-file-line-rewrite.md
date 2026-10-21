@@ -8,7 +8,7 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R2
 - Plan Commit: 7b525591464c86520db9f2a7efad27438097e2ff
 - Amendments: none
@@ -32,6 +32,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs と co
 6. plan-draft（closure の P3 の是正）: round 3 の後の closure の P3 4 件（Review Response 参照）。
 7. plan-draft → plan-gate（Plan Review round 1〜3、2026-10-21）: Claude 側 fresh Opus 5.5・Codex（3 round とも Sol）。round 3 は 2 本とも approve（P1/P2 0）。各 round の是正は Review Response 参照。
 8. plan-gate → plan-approved（2026-10-21、Coordinator、本 commit。state だけ）: round 3 の後の P3 の一括是正（`0a8e8fcd`）を fresh Opus 5.5 の closure が approve（P1/P2 0）し、その closure の P3 の是正（`7b525591`）を Coordinator が差分と AC-S5-5 の loop の再実行で確かめた。Plan Commit は `7b525591`。
+9. plan-approved → implementing（2026-10-21、Coordinator、本 commit。state だけ）: Plan Commit `7b525591` は実装の commit より前にある。書き換えは Writer（Opus 5.5 subagent）への発注で行う。
 
 ## Owner Effort Budget
 
