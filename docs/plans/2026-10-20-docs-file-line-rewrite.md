@@ -29,6 +29,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs と co
 3. plan-draft（round 1 の是正）: Plan Review round 1 の是正（Review Response 参照）。
 4. plan-draft（round 2 の是正）: Plan Review round 2 の是正（Review Response 参照）。
 5. plan-draft（round 3 の P3 の一括是正）: Plan Review round 3 の後の disposition（Review Response 参照）。
+6. plan-draft（closure の P3 の是正）: round 3 の後の closure の P3 4 件（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -161,7 +162,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 
 分類表の全行の処置の欄の先頭が「書き換えた」「残す（理由）」「lane 2b へ送る」「消えた（理由）→ 処置」「曖昧（理由）→ 処置」のどれかで、未処置が無いこと（AC-S5-5 は処置を先頭の語で読む）。
 
-全引用の照合の evidence: 分類表の S1〜S3 の行のうち処置が「書き換えた」「消えた」「曖昧」の行の、repo の中の file を target にする引用ごとに、下の「照合の入力」の block に 1 行（`ID 採った版 target N W X`。採った版は 2 で採った commit の先頭 8 桁で、取り戻せない引用は `-`。N は行か範囲 `N-M`。W は 2 で書き出した名指す語から採った空白の無い 1 語〈例 `price_range_error`・`在庫あり`〉で、名指す語が無い引用は `-`。X は 1 の文字列で、行の残り全部）を書く。`,N`・`/:N`・`L<N>・N` は 1 つずつ別の行、範囲 `N-M`・`:N`〜`:M` は 1 行。外部 library・repo 外の資料の引用は書かない。AC-S5-5 の loop の出力（引用ごとの候補の一覧と各候補の行 N−3〜M+3）を PR に残す。人手の判断（行 N を含む最も内側の要素・文が名指す語を含むか）は、出力の `CHECK` の付いた塊と採った版の抜き取り（下の Implementation Results の約束）の表で確かめる。`CHECK` は、`*` の版の N〜M に W が無いとき、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在るとき、W が `-` のときに出る。Final Review の reviewer が読むのは `CHECK` の塊と AC-S5-2 の抜き取り。
+全引用の照合の evidence: 分類表の S1〜S3 の行のうち処置が「書き換えた」「消えた」「曖昧」の行の、repo の中の file を target にする引用ごとに、下の「照合の入力」の block に 1 行（`ID 採った版 target N W X`。採った版は 2 で採った commit の先頭 8 桁で、取り戻せない引用は `-`。N は行か範囲 `N-M`。W は 2 で書き出した名指す語から採った空白の無い 1 語〈例 `price_range_error`・`在庫あり`〉で、名指す語が複数あるときは行 N〜M に literal に在る語を選び〈無ければ `-`〉、名指す語が無い引用も `-`。X は 1 の文字列で、行の残り全部）を書く。`,N`・`/:N`・`L<N>・N` は 1 つずつ別の行、範囲 `N-M`・`:N`〜`:M` は 1 行。外部 library・repo 外の資料の引用は書かない。AC-S5-5 の loop の出力（引用ごとの候補の一覧と各候補の行 N−3〜M+3）を PR に残す。人手の判断（行 N を含む最も内側の要素・文が名指す語を含むか）は、出力の `CHECK` の付いた塊と採った版の抜き取り（下の Implementation Results の約束）の表で確かめる。`CHECK` は、`*` の版の N〜M に W が無いとき、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在るとき、W が `-` のときに出る。Final Review の reviewer が読むのは `CHECK` の塊と AC-S5-2 の抜き取り。
 
 ### 分類表
 
@@ -251,10 +252,10 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-078 | `docs/quality/review-checklist.md:123` | `:86` | 変更履歴 | — | — | 残す（変更履歴の行） |
 | S1-079 | `docs/design-system/01-decision-rules.md:362` | `node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts:23` | 外部 library |  |  | 未処置 |
 | S1-080 | `docs/function-design/53-ui-home.md:312` | `Plans.md L23` | 変更履歴 | — | — | 残す（変更履歴の行） |
-| S1-081 | `docs/function-design/54-ui-shortcuts.md:107` | `src/components/ui/dialog.tsx L62-69` | 正本 |  |  | 未処置 |
+| S1-081 | `docs/function-design/54-ui-shortcuts.md:107` | `` `src/components/ui/dialog.tsx` L62-69 `` | 正本 |  |  | 未処置 |
 | S1-082 | `docs/function-design/56-ui-daily-sales.md:26` | `SCREEN_DESIGN.md L100` | 正本 |  |  | 未処置 |
 | S1-083 | `docs/function-design/56-ui-daily-sales.md:580` | `mockup L313` | 正本 |  |  | 未処置 |
-| S1-084 | `docs/function-design/58-ui-stock-inquiry.md:2` | `SCREEN_DESIGN.md L120-133`・`L167-176` | 正本 |  |  | 未処置 |
+| S1-084 | `docs/function-design/58-ui-stock-inquiry.md:2` | `SCREEN_DESIGN.md（在庫照会画面 L120-133`・`L167-176` | 正本 |  |  | 未処置 |
 | S1-085 | `docs/function-design/58-ui-stock-inquiry.md:676` | `SCREEN_DESIGN.md L120-133` | 正本 |  |  | 未処置 |
 | S1-086 | `docs/function-design/70-mnt-diagnostic-log.md:258` | `` `src-tauri/src/lib.rs` `run_startup_step` L84 `` | 正本 |  |  | 未処置 |
 
@@ -319,7 +320,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S3-028 | `docs/backlog.md:299` | `ProductImportPreview.tsx:76`・`ProductRankingTable.tsx:80`・`BackupRestorePage.tsx:533` | backlog |  |  | 未処置 |
 | S3-029 | `docs/backlog.md:303` | `StockStatusBadge.tsx:42`・`01-decision-rules.md:445`・`:451`・`04-backbone.md:44`・`02-component-catalog.md:158`・`catalog:588`・`DailyReportImportPage.tsx:322`・`ProductTable.tsx:133` | backlog |  |  | 未処置 |
 | S3-030 | `docs/backlog.md:334` | `button.tsx:15-16` | backlog |  |  | 未処置 |
-| S3-031 | `docs/backlog.md:341` | `list.rs:21`・`archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:642-648` | backlog |  |  | 未処置 |
+| S3-031 | `docs/backlog.md:341` | `list.rs:21`・`archive/plans/2026-09-03-ui-list-backbone-d-lane2.md):642-648` | backlog |  |  | 未処置 |
 
 #### 照合の入力
 
@@ -401,17 +402,24 @@ done
 - AC-S5-2（方法の抜き取り）: Implementation Results に抜き取りの表があり、行は分類表の ID の番号が S1 は 5 の倍数（S1-005〜S1-085 の 17 行）、S2 は 3 の倍数と S2-001（8 行）、S3 は 3 の倍数（S3-003〜S3-030 の 10 行）の計 35 行。処置が残す・lane 2b へ送るの行か、型が外部 library・repo 外の資料を含む行に当たったら、同じ段の抜き取りに入っていない次の ID の行で代える。各行に、候補を引く command（方法の 1）と候補の一覧、採った版〈hit か親〉の `git show {rev}:{path} | sed -n '{範囲}p'` の command、その版の行が属する symbol・節、書き換え先、今の base の `rg -n` の hit がある。reviewer は表から 5 行以上を選び、command を実行して「採った版の行の symbol・節 = 書き換え先」を確かめる。
 - AC-S5-3（触る file の範囲）: `git diff --name-only origin/main...HEAD | rg -v -e '^docs/function-design/' -e '^docs/design-system/0[0-2]-' -e '^docs/msi-distribution-runbook\.md$' -e '^docs/backlog\.md$' -e '^docs/Plans\.md$' -e '^docs/plans/2026-10-20-docs-file-line-rewrite\.md$' -e '^src/' -e '^src-tauri/src/'` が何も出さない（後ろの `rg` の exit 1。AC-S2-3 で bindings を再生成したら `src/lib/bindings.ts` もこの範囲に入る）。`bash scripts/ci/classify-changes.sh | rg -x 'workflow=false'` が 1 行を出す。
 - AC-S5-4（code は comment だけ）: `git diff origin/main...HEAD -- src src-tauri/src | rg '^[-+]' | rg -v '^(\+\+\+|---)' | rg -v '^[-+]\s*(//|/\*|\*|\{/\*)'` が何も出さない（後ろの `rg` の exit 1。bindings を再生成したときは `src/lib/bindings.ts` の行が出るので、その行が doc comment の JSDoc だけであることを読んで確かめる）。
-- AC-S5-5（全引用の照合）: 下の loop を repo root で実行した出力に `NG` で始まる行が無い（`| rg '^NG'` が何も出さない、exit 1）。分類表の行は `#### S1 の行`〜`#### 照合の入力` の間だけから読む。`NG` は次を出す: 照合の入力の行ごとに、target が X の中の path（拡張子つきの名前）で終わらない、候補が無い、採った版が候補〈hit と親〉に無い、分類表に同じ ID の行が無い、X が分類表の場所の行〈`origin/main` のその file・行〉に無い、その行の採った版の欄〈第 6 列〉に採った版が無い〈採った版が `-` なら欄に `-` が無い〉、その版に target の file が無い。分類表の行ごとに、処置の欄の先頭が「残す」「lane 2b」でなく型が正本・comment・backlog で、引用の列の行番号の多重集合〈`-` の範囲は両端〉と照合の入力のその ID の N の数字の多重集合が違う。`--` で始まる行（外部 library・repo 外の資料を含む行）は数を読んで確かめる。各候補の行は N−3〜M+3 を出す。`CHECK <ID>` は `NG` でなく、人が読む塊を絞る印: `*` の版の N〜M に W が無い、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在る、W が `-`、のどれかで出る。Writer は出力の全文を PR の comment に残し（大きければ段ごとに分ける）、Implementation Results にはその link だけを書く。Final Review の reviewer は `CHECK` の付いた塊を全部、「`*` の版で行 N を含む最も内側の要素・文が名指す語を含み、それより古い候補ではそうでない（同じ symbol なら最古が `*`）」で照らし、AC-S5-2 の 35 行で symbol の判断を確かめる。場所の行は `origin/main` の行なので、同期で `origin/main` が動いたら場所の列を今の行に直してから回す。
+- AC-S5-5（全引用の照合）: 下の loop を repo root で実行した出力に `NG` で始まる行が無い（`| rg '^NG'` が何も出さない、exit 1）。分類表の行は `#### S1 の行`〜`#### 照合の入力` の間だけから読む。`NG` は次を出す: 照合の入力の行ごとに、X が無い〈列が足りない〉、分類表に同じ ID の行が無い、X が分類表の場所の行〈`origin/main` のその file・行〉に無い、target が場所の行で X の直前に続く path〈X の中の拡張子つきの名前を、場所の行で前に続く path の文字まで伸ばしたもの〉で終わらない、候補が無い、採った版が候補〈hit と親〉に無い、その行の採った版の欄〈第 6 列〉に採った版が無い〈採った版が `-` なら欄に `-` が無い〉、その版に target の file が無い。分類表の行ごとに、処置の欄の先頭が「残す」「lane 2b」でなく型が正本・comment・backlog で、引用の列の行番号の多重集合〈`-` の範囲は両端〉と照合の入力のその ID の N の数字の多重集合が違う。`--` で始まる行（外部 library・repo 外の資料を含む行）は数を読んで確かめる。各候補の行は N−3〜M+3 を出す。`CHECK <ID>` は `NG` でなく、人が読む塊を絞る印: `*` の版の N〜M に W が無い、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在る、W が `-`、のどれかで出る。Writer は出力の全文を PR の comment に残し（大きければ段ごとに分ける）、Implementation Results にはその link だけを書く。Final Review の reviewer は `CHECK` の付いた塊を全部、「`*` の版で行 N を含む最も内側の要素・文が名指す語を含み、それより古い候補ではそうでない（同じ symbol なら最古が `*`）」で照らし、AC-S5-2 の 35 行で symbol の判断を確かめる。場所の行は `origin/main` の行なので、同期で `origin/main` が動いたら場所の列を今の行に直してから回す。
 
 ```sh
 F=docs/plans/2026-10-20-docs-file-line-rewrite.md
 rows(){ sed -n '/^#### S1 の行$/,/^#### 照合の入力$/p' "$F" | rg '^\| S[1-3]-[0-9]{3} \|'; }
 inp(){ sed -n '/^```text 照合の入力$/,/^```$/p' "$F" | rg -v '^(```|#)'; }
 inp | while read -r id rev target n w x; do
+  [ -n "$x" ] || { echo "NG $id: X が無い（列が足りない）"; continue; }
+  row=$(rows | rg "^\| $id \|")
+  [ -n "$row" ] || { echo "NG $id: 分類表に無い"; continue; }
+  loc=$(printf '%s' "$row" | awk -F'|' '{print $3}' | rg -o '[^` ]+:[0-9]+')
+  line=$(git show "origin/main:${loc%:*}" 2>/dev/null | sed -n "${loc##*:}p")
+  printf '%s' "$line" | grep -qF -- "$x" || echo "NG $id: X が場所 $loc の行に無い"
   re="$(printf '%s' "$x" | sed 's/[][\\.*^$+?(){}|]/\\&/g')([^0-9]|\$)"
   a=${n%-*}; b=${n#*-}
   xp=$(printf '%s' "$x" | rg -o '[A-Za-z0-9_./-]*\.[A-Za-z0-9]+' | head -n 1)
-  [ -z "$xp" ] || case "$target" in "$xp"|*/"$xp") ;; *) echo "NG $id: target $target が X の path $xp で終わらない";; esac
+  wp=$(printf '%s' "${line%%"$x"*}" | sed 's/.*[^A-Za-z0-9_./-]//')$xp
+  [ -z "$xp" ] || case "$target" in "$wp"|*/"$wp") ;; *) echo "NG $id: target $target が場所の行の path $wp で終わらない";; esac
   hits=$(git log --format=%H --pickaxe-regex -S"$re" origin/main)
   cands=$(printf '%s\n' "$hits" | rg . | while read -r h; do git rev-parse "$h" "$h^@"; done | sort -u)
   full=$(git rev-parse -q --verify "$rev^{commit}")
@@ -429,10 +437,6 @@ inp | while read -r id rev target n w x; do
     [ "$h" = 1 ] && echo x
   done)
   { [ "$w" = - ] || [ -n "$ck" ]; } && echo "CHECK $id"
-  row=$(rows | rg "^\| $id \|")
-  [ -n "$row" ] || { echo "NG $id: 分類表に無い"; continue; }
-  loc=$(printf '%s' "$row" | awk -F'|' '{print $3}' | rg -o '[^` ]+:[0-9]+')
-  git show "origin/main:${loc%:*}" 2>/dev/null | sed -n "${loc##*:}p" | grep -qF -- "$x" || echo "NG $id: X が場所 $loc の行に無い"
   if [ "$rev" = - ]; then
     printf '%s' "$row" | awk -F'|' '{print $6}' | rg -q -- '-' || echo "NG $id: 分類表の採った版の欄に - が無い"
     continue
@@ -674,7 +678,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 案から変えた点（現物で確かめた結果）:
 
 - loop の X の path の取り出し: 案の `${x%%:*}`・`${x%' L'*}` は、`（:147` から `（`、`` `src/components/ui/dialog.tsx` L62 `` から閉じの backtick つきの path を取り、正しい入力にも `NG` を出す（bash で確かめた）。X の中の最初の拡張子つきの名前を取る形にした。
-- `-` の範囲の引用の列: 案の数の照合は引用の列の `N-M` を両端で数えるが、分類表の列は `rg -o` の token で `-M` を落としていた。既存の行で `-M` を落とした 47 個（S1-020 の手で足した `:146-160` を含む）に書き足した（足さないと正しい入力でも `NG`）。
+- `-` の範囲の引用の列: 案の数の照合は引用の列の `N-M` を両端で数えるが、分類表の列は `rg -o` の token で `-M` を落としていた。既存の行（S1-001〜S1-078・S2-001〜S2-014・S3）で範囲を書いた引用は `0a8e8fcd` で数えて 48 個（`rg -o` の token に `-M` を書き足した 46 個、S1-020 の手で足した `:146-160`、S3-031 に足した `:642-648`）で、その `-M` を書き足した（足さないと正しい入力でも `NG`）。
 - 手で足す引用: 案の一覧（§5.3）は 15 個で案の本文の「17」と合わず、`docs/backlog.md:261` の `Pagination.tsx:52-53,99` の `,99` と、S1-019 の `scroll-restoration.js:73,106,114` の `,114` が無い。S3-027 に足した。bare の 6 個（S1-059・S3-021・S3-031）は新しい `P` の `rg -o` が拾うので、手で足したのは `,N` 10・`catalog:588`・`L<N>` の後の 3 個の 14 個。
 - S1 の残す・lane 2b の行: 案の「8 行」は 7 行（起票の 6 行と S1-080）。
 - 範囲の決め: 案の §5.2 は `〜:N` を別の引用の例に挙げつつ `:N`〜`:M` を 1 つの引用とし、食い違う。`〜` は範囲の記号として 1 つの引用にした（相談役 A1。数の照合は両端の数字なのでどちらでも同じ結果）。
@@ -702,5 +706,44 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 | P3-5 | Opus #5 | X の path が full path か basename か曖昧。` / L<N>` の X が無い | 手順 1 に「X の path は書かれた path の basename から」と書き、` / L<N>` を記号で続く塊に入れた |
 | P3-6 | Codex #1 | S1-019 の `,114`、S1-020 の `146-160`、S1-086 の途中の backtick が引用の列に無い | 3 行の引用の列を現物どおりに転記し、S1 を 248 引用・手で足した 7 に直した |
 
-- round 2 の数の訂正: round 2 の是正で「手で足した 13 個」「既存の行で `-M` を落とした 46 個」と書いたのは、S1-019 の `,114` と S1-020 の `:146-160` の `-160` を数え漏らしていた。正しくは 14 個と 47 個で、Scope・分類表の凡例・S1 の見出し・round 2 の節の数を直した。
-- 測り直し（bash と zsh で出力は同じ）: baseline の値は変わらず、AC-S5-5 は `NG` 122・`--` 10・`CHECK` 0。注入（packet の copy）では、S1-028 の X を `` `:36 `` にした入力で `NG S1-028: X が場所 docs/design-system/02-component-catalog.md:891 の行に無い` が出て、正しい X では出なかった。S3-001 の正しい入力は `NG`・`CHECK` なし、候補の中の誤った版（`c1c1c5bf`）と W `-` は `CHECK S3-001`。
+- round 2 の数の訂正: round 2 の是正で「手で足した 13 個」「既存の行で `-M` を落とした 46 個」と書いたのは、S1-019 の `,114` と S1-020 の `:146-160` の `-160` を数え漏らしていた。正しくは 14 個と、範囲を書いた引用 48 個（`0a8e8fcd` で数え直した。closure の N4 で 47 から直した）で、Scope・分類表の凡例・S1 の見出し・round 2 の節の数を直した。
+- 測り直し（bash と zsh で出力は同じ）: baseline の値は変わらず、AC-S5-5 は `NG` 122・`--` 10・`CHECK` 0。注入（packet の copy。照合の入力の行は下の逐語）では、S1-028 の X を `` `:36 `` にした入力で `NG S1-028: X が場所 docs/design-system/02-component-catalog.md:891 の行に無い` が出て、正しい X では出なかった。S3-001 の正しい入力は `NG`・`CHECK` なし、候補の中の誤った版（`c1c1c5bf`）と W `-` は `CHECK S3-001`。
+
+```text
+S1-028 f2ef9e52 src/features/stock-inquiry/components/StockStatusBadge.tsx 36 在庫あり `:36
+S1-028 f2ef9e52 src/features/stock-inquiry/components/StockStatusBadge.tsx 36 在庫あり StockStatusBadge.tsx:36
+S3-001 44f1e666 src-tauri/src/seed_demo.rs 462 inventory_movements seed_demo.rs:462
+S3-001 c1c1c5bf src-tauri/src/seed_demo.rs 462 inventory_movements seed_demo.rs:462
+S3-001 44f1e666 src-tauri/src/seed_demo.rs 462 - seed_demo.rs:462
+```
+
+  W `inventory_movements` は `44f1e666` の 462 行の語。手順 1〜2 の試しの語 `sale_auto` は 465 行にあるので、W を `sale_auto` にすると正しい版でも `CHECK S3-001` が出る（closure の U0）。
+
+### closure（監査 `0a8e8fcd`）
+
+- Claude 側（fresh Opus 5.5、fork でない）: approve。round 3 の P3 は 6 つとも closed、新しい P1/P2 は無く、新しい P3 は 4 つ。
+- 裁定: Coordinator が 4 つとも受理した。新しい契約・検査の仕組みは足さず、今ある文と loop の最小の変更で直した。
+
+| # | 指摘 | 直した所 |
+|---|---|---|
+| N1 | W の列の無い 5 列の行は X が空になり、AC-S5-5 の `NG` の検査を全部通る（closure の T5） | loop の頭で X が空なら `NG $id: X が無い（列が足りない）` を出して次へ |
+| N2 | basename の X で target の検査が弱くなり、同じ basename の別の module を通す（closure の V1: S1-035 の target を `daily_report_import_service/parse.rs`） | 案 (a) を採った。X は basename のまま、target の検査だけ、場所の行で X の直前に続く path（X の中の拡張子つきの名前を前に伸ばしたもの）で終わることを見る。案 (b)（X を書かれた path に戻す）は文だけの変更で小さいが、basename で書いた入力（V1 そのもの）を通してしまうので採らなかった。loop は場所の行の取り出しを頭へ移し、target の検査の式を 1 行替えた |
+| N3 | S1-081・S1-084・S3-031 の引用の列が現物と違う | 3 行を現物どおりに写した。全行を現物の行と照らし直し、残る差は手で足した `,N` 系（凡例の 14 個）だけ |
+| N4 | (a) round 3 の注入の W が記録に無い。W の選び方が書かれていない (b) 「47 個」が現物と合わない | (a) round 3 の節に使った入力の行を逐語で足し、S5 に「名指す語が複数あるときは行 N〜M に literal に在る語を選ぶ〈無ければ `-`〉」の 1 句。(b) round 2・round 3 の節の数を、`0a8e8fcd` で数え直した 48 個（S3-031 の `:642-648` を含む）に直した |
+
+- 測り直し（bash と zsh で出力は同じ）: baseline の値は変わらず、AC-S5-5 は `NG` 122・`--` 10・`CHECK` 0、AC-S3-3 は出力なし。
+- 注入（packet の copy。照合の入力の行は逐語）: T5 で `NG S1-028: X が無い（列が足りない）`。V1・V2 で `NG S1-035: target src-tauri/src/biz/daily_report_import_service/parse.rs が場所の行の path csv_import_service/parse.rs で終わらない`。V0・正しい S1-028・S1-030 の 2 つの module・S1-086・S3-001 では target の `NG` が出なかった。
+
+```text
+S1-028 f2ef9e52 src/features/stock-inquiry/components/StockStatusBadge.tsx 36 StockStatusBadge.tsx:36
+S1-035 6cac578c src-tauri/src/biz/csv_import_service/parse.rs 98-110 parse parse.rs:98`〜`:110
+S1-035 6cac578c src-tauri/src/biz/daily_report_import_service/parse.rs 98-110 parse parse.rs:98`〜`:110
+S1-035 6cac578c src-tauri/src/biz/daily_report_import_service/parse.rs 98-110 parse csv_import_service/parse.rs:98`〜`:110
+S1-028 f2ef9e52 src/features/stock-inquiry/components/StockStatusBadge.tsx 36 在庫あり StockStatusBadge.tsx:36
+S1-030 - src/features/daily-sales/components/ProductTable.tsx 133 - ProductTable.tsx:133
+S1-030 - src/features/products/components/ProductTable.tsx 56 - ProductTable.tsx:56
+S1-086 - src-tauri/src/lib.rs 84 run_startup_step lib.rs` `run_startup_step` L84
+S3-001 44f1e666 src-tauri/src/seed_demo.rs 462 inventory_movements seed_demo.rs:462
+```
+
+  上から T5、V0、V1、V2、正しい S1-028、S1-030 の 2 行、S1-086、S3-001。
