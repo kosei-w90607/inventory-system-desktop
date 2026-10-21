@@ -7,7 +7,7 @@ import type { ComparisonInfo, MonthlySaleItem } from "../types";
 
 /// current items と prev items を key で突合し、key ごとの ComparisonInfo を Map で返す。
 /// `prevItems === null` は specta `Option<Vec<T>>` 境界の defensive guard（通常 BIZ-05 は前月
-/// データなしも `Some(空Vec)` を返す常時セット = `sales_service.rs:196-197`）、全件
+/// データなしも `Some(空Vec)` を返す常時セット = `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales`）、全件
 /// `isComparable: false` の Map を返す。通常 path の `prevItems === []` は下の prevMap 作成に
 /// fallthrough し、`prevMap.get(cur.key)` が undefined になるため各 current item に対して
 /// 「前月に該当 key なし = 新規商品/部門」扱いで isComparable: false 同等の挙動になる。

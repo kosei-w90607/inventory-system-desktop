@@ -23,7 +23,7 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 
 ### 56.1 概要
 
-`/reports/daily` route 配下に配置する読み取り専用ダッシュボード。SP-501-01〜07 + REQ-501 に直接対応する。SCREEN_DESIGN.md L100 の主動線「CSV取込み完了 → 売上レポート確認」を成立させる。
+`/reports/daily` route 配下に配置する読み取り専用ダッシュボード。SP-501-01〜07 + REQ-501 に直接対応する。SCREEN_DESIGN.md の主動線「CSV取込み完了 → 売上レポート確認」を成立させる。
 
 **REQ-401再設計後の表示領域**:
 

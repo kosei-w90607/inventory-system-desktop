@@ -28,7 +28,7 @@
 - **失敗 4 状態**（Q-5）:
   1. API fail → 画面全体 Alert（Skeleton 撤去）
   2. items 空配列 → 「当月データなし」EmptyState
-  3. `prev_month_comparison === null` または `[]` 空配列 → サマリ「比較不可」+ 各行「—」。**BIZ contract**: 通常 BIZ-05 は前月データなしも `Some(空Vec)` を返す（[`34-biz-sales-service.md` §1](34-biz-sales-service.md) + `sales_service.rs:196-197` 実装、`prev_month_comparison = Some(prev_items)` 常時セット）、`null` は specta `Option<Vec<T>>` 境界の defensive guard。UI 側 (`compute-comparison.ts`) は `null` / `[]` 両ケースを safely 扱う
+  3. `prev_month_comparison === null` または `[]` 空配列 → サマリ「比較不可」+ 各行「—」。**BIZ contract**: 通常 BIZ-05 は前月データなしも `Some(空Vec)` を返す（[`34-biz-sales-service.md` §1](34-biz-sales-service.md) + `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales` 実装、`prev_month_comparison = Some(prev_items)` 常時セット）、`null` は specta `Option<Vec<T>>` 境界の defensive guard。UI 側 (`compute-comparison.ts`) は `null` / `[]` 両ケースを safely 扱う
   4. 前月だけ fail → 構造的不可能（1 useQuery 設計、Q-5）
 
 **REQ-401再設計後の表示領域**:
@@ -419,7 +419,7 @@ function MonthlySalesPage() {
 |---|---|---|
 | **#1 API fail**（`query.isError`） | 画面全体 `<Alert variant="destructive">` + 「再試行」button（`query.refetch()`） | 再試行 button or ページ再読込 |
 | **#2 items 空配列** | `<EmptyState message="当月データなし" />` + 「月を変える」案内 | MonthNavigator で別月選択 |
-| **#3 prev_month_comparison === null または `[]`** | サマリ前月比カード「比較不可」灰、テーブル前月比列「—」 | 業務上正常（BIZ-05 は前月データなしも `Some(空Vec)` を返す = `sales_service.rs:196-197` 常時セット、`null` は specta `Option<Vec<T>>` 境界の defensive guard）、復旧不要 |
+| **#3 prev_month_comparison === null または `[]`** | サマリ前月比カード「比較不可」灰、テーブル前月比列「—」 | 業務上正常（BIZ-05 は前月データなしも `Some(空Vec)` を返す = `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales` で常時セット、`null` は specta `Option<Vec<T>>` 境界の defensive guard）、復旧不要 |
 | **#4 前月だけ fail** | 構造的不可能（1 useQuery 設計、BIZ-05 が 1 call で両方返す、Q-5） | N/A |
 
 - CSV 出力 fail（`useExportFile` `onError`）: Sonner toast.error、画面状態は維持
