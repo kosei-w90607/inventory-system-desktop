@@ -17,7 +17,7 @@ wave に属さない単独の lane（導入の前の関門 1。`docs/Plans.md` �
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: a0f622ebe81621121ea64fd2ba1caf742c7332b5
 - Amendments: none
@@ -39,6 +39,7 @@ wave に属さない単独の lane（導入の前の関門 1。`docs/Plans.md` �
 6. plan-draft（round 3〈天井〉の是正）: owner の決定（repo 外の回答台帳 TD-367）で、指摘を直して closure で確かめる（Review Response 参照）。
 7. plan-draft → plan-gate（Plan Review round 1〜3、2026-10-21）: Claude 側 fresh Opus 5.5（round 1 は全体と網羅の深掘り、round 2 は全体、round 3 は全体と既存 test の移し方の深掘り）・Codex（3 round とも Astra）。各 round の是正は Review Response 参照。
 8. plan-gate → plan-approved（2026-10-21、Coordinator、本 commit。state だけ）: owner の決定（repo 外の回答台帳 TD-367）どおり、round 3 の是正（`a0f622eb`）を fresh Opus 5.5 と Codex（Sol）の closure が 2 本とも approve（P1/P2 0）した。closure の P3 2 件（S5 の廃棄の行の「今のまま」の句、T2b の例の 1 file）は契約を一意に読めるので packet を直さず、実装の発注で Writer に渡す。Plan Commit は `a0f622eb`。
+9. plan-approved → implementing（2026-10-21、Coordinator、本 commit。state だけ）: Plan Commit `a0f622eb` は実装の commit より前にある。実装は Writer（Opus 5.5 subagent）への発注で行う。
 
 本 commit で変えた正本（plan-first。round 1 の是正の commit で足した所は各項目の末尾の「round 1 の是正」）:
 
