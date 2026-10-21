@@ -196,7 +196,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-019 | `docs/design-system/01-decision-rules.md:421` | `scroll-restoration.js:73`・`:106`・`:114` | 外部 library | — | @tanstack/router-core 1.168.15（`f1d5590c` の lock） | 残す（library の版を足した観測） |
 | S1-020 | `docs/design-system/01-decision-rules.md:423` | `router.js:118`・`:146-160`・`react-router/dist/esm/Match.js:112-125` | 外部 library | — | @tanstack/router-core 1.168.15・@tanstack/react-router 1.168.23（`f1d5590c` の lock） | 残す（library の版を足した観測） |
 | S1-021 | `docs/design-system/02-component-catalog.md:53` | `SupplierManagementPage.tsx:35-39` | 正本 | `c9fabc17`〈hit〉 | `SupplierManagementPage` の `PageHeader` | 書き換えた |
-| S1-022 | `docs/design-system/02-component-catalog.md:55` | `ReceivingPage.tsx:295`・`ManualSalePage.tsx:310`・`ReturnExchangePage.tsx:419`・`DisposalPage.tsx:285`・`SupplierManagementPage.tsx:35-39`・`PageHeader.tsx:47-53`・`PageHeader.tsx:31-45` | 正本 | `43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`c9fabc17`〈hit〉・`c9fabc17`〈hit〉・`bb1862a5`〈hit〉 | 4 画面と `SupplierManagementPage` の `PageHeader`、`PageHeader` の `actions` なし・ありの分岐 | 書き換えた |
+| S1-022 | `docs/design-system/02-component-catalog.md:55` | `ReceivingPage.tsx:295`・`ManualSalePage.tsx:310`・`ReturnExchangePage.tsx:419`・`DisposalPage.tsx:285`・`SupplierManagementPage.tsx:35-39`・`PageHeader.tsx:47-53`・`PageHeader.tsx:31-45` | 正本 | `43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`c9fabc17`〈hit〉・`c9fabc17`〈hit〉・`bb1862a5`〈hit〉 | 4 画面と `SupplierManagementPage` の `PageHeader`、`PageHeader` の `actions` なし・ありの分岐 | 書き換えた（`PageHeader.tsx:31-45` は文の「2 段配置」「PR #63」に合う `bb1862a5` を採った。古い候補の同じ `actions` の分岐は 1 段の旧構造） |
 | S1-023 | `docs/design-system/02-component-catalog.md:200` | `MovementTable.tsx:93-99`・`OperationLogsPage.tsx:533`・`MovementTable.tsx:93-99`・`ManualSaleRecordDetailPage.tsx:149`・`MovementTable.tsx:82-91`・`StocktakeRecordDetailPage.tsx:234` | 正本 | `1c896139`〈親〉・`43b69bea`〈親〉・`c9fabc17`〈hit〉・`1c896139`〈親〉・`1c896139`〈親〉・`1c896139`〈親〉 | `MovementTable` の備考の `TableCell`・`movement.source` の分岐、`OperationLogsPage` の概要の `TableCell`、`ManualSaleRecordDetailPage` の `detail.note`、`StocktakeRecordDetailPage` | 書き換えた（`MovementTable.tsx:93-99` の 1 つめは三項演算子の版 `1c896139`、2 つめは「本 PR（⑮）で是正済み」の版 `c9fabc17`） |
 | S1-024 | `docs/design-system/02-component-catalog.md:415` | `PriceRevisionPage.tsx:79-83`・`DailySalesPage.tsx:175`・`MonthlySalesPage.tsx:166` | 正本 | `2c125d1a`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | `PriceRevisionPage` の注意の `Alert`、`DailySalesPage`・`MonthlySalesPage` の未取込みの表示 | 書き換えた |
 | S1-025 | `docs/design-system/02-component-catalog.md:888` | `StockStatusBadge.tsx:29`・`StocktakePage.tsx:396-401`・`csv-import/components/PreviewStep.tsx:75-80`・`ProductTable.tsx:88`・`ResultStep.tsx:47`・`CsvImportRecordDetailPage.tsx:140` | 正本 | `eabc549c`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`2c125d1a`〈親〉・`7ae4ade6`〈親〉・`07302b5e`〈親〉 | 各 file の Badge の label（path と label） | 書き換えた |
@@ -210,7 +210,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-033 | `docs/function-design/10-common-rules.md:121` | `stocktake_service.rs:529`・`src/features/stock-inquiry/lib/filter-low-stock-list.ts:62`・`:63`・`src/features/products/search.ts:30` | 正本 | `6cac578c`〈hit〉・`67870e10`〈親〉・`67870e10`〈親〉 | `legacy_complete_stocktake`・`filterAndSortLowStockList`・`PRODUCT_SORT_OPTIONS` | 書き換えた |
 | S1-034 | `docs/function-design/10-common-rules.md:165` | `receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`・`returns.rs:99`・`returns.rs:254`・`:255` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `create_receiving`・`create_manual_sale`・`create_disposal`・`validate_return_request_shape`・`create_return` | 書き換えた |
 | S1-035 | `docs/function-design/10-common-rules.md:166` | `csv_import_service/parse.rs:98`・`:110`・`csv_import_service/commit.rs:138`・`:167` | 正本 | `6cac578c`〈hit〉・`c85e135d`〈親〉 | `parse_and_validate`・`execute_commit` の `for row in matched_rows` | 書き換えた |
-| S1-036 | `docs/function-design/10-common-rules.md:167` | `inventory_service/common.rs:82`・`:87`・`product_service.rs:1062`・`:1069`・`:1316`・`:1324`・`csv_import_service/commit.rs:276`・`integrity_service.rs:192` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `inventory_service/common.rs`（隣の `apply_stock_change`）・`validate_create_request`・`preview_import`・`apply_void_stock_corrections`・`fix_integrity` | 書き換えた（目印だった `check_stock_range` は今は `recompute_stock` の中なので、symbol だけで引いた） |
+| S1-036 | `docs/function-design/10-common-rules.md:167` | `inventory_service/common.rs:82`・`:87`・`product_service.rs:1062`・`:1069`・`:1316`・`:1324`・`csv_import_service/commit.rs:276`・`integrity_service.rs:192` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `inventory_service/common.rs`（隣の `apply_stock_change`）・`validate_create_request`・`preview_import`・`apply_void_stock_corrections`・`fix_integrity` | 書き換えた（目印だった `check_stock_range` は今は `src-tauri/src/biz/stock_ledger.rs` の `recompute_stock` の中なので、symbol だけで引いた） |
 | S1-037 | `docs/function-design/10-common-rules.md:168` | `product_service.rs:949`・`:957`・`:1059`・`:1103`・`:473`・`:474`・`:1285` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `price_range_error` と呼ぶ所 `validate_create_request`・`validate_update_request`・`revise_product_price`・`preview_import` | 書き換えた |
 | S1-038 | `docs/function-design/10-common-rules.md:169` | `product_service.rs:1059`・`:1106`・`:473`・`:474`・`:1291`・`receiving.rs:138`・`disposal.rs:135` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `validate_create_request`・`validate_update_request`・`revise_product_price`・`preview_import`・`create_receiving`・`create_disposal` | 書き換えた |
 | S1-039 | `docs/function-design/10-common-rules.md:173` | `src/features/products/lib/price-revision-math.ts:1`・`:9` | 正本 | `c1beb334`〈親〉 | `deriveProposedCost` | 書き換えた |
@@ -277,7 +277,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S2-009 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:16` | `scroll-restoration.js:147` | comment（外部 library） | — | @tanstack/router-core 1.168.15（`b59d7331` の lock） | 残す（library の版を足した観測） |
 | S2-010 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:62` | `node_modules/happy-dom/lib/nodes/element/Element.js:133-174` | comment（外部 library） | — | happy-dom 20.10.6（`b59d7331` の lock） | 残す（library の版を足した観測） |
 | S2-011 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:64` | `html-element/HTMLElement.js:460`・`:468` | comment（外部 library） | — | happy-dom 20.10.6（`b59d7331` の lock） | 残す（library の版を足した観測） |
-| S2-012 | `src/features/products/components/ProductForm.test.tsx:915` | `ProductForm.tsx:284` | comment | `689ac4c3`〈hit〉 | `ProductForm` の部門の `Select` の `onValueChange` | 書き換えた |
+| S2-012 | `src/features/products/components/ProductForm.test.tsx:915` | `ProductForm.tsx:284` | comment | `689ac4c3`〈hit〉 | `ProductForm` の部門の `Select` の `onValueChange` | 書き換えた（親 `41336c28` の 284 行は native の `<select>` の開始 tag の閉じで要素が違い、test と `Select` 化が同じ commit の `689ac4c3` を採った） |
 | S2-013 | `src/features/products/components/ProductForm.test.tsx:924` | `ProductForm.tsx:282` | comment | `689ac4c3`〈hit〉 | `ProductForm` の部門の `Select` の `value` | 書き換えた |
 | S2-014 | `src/features/stocktake/StocktakePage.tsx:759` | `Pagination.tsx:48` | comment | `b59d7331`〈hit〉 | `Pagination` の早期 return | 書き換えた（`page > totalPages` の回復の条件を持つのは早期 return の版 `b59d7331`。親 `ff655efd` の 48 行は `canPrev`） |
 | S2-015 | `src-tauri/src/lib.rs:244` | `.gitignore:38` | comment | `902647b8`〈hit〉 | `.gitignore` の `# src/lib/bindings.ts` の行 | 書き換えた（target は bindings の在る repo root の `.gitignore`。候補は root `902647b8` だけ） |
@@ -306,7 +306,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S3-011 | `docs/backlog.md:118` | `src/features/csv-import/lib/formatErrorRow.ts:22` | backlog | `ff05436f`〈親〉 | `ff05436f` の時点で `src/features/csv-import/lib/formatErrorRow.ts:22` | 書き換えた |
 | S3-012 | `docs/backlog.md:119` | `src/features/products/components/PriceRevisionTable.tsx:104` | backlog | `07302b5e`〈親〉 | `07302b5e` の時点で `src/features/products/components/PriceRevisionTable.tsx:104` | 書き換えた |
 | S3-013 | `docs/backlog.md:121` | `src/components/patterns/EmptyState.tsx:32` | backlog | `ff05436f`〈親〉 | `ff05436f` の時点で `src/components/patterns/EmptyState.tsx:32` | 書き換えた |
-| S3-014 | `docs/backlog.md:129` | `:841`・`:70` | backlog | `51b1f484`〈hit〉・- | `51b1f484` の時点で `docs/design-system/02-component-catalog.md:841` | 書き換えた（`:70` は target が決まらない〈候補のどの版でも catalog の 70 行は方向 badge の文でない〉→ 曖昧として引用を外した） |
+| S3-014 | `docs/backlog.md:129` | `:841`・`:70` | backlog | `51b1f484`〈hit〉・`51b1f484`〈親〉 | `51b1f484` の時点で `docs/design-system/02-component-catalog.md:841`・`51b1f484` の時点で `docs/Plans.md:70` | 書き換えた（`:70` の target は書かれた時点に backlog を含んでいた `docs/Plans.md` 自身。70 行は「C6 方向 badge は…撤回」） |
 | S3-015 | `docs/backlog.md:145` | `docs/design-system/reference/mockup-d-lists.html:112` | backlog | `ff655efd`〈親〉 | `ff655efd` の時点で `docs/design-system/reference/mockup-d-lists.html:112` | 書き換えた |
 | S3-016 | `docs/backlog.md:173` | `:155` | backlog | `294ba366`〈親〉 | `294ba366` の時点で `scripts/check-workflow-git.sh:155` | 書き換えた |
 | S3-017 | `docs/backlog.md:183` | `PluExportPage.tsx:188` | backlog | `909fe096`〈hit〉 | `909fe096` の時点で `src/features/plu-export/PluExportPage.tsx:188` | 書き換えた |
@@ -316,8 +316,8 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S3-021 | `docs/backlog.md:223` | `61-ui-receiving.md:30`・`:73`・`63-ui-return-exchange.md:36`・`:71` | backlog | `949a5c4c`〈親〉・`949a5c4c`〈親〉・`949a5c4c`〈親〉・`949a5c4c`〈親〉 | `949a5c4c` の時点で `docs/function-design/61-ui-receiving.md:30`・`docs/function-design/61-ui-receiving.md:73`・`docs/function-design/63-ui-return-exchange.md:36`・`docs/function-design/63-ui-return-exchange.md:71` | 書き換えた |
 | S3-022 | `docs/backlog.md:245` | `MonthlySalesPage.tsx:177-180` | backlog | `7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/features/monthly-sales/MonthlySalesPage.tsx:177-180` | 書き換えた |
 | S3-023 | `docs/backlog.md:247` | `ReceivingPage.tsx:543-549` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/receiving/ReceivingPage.tsx:543-549` | 書き換えた |
-| S3-024 | `docs/backlog.md:249` | `ReturnExchangePage.tsx:790-791` | backlog | - | — | 消えた（どの候補の 790〜791 行にも「交換は戻り・渡しの明細が両方必要です」の注釈の文が無い）→ 引用を外す |
-| S3-025 | `docs/backlog.md:251` | `ReturnExchangePage.tsx:624` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/return-exchange/ReturnExchangePage.tsx:624` | 書き換えた |
+| S3-024 | `docs/backlog.md:249` | `ReturnExchangePage.tsx:790-791` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/return-exchange/ReturnExchangePage.tsx:790-791` | 書き換えた（790〜791 行は `{errors.items}` を出す段落で、同じ版の `return-exchange-request.ts` が入れる「交換では戻り明細と渡し明細がそれぞれ必要です」を、文は言い換えて名指している） |
+| S3-025 | `docs/backlog.md:251` | `ReturnExchangePage.tsx:624` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/return-exchange/ReturnExchangePage.tsx:624` | 書き換えた（親 `31c069d5` の 624 行はレシート画像の `FilePicker`、hit `7e0ccf1b` の 624 行はその `Label` と `FilePicker` を包む div で、どちらも同じレシート画像の欄なので最古を採った） |
 | S3-026 | `docs/backlog.md:259` | `InventoryRecordsPage.tsx:156-245`・`ReceivingPage.tsx:393`・`DisposalPage.tsx:509`・`OperationLogsPage.tsx:338-352` | backlog | `7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/features/inventory-records/InventoryRecordsPage.tsx:156-245`・`src/features/receiving/ReceivingPage.tsx:393`・`src/features/disposal/DisposalPage.tsx:509`・`src/features/operation-logs/OperationLogsPage.tsx:338-352` | 書き換えた |
 | S3-027 | `docs/backlog.md:261` | `Pagination.tsx:52-53`・`:99` | backlog | `7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/components/patterns/Pagination.tsx:52-53`・`src/components/patterns/Pagination.tsx:99` | 書き換えた |
 | S3-028 | `docs/backlog.md:299` | `ProductImportPreview.tsx:76`・`ProductRankingTable.tsx:80`・`BackupRestorePage.tsx:533` | backlog | `7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | `7ae4ade6` の時点で `src/features/products/import/ProductImportPreview.tsx:76`・`src/features/monthly-sales/components/ProductRankingTable.tsx:80`・`src/features/backup-restore/BackupRestorePage.tsx:533` | 書き換えた |
@@ -580,7 +580,7 @@ S3-011 ff05436f src/features/csv-import/lib/formatErrorRow.ts 22 destructive for
 S3-012 07302b5e src/features/products/components/PriceRevisionTable.tsx 104 入力中 PriceRevisionTable.tsx:104
 S3-013 ff05436f src/components/patterns/EmptyState.tsx 32 text-stone-500 EmptyState.tsx:32
 S3-014 51b1f484 docs/design-system/02-component-catalog.md 841 個別確認 `:841
-S3-014 - docs/design-system/02-component-catalog.md 70 方向 `:70
+S3-014 51b1f484 docs/Plans.md 70 撤回 `:70
 S3-015 ff655efd docs/design-system/reference/mockup-d-lists.html 112 max-height mockup-d-lists.html:112
 S3-016 294ba366 scripts/check-workflow-git.sh 155 wait `:155
 S3-017 909fe096 src/features/plu-export/PluExportPage.tsx 188 complexity PluExportPage.tsx:188
@@ -599,7 +599,7 @@ S3-021 949a5c4c docs/function-design/63-ui-return-exchange.md 36 result 63-ui-re
 S3-021 949a5c4c docs/function-design/63-ui-return-exchange.md 71 result 63-ui-return-exchange.md:36/:71
 S3-022 7e0ccf1b src/features/monthly-sales/MonthlySalesPage.tsx 177-180 部門 MonthlySalesPage.tsx:177
 S3-023 31c069d5 src/features/receiving/ReceivingPage.tsx 543-549 原価 ReceivingPage.tsx:543
-S3-024 - src/features/return-exchange/ReturnExchangePage.tsx 790-791 交換は ReturnExchangePage.tsx:790
+S3-024 31c069d5 src/features/return-exchange/ReturnExchangePage.tsx 790-791 errors.items ReturnExchangePage.tsx:790
 S3-025 31c069d5 src/features/return-exchange/ReturnExchangePage.tsx 624 レシート ReturnExchangePage.tsx:624
 S3-026 7e0ccf1b src/features/inventory-records/InventoryRecordsPage.tsx 156-245 select InventoryRecordsPage.tsx:156
 S3-026 7e0ccf1b src/features/receiving/ReceivingPage.tsx 393 select ReceivingPage.tsx:393
@@ -925,18 +925,18 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 - S1（正本 86 行）: 書き換えた 67、残す 11（起票で決めた 5 行と、版を足した library の 6 行）、lane 2b へ送る 2、消えた 6（S1-070・S1-072・S1-075・S1-082・S1-084・S1-085）。
 - S2（code の comment 22 行）: 書き換えた 16、残す 3（版を足した library の行）、消えた 3（S2-004・S2-005・S2-007）。直した comment に bindings に出る doc comment は無い。
-- S3（backlog 31 行）: 書き換えた 29（版ごとに「`{sha8}` の時点で `{path}:{N}`」の句）、曖昧 1（S3-018）、消えた 1（S3-024）。S3-014 の `:70` と S3-031 の `):642-648` は取り戻せない引用として行の中で外した。
+- S3（backlog 31 行）: 書き換えた 30（版ごとに「`{sha8}` の時点で `{path}:{N}`」の句）、曖昧 1（S3-018）。S3-031 の `):642-648` は取り戻せない引用として行の中で外した（Final Review の是正で、S3-014 の `:70` は書かれた時点の `docs/Plans.md` の行、S3-024 は `{errors.items}` の段落として取り戻した）。
 - S4: 消えた・曖昧は、引用を外すか、引用の文が名指す語から今の symbol への最小の言い換え（`prev_month_comparison = Some(prev_items)` → `get_monthly_sales`、`max-lines-per-function` → `ReturnExchangePage`）にした。引用が支える文と今の code・正本の食い違い 3 件（S1-013・S1-067・S1-082）は文を直さず、backlog の「次の docs の lane の候補」の (8) に 1 句を足した。
 - S5: 分類表の全行の処置を埋め、照合の入力に repo の中の引用を 1 行ずつ書いた。
 
 計画からの外れと判断（reviewer が見る所）:
 
-- 名指す語が同じ symbol の中にあっても、文の中身が古い候補と合わない引用は新しい版を採った: S1-006（`:349-359` は採用後の 7 列）、S1-023 の 2 つめ（「本 PR で是正済み」）、S1-042（古い版の範囲は次の文へ跨ぐ）、S2-014（回復の条件を持つのは早期 return の版）。どれも AC-S5-5 の `CHECK` が出る。
+- 名指す語が同じ symbol の中にあっても、文の中身が古い候補と合わない引用は新しい版を採った: S1-006（`:349-359` は採用後の 7 列）、S1-023 の 2 つめ（「本 PR で是正済み」）、S1-042（古い版の範囲は次の文へ跨ぐ）、S2-014（回復の条件を持つのは早期 return の版）。このうち S1-006・S1-042 は AC-S5-5 の `CHECK` が出る。S1-023 の 2 つめと S2-014 は、採った版の行にだけ W が在るので `CHECK` が出ない。S1-022・S2-012 も文の中身で版を採った（処置の欄に根拠）。
 - code の comment の bare `:N` の target は、語の要素を定義する file を採った（S2-019 は `registerOptionClass` の在る `ReturnExchangePage.tsx`、S2-020 は商品情報の card の在る `StockMovementsPage.tsx`。test file には test の名前や assertion の文字列として語が出るだけ）。S2-021・S2-022 の X は comment の印を含めた `// :133`。
 - backlog の句は、同じ行の同じ版の引用を 1 つの句にまとめた（例「`7e0ccf1b` の時点で `…InventoryRecordsPage.tsx:156-245`、`…ReceivingPage.tsx:393`」）。
 - library の行（S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011）は、引用を足した hit の時点の lock の版を、`K` の綴りで同じ行に書いた。
 
-AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿。目次と `CHECK` の一覧の後に全文を 13 本に分けた）— https://github.com/kosei-w90607/inventory-system-desktop/pull/183#issuecomment-6309869869
+AC-S5-5 の loop の出力: PR の comment（Coordinator が是正の後に投稿し直す）
 
 AC-S5-2 の抜き取り（35 行。各行の最初の引用。抜き取りに当たった library の S2-009 は S2-013 で代えた。S1-015・S1-080 は S1-016・S1-081 で、S1-020 は S1-021 で代えた）:
 
@@ -974,7 +974,7 @@ AC-S5-2 の抜き取り（35 行。各行の最初の引用。抜き取りに当
 | S3-015 | `mockup-d-lists.html:112` | `git log --format=%h --pickaxe-regex -S'mockup-d-lists\.html:112([^0-9]\|$)' origin/main` → ff655efd〈親〉・b59d7331・f39c560a〈親〉・bc01698f | `ff655efd`〈親〉: `git show ff655efd:docs/design-system/reference/mockup-d-lists.html \| sed -n '112,112p'` | （backlog は版の句。手順 3・4 は使わない） | `ff655efd` の時点で `docs/design-system/reference/mockup-d-lists.html:112` | `` rg -n '`ff655efd` の時点で' docs/backlog.md `` → 145 行 |
 | S3-018 | `ReturnExchangePage.tsx:185` | `git log --format=%h --pickaxe-regex -S'ReturnExchangePage\.tsx:185([^0-9]\|$)' origin/main` → f184d5a3〈親〉・909fe096・f39c560a〈親〉・bc01698f | — | 取り戻せない（185 行はどの候補でも `max-lines-per-function` の要素でない） | `ReturnExchangePage` の上の `max-lines-per-function` | `rg -n 'max-lines-per-function' src/features/return-exchange/ReturnExchangePage.tsx` → 184 行 |
 | S3-021 | `61-ui-receiving.md:30` | `git log --format=%h --pickaxe-regex -S'61-ui-receiving\.md:30([^0-9]\|$)' origin/main` → 949a5c4c〈親〉・c3a006ec | `949a5c4c`〈親〉: `git show 949a5c4c:docs/function-design/61-ui-receiving.md \| sed -n '30,30p'` | （backlog は版の句。手順 3・4 は使わない） | `949a5c4c` の時点で `docs/function-design/61-ui-receiving.md:30` | `` rg -n '`949a5c4c` の時点で' docs/backlog.md `` → 223 行 |
-| S3-024 | `ReturnExchangePage.tsx:790` | `git log --format=%h --pickaxe-regex -S'ReturnExchangePage\.tsx:790([^0-9]\|$)' origin/main` → 31c069d5〈親〉・7e0ccf1b・f39c560a〈親〉・bc01698f | — | 取り戻せない（790〜791 行に注釈の文が無い） | 引用を外した | —  |
+| S3-024 | `ReturnExchangePage.tsx:790` | `git log --format=%h --pickaxe-regex -S'ReturnExchangePage\.tsx:790([^0-9]\|$)' origin/main` → 31c069d5〈親〉・7e0ccf1b・f39c560a〈親〉・bc01698f | `31c069d5`〈親〉: `git show 31c069d5:src/features/return-exchange/ReturnExchangePage.tsx \| sed -n '790,791p'` | `{errors.items}` の段落（同じ版の `return-exchange-request.ts` が「交換では戻り明細と渡し明細がそれぞれ必要です」を入れる） | `31c069d5` の時点で `src/features/return-exchange/ReturnExchangePage.tsx:790-791` | `` rg -n '`31c069d5` の時点で' docs/backlog.md `` → 247・249・251・341 行 |
 | S3-027 | `Pagination.tsx:52` | `git log --format=%h --pickaxe-regex -S'Pagination\.tsx:52([^0-9]\|$)' origin/main` → 7e0ccf1b〈親〉・6fc4abac・f39c560a〈親〉・bc01698f | `7e0ccf1b`〈親〉: `git show 7e0ccf1b:src/components/patterns/Pagination.tsx \| sed -n '52,53p'` | （backlog は版の句。手順 3・4 は使わない） | `7e0ccf1b` の時点で `src/components/patterns/Pagination.tsx:52-53` | `` rg -n '`7e0ccf1b` の時点で' docs/backlog.md `` → 245・259・261・334 行 |
 | S3-030 | `button.tsx:15` | `git log --format=%h --pickaxe-regex -S'button\.tsx:15([^0-9]\|$)' origin/main` → 7e0ccf1b〈親〉・6fc4abac・f39c560a〈親〉・bc01698f | `7e0ccf1b`〈親〉: `git show 7e0ccf1b:src/components/ui/button.tsx \| sed -n '15,16p'` | （backlog は版の句。手順 3・4 は使わない） | `7e0ccf1b` の時点で `src/components/ui/button.tsx:15-16` | `` rg -n '`7e0ccf1b` の時点で' docs/backlog.md `` → 245・259・261・334 行 |
 
