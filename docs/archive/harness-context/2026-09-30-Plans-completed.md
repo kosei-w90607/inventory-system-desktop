@@ -5,6 +5,7 @@
 
 ## 直近の完了
 
+- 2026-10-17 [PR #167](https://github.com/kosei-w90607/inventory-system-desktop/pull/167) 棚卸しの数の置き場と在庫数の求め直しを設計正本へ置き換える（単独の lane、R3、docs だけ）: 棚卸しの数が記録を含むかを記録と計数の窓の重なりで決め、在庫数を記録から求め直し、Z004 を精算回数で識別する形を新しい ADR に置き、時点証拠 ADR と D-116 を置き換えた（D-118。停止 ADR の停止の範囲は変えず、code・migration・bindings は変えず、runtime は後続の lane）。[archive](../plans/2026-10-16-stocktake-count-placement-design.md)・[Matrix](../plans/test-matrices/2026-10-16-stocktake-count-placement-design.md)
 - 2026-10-16 [PR #165](https://github.com/kosei-w90607/inventory-system-desktop/pull/165) CV17 の取込みが原本を書き換えないこと（SD-23）を、出どころを書かない「未確認の前提」として書き直す（R1、docs だけ）: レジスターツールの使用許諾がリバースエンジニアリング等を禁じていると確かめたため（repo 外の回答台帳 TD-276・TD-278）、今の文書の根拠の書き方を直した。設計の判断と、実機の前後比較で確かめる扱いは変えない
 - 2026-10-16 [PR #163](https://github.com/kosei-w90607/inventory-system-desktop/pull/163) PLU の書出しの見直しの結果を設計正本へ置き換える（単独の lane、R3、docs だけ）: clear 行と解放・段階導入の道具・件数の要約を外し、枠を JAN ごとに永続させ、占有を締めの SD の読取りで Z004 から毎日照合する形を設計正本に置いた（D-117。code・migration・bindings は変えず、runtime は後続の lane）。[archive](../plans/2026-10-16-plu-redesign-design.md)・[Matrix](../plans/test-matrices/2026-10-16-plu-redesign-design.md)
 - 2026-10-15 [PR #158](https://github.com/kosei-w90607/inventory-system-desktop/pull/158) 単位を 12 種へ広げ、長さの商品を m で入力・表示する（単位の lane、単独の lane、R4）: migration v8 で単位を 12 種へ広げ、長さの商品は在庫を cm の整数のまま m で入力・表示し、入庫・廃棄・手動販売の金額を 1 m あたりの価格から BIZ の共通の丸めで求め、数量・在庫・売価・原価の入力に上限と保存の前の検査を掛けた（D-113 の単位の分。原価の 1/100 円・Z004 と EJ の数量・棚卸しの再開は後続の lane）。[archive](../plans/2026-10-11-unit-runtime.md)・[Matrix](../plans/test-matrices/2026-10-11-unit-runtime.md)
