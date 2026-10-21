@@ -284,24 +284,19 @@ mod tests {
         out
     }
 
-    /// `products` 以外の全表の外部キー（`products` を参照する子の表が作り直しで変わらないことの比較）
-    fn other_tables_foreign_keys(conn: &Connection) -> Vec<(String, Vec<Vec<Value>>)> {
-        dump(
+    /// 全 object（table・index・trigger・view）の type・name・tbl_name と、空白を除いた SQL
+    /// （`products` は作り直しで改行と `,` の位置が変わるので、空白を除いて比べる）
+    fn schema_objects(conn: &Connection) -> Vec<Vec<Value>> {
+        let mut rows = dump(
             conn,
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'products' ORDER BY name",
-        )
-        .into_iter()
-        .map(|row| {
-            let Value::Text(table) = &row[0] else {
-                panic!("{row:?}")
-            };
-            let fks = dump(
-                conn,
-                &format!("SELECT * FROM pragma_foreign_key_list('{table}')"),
-            );
-            (table.clone(), fks)
-        })
-        .collect()
+            "SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name",
+        );
+        for row in &mut rows {
+            if let Value::Text(sql) = &row[3] {
+                row[3] = Value::Text(sql.split_whitespace().collect());
+            }
+        }
+        rows
     }
 
     fn column_names(conn: &Connection, table: &str) -> Vec<String> {
@@ -398,7 +393,8 @@ mod tests {
 
     #[test]
     fn test_migration_req903_vb_rebuild_keeps_columns_indexes_and_fk() {
-        // REQ-903 / MNT-03-D14 手順 4 / Matrix B2: 作り直しの後の products の定義は cost_price の名前だけが違う
+        // REQ-903 / MNT-03-D14 手順 4 / Matrix B2: 作り直しの後の products の定義は cost_price の名前だけが違い、
+        // DB の全 object の SQL は 6 列の改名と stock_unit の CHECK だけが違う（DROP TABLE が trigger 等を黙って消す退行を拾う）
         let (_dir, conn) = setup_before_vb();
         let mut expected = products_definition(&conn);
         let mut renamed = 0;
@@ -412,16 +408,39 @@ mod tests {
         assert_eq!(expected[0].len(), 21, "v8 の 18 列と §19 の写しの 3 列");
         assert_eq!(expected[1].len(), 2, "departments・suppliers への外部キー");
         assert_eq!(expected[2].len(), 4, "自動の index と 3 つの index");
-        let children_before = other_tables_foreign_keys(&conn);
-        assert!(children_before
+        // 全 object の期待: 6 列の改名と products の stock_unit の CHECK だけが違う（trigger・view・他の表と index は同じ）
+        let mut expected_objects = schema_objects(&conn);
+        assert!(expected_objects
             .iter()
-            .any(|(table, fks)| table == "stock_counts" && !fks.is_empty()));
+            .any(|row| row[1] == Value::Text("stock_counts".into())
+                && matches!(&row[3], Value::Text(sql) if sql.contains("REFERENCESproducts("))));
+        let mut edit = |table: &str, from: &str, to: &str| {
+            let row = expected_objects
+                .iter_mut()
+                .find(|row| {
+                    row[0] == Value::Text("table".into()) && row[1] == Value::Text(table.into())
+                })
+                .unwrap();
+            let Value::Text(sql) = &row[3] else {
+                panic!("{row:?}")
+            };
+            assert_eq!(sql.matches(from).count(), 1, "{table}: {from}");
+            row[3] = Value::Text(sql.replace(from, to));
+        };
+        for ((table, old), (_, new)) in OLD_COLUMNS.into_iter().zip(NEW_COLUMNS) {
+            edit(table, &format!("{old}INTEGER"), &format!("{new}INTEGER"));
+        }
+        edit(
+            "products",
+            "CHECK(stock_unitIN('pcs','sheet','hon','bag','box','roll','kumi','set','ball','cho','m','cm'))",
+            "CHECK(stock_unitIN('pcs','sheet','hon','bag','box','kumi','set','ball','cho','m'))",
+        );
 
         migration::migrate(&conn).unwrap();
 
         assert_eq!(version(&conn), (VB_VERSION, VB_VERSION));
         assert_eq!(products_definition(&conn), expected);
-        assert_eq!(other_tables_foreign_keys(&conn), children_before);
+        assert_eq!(schema_objects(&conn), expected_objects);
         assert!(dump(&conn, "SELECT * FROM pragma_foreign_key_check").is_empty());
         assert!(dump(
             &conn,
@@ -465,7 +484,16 @@ mod tests {
     #[test]
     fn test_migration_req903_vb_stops_on_rows_in_each_table_without_changes() {
         // REQ-903 / MNT-03-D14 手順 2 / Matrix B4: 5 つの表のどれか 1 つに 1 行あれば、何も変えずに止まる
-        for table in ORIGIN_TABLES {
+        // case は 22 §16 手順 2 の表名の literal で回す（production の一覧から表が外れる退行を拾う）
+        const SPEC_ORIGIN_TABLES: [&str; 5] = [
+            "products",
+            "receiving_items",
+            "disposal_items",
+            "stocktake_items",
+            "price_history",
+        ];
+        assert_eq!(ORIGIN_TABLES, SPEC_ORIGIN_TABLES);
+        for table in SPEC_ORIGIN_TABLES {
             let (_dir, conn) = setup_before_vb();
             seed_origin_row(&conn, table);
             let before = snapshot(&conn);
