@@ -178,152 +178,152 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-001 | `docs/DOC_STYLE_GUIDE.md:87` | `src-tauri/src/biz/product_service.rs:965` | 規則の例 | — | — | 残す（規則の文の例。時点の commit つき） |
 | S1-002 | `docs/agent-guidance/merge-evidence.md:160` | `docs/templates/subagent-review-packet.md:15` | workflow | — | — | lane 2b へ送る（workflow の file） |
 | S1-003 | `docs/ci.md:29` | `scripts/pr-gate.py:398-410` | workflow | — | — | lane 2b へ送る（workflow の file） |
-| S1-004 | `docs/design-system/00-foundations.md:188` | `StocktakePage.tsx:933` | 正本 |  |  | 未処置 |
-| S1-005 | `docs/design-system/01-decision-rules.md:120` | `ListShell.tsx:69` | 正本 |  |  | 未処置 |
-| S1-006 | `docs/design-system/01-decision-rules.md:126` | `InventoryRecordsPage.tsx:356`・`:353`・`:349-359` | 正本 |  |  | 未処置 |
-| S1-007 | `docs/design-system/01-decision-rules.md:127` | `StockMovementsPage.tsx:73-101`・`MovementTable.tsx:52-53` | 正本 |  |  | 未処置 |
-| S1-008 | `docs/design-system/01-decision-rules.md:128` | `OperationLogsPage.tsx:461-462` | 正本 |  |  | 未処置 |
-| S1-009 | `docs/design-system/01-decision-rules.md:129` | `SupplierUsageTable.tsx:19` | 正本 |  |  | 未処置 |
-| S1-010 | `docs/design-system/01-decision-rules.md:130` | `BackupRestorePage.tsx:520`・`:522` | 正本 |  |  | 未処置 |
-| S1-011 | `docs/design-system/01-decision-rules.md:132` | `2026-08-23-current-design-analysis.md:18` | 正本 |  |  | 未処置 |
-| S1-012 | `docs/design-system/01-decision-rules.md:134` | `InventoryRecordsPage.tsx:349-359` | 正本 |  |  | 未処置 |
-| S1-013 | `docs/design-system/01-decision-rules.md:136` | `StockStatusBadge.tsx:41-44` | 正本 |  |  | 未処置 |
-| S1-014 | `docs/design-system/01-decision-rules.md:138` | `RootLayout.tsx:62`・`:419`・`:424-433` | 正本 + repo 外の資料 |  |  | 未処置 |
+| S1-004 | `docs/design-system/00-foundations.md:188` | `StocktakePage.tsx:933` | 正本 | `654f95d5`〈親〉 | 仕入原価総額の card の値（`StocktakePage`） | 書き換えた |
+| S1-005 | `docs/design-system/01-decision-rules.md:120` | `ListShell.tsx:69` | 正本 | `ff655efd`〈親〉 | `ListShell` の引数 `topSummary` の既定 | 書き換えた |
+| S1-006 | `docs/design-system/01-decision-rules.md:126` | `InventoryRecordsPage.tsx:356`・`:353`・`:349-359` | 正本 | `c9fabc17`〈hit〉・`c9fabc17`〈hit〉・`c9fabc17`〈hit〉 | `InventoryRecordsPage` の表頭（`TableHeader`） | 書き換えた（`:349-359` は採用後の 7 列の並びの版 `c9fabc17` を採った。古い `43b69bea` の表頭は記録ID 列を含む） |
+| S1-007 | `docs/design-system/01-decision-rules.md:127` | `StockMovementsPage.tsx:73-101`・`MovementTable.tsx:52-53` | 正本 | `654f95d5`〈親〉・`654f95d5`〈親〉 | `StockMovementsPage` の `PageHeader` と商品の見出し、`MovementTable` の表頭 | 書き換えた |
+| S1-008 | `docs/design-system/01-decision-rules.md:128` | `OperationLogsPage.tsx:461-462` | 正本 | `654f95d5`〈親〉 | `OperationLogsPage` の表頭 | 書き換えた |
+| S1-009 | `docs/design-system/01-decision-rules.md:129` | `SupplierUsageTable.tsx:19` | 正本 | `654f95d5`〈親〉 | `SupplierUsageTable` の表頭 | 書き換えた |
+| S1-010 | `docs/design-system/01-decision-rules.md:130` | `BackupRestorePage.tsx:520`・`:522` | 正本 | `654f95d5`〈親〉・`654f95d5`〈親〉 | `BackupRestorePage` の表頭 | 書き換えた |
+| S1-011 | `docs/design-system/01-decision-rules.md:132` | `2026-08-23-current-design-analysis.md:18` | 正本 | `9f90964d`〈hit〉 | `2026-08-23-current-design-analysis.md` の 1-8 | 書き換えた |
+| S1-012 | `docs/design-system/01-decision-rules.md:134` | `InventoryRecordsPage.tsx:349-359` | 正本 | `43b69bea`〈親〉 | `InventoryRecordsPage` の表頭 | 書き換えた（文は記録ID 列のあった時点の表頭を指す） |
+| S1-013 | `docs/design-system/01-decision-rules.md:136` | `StockStatusBadge.tsx:41-44` | 正本 | `7ae4ade6`〈親〉 | `StockStatusBadge` の中立の Badge | 書き換えた（文の「`通常`」は今の「在庫あり」と食い違う → backlog の「次の docs の lane の候補」の (8)） |
+| S1-014 | `docs/design-system/01-decision-rules.md:138` | `RootLayout.tsx:62`・`:419`・`:424-433` | 正本 + repo 外の資料 | `654f95d5`〈親〉 | `RootLayout` の `<aside>` | 書き換えた（repo 外の資料の `:419`・`:424-433` は同じ行に `Q12 §1`・`Q12 §2/§3` があるので行番号を外した） |
 | S1-015 | `docs/design-system/01-decision-rules.md:389` | `router-core/dist/esm/router.d.ts:309-334`・`router.js:415`・`:427`・`:118`・`:119`・`:146-160`・`:147-161` | 外部 library | — | — | 残す（library の版つきの観測） |
-| S1-016 | `docs/design-system/01-decision-rules.md:414` | `RootLayout.tsx:65` | 正本 |  |  | 未処置 |
-| S1-017 | `docs/design-system/01-decision-rules.md:419` | `router-core/dist/esm/router.js:415`・`scroll-restoration.js:118-171` | 外部 library |  |  | 未処置 |
-| S1-018 | `docs/design-system/01-decision-rules.md:420` | `scroll-restoration.js:122` | 外部 library |  |  | 未処置 |
-| S1-019 | `docs/design-system/01-decision-rules.md:421` | `scroll-restoration.js:73`・`:106`・`:114` | 外部 library |  |  | 未処置 |
-| S1-020 | `docs/design-system/01-decision-rules.md:423` | `router.js:118`・`:146-160`・`react-router/dist/esm/Match.js:112-125` | 外部 library |  |  | 未処置 |
-| S1-021 | `docs/design-system/02-component-catalog.md:53` | `SupplierManagementPage.tsx:35-39` | 正本 |  |  | 未処置 |
-| S1-022 | `docs/design-system/02-component-catalog.md:55` | `ReceivingPage.tsx:295`・`ManualSalePage.tsx:310`・`ReturnExchangePage.tsx:419`・`DisposalPage.tsx:285`・`SupplierManagementPage.tsx:35-39`・`PageHeader.tsx:47-53`・`PageHeader.tsx:31-45` | 正本 |  |  | 未処置 |
-| S1-023 | `docs/design-system/02-component-catalog.md:200` | `MovementTable.tsx:93-99`・`OperationLogsPage.tsx:533`・`MovementTable.tsx:93-99`・`ManualSaleRecordDetailPage.tsx:149`・`MovementTable.tsx:82-91`・`StocktakeRecordDetailPage.tsx:234` | 正本 |  |  | 未処置 |
-| S1-024 | `docs/design-system/02-component-catalog.md:415` | `PriceRevisionPage.tsx:79-83`・`DailySalesPage.tsx:175`・`MonthlySalesPage.tsx:166` | 正本 |  |  | 未処置 |
-| S1-025 | `docs/design-system/02-component-catalog.md:888` | `StockStatusBadge.tsx:29`・`StocktakePage.tsx:396-401`・`csv-import/components/PreviewStep.tsx:75-80`・`ProductTable.tsx:88`・`ResultStep.tsx:47`・`CsvImportRecordDetailPage.tsx:140` | 正本 |  |  | 未処置 |
-| S1-026 | `docs/design-system/02-component-catalog.md:889` | `IntegrityCheckPage.tsx:389`・`StocktakePage.tsx:404`・`ProductTable.tsx:93`・`ResultStep.tsx:47`・`DailyReportImportPage.tsx:164`・`:186`・`CsvImportRecordDetailPage.tsx:140`・`DailyReportImportPage.tsx:322` | 正本 |  |  | 未処置 |
-| S1-027 | `docs/design-system/02-component-catalog.md:890` | `StockStatusBadge.tsx:20`・`CsvImportRecordDetailPage.tsx:41`・`:140`・`:192` | 正本 |  |  | 未処置 |
-| S1-028 | `docs/design-system/02-component-catalog.md:891` | `StockStatusBadge.tsx:36`・`inventory-records/types.ts:87-94` | 正本 |  |  | 未処置 |
-| S1-029 | `docs/design-system/02-component-catalog.md:893` | `IntegrityCheckPage.tsx:469`・`PriceRevisionTable.tsx:104`・`ProductTable.tsx:74`・`CsvImportRecordDetailPage.tsx:194`・`ReturnExchangePage.tsx:97`・`ReturnExchangePage.tsx:592`・`ReturnExchangePage.tsx:602` | 正本 |  |  | 未処置 |
-| S1-030 | `docs/design-system/02-component-catalog.md:895` | `ProductTable.tsx:56`・`ProductTable.tsx:74`・`PriceRevisionTable.tsx:98`・`daily-sales/components/ProductTable.tsx:133` | 正本 |  |  | 未処置 |
-| S1-031 | `docs/design-system/02-component-catalog.md:899` | `PriceRevisionTable.tsx:104` | 正本 |  |  | 未処置 |
+| S1-016 | `docs/design-system/01-decision-rules.md:414` | `RootLayout.tsx:65` | 正本 | `f1d5590c`〈hit〉 | `RootLayout` の `<main>` | 書き換えた |
+| S1-017 | `docs/design-system/01-decision-rules.md:419` | `router-core/dist/esm/router.js:415`・`scroll-restoration.js:118-171` | 外部 library | — | @tanstack/router-core 1.168.15（`f1d5590c` の lock） | 残す（library の版を足した観測） |
+| S1-018 | `docs/design-system/01-decision-rules.md:420` | `scroll-restoration.js:122` | 外部 library | — | @tanstack/router-core 1.168.15（`f1d5590c` の lock） | 残す（library の版を足した観測） |
+| S1-019 | `docs/design-system/01-decision-rules.md:421` | `scroll-restoration.js:73`・`:106`・`:114` | 外部 library | — | @tanstack/router-core 1.168.15（`f1d5590c` の lock） | 残す（library の版を足した観測） |
+| S1-020 | `docs/design-system/01-decision-rules.md:423` | `router.js:118`・`:146-160`・`react-router/dist/esm/Match.js:112-125` | 外部 library | — | @tanstack/router-core 1.168.15・@tanstack/react-router 1.168.23（`f1d5590c` の lock） | 残す（library の版を足した観測） |
+| S1-021 | `docs/design-system/02-component-catalog.md:53` | `SupplierManagementPage.tsx:35-39` | 正本 | `c9fabc17`〈hit〉 | `SupplierManagementPage` の `PageHeader` | 書き換えた |
+| S1-022 | `docs/design-system/02-component-catalog.md:55` | `ReceivingPage.tsx:295`・`ManualSalePage.tsx:310`・`ReturnExchangePage.tsx:419`・`DisposalPage.tsx:285`・`SupplierManagementPage.tsx:35-39`・`PageHeader.tsx:47-53`・`PageHeader.tsx:31-45` | 正本 | `43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`43b69bea`〈親〉・`c9fabc17`〈hit〉・`c9fabc17`〈hit〉・`bb1862a5`〈hit〉 | 4 画面と `SupplierManagementPage` の `PageHeader`、`PageHeader` の `actions` なし・ありの分岐 | 書き換えた |
+| S1-023 | `docs/design-system/02-component-catalog.md:200` | `MovementTable.tsx:93-99`・`OperationLogsPage.tsx:533`・`MovementTable.tsx:93-99`・`ManualSaleRecordDetailPage.tsx:149`・`MovementTable.tsx:82-91`・`StocktakeRecordDetailPage.tsx:234` | 正本 | `1c896139`〈親〉・`43b69bea`〈親〉・`c9fabc17`〈hit〉・`1c896139`〈親〉・`1c896139`〈親〉・`1c896139`〈親〉 | `MovementTable` の備考の `TableCell`・`movement.source` の分岐、`OperationLogsPage` の概要の `TableCell`、`ManualSaleRecordDetailPage` の `detail.note`、`StocktakeRecordDetailPage` | 書き換えた（`MovementTable.tsx:93-99` の 1 つめは三項演算子の版 `1c896139`、2 つめは「本 PR（⑮）で是正済み」の版 `c9fabc17`） |
+| S1-024 | `docs/design-system/02-component-catalog.md:415` | `PriceRevisionPage.tsx:79-83`・`DailySalesPage.tsx:175`・`MonthlySalesPage.tsx:166` | 正本 | `2c125d1a`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | `PriceRevisionPage` の注意の `Alert`、`DailySalesPage`・`MonthlySalesPage` の未取込みの表示 | 書き換えた |
+| S1-025 | `docs/design-system/02-component-catalog.md:888` | `StockStatusBadge.tsx:29`・`StocktakePage.tsx:396-401`・`csv-import/components/PreviewStep.tsx:75-80`・`ProductTable.tsx:88`・`ResultStep.tsx:47`・`CsvImportRecordDetailPage.tsx:140` | 正本 | `eabc549c`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`2c125d1a`〈親〉・`7ae4ade6`〈親〉・`07302b5e`〈親〉 | 各 file の Badge の label（path と label） | 書き換えた |
+| S1-026 | `docs/design-system/02-component-catalog.md:889` | `IntegrityCheckPage.tsx:389`・`StocktakePage.tsx:404`・`ProductTable.tsx:93`・`ResultStep.tsx:47`・`DailyReportImportPage.tsx:164`・`:186`・`CsvImportRecordDetailPage.tsx:140`・`DailyReportImportPage.tsx:322` | 正本 | `2c125d1a`〈親〉・`7ae4ade6`〈親〉・`2c125d1a`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`07302b5e`〈親〉・`7ae4ade6`〈親〉 | 各 file の Badge の label（path と label） | 書き換えた |
+| S1-027 | `docs/design-system/02-component-catalog.md:890` | `StockStatusBadge.tsx:20`・`CsvImportRecordDetailPage.tsx:41`・`:140`・`:192` | 正本 | `eabc549c`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`1ad9aa74`〈親〉 | `StockStatusBadge`「在庫切れ」、`CsvImportRecordDetailPage` の `STATUS_LABELS`・状態の Badge・明細の Badge | 書き換えた |
+| S1-028 | `docs/design-system/02-component-catalog.md:891` | `StockStatusBadge.tsx:36`・`inventory-records/types.ts:87-94` | 正本 | `f2ef9e52`〈hit〉・`7ae4ade6`〈親〉 | `StockStatusBadge`「在庫あり」、`formatRecordStatus` | 書き換えた |
+| S1-029 | `docs/design-system/02-component-catalog.md:893` | `IntegrityCheckPage.tsx:469`・`PriceRevisionTable.tsx:104`・`ProductTable.tsx:74`・`CsvImportRecordDetailPage.tsx:194`・`ReturnExchangePage.tsx:97`・`ReturnExchangePage.tsx:592`・`ReturnExchangePage.tsx:602` | 正本 | `c1c1c5bf`〈hit〉・`07302b5e`〈親〉・`07302b5e`〈親〉・`7ae4ade6`〈親〉・`2c125d1a`〈親〉・`2c125d1a`〈親〉・`2c125d1a`〈親〉 | 各 file の要素（path と label）、`formatRegisterProcessed` | 書き換えた |
+| S1-030 | `docs/design-system/02-component-catalog.md:895` | `ProductTable.tsx:56`・`ProductTable.tsx:74`・`PriceRevisionTable.tsx:98`・`daily-sales/components/ProductTable.tsx:133` | 正本 | `7ae4ade6`〈親〉・`07302b5e`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | 各 file の Badge の label（path と label） | 書き換えた |
+| S1-031 | `docs/design-system/02-component-catalog.md:899` | `PriceRevisionTable.tsx:104` | 正本 | `07302b5e`〈親〉 | `PriceRevisionTable`「入力中」 | 書き換えた |
 | S1-032 | `docs/design-system/02-component-catalog.md:1063` | `PriceRevisionPage.tsx:112-116`・`:158` | 変更履歴 | — | — | 残す（変更履歴の行） |
-| S1-033 | `docs/function-design/10-common-rules.md:121` | `stocktake_service.rs:529`・`src/features/stock-inquiry/lib/filter-low-stock-list.ts:62`・`:63`・`src/features/products/search.ts:30` | 正本 |  |  | 未処置 |
-| S1-034 | `docs/function-design/10-common-rules.md:165` | `receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`・`returns.rs:99`・`returns.rs:254`・`:255` | 正本 |  |  | 未処置 |
-| S1-035 | `docs/function-design/10-common-rules.md:166` | `csv_import_service/parse.rs:98`・`:110`・`csv_import_service/commit.rs:138`・`:167` | 正本 |  |  | 未処置 |
-| S1-036 | `docs/function-design/10-common-rules.md:167` | `inventory_service/common.rs:82`・`:87`・`product_service.rs:1062`・`:1069`・`:1316`・`:1324`・`csv_import_service/commit.rs:276`・`integrity_service.rs:192` | 正本 |  |  | 未処置 |
-| S1-037 | `docs/function-design/10-common-rules.md:168` | `product_service.rs:949`・`:957`・`:1059`・`:1103`・`:473`・`:474`・`:1285` | 正本 |  |  | 未処置 |
-| S1-038 | `docs/function-design/10-common-rules.md:169` | `product_service.rs:1059`・`:1106`・`:473`・`:474`・`:1291`・`receiving.rs:138`・`disposal.rs:135` | 正本 |  |  | 未処置 |
-| S1-039 | `docs/function-design/10-common-rules.md:173` | `src/features/products/lib/price-revision-math.ts:1`・`:9` | 正本 |  |  | 未処置 |
-| S1-040 | `docs/function-design/10-common-rules.md:209` | `product_service.rs:907`・`:927`・`product_repo.rs:1310`・`:1311` | 正本 |  |  | 未処置 |
-| S1-041 | `docs/function-design/22-mnt-migration.md:234` | `lib.rs:355-356` | 外部 library |  |  | 未処置 |
-| S1-042 | `docs/function-design/22-mnt-migration.md:353` | `product_service.rs:274`・`:285` | 正本 |  |  | 未処置 |
-| S1-043 | `docs/function-design/22-mnt-migration.md:360` | `schema_time_evidence.rs:120`・`:124` | 正本 |  |  | 未処置 |
-| S1-044 | `docs/function-design/22-mnt-migration.md:378` | `src-tauri/src/lib.rs:1214`・`:1223`・`lib.rs:161`・`src-tauri/src/db/mod.rs:298`・`src-tauri/src/mnt/restore.rs:11`・`:13`・`src-tauri/src/mnt/backup.rs:206`・`:210`・`lib.rs:1227`・`src-tauri/src/io/image_manager.rs:15`・`:58` | 正本 |  |  | 未処置 |
-| S1-045 | `docs/function-design/22-mnt-migration.md:379` | `lib.rs:118`・`:120`・`lib.rs:165`・`:183`・`db/mod.rs:296` | 正本 |  |  | 未処置 |
-| S1-046 | `docs/function-design/22-mnt-migration.md:386` | `lib.rs:1219`・`:1223` | 正本 |  |  | 未処置 |
-| S1-047 | `docs/function-design/22-mnt-migration.md:389` | `restore.rs:690`・`:700`・`lib.rs:188`・`:195` | 正本 |  |  | 未処置 |
-| S1-048 | `docs/function-design/24-io-csv-import-repo.md:556` | `src-tauri/src/db/sales_repo.rs:760` | 正本 |  |  | 未処置 |
-| S1-049 | `docs/function-design/24-io-csv-import-repo.md:705` | `src-tauri/src/biz/mod.rs:26`・`:28`・`:30`・`src-tauri/src/db/sales_repo.rs:13`・`:19`・`:862`・`:873` | 正本 |  |  | 未処置 |
-| S1-050 | `docs/function-design/29-io-ej-parser.md:323` | `:41`・`:190`・`:57`・`:1289`・`:174`・`:776`・`:814`・`:707`・`:717` | 正本 |  |  | 未処置 |
-| S1-051 | `docs/function-design/31-biz-inventory-service.md:10` | `src-tauri/src/biz/csv_import_service/commit.rs:157` | 正本 |  |  | 未処置 |
-| S1-052 | `docs/function-design/31-biz-inventory-service.md:28` | `receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`・`returns.rs:99`・`returns.rs:254`・`:255`・`receiving.rs:156`・`disposal.rs:159` | 正本 |  |  | 未処置 |
-| S1-053 | `docs/function-design/31-biz-inventory-service.md:29` | `receiving.rs:138`・`disposal.rs:135` | 正本 |  |  | 未処置 |
-| S1-054 | `docs/function-design/31-biz-inventory-service.md:32` | `receiving.rs:234`・`returns.rs:273`・`manual_sale.rs:289`・`disposal.rs:226` | 正本 |  |  | 未処置 |
-| S1-055 | `docs/function-design/32-biz-csv-import-service.md:21` | `src-tauri/src/biz/csv_import_service/parse.rs:63-77` | 正本 |  |  | 未処置 |
-| S1-056 | `docs/function-design/37-biz-daily-report-import-service.md:256` | `src-tauri/src/biz/mod.rs:54`・`useDailyReportImportFlow.ts:35` | 正本 |  |  | 未処置 |
-| S1-057 | `docs/function-design/37-biz-daily-report-import-service.md:261` | `src/lib/bindings.ts:558`・`commit.rs:83-85` | 正本 |  |  | 未処置 |
-| S1-058 | `docs/function-design/37-biz-daily-report-import-service.md:552` | `src-tauri/src/biz/daily_report_import_service/parse.rs:159`・`tests.rs:275`・`:481`・`:536` | 正本 |  |  | 未処置 |
-| S1-059 | `docs/function-design/37-biz-daily-report-import-service.md:633` | `src-tauri/src/db/sales_repo.rs:13`・`:19`・`:862`・`:873` | 正本 |  |  | 未処置 |
-| S1-060 | `docs/function-design/37-biz-daily-report-import-service.md:669` | `src-tauri/src/io/ej_parser.rs:455`・`:460` | 正本 |  |  | 未処置 |
-| S1-061 | `docs/function-design/37-biz-daily-report-import-service.md:673` | `src-tauri/src/io/ej_parser.rs:678`・`:689`・`:575`・`:581` | 正本 |  |  | 未処置 |
-| S1-062 | `docs/function-design/37-biz-daily-report-import-service.md:674` | `:832`・`:834` | 正本 |  |  | 未処置 |
-| S1-063 | `docs/function-design/45-cmd-daily-report-import.md:56` | `src-tauri/src/cmd/daily_report_import_cmd.rs:43`・`:242` | 正本 |  |  | 未処置 |
-| S1-064 | `docs/function-design/45-cmd-daily-report-import.md:242` | `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:35`・`src-tauri/src/cmd/mod.rs:130` | 正本 |  |  | 未処置 |
-| S1-065 | `docs/function-design/45-cmd-daily-report-import.md:246` | `src-tauri/src/lib.rs:277`・`:1272` | 正本 |  |  | 未処置 |
-| S1-066 | `docs/function-design/55-ui-csv-import.md:35` | `useDailyReportImportFlow.ts:35`・`reducer.ts:56`・`reducer.ts:77`・`src/features/daily-report-import/types.ts:4` | 正本 |  |  | 未処置 |
-| S1-067 | `docs/function-design/56-ui-daily-sales.md:375` | `compute-summary.ts:14-17` | 正本 |  |  | 未処置 |
-| S1-068 | `docs/function-design/56-ui-daily-sales.md:579` | `navigation.ts:76` | 正本 |  |  | 未処置 |
-| S1-069 | `docs/function-design/56-ui-daily-sales.md:581` | `RootLayout.tsx:33` | 正本 |  |  | 未処置 |
-| S1-070 | `docs/function-design/57-ui-monthly-sales.md:31` | `sales_service.rs:196-197` | 正本 |  |  | 未処置 |
-| S1-071 | `docs/function-design/57-ui-monthly-sales.md:164` | `sort-items.test.ts:79-90` | 正本 |  |  | 未処置 |
-| S1-072 | `docs/function-design/57-ui-monthly-sales.md:422` | `sales_service.rs:196-197` | 正本 |  |  | 未処置 |
-| S1-073 | `docs/function-design/58-ui-stock-inquiry.md:613` | `DisposalPage.tsx:134` | 正本 |  |  | 未処置 |
-| S1-074 | `docs/function-design/66-ui-stock-movements.md:71` | `product_repo.rs:1845` | 正本 |  |  | 未処置 |
-| S1-075 | `docs/function-design/71-mnt-backup.md:201` | `backup.rs:263` | 正本 |  |  | 未処置 |
-| S1-076 | `docs/function-design/73-ui-stocktake.md:68` | `product_repo.rs:804-805`・`02-component-catalog.md:157` | 正本 |  |  | 未処置 |
-| S1-077 | `docs/msi-distribution-runbook.md:27` | `:201`・`:203`・`:1214`・`:1223`・`:1225`・`:1233`・`:1241` | 正本 |  |  | 未処置 |
+| S1-033 | `docs/function-design/10-common-rules.md:121` | `stocktake_service.rs:529`・`src/features/stock-inquiry/lib/filter-low-stock-list.ts:62`・`:63`・`src/features/products/search.ts:30` | 正本 | `6cac578c`〈hit〉・`67870e10`〈親〉・`67870e10`〈親〉 | `legacy_complete_stocktake`・`filterAndSortLowStockList`・`PRODUCT_SORT_OPTIONS` | 書き換えた |
+| S1-034 | `docs/function-design/10-common-rules.md:165` | `receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`・`returns.rs:99`・`returns.rs:254`・`:255` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `create_receiving`・`create_manual_sale`・`create_disposal`・`validate_return_request_shape`・`create_return` | 書き換えた |
+| S1-035 | `docs/function-design/10-common-rules.md:166` | `csv_import_service/parse.rs:98`・`:110`・`csv_import_service/commit.rs:138`・`:167` | 正本 | `6cac578c`〈hit〉・`c85e135d`〈親〉 | `parse_and_validate`・`execute_commit` の `for row in matched_rows` | 書き換えた |
+| S1-036 | `docs/function-design/10-common-rules.md:167` | `inventory_service/common.rs:82`・`:87`・`product_service.rs:1062`・`:1069`・`:1316`・`:1324`・`csv_import_service/commit.rs:276`・`integrity_service.rs:192` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `inventory_service/common.rs`（隣の `apply_stock_change`）・`validate_create_request`・`preview_import`・`apply_void_stock_corrections`・`fix_integrity` | 書き換えた（目印だった `check_stock_range` は今は `recompute_stock` の中なので、symbol だけで引いた） |
+| S1-037 | `docs/function-design/10-common-rules.md:168` | `product_service.rs:949`・`:957`・`:1059`・`:1103`・`:473`・`:474`・`:1285` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `price_range_error` と呼ぶ所 `validate_create_request`・`validate_update_request`・`revise_product_price`・`preview_import` | 書き換えた |
+| S1-038 | `docs/function-design/10-common-rules.md:169` | `product_service.rs:1059`・`:1106`・`:473`・`:474`・`:1291`・`receiving.rs:138`・`disposal.rs:135` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `validate_create_request`・`validate_update_request`・`revise_product_price`・`preview_import`・`create_receiving`・`create_disposal` | 書き換えた |
+| S1-039 | `docs/function-design/10-common-rules.md:173` | `src/features/products/lib/price-revision-math.ts:1`・`:9` | 正本 | `c1beb334`〈親〉 | `deriveProposedCost` | 書き換えた |
+| S1-040 | `docs/function-design/10-common-rules.md:209` | `product_service.rs:907`・`:927`・`product_repo.rs:1310`・`:1311` | 正本 | `67870e10`〈親〉・`6cac578c`〈hit〉 | `list_low_stock`・`list_low_stock_products` | 書き換えた |
+| S1-041 | `docs/function-design/22-mnt-migration.md:234` | `lib.rs:355-356` | 外部 library | — | tauri-plugin-dialog 2.7.1（`2e3e97d3` の lock） | 残す（library の版を足した観測） |
+| S1-042 | `docs/function-design/22-mnt-migration.md:353` | `product_service.rs:274`・`:285` | 正本 | `6cac578c`〈hit〉 | `create_product` の `if req.initial_stock > 0` | 書き換えた（`67870e10` の 274〜285 行は次の `#[cfg(test)]` へ跨ぐので、範囲全体が 1 つの文に入る `6cac578c` を採った） |
+| S1-043 | `docs/function-design/22-mnt-migration.md:360` | `schema_time_evidence.rs:120`・`:124` | 正本 | `67870e10`〈親〉 | `schema_time_evidence.rs` の `SCHEMA_SQL` の `stocktake_recounts` | 書き換えた |
+| S1-044 | `docs/function-design/22-mnt-migration.md:378` | `src-tauri/src/lib.rs:1214`・`:1223`・`lib.rs:161`・`src-tauri/src/db/mod.rs:298`・`src-tauri/src/mnt/restore.rs:11`・`:13`・`src-tauri/src/mnt/backup.rs:206`・`:210`・`lib.rs:1227`・`src-tauri/src/io/image_manager.rs:15`・`:58` | 正本 | `02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉 | `run`・`prepare_database_with_init`・`migrate_legacy_db_with_ops`・`MANIFEST_SUFFIX` ほか・`resolve_backup_dir`・`DiagnosticLogConfig`・`RECEIPTS_DIR`・`save_receipt_image_with_date` | 書き換えた |
+| S1-045 | `docs/function-design/22-mnt-migration.md:379` | `lib.rs:118`・`:120`・`lib.rs:165`・`:183`・`db/mod.rs:296` | 正本 | `02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉 | `prepare_database`・`prepare_database_with_init`・`migrate_legacy_db_with_ops` | 書き換えた |
+| S1-046 | `docs/function-design/22-mnt-migration.md:386` | `lib.rs:1219`・`:1223` | 正本 | `02f497ea`〈親〉 | `run` の `StartupFailureKind::CreateAppDataDir` | 書き換えた |
+| S1-047 | `docs/function-design/22-mnt-migration.md:389` | `restore.rs:690`・`:700`・`lib.rs:188`・`:195` | 正本 | `02f497ea`〈親〉・`02f497ea`〈親〉 | `reconcile_restore_with_ops`・`prepare_database_with_init` | 書き換えた |
+| S1-048 | `docs/function-design/24-io-csv-import-repo.md:556` | `src-tauri/src/db/sales_repo.rs:760` | 正本 | `3933f0d4`〈親〉 | `find_daily_report_imports_by_report_date` | 書き換えた |
+| S1-049 | `docs/function-design/24-io-csv-import-repo.md:705` | `src-tauri/src/biz/mod.rs:26`・`:28`・`:30`・`src-tauri/src/db/sales_repo.rs:13`・`:19`・`:862`・`:873` | 正本 | `3933f0d4`〈親〉・`6cac578c`〈hit〉・`3933f0d4`〈親〉・`3933f0d4`〈親〉 | `biz/mod.rs` の re-export、`CsvImportStatus`・`row_to_csv_import` | 書き換えた（`:28`〜`:30` の target は同じ文の `src-tauri/src/biz/mod.rs`） |
+| S1-050 | `docs/function-design/29-io-ej-parser.md:323` | `:41`・`:190`・`:57`・`:1289`・`:174`・`:776`・`:814`・`:707`・`:717` | 正本 | `9d351d5b`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉・`c1beb334`〈親〉 | `EjLineKind::Quantity`・`EjItem`・`EjLineKind::ItemCount`・`parse_item_count`・`EjRestoration::Restored`・`item_region`・`restore_items` | 書き換えた（target は文書の対象 module `src-tauri/src/io/ej_parser.rs`。隣に symbol がある引用は行番号だけを外した） |
+| S1-051 | `docs/function-design/31-biz-inventory-service.md:10` | `src-tauri/src/biz/csv_import_service/commit.rs:157` | 正本 | `249df0ca`〈親〉 | `execute_commit` の `apply_stock_change` | 書き換えた |
+| S1-052 | `docs/function-design/31-biz-inventory-service.md:28` | `receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`・`returns.rs:99`・`returns.rs:254`・`:255`・`receiving.rs:156`・`disposal.rs:159` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `create_receiving`・`create_manual_sale`・`create_disposal`・`validate_return_request_shape`・`create_return`・`check_safe_integer` の呼出し | 書き換えた |
+| S1-053 | `docs/function-design/31-biz-inventory-service.md:29` | `receiving.rs:138`・`disposal.rs:135` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉 | `create_receiving`・`create_disposal` の `MAX_COST_PRICE` | 書き換えた |
+| S1-054 | `docs/function-design/31-biz-inventory-service.md:32` | `receiving.rs:234`・`returns.rs:273`・`manual_sale.rs:289`・`disposal.rs:226` | 正本 | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `create_*` の `negative_stock_warning_message` | 書き換えた |
+| S1-055 | `docs/function-design/32-biz-csv-import-service.md:21` | `src-tauri/src/biz/csv_import_service/parse.rs:63-77` | 正本 | `ea15360d`〈親〉 | `parse_and_validate` の `2a. settlement_date 業務妥当性チェック` | 書き換えた |
+| S1-056 | `docs/function-design/37-biz-daily-report-import-service.md:256` | `src-tauri/src/biz/mod.rs:54`・`useDailyReportImportFlow.ts:35` | 正本 | `6b765f75`〈親〉・`6b765f75`〈親〉 | `biz/mod.rs`（隣の `BizError`）・`decideRecoverTo` | 書き換えた |
+| S1-057 | `docs/function-design/37-biz-daily-report-import-service.md:261` | `src/lib/bindings.ts:558`・`commit.rs:83-85` | 正本 | `6b765f75`〈親〉・`6b765f75`〈親〉 | `bindings.ts`（隣の `DailyReportSourceFileInfo`）・`execute_commit` の `source_files_json` | 書き換えた |
+| S1-058 | `docs/function-design/37-biz-daily-report-import-service.md:552` | `src-tauri/src/biz/daily_report_import_service/parse.rs:159`・`tests.rs:275`・`:481`・`:536` | 正本 | `3933f0d4`〈親〉・`3933f0d4`〈親〉・`3933f0d4`〈親〉・`3933f0d4`〈親〉 | `parse_and_validate_daily_report`・test 3 つ | 書き換えた |
+| S1-059 | `docs/function-design/37-biz-daily-report-import-service.md:633` | `src-tauri/src/db/sales_repo.rs:13`・`:19`・`:862`・`:873` | 正本 | `3933f0d4`〈親〉・`3933f0d4`〈親〉 | `CsvImportStatus`・`row_to_csv_import` の `match` | 書き換えた |
+| S1-060 | `docs/function-design/37-biz-daily-report-import-service.md:669` | `src-tauri/src/io/ej_parser.rs:455`・`:460` | 正本 | `3933f0d4`〈親〉 | `parse_header` の `date_ok` | 書き換えた |
+| S1-061 | `docs/function-design/37-biz-daily-report-import-service.md:673` | `src-tauri/src/io/ej_parser.rs:678`・`:689`・`:575`・`:581` | 正本 | `3933f0d4`〈親〉・`3933f0d4`〈親〉 | `check_record` の `NoItems`・`build_record` の `MissingFinalNewline` | 書き換えた（`:575`〜`:581` の target は「同」の `src-tauri/src/io/ej_parser.rs`） |
+| S1-062 | `docs/function-design/37-biz-daily-report-import-service.md:674` | `:832`・`:834` | 正本 | `3933f0d4`〈親〉 | `item_region` の `adjustments.pop()` | 書き換えた（target は「同」の `src-tauri/src/io/ej_parser.rs`） |
+| S1-063 | `docs/function-design/45-cmd-daily-report-import.md:56` | `src-tauri/src/cmd/daily_report_import_cmd.rs:43`・`:242` | 正本 | `6b765f75`〈親〉・`e7c22f8f`〈親〉 | `parse_and_validate_daily_report` の `DailyReportInputFile`・`tests` の module | 書き換えた |
+| S1-064 | `docs/function-design/45-cmd-daily-report-import.md:242` | `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:35`・`src-tauri/src/cmd/mod.rs:130` | 正本 | `6b765f75`〈親〉・`0989ced0`〈親〉 | `decideRecoverTo`・`cmd/mod.rs`（隣の `impl From<BizError> for CmdError`） | 書き換えた |
+| S1-065 | `docs/function-design/45-cmd-daily-report-import.md:246` | `src-tauri/src/lib.rs:277`・`:1272` | 正本 | `6b765f75`〈親〉・`6b765f75`〈親〉 | `export_bindings_to`・`run` | 書き換えた |
+| S1-066 | `docs/function-design/55-ui-csv-import.md:35` | `useDailyReportImportFlow.ts:35`・`reducer.ts:56`・`reducer.ts:77`・`src/features/daily-report-import/types.ts:4` | 正本 | `6b765f75`〈親〉・`6b765f75`〈親〉・`6b765f75`〈親〉・`c85e135d`〈親〉 | `decideRecoverTo`・`dailyReportImportReducer`・`types.ts`（隣の `DailyReportErrorRecoverTo`） | 書き換えた |
+| S1-067 | `docs/function-design/56-ui-daily-sales.md:375` | `compute-summary.ts:14-17` | 正本 | `902647b8`〈hit〉 | `computeSalesLineSummary` | 書き換えた（文の「防御的 if-else」は今の `switch` と食い違う → backlog の (8)） |
+| S1-068 | `docs/function-design/56-ui-daily-sales.md:579` | `navigation.ts:76` | 正本 | `902647b8`〈hit〉 | `navigation.ts` の `ui-09a` | 書き換えた（候補は root `902647b8` だけで、76 行は `ui-09a` の項目の中） |
+| S1-069 | `docs/function-design/56-ui-daily-sales.md:581` | `RootLayout.tsx:33` | 正本 | `902647b8`〈hit〉 | `deriveTitle` | 書き換えた |
+| S1-070 | `docs/function-design/57-ui-monthly-sales.md:31` | `sales_service.rs:196-197` | 正本 | - | `get_monthly_sales` | 消えた（候補は root `902647b8` だけで、196〜197 行は `get_daily_sales` の部門の行で名指す語が無い）→ 最小の言い換え（名指す語 `prev_month_comparison = Some(prev_items)` は今の base で `get_monthly_sales` の中にだけ在る） |
+| S1-071 | `docs/function-design/57-ui-monthly-sales.md:164` | `sort-items.test.ts:79-90` | 正本 | `902647b8`〈hit〉 | test「G-3: ranking field 残存確認」 | 書き換えた |
+| S1-072 | `docs/function-design/57-ui-monthly-sales.md:422` | `sales_service.rs:196-197` | 正本 | - | `get_monthly_sales` | 消えた（S1-070 と同じ）→ 最小の言い換え（S1-070 と同じ根拠） |
+| S1-073 | `docs/function-design/58-ui-stock-inquiry.md:613` | `DisposalPage.tsx:134` | 正本 | `c6167c4d`〈親〉 | `DisposalPage` の `returnTo` | 書き換えた |
+| S1-074 | `docs/function-design/66-ui-stock-movements.md:71` | `product_repo.rs:1845` | 正本 | `c6167c4d`〈親〉 | test `test_search_products_req103_keyword_product_code` | 書き換えた（1845 行は test の名前の行で、名指す語「コード検索」はその test の 1846 行の comment） |
+| S1-075 | `docs/function-design/71-mnt-backup.md:201` | `backup.rs:263` | 正本 | - | — | 消えた（今の `backup.rs` の `restore_backup` は `restore.rs` へ委ねる包みで、`.restore_backup` を持たない。文は manifest 導入前の実装の記録）→ 引用を外す |
+| S1-076 | `docs/function-design/73-ui-stocktake.md:68` | `product_repo.rs:804-805`・`02-component-catalog.md:157` | 正本 | `a1e98114`〈親〉・`a1e98114`〈親〉 | `search_products` の `query.is_discontinued`、catalog の ③ テーブル | 書き換えた |
+| S1-077 | `docs/msi-distribution-runbook.md:27` | `:201`・`:203`・`:1214`・`:1223`・`:1225`・`:1233`・`:1241` | 正本 | `a5fb9b16`〈親〉・`0223ef18`〈親〉・`294b0dfe`〈親〉・`294b0dfe`〈親〉 | `record_pre_window_fatal`（隣の symbol）・`run` の setup の順 | 書き換えた |
 | S1-078 | `docs/quality/review-checklist.md:123` | `:86` | 変更履歴 | — | — | 残す（変更履歴の行） |
-| S1-079 | `docs/design-system/01-decision-rules.md:362` | `node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts:23` | 外部 library |  |  | 未処置 |
+| S1-079 | `docs/design-system/01-decision-rules.md:362` | `node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts:23` | 外部 library | — | @radix-ui/react-alert-dialog 1.1.15（`72d32d75` の lock） | 残す（library の版を足した観測） |
 | S1-080 | `docs/function-design/53-ui-home.md:312` | `Plans.md L23` | 変更履歴 | — | — | 残す（変更履歴の行） |
-| S1-081 | `docs/function-design/54-ui-shortcuts.md:107` | `` `src/components/ui/dialog.tsx` L62-69 `` | 正本 |  |  | 未処置 |
-| S1-082 | `docs/function-design/56-ui-daily-sales.md:26` | `SCREEN_DESIGN.md L100` | 正本 |  |  | 未処置 |
-| S1-083 | `docs/function-design/56-ui-daily-sales.md:580` | `mockup L313` | 正本 |  |  | 未処置 |
-| S1-084 | `docs/function-design/58-ui-stock-inquiry.md:2` | `SCREEN_DESIGN.md（在庫照会画面 L120-133`・`L167-176` | 正本 |  |  | 未処置 |
-| S1-085 | `docs/function-design/58-ui-stock-inquiry.md:676` | `SCREEN_DESIGN.md L120-133` | 正本 |  |  | 未処置 |
-| S1-086 | `docs/function-design/70-mnt-diagnostic-log.md:258` | `` `src-tauri/src/lib.rs` `run_startup_step` L84 `` | 正本 |  |  | 未処置 |
+| S1-081 | `docs/function-design/54-ui-shortcuts.md:107` | `` `src/components/ui/dialog.tsx` L62-69 `` | 正本 | `902647b8`〈hit〉 | `DialogContent` の `DialogPrimitive.Close` | 書き換えた（候補は root `902647b8` だけ） |
+| S1-082 | `docs/function-design/56-ui-daily-sales.md:26` | `SCREEN_DESIGN.md L100` | 正本 | - | — | 消えた（候補は root `902647b8` だけで、100 行は日報取込みのウィザードの文。今の SCREEN_DESIGN.md に主動線のこの文は無い）→ 引用を外す・backlog の (8) |
+| S1-083 | `docs/function-design/56-ui-daily-sales.md:580` | `mockup L313` | 正本 | `902647b8`〈hit〉 | mockup の「売上レポート」 | 書き換えた（`docs/screen_mockups.html` は節が無く、文が成り立つので `L313` を外した） |
+| S1-084 | `docs/function-design/58-ui-stock-inquiry.md:2` | `SCREEN_DESIGN.md（在庫照会画面 L120-133`・`L167-176` | 正本 | -・- | — | 消えた（候補は root `902647b8` だけで、L120-133・L167-176 は PLU 書出し・操作ログ・棚卸しの節）→ 引用を外す（節の名「在庫照会画面」は文に残る） |
+| S1-085 | `docs/function-design/58-ui-stock-inquiry.md:676` | `SCREEN_DESIGN.md L120-133` | 正本 | - | — | 消えた（S1-084 と同じ）→ 引用を外す |
+| S1-086 | `docs/function-design/70-mnt-diagnostic-log.md:258` | `` `src-tauri/src/lib.rs` `run_startup_step` L84 `` | 正本 | `e1c668ad`〈親〉 | `run_startup_step`（隣の symbol） | 書き換えた |
 
 #### S2 の行
 
 | ID | 場所（`6a25f63f` の行） | 引用（`rg -o` の順） | 型 | 採った版 | 書き換え先 | 処置 |
 |---|---|---|---|---|---|---|
-| S2-001 | `src-tauri/src/biz/csv_import_service/time_evidence.rs:25` | `parse.rs:80` | comment |  |  | 未処置 |
-| S2-002 | `src/components/ui/segmented-control.test.tsx:7` | `:443` | comment |  |  | 未処置 |
-| S2-003 | `src/components/ui/segmented-control.tsx:6` | `:443` | comment |  |  | 未処置 |
-| S2-004 | `src/features/monthly-sales/components/SummaryCardsBar.tsx:97` | `sales_service.rs:196-197` | comment |  |  | 未処置 |
-| S2-005 | `src/features/monthly-sales/hooks/useMonthlySalesReport.test.tsx:156` | `sales_service.rs:196-197` | comment |  |  | 未処置 |
-| S2-006 | `src/features/monthly-sales/hooks/useMonthlySalesReport.ts:76` | `sort-items.test.ts:79-90` | comment |  |  | 未処置 |
-| S2-007 | `src/features/monthly-sales/lib/compute-comparison.ts:10` | `sales_service.rs:196-197` | comment |  |  | 未処置 |
-| S2-008 | `src/features/products/ProductListPage.bulk-dialog-target.test.tsx:6` | `ProductListPage.tsx:303-309` | comment |  |  | 未処置 |
-| S2-009 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:16` | `scroll-restoration.js:147` | comment（外部 library） |  |  | 未処置 |
-| S2-010 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:62` | `node_modules/happy-dom/lib/nodes/element/Element.js:133-174` | comment（外部 library） |  |  | 未処置 |
-| S2-011 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:64` | `html-element/HTMLElement.js:460`・`:468` | comment（外部 library） |  |  | 未処置 |
-| S2-012 | `src/features/products/components/ProductForm.test.tsx:915` | `ProductForm.tsx:284` | comment |  |  | 未処置 |
-| S2-013 | `src/features/products/components/ProductForm.test.tsx:924` | `ProductForm.tsx:282` | comment |  |  | 未処置 |
-| S2-014 | `src/features/stocktake/StocktakePage.tsx:759` | `Pagination.tsx:48` | comment |  |  | 未処置 |
-| S2-015 | `src-tauri/src/lib.rs:244` | `.gitignore:38` | comment |  |  | 未処置 |
-| S2-016 | `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx:78` | `alert-dialog.tsx L53` | comment |  |  | 未処置 |
-| S2-017 | `src/features/daily-report-import/DailyReportImportPage.test.tsx:400` | `ResultStep.tsx L67` | comment |  |  | 未処置 |
-| S2-018 | `src/features/integrity-check/IntegrityCheckPage.test.tsx:124` | `SCREEN_DESIGN L42`・`L62`・`L426` | comment |  |  | 未処置 |
-| S2-019 | `src/features/return-exchange/ReturnExchangePage.test.tsx:778` | `:147` | comment |  |  | 未処置 |
-| S2-020 | `src/features/stock-movements/StockMovementsPage.test.tsx:262` | `:98` | comment |  |  | 未処置 |
-| S2-021 | `src/hooks/useUnsavedChangesWarning.test.tsx:154` | `:133` | comment |  |  | 未処置 |
-| S2-022 | `src/hooks/useUnsavedChangesWarning.test.tsx:156` | `:133` | comment |  |  | 未処置 |
+| S2-001 | `src-tauri/src/biz/csv_import_service/time_evidence.rs:25` | `parse.rs:80` | comment | `09f65412`〈親〉 | `parse_and_validate` の `CSV_IMPORT_LINE_LIMIT` | 書き換えた |
+| S2-002 | `src/components/ui/segmented-control.test.tsx:7` | `:443` | comment | `31c069d5`〈親〉 | DSR-22 | 書き換えた（隣の DSR-22 を残して `:443` を外した） |
+| S2-003 | `src/components/ui/segmented-control.tsx:6` | `:443` | comment | `31c069d5`〈親〉 | DSR-22 | 書き換えた（隣の DSR-22 を残して `:443` を外した） |
+| S2-004 | `src/features/monthly-sales/components/SummaryCardsBar.tsx:97` | `sales_service.rs:196-197` | comment | - | `get_monthly_sales` | 消えた（S1-070 と同じ）→ 最小の言い換え（S1-070 と同じ根拠） |
+| S2-005 | `src/features/monthly-sales/hooks/useMonthlySalesReport.test.tsx:156` | `sales_service.rs:196-197` | comment | - | `get_monthly_sales` | 消えた（S1-070 と同じ）→ 最小の言い換え（S1-070 と同じ根拠） |
+| S2-006 | `src/features/monthly-sales/hooks/useMonthlySalesReport.ts:76` | `sort-items.test.ts:79-90` | comment | `902647b8`〈hit〉 | test「G-3: ranking field 残存確認」 | 書き換えた |
+| S2-007 | `src/features/monthly-sales/lib/compute-comparison.ts:10` | `sales_service.rs:196-197` | comment | - | `get_monthly_sales` | 消えた（S1-070 と同じ）→ 最小の言い換え（S1-070 と同じ根拠） |
+| S2-008 | `src/features/products/ProductListPage.bulk-dialog-target.test.tsx:6` | `ProductListPage.tsx:303-309` | comment | `31c069d5`〈親〉 | `ProductListPage` の `PluBulkTargetConfirmDialog` の props | 書き換えた（`b2389b19` 起源の句は残す: latent bug の出どころの記録） |
+| S2-009 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:16` | `scroll-restoration.js:147` | comment（外部 library） | — | @tanstack/router-core 1.168.15（`b59d7331` の lock） | 残す（library の版を足した観測） |
+| S2-010 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:62` | `node_modules/happy-dom/lib/nodes/element/Element.js:133-174` | comment（外部 library） | — | happy-dom 20.10.6（`b59d7331` の lock） | 残す（library の版を足した観測） |
+| S2-011 | `src/features/products/ProductListPage.scroll-restoration.test.tsx:64` | `html-element/HTMLElement.js:460`・`:468` | comment（外部 library） | — | happy-dom 20.10.6（`b59d7331` の lock） | 残す（library の版を足した観測） |
+| S2-012 | `src/features/products/components/ProductForm.test.tsx:915` | `ProductForm.tsx:284` | comment | `689ac4c3`〈hit〉 | `ProductForm` の部門の `Select` の `onValueChange` | 書き換えた |
+| S2-013 | `src/features/products/components/ProductForm.test.tsx:924` | `ProductForm.tsx:282` | comment | `689ac4c3`〈hit〉 | `ProductForm` の部門の `Select` の `value` | 書き換えた |
+| S2-014 | `src/features/stocktake/StocktakePage.tsx:759` | `Pagination.tsx:48` | comment | `b59d7331`〈hit〉 | `Pagination` の早期 return | 書き換えた（`page > totalPages` の回復の条件を持つのは早期 return の版 `b59d7331`。親 `ff655efd` の 48 行は `canPrev`） |
+| S2-015 | `src-tauri/src/lib.rs:244` | `.gitignore:38` | comment | `902647b8`〈hit〉 | `.gitignore` の `# src/lib/bindings.ts` の行 | 書き換えた（target は bindings の在る repo root の `.gitignore`。候補は root `902647b8` だけ） |
+| S2-016 | `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx:78` | `alert-dialog.tsx L53` | comment | `04514154`〈親〉 | `AlertDialogContent` | 書き換えた |
+| S2-017 | `src/features/daily-report-import/DailyReportImportPage.test.tsx:400` | `ResultStep.tsx L67` | comment | `04514154`〈親〉 | `ResultStep` の action の container | 書き換えた |
+| S2-018 | `src/features/integrity-check/IntegrityCheckPage.test.tsx:124` | `SCREEN_DESIGN L42`・`L62`・`L426` | comment | `5aad8f59`〈親〉・`04514154`〈親〉・`04514154`〈親〉 | SCREEN_DESIGN の「年に数回 / 初回のみ」・「全体構成（4エリア）」・「実装フェーズ分類」 | 書き換えた |
+| S2-019 | `src/features/return-exchange/ReturnExchangePage.test.tsx:778` | `:147` | comment | `07302b5e`〈親〉 | `registerOptionClass`（隣の symbol） | 書き換えた（target は `registerOptionClass` を定義する `ReturnExchangePage.tsx`。test file には test の名前として出るだけ） |
+| S2-020 | `src/features/stock-movements/StockMovementsPage.test.tsx:262` | `:98` | comment | `ff655efd`〈親〉 | `StockMovementsPage` の商品情報の section | 書き換えた（target は商品情報の card の要素を持つ `StockMovementsPage.tsx`。test file の `bg-card` は assertion の文字列） |
+| S2-021 | `src/hooks/useUnsavedChangesWarning.test.tsx:154` | `:133` | comment | `1ad9aa74`〈親〉 | sibling test「DSR-20 D-E T10: Escape と外側 pointer-down では閉じず callback も発火しない」 | 書き換えた（target は comment の在る test file。「sibling test」は同じ file の test） |
+| S2-022 | `src/hooks/useUnsavedChangesWarning.test.tsx:156` | `:133` | comment | `1ad9aa74`〈親〉 | 同じ sibling test | 書き換えた（S2-021 と同じ） |
 
 #### S3 の行
 
 | ID | 場所（`6a25f63f` の行） | 引用（`rg -o` の順） | 型 | 採った版 | 書き換え先 | 処置 |
 |---|---|---|---|---|---|---|
-| S3-001 | `docs/backlog.md:15` | `src-tauri/src/seed_demo.rs:462` | backlog |  |  | 未処置 |
-| S3-002 | `docs/backlog.md:27` | `parse.rs:159`・`tests.rs:275`・`:481`・`:536` | backlog |  |  | 未処置 |
-| S3-003 | `docs/backlog.md:49` | `:164`・`:657`・`:658`・`:370`・`:196`・`:751`・`:754`・`:907`・`:30`・`:179`・`docs/function-design/62-ui-manual-sale.md:167` | backlog |  |  | 未処置 |
-| S3-004 | `docs/backlog.md:50` | `src-tauri/src/biz/inventory_service/manual_sale.rs:147` | backlog |  |  | 未処置 |
-| S3-005 | `docs/backlog.md:51` | `src/features/manual-sale/lib/manual-sale-row-utils.ts:67`・`:82` | backlog |  |  | 未処置 |
-| S3-006 | `docs/backlog.md:53` | `docs/function-design/35-biz-stocktake-service.md:473`・`docs/function-design/44-cmd-inventory.md:966`・`docs/DB_DESIGN.md:187`・`:763`・`:1460`・`:1520`・`:1528`・`:1541`・`:1708`・`:452` | backlog |  |  | 未処置 |
-| S3-007 | `docs/backlog.md:57` | `src-tauri/src/db/schema_v8.rs:255`・`:10`・`:15`・`:14`・`:262`・`src-tauri/src/constants.rs:65` | backlog |  |  | 未処置 |
-| S3-008 | `docs/backlog.md:77` | `src-tauri/src/biz/product_service.rs:1536`・`src-tauri/src/constants.rs:38` | backlog |  |  | 未処置 |
-| S3-009 | `docs/backlog.md:95` | `docs/function-design/21-io-inventory-repo.md:103`・`:354`・`docs/function-design/62-ui-manual-sale.md:26`・`:165`・`src/features/manual-sale/lib/manual-sale-row-utils.ts:24`・`:40` | backlog |  |  | 未処置 |
-| S3-010 | `docs/backlog.md:98` | `product_service.rs:153` | backlog |  |  | 未処置 |
-| S3-011 | `docs/backlog.md:118` | `src/features/csv-import/lib/formatErrorRow.ts:22` | backlog |  |  | 未処置 |
-| S3-012 | `docs/backlog.md:119` | `src/features/products/components/PriceRevisionTable.tsx:104` | backlog |  |  | 未処置 |
-| S3-013 | `docs/backlog.md:121` | `src/components/patterns/EmptyState.tsx:32` | backlog |  |  | 未処置 |
-| S3-014 | `docs/backlog.md:129` | `:841`・`:70` | backlog |  |  | 未処置 |
-| S3-015 | `docs/backlog.md:145` | `docs/design-system/reference/mockup-d-lists.html:112` | backlog |  |  | 未処置 |
-| S3-016 | `docs/backlog.md:173` | `:155` | backlog |  |  | 未処置 |
-| S3-017 | `docs/backlog.md:183` | `PluExportPage.tsx:188` | backlog |  |  | 未処置 |
-| S3-018 | `docs/backlog.md:184` | `ReturnExchangePage.tsx:185` | backlog |  |  | 未処置 |
-| S3-019 | `docs/backlog.md:188` | `src-tauri/src/biz/stocktake_service.rs:4`・`docs/function-design/35-biz-stocktake-service.md:374`・`docs/architecture/biz-task-specs.md:451`・`docs/db-design/tracking-system-tables.md:137`・`docs/screen_mockups.html:208`・`docs/screen_mockups.html:259`・`docs/SCREEN_DESIGN.md:213` | backlog |  |  | 未処置 |
-| S3-020 | `docs/backlog.md:204` | `40-cmd-product.md:279` | backlog |  |  | 未処置 |
-| S3-021 | `docs/backlog.md:223` | `61-ui-receiving.md:30`・`:73`・`63-ui-return-exchange.md:36`・`:71` | backlog |  |  | 未処置 |
-| S3-022 | `docs/backlog.md:245` | `MonthlySalesPage.tsx:177-180` | backlog |  |  | 未処置 |
-| S3-023 | `docs/backlog.md:247` | `ReceivingPage.tsx:543-549` | backlog |  |  | 未処置 |
-| S3-024 | `docs/backlog.md:249` | `ReturnExchangePage.tsx:790-791` | backlog |  |  | 未処置 |
-| S3-025 | `docs/backlog.md:251` | `ReturnExchangePage.tsx:624` | backlog |  |  | 未処置 |
-| S3-026 | `docs/backlog.md:259` | `InventoryRecordsPage.tsx:156-245`・`ReceivingPage.tsx:393`・`DisposalPage.tsx:509`・`OperationLogsPage.tsx:338-352` | backlog |  |  | 未処置 |
-| S3-027 | `docs/backlog.md:261` | `Pagination.tsx:52-53`・`:99` | backlog |  |  | 未処置 |
-| S3-028 | `docs/backlog.md:299` | `ProductImportPreview.tsx:76`・`ProductRankingTable.tsx:80`・`BackupRestorePage.tsx:533` | backlog |  |  | 未処置 |
-| S3-029 | `docs/backlog.md:303` | `StockStatusBadge.tsx:42`・`01-decision-rules.md:445`・`:451`・`04-backbone.md:44`・`02-component-catalog.md:158`・`catalog:588`・`DailyReportImportPage.tsx:322`・`ProductTable.tsx:133` | backlog |  |  | 未処置 |
-| S3-030 | `docs/backlog.md:334` | `button.tsx:15-16` | backlog |  |  | 未処置 |
-| S3-031 | `docs/backlog.md:341` | `list.rs:21`・`archive/plans/2026-09-03-ui-list-backbone-d-lane2.md):642-648` | backlog |  |  | 未処置 |
+| S3-001 | `docs/backlog.md:15` | `src-tauri/src/seed_demo.rs:462` | backlog | `44f1e666`〈親〉 | `44f1e666` の時点で `src-tauri/src/seed_demo.rs:462` | 書き換えた |
+| S3-002 | `docs/backlog.md:27` | `parse.rs:159`・`tests.rs:275`・`:481`・`:536` | backlog | `3933f0d4`〈親〉・`3933f0d4`〈親〉・`3933f0d4`〈親〉・`3933f0d4`〈親〉 | `3933f0d4` の時点で `src-tauri/src/biz/daily_report_import_service/parse.rs:159`・`src-tauri/src/biz/daily_report_import_service/tests.rs:275`・`src-tauri/src/biz/daily_report_import_service/tests.rs:481`・`src-tauri/src/biz/daily_report_import_service/tests.rs:536` | 書き換えた |
+| S3-003 | `docs/backlog.md:49` | `:164`・`:657`・`:658`・`:370`・`:196`・`:751`・`:754`・`:907`・`:30`・`:179`・`docs/function-design/62-ui-manual-sale.md:167` | backlog | `dda8560a`〈親〉・`6cac578c`〈親〉・`6cac578c`〈親〉・`31ec7501`〈hit〉・`6cac578c`〈親〉・`6cac578c`〈親〉・`85b18a04`〈親〉・`67870e10`〈親〉・`6cac578c`〈親〉 | `dda8560a` の時点で `docs/function-design/58-ui-stock-inquiry.md:164`・`6cac578c` の時点で `docs/function-design/58-ui-stock-inquiry.md:657-658`・`docs/function-design/58-ui-stock-inquiry.md:370`・`docs/function-design/20-io-product-repo.md:751-754`・`docs/function-design/20-io-product-repo.md:907`・`docs/function-design/62-ui-manual-sale.md:167`・`31ec7501` の時点で `docs/function-design/20-io-product-repo.md:196`・`85b18a04` の時点で `docs/function-design/51-ui-product-form.md:30`・`67870e10` の時点で `docs/function-design/51-ui-product-form.md:179` | 書き換えた |
+| S3-004 | `docs/backlog.md:50` | `src-tauri/src/biz/inventory_service/manual_sale.rs:147` | backlog | `6cac578c`〈親〉 | `6cac578c` の時点で `src-tauri/src/biz/inventory_service/manual_sale.rs:147` | 書き換えた |
+| S3-005 | `docs/backlog.md:51` | `src/features/manual-sale/lib/manual-sale-row-utils.ts:67`・`:82` | backlog | `6cac578c`〈親〉・`6cac578c`〈親〉 | `6cac578c` の時点で `src/features/manual-sale/lib/manual-sale-row-utils.ts:67`・`src/features/manual-sale/lib/manual-sale-row-utils.ts:82` | 書き換えた |
+| S3-006 | `docs/backlog.md:53` | `docs/function-design/35-biz-stocktake-service.md:473`・`docs/function-design/44-cmd-inventory.md:966`・`docs/DB_DESIGN.md:187`・`:763`・`:1460`・`:1520`・`:1528`・`:1541`・`:1708`・`:452` | backlog | `67870e10`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`02f497ea`〈親〉・`def86e19`〈親〉 | `67870e10` の時点で `docs/function-design/35-biz-stocktake-service.md:473`・`02f497ea` の時点で `docs/function-design/44-cmd-inventory.md:966`・`docs/DB_DESIGN.md:187`・`src-tauri/src/db/migration.rs:763`・`src-tauri/src/db/migration.rs:1460`・`src-tauri/src/db/migration.rs:1520`・`src-tauri/src/db/migration.rs:1528-1541`・`src-tauri/src/db/migration.rs:1708`・`def86e19` の時点で `src-tauri/src/db/schema_v2.rs:452` | 書き換えた（migration.rs と schema_v2.rs の行は、文が書くとおり 2026-10-17 の main〈`02f497ea` の親の版〉の `migrate(&conn)` の行） |
+| S3-007 | `docs/backlog.md:57` | `src-tauri/src/db/schema_v8.rs:255`・`:10`・`:15`・`:14`・`:262`・`src-tauri/src/constants.rs:65` | backlog | `6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉・`6cac578c`〈hit〉 | `6cac578c` の時点で `src-tauri/src/db/schema_v8.rs:255`・`src-tauri/src/db/schema_v8.rs:10-15`・`src-tauri/src/db/schema_v8.rs:14`・`src-tauri/src/db/schema_v8.rs:262`・`src-tauri/src/constants.rs:65` | 書き換えた |
+| S3-008 | `docs/backlog.md:77` | `src-tauri/src/biz/product_service.rs:1536`・`src-tauri/src/constants.rs:38` | backlog | `f5d7aaf4`〈親〉・`f5d7aaf4`〈親〉 | `f5d7aaf4` の時点で `src-tauri/src/biz/product_service.rs:1536`・`src-tauri/src/constants.rs:38` | 書き換えた |
+| S3-009 | `docs/backlog.md:95` | `docs/function-design/21-io-inventory-repo.md:103`・`:354`・`docs/function-design/62-ui-manual-sale.md:26`・`:165`・`src/features/manual-sale/lib/manual-sale-row-utils.ts:24`・`:40` | backlog | `32273dc2`〈親〉・`32273dc2`〈親〉・`32273dc2`〈親〉・`32273dc2`〈親〉・`32273dc2`〈親〉・`32273dc2`〈親〉 | `32273dc2` の時点で `docs/function-design/21-io-inventory-repo.md:103`・`docs/function-design/21-io-inventory-repo.md:354`・`docs/function-design/62-ui-manual-sale.md:26`・`docs/function-design/62-ui-manual-sale.md:165`・`src/features/manual-sale/lib/manual-sale-row-utils.ts:24`・`src/features/manual-sale/lib/manual-sale-row-utils.ts:40` | 書き換えた |
+| S3-010 | `docs/backlog.md:98` | `product_service.rs:153` | backlog | `249df0ca`〈親〉 | `249df0ca` の時点で `src-tauri/src/biz/product_service.rs:153` | 書き換えた |
+| S3-011 | `docs/backlog.md:118` | `src/features/csv-import/lib/formatErrorRow.ts:22` | backlog | `ff05436f`〈親〉 | `ff05436f` の時点で `src/features/csv-import/lib/formatErrorRow.ts:22` | 書き換えた |
+| S3-012 | `docs/backlog.md:119` | `src/features/products/components/PriceRevisionTable.tsx:104` | backlog | `07302b5e`〈親〉 | `07302b5e` の時点で `src/features/products/components/PriceRevisionTable.tsx:104` | 書き換えた |
+| S3-013 | `docs/backlog.md:121` | `src/components/patterns/EmptyState.tsx:32` | backlog | `ff05436f`〈親〉 | `ff05436f` の時点で `src/components/patterns/EmptyState.tsx:32` | 書き換えた |
+| S3-014 | `docs/backlog.md:129` | `:841`・`:70` | backlog | `51b1f484`〈hit〉・- | `51b1f484` の時点で `docs/design-system/02-component-catalog.md:841` | 書き換えた（`:70` は target が決まらない〈候補のどの版でも catalog の 70 行は方向 badge の文でない〉→ 曖昧として引用を外した） |
+| S3-015 | `docs/backlog.md:145` | `docs/design-system/reference/mockup-d-lists.html:112` | backlog | `ff655efd`〈親〉 | `ff655efd` の時点で `docs/design-system/reference/mockup-d-lists.html:112` | 書き換えた |
+| S3-016 | `docs/backlog.md:173` | `:155` | backlog | `294ba366`〈親〉 | `294ba366` の時点で `scripts/check-workflow-git.sh:155` | 書き換えた |
+| S3-017 | `docs/backlog.md:183` | `PluExportPage.tsx:188` | backlog | `909fe096`〈hit〉 | `909fe096` の時点で `src/features/plu-export/PluExportPage.tsx:188` | 書き換えた |
+| S3-018 | `docs/backlog.md:184` | `ReturnExchangePage.tsx:185` | backlog | - | — | 曖昧（候補のどの版でも 185 行は `max-lines-per-function` の要素でない）→ 最小の言い換え（名指す語 `max-lines-per-function` は今の base で `ReturnExchangePage.tsx` の `ReturnExchangePage` の上の 1 か所だけ） |
+| S3-019 | `docs/backlog.md:188` | `src-tauri/src/biz/stocktake_service.rs:4`・`docs/function-design/35-biz-stocktake-service.md:374`・`docs/architecture/biz-task-specs.md:451`・`docs/db-design/tracking-system-tables.md:137`・`docs/screen_mockups.html:208`・`docs/screen_mockups.html:259`・`docs/SCREEN_DESIGN.md:213` | backlog | `a38597e8`〈親〉・`a3f08cdd`〈親〉・`a3f08cdd`〈親〉・`a3f08cdd`〈親〉・`a3f08cdd`〈親〉・`a3f08cdd`〈親〉・`e40e50b9`〈親〉 | `a38597e8` の時点で `src-tauri/src/biz/stocktake_service.rs:4`・`a3f08cdd` の時点で `docs/function-design/35-biz-stocktake-service.md:374`・`docs/architecture/biz-task-specs.md:451`・`docs/db-design/tracking-system-tables.md:137`・`docs/screen_mockups.html:208`・`docs/screen_mockups.html:259`・`e40e50b9` の時点で `docs/SCREEN_DESIGN.md:213` | 書き換えた |
+| S3-020 | `docs/backlog.md:204` | `40-cmd-product.md:279` | backlog | `0a83374b`〈hit〉 | `0a83374b` の時点で `docs/function-design/40-cmd-product.md:279` | 書き換えた |
+| S3-021 | `docs/backlog.md:223` | `61-ui-receiving.md:30`・`:73`・`63-ui-return-exchange.md:36`・`:71` | backlog | `949a5c4c`〈親〉・`949a5c4c`〈親〉・`949a5c4c`〈親〉・`949a5c4c`〈親〉 | `949a5c4c` の時点で `docs/function-design/61-ui-receiving.md:30`・`docs/function-design/61-ui-receiving.md:73`・`docs/function-design/63-ui-return-exchange.md:36`・`docs/function-design/63-ui-return-exchange.md:71` | 書き換えた |
+| S3-022 | `docs/backlog.md:245` | `MonthlySalesPage.tsx:177-180` | backlog | `7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/features/monthly-sales/MonthlySalesPage.tsx:177-180` | 書き換えた |
+| S3-023 | `docs/backlog.md:247` | `ReceivingPage.tsx:543-549` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/receiving/ReceivingPage.tsx:543-549` | 書き換えた |
+| S3-024 | `docs/backlog.md:249` | `ReturnExchangePage.tsx:790-791` | backlog | - | — | 消えた（どの候補の 790〜791 行にも「交換は戻り・渡しの明細が両方必要です」の注釈の文が無い）→ 引用を外す |
+| S3-025 | `docs/backlog.md:251` | `ReturnExchangePage.tsx:624` | backlog | `31c069d5`〈親〉 | `31c069d5` の時点で `src/features/return-exchange/ReturnExchangePage.tsx:624` | 書き換えた |
+| S3-026 | `docs/backlog.md:259` | `InventoryRecordsPage.tsx:156-245`・`ReceivingPage.tsx:393`・`DisposalPage.tsx:509`・`OperationLogsPage.tsx:338-352` | backlog | `7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/features/inventory-records/InventoryRecordsPage.tsx:156-245`・`src/features/receiving/ReceivingPage.tsx:393`・`src/features/disposal/DisposalPage.tsx:509`・`src/features/operation-logs/OperationLogsPage.tsx:338-352` | 書き換えた |
+| S3-027 | `docs/backlog.md:261` | `Pagination.tsx:52-53`・`:99` | backlog | `7e0ccf1b`〈親〉・`7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/components/patterns/Pagination.tsx:52-53`・`src/components/patterns/Pagination.tsx:99` | 書き換えた |
+| S3-028 | `docs/backlog.md:299` | `ProductImportPreview.tsx:76`・`ProductRankingTable.tsx:80`・`BackupRestorePage.tsx:533` | backlog | `7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | `7ae4ade6` の時点で `src/features/products/import/ProductImportPreview.tsx:76`・`src/features/monthly-sales/components/ProductRankingTable.tsx:80`・`src/features/backup-restore/BackupRestorePage.tsx:533` | 書き換えた |
+| S3-029 | `docs/backlog.md:303` | `StockStatusBadge.tsx:42`・`01-decision-rules.md:445`・`:451`・`04-backbone.md:44`・`02-component-catalog.md:158`・`catalog:588`・`DailyReportImportPage.tsx:322`・`ProductTable.tsx:133` | backlog | `7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉・`7ae4ade6`〈親〉 | `7ae4ade6` の時点で `src/features/stock-inquiry/components/StockStatusBadge.tsx:42`・`docs/design-system/01-decision-rules.md:445`・`docs/design-system/01-decision-rules.md:451`・`docs/design-system/04-backbone.md:44`・`docs/design-system/02-component-catalog.md:158`・`docs/design-system/02-component-catalog.md:588`・`src/features/daily-report-import/DailyReportImportPage.tsx:322`・`src/features/daily-sales/components/ProductTable.tsx:133` | 書き換えた |
+| S3-030 | `docs/backlog.md:334` | `button.tsx:15-16` | backlog | `7e0ccf1b`〈親〉 | `7e0ccf1b` の時点で `src/components/ui/button.tsx:15-16` | 書き換えた |
+| S3-031 | `docs/backlog.md:341` | `list.rs:21`・`archive/plans/2026-09-03-ui-list-backbone-d-lane2.md):642-648` | backlog | `31c069d5`〈親〉・- | `31c069d5` の時点で `src-tauri/src/biz/inventory_service/list.rs:21` | 書き換えた（`):642-648` は archive の packet の 642〜648 行が「owner run 3 所感」でなく Gated Amendment 2 の対応の節で、取り戻せない → 引用を外した。link は残る） |
 
 #### 照合の入力
 
@@ -331,6 +331,296 @@ S5 の全引用の照合の evidence の入力（形は S5。実装の run が�
 
 ```text 照合の入力
 # ID 採った版 target N W X
+S1-004 654f95d5 src/features/stocktake/StocktakePage.tsx 933 text-3xl StocktakePage.tsx:933
+S1-005 ff655efd src/components/patterns/ListShell.tsx 69 topSummary ListShell.tsx:69
+S1-006 c9fabc17 src/features/inventory-records/InventoryRecordsPage.tsx 356 記録日時 InventoryRecordsPage.tsx:356
+S1-006 c9fabc17 src/features/inventory-records/InventoryRecordsPage.tsx 353 代表商品 `:353
+S1-006 c9fabc17 src/features/inventory-records/InventoryRecordsPage.tsx 349-359 業務日付 `:349
+S1-007 654f95d5 src/features/stock-movements/StockMovementsPage.tsx 73-101 PageHeader StockMovementsPage.tsx:73
+S1-007 654f95d5 src/features/stock-movements/components/MovementTable.tsx 52-53 日時 MovementTable.tsx:52
+S1-008 654f95d5 src/features/operation-logs/OperationLogsPage.tsx 461-462 日時 OperationLogsPage.tsx:461
+S1-009 654f95d5 src/features/suppliers/components/SupplierUsageTable.tsx 19 取引先名 SupplierUsageTable.tsx:19
+S1-010 654f95d5 src/features/backup-restore/BackupRestorePage.tsx 520 日時 BackupRestorePage.tsx:520
+S1-010 654f95d5 src/features/backup-restore/BackupRestorePage.tsx 522 ファイル名 BackupRestorePage.tsx:520,522
+S1-011 9f90964d docs/design-system/reference/2026-08-23-current-design-analysis.md 18 仮置き 2026-08-23-current-design-analysis.md:18
+S1-012 43b69bea src/features/inventory-records/InventoryRecordsPage.tsx 349-359 記録ID InventoryRecordsPage.tsx:349
+S1-013 7ae4ade6 src/features/stock-inquiry/components/StockStatusBadge.tsx 41-44 通常 StockStatusBadge.tsx:41
+S1-014 654f95d5 src/components/layout/RootLayout.tsx 62 aside RootLayout.tsx:62
+S1-016 f1d5590c src/components/layout/RootLayout.tsx 65 data-scroll-restoration-id RootLayout.tsx:65
+S1-021 c9fabc17 src/features/suppliers/SupplierManagementPage.tsx 35-39 subtitle SupplierManagementPage.tsx:35
+S1-022 43b69bea src/features/receiving/ReceivingPage.tsx 295 PageHeader ReceivingPage.tsx:295
+S1-022 43b69bea src/features/manual-sale/ManualSalePage.tsx 310 PageHeader ManualSalePage.tsx:310
+S1-022 43b69bea src/features/return-exchange/ReturnExchangePage.tsx 419 返品・交換 ReturnExchangePage.tsx:419
+S1-022 43b69bea src/features/disposal/DisposalPage.tsx 285 PageHeader DisposalPage.tsx:285
+S1-022 c9fabc17 src/features/suppliers/SupplierManagementPage.tsx 35-39 subtitle SupplierManagementPage.tsx:35
+S1-022 c9fabc17 src/components/patterns/PageHeader.tsx 47-53 description PageHeader.tsx:47
+S1-022 bb1862a5 src/components/patterns/PageHeader.tsx 31-45 space-y-1 PageHeader.tsx:31
+S1-023 1c896139 src/features/stock-movements/components/MovementTable.tsx 93-99 — MovementTable.tsx:93
+S1-023 43b69bea src/features/operation-logs/OperationLogsPage.tsx 533 truncate OperationLogsPage.tsx:533
+S1-023 c9fabc17 src/features/stock-movements/components/MovementTable.tsx 93-99 break-words MovementTable.tsx:93
+S1-023 1c896139 src/features/inventory-records/ManualSaleRecordDetailPage.tsx 149 detail.note ManualSaleRecordDetailPage.tsx:149
+S1-023 1c896139 src/features/stock-movements/components/MovementTable.tsx 82-91 movement.source MovementTable.tsx:82
+S1-023 1c896139 src/features/inventory-records/StocktakeRecordDetailPage.tsx 234 MovementTable StocktakeRecordDetailPage.tsx:234
+S1-024 2c125d1a src/features/products/PriceRevisionPage.tsx 79-83 Alert PriceRevisionPage.tsx:79
+S1-024 7ae4ade6 src/features/daily-sales/DailySalesPage.tsx 175 未取込み DailySalesPage.tsx:175
+S1-024 7ae4ade6 src/features/monthly-sales/MonthlySalesPage.tsx 166 未取込み MonthlySalesPage.tsx:166
+S1-025 eabc549c src/features/stock-inquiry/components/StockStatusBadge.tsx 29 在庫少 StockStatusBadge.tsx:29
+S1-025 7ae4ade6 src/features/stocktake/StocktakePage.tsx 396-401 未入力 StocktakePage.tsx:396
+S1-025 7ae4ade6 src/features/csv-import/components/PreviewStep.tsx 75-80 同日データあり csv-import/components/PreviewStep.tsx:75
+S1-025 2c125d1a src/features/products/components/ProductTable.tsx 88 未反映 ProductTable.tsx:88
+S1-025 7ae4ade6 src/features/csv-import/components/ResultStep.tsx 47 部分成功 ResultStep.tsx:47
+S1-025 07302b5e src/features/inventory-records/CsvImportRecordDetailPage.tsx 140 STATUS_LABELS CsvImportRecordDetailPage.tsx:140
+S1-026 2c125d1a src/features/integrity-check/IntegrityCheckPage.tsx 389 Badge IntegrityCheckPage.tsx:389
+S1-026 7ae4ade6 src/features/stocktake/StocktakePage.tsx 404 bg-success StocktakePage.tsx:404
+S1-026 2c125d1a src/features/products/components/ProductTable.tsx 93 Badge ProductTable.tsx:93
+S1-026 7ae4ade6 src/features/csv-import/components/ResultStep.tsx 47 isPartial ResultStep.tsx:47
+S1-026 7ae4ade6 src/features/daily-report-import/DailyReportImportPage.tsx 164 variant DailyReportImportPage.tsx:164
+S1-026 7ae4ade6 src/features/daily-report-import/DailyReportImportPage.tsx 186 確認済み DailyReportImportPage.tsx:164,186
+S1-026 07302b5e src/features/inventory-records/CsvImportRecordDetailPage.tsx 140 STATUS_LABELS CsvImportRecordDetailPage.tsx:140
+S1-026 7ae4ade6 src/features/daily-report-import/DailyReportImportPage.tsx 322 成功 DailyReportImportPage.tsx:322
+S1-027 eabc549c src/features/stock-inquiry/components/StockStatusBadge.tsx 20 在庫切れ StockStatusBadge.tsx:20
+S1-027 7ae4ade6 src/features/inventory-records/CsvImportRecordDetailPage.tsx 41 取消済み CsvImportRecordDetailPage.tsx:41
+S1-027 7ae4ade6 src/features/inventory-records/CsvImportRecordDetailPage.tsx 140 STATUS_LABELS CsvImportRecordDetailPage.tsx:41,140
+S1-027 1ad9aa74 src/features/inventory-records/CsvImportRecordDetailPage.tsx 192 明細取消済み `:192
+S1-028 f2ef9e52 src/features/stock-inquiry/components/StockStatusBadge.tsx 36 在庫あり StockStatusBadge.tsx:36
+S1-028 7ae4ade6 src/features/inventory-records/types.ts 87-94 formatRecordStatus inventory-records/types.ts:87
+S1-029 c1c1c5bf src/features/integrity-check/IntegrityCheckPage.tsx 469 fieldsLabel IntegrityCheckPage.tsx:469
+S1-029 07302b5e src/features/products/components/PriceRevisionTable.tsx 104 入力中 PriceRevisionTable.tsx:104
+S1-029 07302b5e src/features/products/components/ProductTable.tsx 74 Badge ProductTable.tsx:74
+S1-029 7ae4ade6 src/features/inventory-records/CsvImportRecordDetailPage.tsx 194 有効 CsvImportRecordDetailPage.tsx:194
+S1-029 2c125d1a src/features/return-exchange/ReturnExchangePage.tsx 97 レジ未処理 ReturnExchangePage.tsx:97
+S1-029 2c125d1a src/features/return-exchange/ReturnExchangePage.tsx 592 aria-label ReturnExchangePage.tsx:592
+S1-029 2c125d1a src/features/return-exchange/ReturnExchangePage.tsx 602 レジ未処理 ReturnExchangePage.tsx:602
+S1-030 7ae4ade6 src/features/products/components/ProductTable.tsx 56 廃番 ProductTable.tsx:56
+S1-030 07302b5e src/features/products/components/ProductTable.tsx 74 Badge ProductTable.tsx:74
+S1-030 7ae4ade6 src/features/products/components/PriceRevisionTable.tsx 98 Badge PriceRevisionTable.tsx:98
+S1-030 7ae4ade6 src/features/daily-sales/components/ProductTable.tsx 133 Badge daily-sales/components/ProductTable.tsx:133
+S1-031 07302b5e src/features/products/components/PriceRevisionTable.tsx 104 入力中 PriceRevisionTable.tsx:104
+S1-033 6cac578c src-tauri/src/biz/stocktake_service.rs 529 棚卸し補正 stocktake_service.rs:529
+S1-033 67870e10 src/features/stock-inquiry/lib/filter-low-stock-list.ts 62-63 stock_quantity filter-low-stock-list.ts:62
+S1-033 67870e10 src/features/products/search.ts 30 在庫数 search.ts:30
+S1-034 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 126 MAX_LINE_QUANTITY receiving.rs:126
+S1-034 6cac578c src-tauri/src/biz/inventory_service/manual_sale.rs 141 MAX_LINE_QUANTITY manual_sale.rs:141
+S1-034 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 123 MAX_LINE_QUANTITY disposal.rs:123
+S1-034 6cac578c src-tauri/src/biz/inventory_service/returns.rs 99 MAX_LINE_QUANTITY returns.rs:99
+S1-034 6cac578c src-tauri/src/biz/inventory_service/returns.rs 254-255 register_processed returns.rs:254
+S1-035 6cac578c src-tauri/src/biz/csv_import_service/parse.rs 98-110 MAX_LINE_QUANTITY parse.rs:98
+S1-035 c85e135d src-tauri/src/biz/csv_import_service/commit.rs 138-167 pos_stock_sync commit.rs:138
+S1-036 6cac578c src-tauri/src/biz/inventory_service/common.rs 82-87 check_stock_range common.rs:82
+S1-036 6cac578c src-tauri/src/biz/product_service.rs 1062-1069 MAX_STOCK_QUANTITY product_service.rs:1062
+S1-036 6cac578c src-tauri/src/biz/product_service.rs 1316-1324 MAX_STOCK_QUANTITY `:1316
+S1-036 6cac578c src-tauri/src/biz/csv_import_service/commit.rs 276 check_stock_range commit.rs:276
+S1-036 6cac578c src-tauri/src/biz/integrity_service.rs 192 check_stock_range integrity_service.rs:192
+S1-037 6cac578c src-tauri/src/biz/product_service.rs 949-957 price_range_error product_service.rs:949
+S1-037 6cac578c src-tauri/src/biz/product_service.rs 1059 selling_and_cost_range_error `:1059
+S1-037 6cac578c src-tauri/src/biz/product_service.rs 1103 price_range_error `:1103
+S1-037 6cac578c src-tauri/src/biz/product_service.rs 473-474 selling_and_cost_range_error `:473
+S1-037 6cac578c src-tauri/src/biz/product_service.rs 1285 price_range_error `:1285
+S1-038 6cac578c src-tauri/src/biz/product_service.rs 1059 selling_and_cost_range_error product_service.rs:1059
+S1-038 6cac578c src-tauri/src/biz/product_service.rs 1106 price_range_error product_service.rs:1059`・`:1106
+S1-038 6cac578c src-tauri/src/biz/product_service.rs 473-474 selling_and_cost_range_error product_service.rs:1059`・`:1106`・`:473
+S1-038 6cac578c src-tauri/src/biz/product_service.rs 1291 price_range_error product_service.rs:1059`・`:1106`・`:473`〜`:474`・`:1291
+S1-038 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 138 MAX_COST_PRICE receiving.rs:138
+S1-038 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 135 MAX_COST_PRICE disposal.rs:135
+S1-039 c1beb334 src/features/products/lib/price-revision-math.ts 1-9 deriveProposedCost price-revision-math.ts:1
+S1-040 67870e10 src-tauri/src/biz/product_service.rs 907-927 list_low_stock product_service.rs:907
+S1-040 6cac578c src-tauri/src/db/product_repo.rs 1310-1311 stock_quantity product_repo.rs:1310
+S1-042 6cac578c src-tauri/src/biz/product_service.rs 274-285 initial_stock product_service.rs:274
+S1-043 67870e10 src-tauri/src/db/schema_time_evidence.rs 120-124 system_stock schema_time_evidence.rs:120
+S1-044 02f497ea src-tauri/src/lib.rs 1214-1223 app_data_dir lib.rs:1214
+S1-044 02f497ea src-tauri/src/lib.rs 161 inventory.db lib.rs:161
+S1-044 02f497ea src-tauri/src/db/mod.rs 298 migrating mod.rs:298
+S1-044 02f497ea src-tauri/src/mnt/restore.rs 11-13 restore_manifest restore.rs:11
+S1-044 02f497ea src-tauri/src/mnt/backup.rs 206-210 backups backup.rs:206
+S1-044 02f497ea src-tauri/src/lib.rs 1227 logs lib.rs:1227
+S1-044 02f497ea src-tauri/src/io/image_manager.rs 15 receipts image_manager.rs:15
+S1-044 02f497ea src-tauri/src/io/image_manager.rs 58 RECEIPTS_DIR image_manager.rs:15`・`:58
+S1-045 02f497ea src-tauri/src/lib.rs 118-120 current_dir lib.rs:118
+S1-045 02f497ea src-tauri/src/lib.rs 165-183 new_db_exists lib.rs:165
+S1-045 02f497ea src-tauri/src/db/mod.rs 296 old_db mod.rs:296
+S1-046 02f497ea src-tauri/src/lib.rs 1219-1223 create_dir_all lib.rs:1219
+S1-047 02f497ea src-tauri/src/mnt/restore.rs 690-700 CommittedPendingLog restore.rs:690
+S1-047 02f497ea src-tauri/src/lib.rs 188-195 complete_reconciled_restore lib.rs:188
+S1-048 3933f0d4 src-tauri/src/db/sales_repo.rs 760 completed sales_repo.rs:760
+S1-049 3933f0d4 src-tauri/src/biz/mod.rs 26 CsvImport mod.rs:26
+S1-049 6cac578c src-tauri/src/biz/mod.rs 28-30 Stocktake `:28
+S1-049 3933f0d4 src-tauri/src/db/sales_repo.rs 13-19 CsvImportStatus sales_repo.rs:13
+S1-049 3933f0d4 src-tauri/src/db/sales_repo.rs 862-873 CsvImportStatus sales_repo.rs:13`〜`:19`・`:862
+S1-050 9d351d5b src-tauri/src/io/ej_parser.rs 41 quantity `:41
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 190 quantity `:190
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 57 ItemCount `:57
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 1289 parse_item_count `:1289
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 174 item_count `:174
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 776 (1, `:776
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 814 -1 `:814
+S1-050 c1beb334 src-tauri/src/io/ej_parser.rs 707-717 quantity_sum `:707
+S1-051 249df0ca src-tauri/src/biz/csv_import_service/commit.rs 157 apply_stock_change commit.rs:157
+S1-052 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 126 MAX_LINE_QUANTITY receiving.rs:126
+S1-052 6cac578c src-tauri/src/biz/inventory_service/manual_sale.rs 141 MAX_LINE_QUANTITY manual_sale.rs:141
+S1-052 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 123 MAX_LINE_QUANTITY disposal.rs:123
+S1-052 6cac578c src-tauri/src/biz/inventory_service/returns.rs 99 MAX_LINE_QUANTITY returns.rs:99
+S1-052 6cac578c src-tauri/src/biz/inventory_service/returns.rs 254-255 register_processed returns.rs:254
+S1-052 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 156 check_safe_integer receiving.rs:156
+S1-052 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 159 check_safe_integer disposal.rs:159
+S1-053 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 138 MAX_COST_PRICE receiving.rs:138
+S1-053 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 135 MAX_COST_PRICE disposal.rs:135
+S1-054 6cac578c src-tauri/src/biz/inventory_service/receiving.rs 234 negative_stock_warning_message receiving.rs:234
+S1-054 6cac578c src-tauri/src/biz/inventory_service/returns.rs 273 negative_stock_warning_message returns.rs:273
+S1-054 6cac578c src-tauri/src/biz/inventory_service/manual_sale.rs 289 negative_stock_warning_message manual_sale.rs:289
+S1-054 6cac578c src-tauri/src/biz/inventory_service/disposal.rs 226 negative_stock_warning_message disposal.rs:226
+S1-055 ea15360d src-tauri/src/biz/csv_import_service/parse.rs 63-77 未来 parse.rs:63
+S1-056 6b765f75 src-tauri/src/biz/mod.rs 54 BizError mod.rs:54
+S1-056 6b765f75 src/features/daily-report-import/hooks/useDailyReportImportFlow.ts 35 decideRecoverTo useDailyReportImportFlow.ts:35
+S1-057 6b765f75 src/lib/bindings.ts 558 DailyReportSourceFileInfo bindings.ts:558
+S1-057 6b765f75 src-tauri/src/biz/daily_report_import_service/commit.rs 83-85 source_files_json commit.rs:83
+S1-058 3933f0d4 src-tauri/src/biz/daily_report_import_service/parse.rs 159 AdditionalImportConfirmationRequired parse.rs:159
+S1-058 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 275 AdditionalImportConfirmationRequired tests.rs:275
+S1-058 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 481 AdditionalImportConfirmationRequired tests.rs:275`・`:481
+S1-058 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 536 AdditionalImportConfirmationRequired tests.rs:275`・`:481`・`:536
+S1-059 3933f0d4 src-tauri/src/db/sales_repo.rs 13-19 CsvImportStatus sales_repo.rs:13
+S1-059 3933f0d4 src-tauri/src/db/sales_repo.rs 862-873 CsvImportStatus sales_repo.rs:13〜:19・:862
+S1-060 3933f0d4 src-tauri/src/io/ej_parser.rs 455-460 printed_at ej_parser.rs:455
+S1-061 3933f0d4 src-tauri/src/io/ej_parser.rs 678-689 NoItems ej_parser.rs:678
+S1-061 3933f0d4 src-tauri/src/io/ej_parser.rs 575-581 MissingFinalNewline `:575
+S1-062 3933f0d4 src-tauri/src/io/ej_parser.rs 832-834 adjustments `:832
+S1-063 6b765f75 src-tauri/src/cmd/daily_report_import_cmd.rs 43 DailyReportInputFile daily_report_import_cmd.rs:43
+S1-063 e7c22f8f src-tauri/src/cmd/daily_report_import_cmd.rs 242 request `:242
+S1-064 6b765f75 src/features/daily-report-import/hooks/useDailyReportImportFlow.ts 35 decideRecoverTo useDailyReportImportFlow.ts:35
+S1-064 0989ced0 src-tauri/src/cmd/mod.rs 130 From mod.rs:130
+S1-065 6b765f75 src-tauri/src/lib.rs 277 collect_commands lib.rs:277
+S1-065 6b765f75 src-tauri/src/lib.rs 1272 generate_handler `:1272
+S1-066 6b765f75 src/features/daily-report-import/hooks/useDailyReportImportFlow.ts 35 decideRecoverTo useDailyReportImportFlow.ts:35
+S1-066 6b765f75 src/features/daily-report-import/reducer.ts 56 import_failed reducer.ts:56
+S1-066 6b765f75 src/features/daily-report-import/reducer.ts 77 dismiss_error reducer.ts:77
+S1-066 c85e135d src/features/daily-report-import/types.ts 4 DailyReportErrorRecoverTo types.ts:4
+S1-067 902647b8 src/features/daily-sales/lib/compute-summary.ts 14-17 source compute-summary.ts:14
+S1-068 902647b8 src/config/navigation.ts 76 日次売上 navigation.ts:76
+S1-069 902647b8 src/components/layout/RootLayout.tsx 33 title RootLayout.tsx:33
+S1-070 - src-tauri/src/biz/sales_service.rs 196-197 prev_month_comparison sales_service.rs:196
+S1-071 902647b8 src/features/monthly-sales/lib/sort-items.test.ts 79-90 ranking sort-items.test.ts:79
+S1-072 - src-tauri/src/biz/sales_service.rs 196-197 prev_month_comparison sales_service.rs:196
+S1-073 c6167c4d src/features/disposal/DisposalPage.tsx 134 returnTo DisposalPage.tsx:134
+S1-074 c6167c4d src-tauri/src/db/product_repo.rs 1845 コード検索 product_repo.rs:1845
+S1-075 - src-tauri/src/mnt/backup.rs 263 restore_backup backup.rs:263
+S1-076 a1e98114 src-tauri/src/db/product_repo.rs 804-805 is_discontinued product_repo.rs:804
+S1-076 a1e98114 docs/design-system/02-component-catalog.md 157 廃番 02-component-catalog.md:157
+S1-077 a5fb9b16 src-tauri/src/lib.rs 201-203 record_pre_window_fatal `:201
+S1-077 0223ef18 src-tauri/src/lib.rs 1214-1223 app_data_dir `:1214
+S1-077 294b0dfe src-tauri/src/lib.rs 1225-1233 log_config `:1225
+S1-077 294b0dfe src-tauri/src/lib.rs 1241 prepare_database `:1241
+S1-081 902647b8 src/components/ui/dialog.tsx 62-69 DialogPrimitive.Close dialog.tsx` L62
+S1-082 - docs/SCREEN_DESIGN.md 100 売上レポート確認 SCREEN_DESIGN.md L100
+S1-083 902647b8 docs/screen_mockups.html 313 売上レポート mockup L313
+S1-084 - docs/SCREEN_DESIGN.md 120-133 在庫照会画面 SCREEN_DESIGN.md（在庫照会画面 L120
+S1-084 - docs/SCREEN_DESIGN.md 167-176 在庫照会画面 SCREEN_DESIGN.md（在庫照会画面 L120-133 / L167
+S1-085 - docs/SCREEN_DESIGN.md 120-133 詳細カード SCREEN_DESIGN.md L120
+S1-086 e1c668ad src-tauri/src/lib.rs 84 run_startup_step lib.rs` `run_startup_step` L84
+S2-001 09f65412 src-tauri/src/biz/csv_import_service/parse.rs 80 CSV_IMPORT_LINE_LIMIT parse.rs:80
+S2-002 31c069d5 docs/design-system/01-decision-rules.md 443 segmented `:443
+S2-003 31c069d5 docs/design-system/01-decision-rules.md 443 segmented `:443
+S2-004 - src-tauri/src/biz/sales_service.rs 196-197 prev_month_comparison sales_service.rs:196
+S2-005 - src-tauri/src/biz/sales_service.rs 196-197 prev_month_comparison sales_service.rs:196
+S2-006 902647b8 src/features/monthly-sales/lib/sort-items.test.ts 79-90 G-3 sort-items.test.ts:79
+S2-007 - src-tauri/src/biz/sales_service.rs 196-197 prev_month_comparison sales_service.rs:196
+S2-008 31c069d5 src/features/products/ProductListPage.tsx 303-309 bulkTarget ProductListPage.tsx:303
+S2-012 689ac4c3 src/features/products/components/ProductForm.tsx 284 Number ProductForm.tsx:284
+S2-013 689ac4c3 src/features/products/components/ProductForm.tsx 282 departmentId ProductForm.tsx:282
+S2-014 b59d7331 src/components/patterns/Pagination.tsx 48 totalPages Pagination.tsx:48
+S2-015 902647b8 .gitignore 38 bindings.ts .gitignore:38
+S2-016 04514154 src/components/ui/alert-dialog.tsx 53 max-w-lg alert-dialog.tsx L53
+S2-017 04514154 src/features/csv-import/components/ResultStep.tsx 67 flex-wrap ResultStep.tsx L67
+S2-018 5aad8f59 docs/SCREEN_DESIGN.md 42 整合性 SCREEN_DESIGN L42
+S2-018 04514154 docs/SCREEN_DESIGN.md 62 整合性 SCREEN_DESIGN L42・62
+S2-018 04514154 docs/SCREEN_DESIGN.md 426 整合性 SCREEN_DESIGN L42・62・426
+S2-019 07302b5e src/features/return-exchange/ReturnExchangePage.tsx 147 bg-background （:147
+S2-020 ff655efd src/features/stock-movements/StockMovementsPage.tsx 98 bg-card （:98
+S2-021 1ad9aa74 src/hooks/useUnsavedChangesWarning.test.tsx 133 T10 // :133
+S2-022 1ad9aa74 src/hooks/useUnsavedChangesWarning.test.tsx 133 T10 // :133
+S3-001 44f1e666 src-tauri/src/seed_demo.rs 462 inventory_movements seed_demo.rs:462
+S3-002 3933f0d4 src-tauri/src/biz/daily_report_import_service/parse.rs 159 AdditionalImportConfirmationRequired parse.rs:159
+S3-002 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 275 AdditionalImportConfirmationRequired tests.rs:275
+S3-002 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 481 AdditionalImportConfirmationRequired tests.rs:275`・`:481
+S3-002 3933f0d4 src-tauri/src/biz/daily_report_import_service/tests.rs 536 AdditionalImportConfirmationRequired tests.rs:275`・`:481`・`:536
+S3-003 dda8560a docs/function-design/58-ui-stock-inquiry.md 164 format-stock-display `:164
+S3-003 6cac578c docs/function-design/58-ui-stock-inquiry.md 657-658 stock_unit `:657
+S3-003 6cac578c docs/function-design/58-ui-stock-inquiry.md 370 長さの単位 `:370
+S3-003 31ec7501 docs/function-design/20-io-product-repo.md 196 stock_unit `:196
+S3-003 6cac578c docs/function-design/20-io-product-repo.md 751-754 SUM `:751
+S3-003 6cac578c docs/function-design/20-io-product-repo.md 907 find_all_stock_quantities `:907
+S3-003 85b18a04 docs/function-design/51-ui-product-form.md 30 stock_unit='cm' `:30
+S3-003 67870e10 docs/function-design/51-ui-product-form.md 179 数量単位を選択してください `:179
+S3-003 6cac578c docs/function-design/62-ui-manual-sale.md 167 cm 62-ui-manual-sale.md:167
+S3-004 6cac578c src-tauri/src/biz/inventory_service/manual_sale.rs 147 amount manual_sale.rs:147
+S3-005 6cac578c src/features/manual-sale/lib/manual-sale-row-utils.ts 67 selling_price manual-sale-row-utils.ts:67
+S3-005 6cac578c src/features/manual-sale/lib/manual-sale-row-utils.ts 82 unitPrice manual-sale-row-utils.ts:67`・`:82
+S3-006 67870e10 docs/function-design/35-biz-stocktake-service.md 473 10 35-biz-stocktake-service.md:473
+S3-006 02f497ea docs/function-design/44-cmd-inventory.md 966 10 44-cmd-inventory.md:966
+S3-006 02f497ea docs/DB_DESIGN.md 187 10 DB_DESIGN.md:187
+S3-006 02f497ea src-tauri/src/db/migration.rs 763 migrate(&conn) `:763
+S3-006 02f497ea src-tauri/src/db/migration.rs 1460 migrate(&conn) `:1460
+S3-006 02f497ea src-tauri/src/db/migration.rs 1520 migrate(&conn) `:1460`・`:1520
+S3-006 02f497ea src-tauri/src/db/migration.rs 1528-1541 migrate(&conn) `:1528
+S3-006 02f497ea src-tauri/src/db/migration.rs 1708 migrate(&conn) `:1708
+S3-006 def86e19 src-tauri/src/db/schema_v2.rs 452 migrate(&conn) `:452
+S3-007 6cac578c src-tauri/src/db/schema_v8.rs 255 test_v8_req903_limits_match_runtime_constants schema_v8.rs:255
+S3-007 6cac578c src-tauri/src/db/schema_v8.rs 10-15 MAX_LINE_QUANTITY `:10
+S3-007 6cac578c src-tauri/src/db/schema_v8.rs 14 MAX_COST_PRICE `:14
+S3-007 6cac578c src-tauri/src/db/schema_v8.rs 262 MAX_COST_PRICE `:262
+S3-007 6cac578c src-tauri/src/constants.rs 65 MAX_COST_PRICE constants.rs:65
+S3-008 f5d7aaf4 src-tauri/src/biz/product_service.rs 1536 release_plu_slot_for_jan product_service.rs:1536
+S3-008 f5d7aaf4 src-tauri/src/constants.rs 38 PLU_CLEAR_ROW_ENABLED constants.rs:38
+S3-009 32273dc2 docs/function-design/21-io-inventory-repo.md 103 cost_price 21-io-inventory-repo.md:103
+S3-009 32273dc2 docs/function-design/21-io-inventory-repo.md 354 line_loss_cost `:354
+S3-009 32273dc2 docs/function-design/62-ui-manual-sale.md 26 UI-04-D6 62-ui-manual-sale.md:26
+S3-009 32273dc2 docs/function-design/62-ui-manual-sale.md 165 UI-04-D6 62-ui-manual-sale.md:26`・`:165
+S3-009 32273dc2 src/features/manual-sale/lib/manual-sale-row-utils.ts 24 selling_price manual-sale-row-utils.ts:24
+S3-009 32273dc2 src/features/manual-sale/lib/manual-sale-row-utils.ts 40 selling_price manual-sale-row-utils.ts:24,40
+S3-010 249df0ca src-tauri/src/biz/product_service.rs 153 トランザクション product_service.rs:153
+S3-011 ff05436f src/features/csv-import/lib/formatErrorRow.ts 22 destructive formatErrorRow.ts:22
+S3-012 07302b5e src/features/products/components/PriceRevisionTable.tsx 104 入力中 PriceRevisionTable.tsx:104
+S3-013 ff05436f src/components/patterns/EmptyState.tsx 32 text-stone-500 EmptyState.tsx:32
+S3-014 51b1f484 docs/design-system/02-component-catalog.md 841 個別確認 `:841
+S3-014 - docs/design-system/02-component-catalog.md 70 方向 `:70
+S3-015 ff655efd docs/design-system/reference/mockup-d-lists.html 112 max-height mockup-d-lists.html:112
+S3-016 294ba366 scripts/check-workflow-git.sh 155 wait `:155
+S3-017 909fe096 src/features/plu-export/PluExportPage.tsx 188 complexity PluExportPage.tsx:188
+S3-018 - src/features/return-exchange/ReturnExchangePage.tsx 185 max-lines-per-function ReturnExchangePage.tsx:185
+S3-019 a38597e8 src-tauri/src/biz/stocktake_service.rs 4 大晦日 stocktake_service.rs:4
+S3-019 a3f08cdd docs/function-design/35-biz-stocktake-service.md 374 大晦日 35-biz-stocktake-service.md:374
+S3-019 a3f08cdd docs/architecture/biz-task-specs.md 451 大晦日 biz-task-specs.md:451
+S3-019 a3f08cdd docs/db-design/tracking-system-tables.md 137 大晦日 tracking-system-tables.md:137
+S3-019 a3f08cdd docs/screen_mockups.html 208 大晦日 screen_mockups.html:208
+S3-019 a3f08cdd docs/screen_mockups.html 259 閉店後 screen_mockups.html:259
+S3-019 e40e50b9 docs/SCREEN_DESIGN.md 213 数週間 SCREEN_DESIGN.md:213
+S3-020 0a83374b docs/function-design/40-cmd-product.md 279 ページング引数 40-cmd-product.md:279
+S3-021 949a5c4c docs/function-design/61-ui-receiving.md 30 result 61-ui-receiving.md:30
+S3-021 949a5c4c docs/function-design/61-ui-receiving.md 73 result 61-ui-receiving.md:30/:73
+S3-021 949a5c4c docs/function-design/63-ui-return-exchange.md 36 result 63-ui-return-exchange.md:36
+S3-021 949a5c4c docs/function-design/63-ui-return-exchange.md 71 result 63-ui-return-exchange.md:36/:71
+S3-022 7e0ccf1b src/features/monthly-sales/MonthlySalesPage.tsx 177-180 部門 MonthlySalesPage.tsx:177
+S3-023 31c069d5 src/features/receiving/ReceivingPage.tsx 543-549 原価 ReceivingPage.tsx:543
+S3-024 - src/features/return-exchange/ReturnExchangePage.tsx 790-791 交換は ReturnExchangePage.tsx:790
+S3-025 31c069d5 src/features/return-exchange/ReturnExchangePage.tsx 624 レシート ReturnExchangePage.tsx:624
+S3-026 7e0ccf1b src/features/inventory-records/InventoryRecordsPage.tsx 156-245 select InventoryRecordsPage.tsx:156
+S3-026 7e0ccf1b src/features/receiving/ReceivingPage.tsx 393 select ReceivingPage.tsx:393
+S3-026 7e0ccf1b src/features/disposal/DisposalPage.tsx 509 select DisposalPage.tsx:509
+S3-026 7e0ccf1b src/features/operation-logs/OperationLogsPage.tsx 338-352 date OperationLogsPage.tsx:338
+S3-027 7e0ccf1b src/components/patterns/Pagination.tsx 52-53 text-sm Pagination.tsx:52
+S3-027 7e0ccf1b src/components/patterns/Pagination.tsx 99 font-semibold Pagination.tsx:52-53,99
+S3-028 7ae4ade6 src/features/products/import/ProductImportPreview.tsx 76 上書き ProductImportPreview.tsx:76
+S3-028 7ae4ade6 src/features/monthly-sales/components/ProductRankingTable.tsx 80 ranking ProductRankingTable.tsx:80
+S3-028 7ae4ade6 src/features/backup-restore/BackupRestorePage.tsx 533 最新 BackupRestorePage.tsx:533
+S3-029 7ae4ade6 src/features/stock-inquiry/components/StockStatusBadge.tsx 42 通常 StockStatusBadge.tsx:42
+S3-029 7ae4ade6 docs/design-system/01-decision-rules.md 445 3:1 01-decision-rules.md:445
+S3-029 7ae4ade6 docs/design-system/01-decision-rules.md 451 3:1 01-decision-rules.md:445,451
+S3-029 7ae4ade6 docs/design-system/04-backbone.md 44 3:1 04-backbone.md:44
+S3-029 7ae4ade6 docs/design-system/02-component-catalog.md 158 3:1 02-component-catalog.md:158
+S3-029 7ae4ade6 docs/design-system/02-component-catalog.md 588 aria-label catalog:588
+S3-029 7ae4ade6 src/features/daily-report-import/DailyReportImportPage.tsx 322 成功 DailyReportImportPage.tsx:322
+S3-029 7ae4ade6 src/features/daily-sales/components/ProductTable.tsx 133 Badge ProductTable.tsx:133
+S3-030 7e0ccf1b src/components/ui/button.tsx 15-16 outline button.tsx:15
+S3-031 31c069d5 src-tauri/src/biz/inventory_service/list.rs 21 MAX_PER_PAGE list.rs:21
+S3-031 - docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md 642-648 run ):642
 ```
 
 #### 残す区分（file ごと）
@@ -631,7 +921,62 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
-実装の run が埋める: 段ごとの結果、計画からの外れ、AC-S5-2 の抜き取りの表（35 行。列: ID・引用・候補を引く command と候補の一覧・採った版〈hit か親〉と `git show` の command・その版の行の symbol・節・書き換え先・今の base の `rg -n` の hit）、AC-S5-5 の loop の出力を置いた PR の comment の link。
+段ごとの結果（処置は分類表の行の数）:
+
+- S1（正本 86 行）: 書き換えた 67、残す 11（起票で決めた 5 行と、版を足した library の 6 行）、lane 2b へ送る 2、消えた 6（S1-070・S1-072・S1-075・S1-082・S1-084・S1-085）。
+- S2（code の comment 22 行）: 書き換えた 16、残す 3（版を足した library の行）、消えた 3（S2-004・S2-005・S2-007）。直した comment に bindings に出る doc comment は無い。
+- S3（backlog 31 行）: 書き換えた 29（版ごとに「`{sha8}` の時点で `{path}:{N}`」の句）、曖昧 1（S3-018）、消えた 1（S3-024）。S3-014 の `:70` と S3-031 の `):642-648` は取り戻せない引用として行の中で外した。
+- S4: 消えた・曖昧は、引用を外すか、引用の文が名指す語から今の symbol への最小の言い換え（`prev_month_comparison = Some(prev_items)` → `get_monthly_sales`、`max-lines-per-function` → `ReturnExchangePage`）にした。引用が支える文と今の code・正本の食い違い 3 件（S1-013・S1-067・S1-082）は文を直さず、backlog の「次の docs の lane の候補」の (8) に 1 句を足した。
+- S5: 分類表の全行の処置を埋め、照合の入力に repo の中の引用を 1 行ずつ書いた。
+
+計画からの外れと判断（reviewer が見る所）:
+
+- 名指す語が同じ symbol の中にあっても、文の中身が古い候補と合わない引用は新しい版を採った: S1-006（`:349-359` は採用後の 7 列）、S1-023 の 2 つめ（「本 PR で是正済み」）、S1-042（古い版の範囲は次の文へ跨ぐ）、S2-014（回復の条件を持つのは早期 return の版）。どれも AC-S5-5 の `CHECK` が出る。
+- code の comment の bare `:N` の target は、語の要素を定義する file を採った（S2-019 は `registerOptionClass` の在る `ReturnExchangePage.tsx`、S2-020 は商品情報の card の在る `StockMovementsPage.tsx`。test file には test の名前や assertion の文字列として語が出るだけ）。S2-021・S2-022 の X は comment の印を含めた `// :133`。
+- backlog の句は、同じ行の同じ版の引用を 1 つの句にまとめた（例「`7e0ccf1b` の時点で `…InventoryRecordsPage.tsx:156-245`、`…ReceivingPage.tsx:393`」）。
+- library の行（S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011）は、引用を足した hit の時点の lock の版を、`K` の綴りで同じ行に書いた。
+
+AC-S5-5 の loop の出力: PR の comment（Coordinator が投稿）— link は投稿の後に置く。
+
+AC-S5-2 の抜き取り（35 行。各行の最初の引用。抜き取りに当たった library の S2-009 は S2-013 で代えた。S1-015・S1-080 は S1-016・S1-081 で、S1-020 は S1-021 で代えた）:
+
+| ID | 引用 | 候補を引く command と候補（古い順） | 採った版と `git show` | その版の行の symbol・節 | 書き換え先 | 今の base の `rg -n` |
+|---|---|---|---|---|---|---|
+| S1-005 | `ListShell.tsx:69` | `git log --format=%h --pickaxe-regex -S'ListShell\.tsx:69([^0-9]\|$)' origin/main` → ff655efd〈親〉・b59d7331 | `ff655efd`〈親〉: `git show ff655efd:src/components/patterns/ListShell.tsx \| sed -n '69,69p'` | `ListShell` の引数 `topSummary = false` | `ListShell` の引数 `topSummary` の既定 | `rg -n 'topSummary = false' src/components/patterns/ListShell.tsx` → 128 行 |
+| S1-010 | `BackupRestorePage.tsx:520` | `git log --format=%h --pickaxe-regex -S'BackupRestorePage\.tsx:520([^0-9]\|$)' origin/main` → 654f95d5〈親〉・9f90964d・ff05436f〈親〉・e188366e | `654f95d5`〈親〉: `git show 654f95d5:src/features/backup-restore/BackupRestorePage.tsx \| sed -n '520,520p'` | `BackupRestorePage` の表頭「日時」 | `BackupRestorePage` の表頭 | `rg -n '<TableHead>日時</TableHead>' src/features/backup-restore/BackupRestorePage.tsx` → 505 行 |
+| S1-016 | `RootLayout.tsx:65` | `git log --format=%h --pickaxe-regex -S'RootLayout\.tsx:65([^0-9]\|$)' origin/main` → d21c9613〈親〉・22504af9・696e3e71〈親〉・f1d5590c・31c069d5〈親〉・7e0ccf1b・ff655efd〈親〉・b59d7331 | `f1d5590c`〈hit〉: `git show f1d5590c:src/components/layout/RootLayout.tsx \| sed -n '65,65p'` | `RootLayout` の `<main data-scroll-restoration-id="main">` | `RootLayout` の `<main>` | `rg -n 'data-scroll-restoration-id="main"' src/components/layout/RootLayout.tsx` → 68 行 |
+| S1-021 | `SupplierManagementPage.tsx:35` | `git log --format=%h --pickaxe-regex -S'SupplierManagementPage\.tsx:35([^0-9]\|$)' origin/main` → 1c896139〈親〉・ee8e294a・41336c28〈親〉・689ac4c3・43b69bea〈親〉・c9fabc17・f39c560a〈親〉・bc01698f | `c9fabc17`〈hit〉: `git show c9fabc17:src/features/suppliers/SupplierManagementPage.tsx \| sed -n '35,39p'` | `SupplierManagementPage` の `PageHeader` の `subtitle` | `SupplierManagementPage` の `PageHeader` | `rg -n 'subtitle=' src/features/suppliers/SupplierManagementPage.tsx` → 42 行 |
+| S1-025 | `StockStatusBadge.tsx:29` | `git log --format=%h --pickaxe-regex -S'StockStatusBadge\.tsx:29([^0-9]\|$)' origin/main` → eabc549c〈親〉・f2ef9e52 | `eabc549c`〈親〉: `git show eabc549c:src/features/stock-inquiry/components/StockStatusBadge.tsx \| sed -n '29,29p'` | `StockStatusBadge` の「在庫少」の Badge | 各 file の Badge の label（path と label） | `rg -n '在庫少' src/features/stock-inquiry/components/StockStatusBadge.tsx` → 29 行 |
+| S1-030 | `ProductTable.tsx:56` | `git log --format=%h --pickaxe-regex -S'ProductTable\.tsx:56([^0-9]\|$)' origin/main` → 7ae4ade6〈親〉・6ff22472・04113f90〈親〉・4d1ce4c1 | `7ae4ade6`〈親〉: `git show 7ae4ade6:src/features/products/components/ProductTable.tsx \| sed -n '56,56p'` | `ProductTable` の廃番の Badge | 各 file の Badge の label（path と label） | `rg -n '廃番' src/features/products/components/ProductTable.tsx` → 3・65 行 |
+| S1-035 | `parse.rs:98` | `git log --format=%h --pickaxe-regex -S'parse\.rs:98([^0-9]\|$)' origin/main` → 67870e10〈親〉・6cac578c | `6cac578c`〈hit〉: `git show 6cac578c:src-tauri/src/biz/csv_import_service/parse.rs \| sed -n '98,110p'` | `parse_and_validate` の数量の上限の検査 | `parse_and_validate`・`execute_commit` の `for row in matched_rows` | `rg -n 'pub fn parse_and_validate' src-tauri/src/biz/csv_import_service/parse.rs` → 22 行 |
+| S1-040 | `product_service.rs:907` | `git log --format=%h --pickaxe-regex -S'product_service\.rs:907([^0-9]\|$)' origin/main` → 67870e10〈親〉・6cac578c | `67870e10`〈親〉: `git show 67870e10:src-tauri/src/biz/product_service.rs \| sed -n '907,927p'` | `list_low_stock`（doc comment と本体） | `list_low_stock`・`list_low_stock_products` | `rg -n 'pub fn list_low_stock' src-tauri/src/biz/product_service.rs` → 923 行 |
+| S1-045 | `lib.rs:118` | `git log --format=%h --pickaxe-regex -S'lib\.rs:118([^0-9]\|$)' origin/main` → 02f497ea〈親〉・dbb83251 | `02f497ea`〈親〉: `git show 02f497ea:src-tauri/src/lib.rs \| sed -n '118,120p'` | `prepare_database` の `std::env::current_dir()` の closure | `prepare_database`・`prepare_database_with_init`・`migrate_legacy_db_with_ops` | `rg -n 'fn prepare_database\(' src-tauri/src/lib.rs` → 114 行 |
+| S1-050 | `` `:41 `` | `git log --format=%h --pickaxe-regex -S'`:41([^0-9]\|$)' origin/main` → 902647b8・7ae4ade6〈親〉・6ff22472・ff655efd〈親〉・b59d7331・f184d5a3〈親〉・909fe096・3ded9034〈親〉・2a36b086・9d351d5b〈親〉・dc2f14f1・ff05436f〈親〉・e188366e・df0488eb〈親〉・294ba366・a5fb9b16〈親〉・8bb5e5a6・2194ed56〈親〉・2ba91dea・c1beb334〈親〉・3d71cc23・67870e10〈親〉・6cac578c・2753e047〈親〉・294b0dfe・c1c1c5bf〈親〉・c7ce0599 | `9d351d5b`〈親〉: `git show 9d351d5b:src-tauri/src/io/ej_parser.rs \| sed -n '41,41p'` | `EjLineKind::Quantity` の `quantity` | `EjLineKind::Quantity`・`EjItem`・`EjLineKind::ItemCount`・`parse_item_count`・`EjRestoration::Restored`・`item_region`・`restore_items` | `rg -n '    Quantity \{' src-tauri/src/io/ej_parser.rs` → 40 行 |
+| S1-055 | `parse.rs:63` | `git log --format=%h --pickaxe-regex -S'parse\.rs:63([^0-9]\|$)' origin/main` → ea15360d〈親〉・02f497ea | `ea15360d`〈親〉: `git show ea15360d:src-tauri/src/biz/csv_import_service/parse.rs \| sed -n '63,77p'` | `parse_and_validate` の 2a の精算日の検査 | `parse_and_validate` の `2a. settlement_date 業務妥当性チェック` | `rg -n '2a. settlement_date' src-tauri/src/biz/csv_import_service/parse.rs` → 63 行 |
+| S1-060 | `ej_parser.rs:455` | `git log --format=%h --pickaxe-regex -S'ej_parser\.rs:455([^0-9]\|$)' origin/main` → 3933f0d4〈親〉・f1274d77 | `3933f0d4`〈親〉: `git show 3933f0d4:src-tauri/src/io/ej_parser.rs \| sed -n '455,460p'` | `parse_header` の `date_ok` | `parse_header` の `date_ok` | `rg -n 'let date_ok' src-tauri/src/io/ej_parser.rs` → 456 行 |
+| S1-065 | `lib.rs:277` | `git log --format=%h --pickaxe-regex -S'lib\.rs:277([^0-9]\|$)' origin/main` → 6b765f75〈親〉・3c568364 | `6b765f75`〈親〉: `git show 6b765f75:src-tauri/src/lib.rs \| sed -n '277,277p'` | `export_bindings_to` の `collect_commands!` | `export_bindings_to`・`run` | `rg -n 'fn export_bindings_to' src-tauri/src/lib.rs` → 274・564・588・602 行 |
+| S1-070 | `sales_service.rs:196` | `git log --format=%h --pickaxe-regex -S'sales_service\.rs:196([^0-9]\|$)' origin/main` → 902647b8 | — | 取り戻せない（root の 196〜197 行は `get_daily_sales` の部門の行） | `get_monthly_sales` | `rg -n 'prev_month_comparison = Some\(prev_items\)' src-tauri/src/biz/sales_service.rs` → 305 行 |
+| S1-075 | `backup.rs:263` | `git log --format=%h --pickaxe-regex -S'backup\.rs:263([^0-9]\|$)' origin/main` → 7f98205c〈親〉・2e3e97d3 | — | `restore_backup` の `.restore_backup`（今の base は `restore.rs` へ委ねる包み → 消えた） | — | `rg -n 'pub fn restore_backup' src-tauri/src/mnt/backup.rs` → 95 行 |
+| S1-081 | `` dialog.tsx` L62 `` | `git log --format=%h --pickaxe-regex -S'dialog\.tsx` L62([^0-9]\|$)' origin/main` → 902647b8 | `902647b8`〈hit〉: `git show 902647b8:src/components/ui/dialog.tsx \| sed -n '62,69p'` | `DialogContent` の `DialogPrimitive.Close` | `DialogContent` の `DialogPrimitive.Close` | `rg -n 'DialogPrimitive.Close' src/components/ui/dialog.tsx` → 22・23・63・69 行 |
+| S1-085 | `SCREEN_DESIGN.md L120` | `git log --format=%h --pickaxe-regex -S'SCREEN_DESIGN\.md L120([^0-9]\|$)' origin/main` → 902647b8 | — | 取り戻せない（root の L120-133 は PLU 書出し・バックアップの節） | — | `rg -n '^### 在庫照会画面' docs/SCREEN_DESIGN.md` → 251 行 |
+| S2-001 | `parse.rs:80` | `git log --format=%h --pickaxe-regex -S'parse\.rs:80([^0-9]\|$)' origin/main` → 09f65412〈親〉・86c32817・6b765f75・8cff232a〈親〉・db0b8509 | `09f65412`〈親〉: `git show 09f65412:src-tauri/src/biz/csv_import_service/parse.rs \| sed -n '80,80p'` | `parse_and_validate` の行数ガード | `parse_and_validate` の `CSV_IMPORT_LINE_LIMIT` | `rg -n 'CSV_IMPORT_LINE_LIMIT' src-tauri/src/biz/csv_import_service/parse.rs` → 80 行 |
+| S2-003 | `` `:443 `` | `git log --format=%h --pickaxe-regex -S'`:443([^0-9]\|$)' origin/main` → 31c069d5〈親〉・7e0ccf1b・07302b5e〈親〉・1ad9aa74・7ae4ade6〈親〉・6ff22472・1c896139〈親〉・ee8e294a・ff655efd〈親〉・b59d7331・43b69bea〈親〉・c9fabc17・85b18a04〈親〉・42eddd0a・a5fb9b16〈親〉・8bb5e5a6 | `31c069d5`〈親〉: `git show 31c069d5:docs/design-system/01-decision-rules.md \| sed -n '443,443p'` | DSR-22 の節 | DSR-22 | `rg -n '^## DSR-22' docs/design-system/01-decision-rules.md` → 118 行 |
+| S2-006 | `sort-items.test.ts:79` | `git log --format=%h --pickaxe-regex -S'sort-items\.test\.ts:79([^0-9]\|$)' origin/main` → 902647b8 | `902647b8`〈hit〉: `git show 902647b8:src/features/monthly-sales/lib/sort-items.test.ts \| sed -n '79,90p'` | test「G-3: ranking field 残存確認」 | test「G-3: ranking field 残存確認」 | `rg -n 'G-3' src/features/monthly-sales/lib/sort-items.test.ts` → 81 行 |
+| S2-012 | `ProductForm.tsx:284` | `git log --format=%h --pickaxe-regex -S'ProductForm\.tsx:284([^0-9]\|$)' origin/main` → 41336c28〈親〉・689ac4c3 | `689ac4c3`〈hit〉: `git show 689ac4c3:src/features/products/components/ProductForm.tsx \| sed -n '284,284p'` | `ProductForm` の部門の `Select` の `onValueChange` | `ProductForm` の部門の `Select` の `onValueChange` | `rg -n 'update\("departmentId", Number\(value\)\)' src/features/products/components/ProductForm.tsx` → 288 行 |
+| S2-013 | `ProductForm.tsx:282` | `git log --format=%h --pickaxe-regex -S'ProductForm\.tsx:282([^0-9]\|$)' origin/main` → 41336c28〈親〉・689ac4c3 | `689ac4c3`〈hit〉: `git show 689ac4c3:src/features/products/components/ProductForm.tsx \| sed -n '282,282p'` | `ProductForm` の部門の `Select` の `value` | `ProductForm` の部門の `Select` の `value` | `rg -n 'values.departmentId === null' src/features/products/components/ProductForm.tsx` → 286 行 |
+| S2-015 | `.gitignore:38` | `git log --format=%h --pickaxe-regex -S'\.gitignore:38([^0-9]\|$)' origin/main` → 902647b8 | `902647b8`〈hit〉: `git show 902647b8:.gitignore \| sed -n '38,38p'` | `.gitignore` の `# src/lib/bindings.ts` の行 | `.gitignore` の `# src/lib/bindings.ts` の行 | `rg -n 'src/lib/bindings.ts' .gitignore` → 38 行 |
+| S2-018 | `SCREEN_DESIGN L42` | `git log --format=%h --pickaxe-regex -S'SCREEN_DESIGN L42([^0-9]\|$)' origin/main` → 5aad8f59〈親〉・b3921181・04514154〈親〉・c6b6eb7a | `5aad8f59`〈親〉: `git show 5aad8f59:docs/SCREEN_DESIGN.md \| sed -n '42,42p'` | 「年に数回 / 初回のみ」の表の 16 | SCREEN_DESIGN の「年に数回 / 初回のみ」・「全体構成（4エリア）」・「実装フェーズ分類」 | `rg -n '^### 年に数回 / 初回のみ' docs/SCREEN_DESIGN.md` → 45 行 |
+| S2-021 | `// :133` | `git log --format=%h --pickaxe-regex -S'// :133([^0-9]\|$)' origin/main` → 1ad9aa74〈親〉・e78d3c5c | `1ad9aa74`〈親〉: `git show 1ad9aa74:src/hooks/useUnsavedChangesWarning.test.tsx \| sed -n '133,133p'` | test「DSR-20 D-E T10: Escape と外側 pointer-down では閉じず callback も発火しない」 | sibling test「DSR-20 D-E T10: Escape と外側 pointer-down では閉じず callback も発火しない」 | `rg -n 'DSR-20 D-E T10: Escape と外側' src/hooks/useUnsavedChangesWarning.test.tsx` → 133・154 行 |
+| S3-003 | `` `:164 `` | `git log --format=%h --pickaxe-regex -S'`:164([^0-9]\|$)' origin/main` → dda8560a〈親〉・2c53f79c・d2d41d21〈親〉・a5fb9b16・2194ed56〈親〉・2ba91dea・6cac578c〈親〉・18c6b591・44f1e666〈親〉・c1c1c5bf | `dda8560a`〈親〉: `git show dda8560a:docs/function-design/58-ui-stock-inquiry.md \| sed -n '164,164p'` | （backlog は版の句。手順 3・4 は使わない） | `dda8560a` の時点で `docs/function-design/58-ui-stock-inquiry.md:164` | `` rg -n '`dda8560a` の時点で' docs/backlog.md `` → 49 行 |
+| S3-006 | `35-biz-stocktake-service.md:473` | `git log --format=%h --pickaxe-regex -S'35-biz-stocktake-service\.md:473([^0-9]\|$)' origin/main` → 67870e10〈親〉・6cac578c・02f497ea〈親〉・dbb83251 | `67870e10`〈親〉: `git show 67870e10:docs/function-design/35-biz-stocktake-service.md \| sed -n '473,473p'` | （backlog は版の句。手順 3・4 は使わない） | `67870e10` の時点で `docs/function-design/35-biz-stocktake-service.md:473` | `` rg -n '`67870e10` の時点で' docs/backlog.md `` → 49・53 行 |
+| S3-009 | `21-io-inventory-repo.md:103` | `git log --format=%h --pickaxe-regex -S'21-io-inventory-repo\.md:103([^0-9]\|$)' origin/main` → 32273dc2〈親〉・3b94a58a・63896441 | `32273dc2`〈親〉: `git show 32273dc2:docs/function-design/21-io-inventory-repo.md \| sed -n '103,103p'` | （backlog は版の句。手順 3・4 は使わない） | `32273dc2` の時点で `docs/function-design/21-io-inventory-repo.md:103` | `` rg -n '`32273dc2` の時点で' docs/backlog.md `` → 95 行 |
+| S3-012 | `PriceRevisionTable.tsx:104` | `git log --format=%h --pickaxe-regex -S'PriceRevisionTable\.tsx:104([^0-9]\|$)' origin/main` → 07302b5e〈親〉・1ad9aa74・7ae4ade6〈親〉・6ff22472・ff05436f〈親〉・e188366e | `07302b5e`〈親〉: `git show 07302b5e:src/features/products/components/PriceRevisionTable.tsx \| sed -n '104,104p'` | （backlog は版の句。手順 3・4 は使わない） | `07302b5e` の時点で `src/features/products/components/PriceRevisionTable.tsx:104` | `` rg -n '`07302b5e` の時点で' docs/backlog.md `` → 119 行 |
+| S3-015 | `mockup-d-lists.html:112` | `git log --format=%h --pickaxe-regex -S'mockup-d-lists\.html:112([^0-9]\|$)' origin/main` → ff655efd〈親〉・b59d7331・f39c560a〈親〉・bc01698f | `ff655efd`〈親〉: `git show ff655efd:docs/design-system/reference/mockup-d-lists.html \| sed -n '112,112p'` | （backlog は版の句。手順 3・4 は使わない） | `ff655efd` の時点で `docs/design-system/reference/mockup-d-lists.html:112` | `` rg -n '`ff655efd` の時点で' docs/backlog.md `` → 145 行 |
+| S3-018 | `ReturnExchangePage.tsx:185` | `git log --format=%h --pickaxe-regex -S'ReturnExchangePage\.tsx:185([^0-9]\|$)' origin/main` → f184d5a3〈親〉・909fe096・f39c560a〈親〉・bc01698f | — | 取り戻せない（185 行はどの候補でも `max-lines-per-function` の要素でない） | `ReturnExchangePage` の上の `max-lines-per-function` | `rg -n 'max-lines-per-function' src/features/return-exchange/ReturnExchangePage.tsx` → 184 行 |
+| S3-021 | `61-ui-receiving.md:30` | `git log --format=%h --pickaxe-regex -S'61-ui-receiving\.md:30([^0-9]\|$)' origin/main` → 949a5c4c〈親〉・c3a006ec | `949a5c4c`〈親〉: `git show 949a5c4c:docs/function-design/61-ui-receiving.md \| sed -n '30,30p'` | （backlog は版の句。手順 3・4 は使わない） | `949a5c4c` の時点で `docs/function-design/61-ui-receiving.md:30` | `` rg -n '`949a5c4c` の時点で' docs/backlog.md `` → 223 行 |
+| S3-024 | `ReturnExchangePage.tsx:790` | `git log --format=%h --pickaxe-regex -S'ReturnExchangePage\.tsx:790([^0-9]\|$)' origin/main` → 31c069d5〈親〉・7e0ccf1b・f39c560a〈親〉・bc01698f | — | 取り戻せない（790〜791 行に注釈の文が無い） | 引用を外した | —  |
+| S3-027 | `Pagination.tsx:52` | `git log --format=%h --pickaxe-regex -S'Pagination\.tsx:52([^0-9]\|$)' origin/main` → 7e0ccf1b〈親〉・6fc4abac・f39c560a〈親〉・bc01698f | `7e0ccf1b`〈親〉: `git show 7e0ccf1b:src/components/patterns/Pagination.tsx \| sed -n '52,53p'` | （backlog は版の句。手順 3・4 は使わない） | `7e0ccf1b` の時点で `src/components/patterns/Pagination.tsx:52-53` | `` rg -n '`7e0ccf1b` の時点で' docs/backlog.md `` → 245・259・261・334 行 |
+| S3-030 | `button.tsx:15` | `git log --format=%h --pickaxe-regex -S'button\.tsx:15([^0-9]\|$)' origin/main` → 7e0ccf1b〈親〉・6fc4abac・f39c560a〈親〉・bc01698f | `7e0ccf1b`〈親〉: `git show 7e0ccf1b:src/components/ui/button.tsx \| sed -n '15,16p'` | （backlog は版の句。手順 3・4 は使わない） | `7e0ccf1b` の時点で `src/components/ui/button.tsx:15-16` | `` rg -n '`7e0ccf1b` の時点で' docs/backlog.md `` → 245・259・261・334 行 |
 
 ## Review Response
 
