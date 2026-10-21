@@ -26,10 +26,10 @@ pub(crate) fn recompute_stock(tx: &rusqlite::Transaction<'_>, product_code: &str
 [共通規則](10-common-rules.md) SPEC-UNIT-D2・D5・D6・D11 の BIZ-02 の側。単位・上限・行の金額は現行の契約で、原価の 1/100 円の分だけ注記のとおり未実装。
 
 - 入庫・返品・手動販売・廃棄の Request の `quantity` は今どおり在庫の数量の正の整数（長さの商品は cm）。m の入力は UI が cm に直して送る（SPEC-UNIT-D3）。BIZ の検証（INV-1a）は上限を持つ（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）: 1 明細の数量は 1 以上 `9999999`。`quantity <= 0` の検証の隣（`receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`、返品は `validate_return_request_shape` の `returns.rs:99`）で、在庫を動かすかどうかの分岐より前に全明細を検査する（レジ処理済みの返品〈`register_processed`〉の明細は `apply_stock_change` を通らずに `return_items` へ保存される: `returns.rs:254`〜`:255`）。越えれば `ValidationFailed`（`明細{n}: 数量が大きすぎます`）で何も書かない。`apply_stock_change` は、計算の後の `stock_after` の絶対値が在庫の上限 `999999999` を越えれば、書く前に `ValidationFailed`（`在庫数が大きすぎます`）で TX 全体を戻す（`recompute_stock` が写しを書く直前の検査。上の D-118 の節）。`create_receiving`・`create_disposal` は、保存の前に明細から行の金額（`cost_line_centi`）と合計（`cost_total_yen`）を求めて `check_safe_integer`（`±9007199254740991`）に通し、範囲外は `ValidationFailed`（`合計金額が大きすぎます`）で TX 全体を戻す（在庫・記録・明細・変動・操作ログを書かない。`receiving.rs:156`・`disposal.rs:159`）。保存した明細は書き換えないので、記録詳細（§12.6a）が同じ明細から求める合計は検査した値と同じになり、記録詳細の読取りに範囲の検査を置かない。
-- （proposed・未実装、原価の lane、D-113）入庫・廃棄の明細の原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。BIZ は明細の原価も 0 以上・`99999999`（`999999.99` 円）以下を検査し（原価が円の間は、負の検査の隣〈`receiving.rs:138`・`disposal.rs:135`〉で `999999` 円以下を検査する。これは現行）、超えれば `ValidationFailed("原価が大きすぎます")`（SPEC-UNIT-D5。UI を通らない IPC でも上限を超える値を保存しない）。§12.3 の原価の差分（CostDiff）は 1/100 円の値で完全一致を比べる。§12.8 の fingerprint の item 行の原価は 1/100 円の 10 進文字列にする。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、[22](22-mnt-migration.md) §16 の vB）ので、円の原価で作った fingerprint の記録はその DB に無い。
+- 入庫・廃棄の明細の原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`。原価の lane、D-128）。BIZ は明細の原価も 0 以上・`99999999`（`999999.99` 円。`MAX_COST_PRICE_CENTI`）以下を負の検査の隣で検査し、超えれば `ValidationFailed("原価が大きすぎます")`（SPEC-UNIT-D5。UI を通らない IPC でも上限を超える値を保存しない）。§12.3 の原価の差分（CostDiff）は 1/100 円の値で完全一致を比べる。§12.8 の fingerprint の item 行の原価は 1/100 円の 10 進文字列にする。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、[22](22-mnt-migration.md) §16 の vB）ので、円の原価で作った fingerprint の記録はその DB に無い。
 - §12.6a の入庫・廃棄の記録詳細は、明細の数量・原価・商品の単位から行の金額と合計を BIZ が求める（SPEC-UNIT-D6。`biz::unit_amount`）。IO は金額を計算しない（[21](21-io-inventory-repo.md) §10.2・§10.5 の手順 3）。wire は行の金額を 1/100 円の整数の十進の文字列（`line_cost_centi`・`line_loss_cost_centi`。i128 の値を損失なく運ぶ。SPEC-UNIT-D6）、合計を円の整数（`total_cost`・`total_loss_cost`、今の型のまま）で返す。入庫の丸めは TD-023 と同じ（`決定（owner、D-113 J3）`）、廃棄も TD-023 に合わせる。
 - 記録詳細と入出庫の行の `stock_unit` は `ProductStockUnit`（SPEC-UNIT-D11）。
-- 入庫・返品・手動販売・廃棄の保存の結果の在庫警告 `stock_warnings`（`{商品コード}: 在庫がマイナスになりました（{stock_after}）`。`receiving.rs:234`・`returns.rs:273`・`manual_sale.rs:289`・`disposal.rs:226` の 4 か所が同じ関数で書く）は、長さの商品（`m`・`cm`）の `stock_after` を SPEC-UNIT-D3 の m の形に整形して入れる（-30 → `（-0.3 m）`）。個数の商品の文は `（-2）`。整形は TS の formatter と同じ規則の Rust の関数 1 つ（`format_length_m`）で行い、golden の表を共有する（SPEC-UNIT-D9）。owner の決定 TD-203（SPEC-UNIT-D3 の表示する所の表の 10）。
+- 入庫・返品・手動販売・廃棄の保存の結果の在庫警告 `stock_warnings`（`{商品コード}: 在庫がマイナスになりました（{stock_after}）`。`receiving.rs:234`・`returns.rs:273`・`manual_sale.rs:289`・`disposal.rs:226` の 4 か所が同じ関数で書く）は、長さの商品（`m`）の `stock_after` を SPEC-UNIT-D3 の m の形に整形して入れる（-30 → `（-0.3 m）`）。個数の商品の文は `（-2）`。整形は TS の formatter と同じ規則の Rust の関数 1 つ（`format_length_m`）で行い、golden の表を共有する（SPEC-UNIT-D9）。owner の決定 TD-203（SPEC-UNIT-D3 の表示する所の表の 10）。
 
 ### 12.1 モジュール構成
 
@@ -96,7 +96,7 @@ fn create_receiving(conn: &mut DbConnection, req: ReceivingCreateRequest) -> Res
 **ReceivingItemInput構造体**:
 - product_code: String
 - quantity: i64（正の整数のみ）
-- cost_price: i64
+- cost_price_centi: i64
 
 **ReceivingCreateResult構造体**:
 - record_id: i64
@@ -108,8 +108,8 @@ fn create_receiving(conn: &mut DbConnection, req: ReceivingCreateRequest) -> Res
 **CostDiff構造体**:
 - product_code: String
 - product_name: String
-- master_cost_price: i64
-- received_cost_price: i64
+- master_cost_price_centi: i64
+- received_cost_price_centi: i64
 
 **不変条件**: created=true ↔ idempotent_replay=false、created=false ↔ idempotent_replay=true。この2組み合わせ以外は生成しない
 
@@ -123,7 +123,7 @@ fn create_receiving(conn: &mut DbConnection, req: ReceivingCreateRequest) -> Res
      - 不一致 → BizError::IdempotencyConflict("同じ冪等キーで異なる内容のリクエストです")
 2. **バリデーション（TX外）**
    a. items が空 → BizError::ValidationFailed("明細が1件以上必要です")
-   b. 各item: quantity <= 0 → ValidationFailed、cost_price < 0 → ValidationFailed、product_codeの存在チェック
+   b. 各item: quantity <= 0 → ValidationFailed、cost_price_centi < 0 → ValidationFailed、product_codeの存在チェック
    c. supplier_idがSome → 存在チェック
 3. **request_fingerprint を計算**
 4. **トランザクション開始**（conn.transaction()）
@@ -133,14 +133,14 @@ fn create_receiving(conn: &mut DbConnection, req: ReceivingCreateRequest) -> Res
 8. **COMMIT**
 9. ReceivingCreateResult の既存 field（record_id / created=true / idempotent_replay=false / stock_warnings）を構成する
 10. **COMMIT 後の原価差分検出（SPEC-PRV-D8）**
-   - 保存 transaction とは別の読取りで、各明細の `cost_price` と現在の `products.cost_price` を完全一致比較する
-   - 不一致を `CostDiff { product_code, product_name, master_cost_price, received_cost_price }` として `cost_diffs` に積み、ReceivingCreateResult として返す
+   - 保存 transaction とは別の読取りで、各明細の `cost_price_centi` と現在の `products.cost_price_centi` を完全一致比較する
+   - 不一致を `CostDiff { product_code, product_name, master_cost_price_centi, received_cost_price_centi }` として `cost_diffs` に積み、ReceivingCreateResult として返す
    - 差分検出は **保存 transaction の成否に影響しない**。検出失敗を理由に保存済み入庫を rollback しない
    - idempotent replay 時は step 1 で `cost_diffs: []` を返し、再提示しない
 
 **request_fingerprint 正規化**:
 - ヘッダ行: "{supplier_id}|{receiving_date}"
-- item行: "{product_code}|{quantity}|{cost_price}"
+- item行: "{product_code}|{quantity}|{cost_price_centi}"
 - item行を行文字列全体の辞書順ASCでソート
 - ヘッダ行 + item行を "\n" で結合 → SHA-256 hex digest（小文字64文字）
 - 型の正規化: 整数→10進文字列（先頭ゼロなし）、Option None→"null"、日付→YYYY-MM-DD（10文字固定）
@@ -290,7 +290,7 @@ fn create_disposal(conn: &mut DbConnection, req: DisposalCreateRequest) -> Resul
 - product_code: String
 - disposal_type: DisposalType（"disposal" / "damage" / "other"）
 - quantity: i64（正の整数のみ）
-- cost_price: i64
+- cost_price_centi: i64
 - reason: String
 
 **DisposalCreateResult構造体**:
@@ -302,10 +302,10 @@ fn create_disposal(conn: &mut DbConnection, req: DisposalCreateRequest) -> Resul
 **処理ステップ**:
 0. **業務日の検査（DB を見ない検証の段。冪等性チェックと TX より前）**: `validate_business_date(&req.disposal_date)`
 1. **冪等性チェック**（同パターン）
-2. **バリデーション**: items空、各item の quantity/cost_price/reason/product_code検証（disposal_type 値域は enum 型で検査済み）
+2. **バリデーション**: items空、各item の quantity/cost_price_centi/reason/product_code検証（disposal_type 値域は enum 型で検査済み）
 3. **request_fingerprint計算**
    - ヘッダ行: "{disposal_date}"
-   - item行: "{product_code}|{quantity}|{cost_price}|{disposal_type}|{reason}"
+   - item行: "{product_code}|{quantity}|{cost_price_centi}|{disposal_type}|{reason}"
 4. **TX開始**
 5. insert_disposal_record → record_id
 6. 各item: insert_disposal_item + apply_stock_change(disposal_date, None, -quantity, Disposal, DisposalRecord, record_id)
@@ -364,10 +364,10 @@ enum BizError {
 
 | 関数 | ヘッダ（含める） | ヘッダ（除外） | item（含める） | item（除外） |
 |------|----------------|---------------|---------------|-------------|
-| create_receiving | supplier_id, receiving_date | note | product_code, quantity, cost_price | — |
+| create_receiving | supplier_id, receiving_date | note | product_code, quantity, cost_price_centi | — |
 | create_return | return_type, return_date, register_processed | receipt_image_path, note | product_code, direction, quantity | — |
 | create_manual_sale | sale_date, reason | note | product_code, quantity, amount | — |
-| create_disposal | disposal_date | — | product_code, disposal_type, quantity, cost_price, reason | — |
+| create_disposal | disposal_date | — | product_code, disposal_type, quantity, cost_price_centi, reason | — |
 
 **正規化手順**:
 1. ヘッダ固有値を先頭行に生成

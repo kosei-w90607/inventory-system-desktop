@@ -131,7 +131,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 1. 新規: JANコード入力、またはJANなしで独自コード発番対象部門を選択。JANなし + code_prefixなし部門は保存前に止める
 2. 必須項目入力（名前、売価、原価、税率、部門）
 3. 任意項目入力（取引先、メーカー品番、初期在庫、pos_stock_sync）
-4. pos_stock_sync: stock_unit='cm'なら初期値OFFを提案、利用者が変更可能
+4. pos_stock_sync: 長さの単位（stock_unit='m'）なら初期値OFFを提案、利用者が変更可能
 5. 保存 → バリデーション → 成功トースト → 一覧に戻る
 6. edit は memory No. を表示しない（D-117）。廃番解除で plu_target を自動復帰しない
 7. edit は第 5 セクション「価格履歴」で直近 10 件を表示し、「すべて表示」で 100 件を取得する。create では表示しない

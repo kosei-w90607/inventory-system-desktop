@@ -96,7 +96,7 @@ fn update_product(state: State<AppState>, product_code: String, req: ProductUpda
 
 **部分更新wire契約（PRODUCT-PATCH-D1 / REQ-102）**:
 
-- 通常field（`name`, `department_id`, `selling_price`, `cost_price`, `tax_rate`, `pos_stock_sync`, `plu_target`）は、JSON omitted / nullのどちらも「更新しない」、valueは「設定する」。
+- 通常field（`name`, `department_id`, `selling_price`, `cost_price_centi`, `tax_rate`, `pos_stock_sync`, `plu_target`）は、JSON omitted / nullのどちらも「更新しない」、valueは「設定する」。
 - clear可能field（`supplier_id`, `maker_code`）は、JSON omittedが「更新しない」、nullが「clearする」、valueが「設定する」。
 - generated commandの入力型は `ProductUpdateRequest_Deserialize` とし、全propertyをoptionalにする。frontend側の `Partial` aliasや型assertionでgenerated契約を迂回しない。
 - command名、引数名、response、`CmdError`、BIZ呼出し順は変更しない。
@@ -171,7 +171,7 @@ fn revise_product_price(
 struct PriceRevisionInput {
     product_code: String,
     new_selling_price: i64,
-    new_cost_price: i64,
+    new_cost_price_centi: i64,
     assign_supplier_id: Option<i64>,
 }
 
@@ -183,7 +183,7 @@ struct PriceRevisionResult {
 }
 ```
 
-上限（D-113）: `new_selling_price` と `new_cost_price` は 0 以上 `999999`（越えれば BIZ が `売価が大きすぎます`・`原価が大きすぎます`）。`new_cost_price` を 1/100 円の `new_cost_price_centi`（上限は `99999999` = `999999.99` 円）にし、下の `PriceHistoryEntry` の `old_cost_price`・`new_cost_price` も `_centi` にするのは proposed・未実装（原価の lane、D-113）。[共通規則](10-common-rules.md) SPEC-UNIT-D5、[30](30-biz-product-service.md) BIZ-01-D8。
+上限（D-113・D-128）: `new_selling_price` は 0 以上 `999999`、`new_cost_price_centi` は 1/100 円で 0 以上 `99999999`（`999999.99` 円）（越えれば BIZ が `売価が大きすぎます`・`原価が大きすぎます`）。下の `PriceHistoryEntry` の原価も 1/100 円の `old_cost_price_centi`・`new_cost_price_centi`。[共通規則](10-common-rules.md) SPEC-UNIT-D5、[30](30-biz-product-service.md) BIZ-01-D8。
 
 CMD は DB 接続を取得し、BIZ-01 `revise_product_price` を呼んで結果をそのまま返す。負値は validation、不存在 `product_code` / `assign_supplier_id` は not-found の既存 `CmdErrorKind` へ正規化し、価格更新・履歴・操作ログ・supplier 紐付けの判断を CMD に持たない。
 
@@ -267,8 +267,8 @@ struct PriceHistoryEntry {
     id: i64,
     old_selling_price: i64,
     new_selling_price: i64,
-    old_cost_price: i64,
-    new_cost_price: i64,
+    old_cost_price_centi: i64,
+    new_cost_price_centi: i64,
     changed_at: String,
 }
 ```

@@ -32,10 +32,10 @@ parseRequiredSafeInteger(value: string, min: number): number | null
 
 | Feature module | Idempotency wrapper | Exact prefix | Integer boundaries |
 |---|---|---|---|
-| receiving | `createReceivingIdempotencyKey` | `receiving` | quantity min 1 / cost_price min 0 |
+| receiving | `createReceivingIdempotencyKey` | `receiving` | quantity min 1 / cost_price_centi min 0 |
 | return-exchange | `createReturnExchangeIdempotencyKey` | `return` | quantity min 1 |
 | manual-sale | `createManualSaleIdempotencyKey` | `manual-sale` | quantity min 1 / amount min 0 |
-| disposal | `createDisposalIdempotencyKey` | `disposal` | quantity min 1 / cost_price min 0 |
+| disposal | `createDisposalIdempotencyKey` | `disposal` | quantity min 1 / cost_price_centi min 0 |
 
 DTO field、null normalization、signature、validation文言、confirmation token、receipt path、Page側のkey保持/rotationは61〜64の各正本を維持する。
 

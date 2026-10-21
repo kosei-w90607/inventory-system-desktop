@@ -25,11 +25,11 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【データ構造】**
 
 入力データ:
-- 商品登録: product_code（JANまたは自動発番）, name, department_id, selling_price, cost_price, tax_rate, stock_unit, 初期在庫数, jan_code（任意）, maker_code（任意）, supplier_id（任意）
+- 商品登録: product_code（JANまたは自動発番）, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, 初期在庫数, jan_code（任意）, maker_code（任意）, supplier_id（任意）
 - 商品修正: product_code（変更不可）, 変更対象フィールド群
 - 廃番切替: product_code, is_discontinued
 - 一括インポート: CSVファイルバイト列（任意列 `PLU対象`）
-- 価格改定: product_code, new_selling_price, new_cost_price, assign_supplier_id（任意）
+- 価格改定: product_code, new_selling_price, new_cost_price_centi, assign_supplier_id（任意）
 - 取引先追加: name
 - 価格履歴参照: product_code, limit
 
@@ -52,9 +52,9 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 2. 入力バリデーション
    - name: 必須、空文字不可
    - department_id: departmentsに存在すること
-   - selling_price, cost_price: 0以上の整数
+   - selling_price（円）, cost_price_centi（1/100 円）: 0以上の整数
    - tax_rate: '10', '8', '0'のいずれか
-   - stock_unit: 'pcs', 'cm'のいずれか
+   - stock_unit: 10 個の code のいずれか（共通規則 SPEC-UNIT-D1）
 3. トランザクション内で実行
    - productsにINSERT（plu_dirty=1, plu_exported_at=NULL, pos_stock_sync=デフォルト1。利用者が商品登録画面で明示的にOFFにできる。stock_unit='cm'の場合は初期値0を提案するがUIで変更可能）
    - 初期在庫 > 0 の場合 → inventory_movementsにINSERT（movement_type='receiving', quantity=初期在庫, stock_after=初期在庫）
@@ -127,7 +127,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 入庫固有の入力:
 - receiving_record: supplier_id, receiving_date, note
-- receiving_items[]: product_code, quantity, cost_price
+- receiving_items[]: product_code, quantity, cost_price_centi
 
 返品固有の入力:
 - return_record: return_type('return'/'exchange'), return_date, register_processed, receipt_image_path, note
@@ -139,7 +139,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 廃棄固有の入力:
 - disposal_record: disposal_date
-- disposal_items[]: product_code, disposal_type('disposal'/'damage'/'other'), quantity, cost_price, reason
+- disposal_items[]: product_code, disposal_type('disposal'/'damage'/'other'), quantity, cost_price_centi, reason
 
 出力データ:
 - 処理結果: 成功/失敗、変動後の在庫数、在庫マイナス警告の有無
@@ -190,7 +190,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
    - operation_logsに記録（operation_type='manual_sale_create'）
 
 **廃棄・破損記録の処理手順:**
-1. 入力バリデーション（quantity > 0, cost_price >= 0, reason非空）
+1. 入力バリデーション（quantity > 0, cost_price_centi >= 0, reason非空）
 2. トランザクション内で実行
    - disposal_recordsにINSERT → record_idを取得
    - 各disposal_itemについて:
@@ -483,12 +483,12 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 1. 未入力（actual_count=NULL）の商品が残っていないかチェック → 残っていれば警告（確定を阻止、または「未入力はシステム在庫と同じとみなす」選択肢）
 2. トランザクション内で実行
    - 各stocktake_itemについて:
-     - valuation_cost_price = 現在のproducts.cost_price をセット
+     - valuation_cost_price_centi = 現在のproducts.cost_price_centi をセット
      - difference = products.stock_quantity - actual_count
      - difference ≠ 0 の場合:
        - inventory_movementsにINSERT（movement_type='stocktake', quantity=actual_count - products.stock_quantity, stock_after=actual_count, reference_type='stocktake', reference_id=stocktake_id）
        - 補正の movement を足した後、その商品を `recompute_stock` で求め直す
-   - total_cost = 商品別の金額（valuation_cost_price・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
+   - total_cost = 商品別の金額（valuation_cost_price_centi・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
    - stocktakes.total_cost, completed_at, status='completed'を更新
    - operation_logsに記録（operation_type='stocktake_complete', detail_jsonに差異件数・total_cost）
 3. COMMIT

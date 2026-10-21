@@ -23,7 +23,7 @@
 <body><main>
 <h1>現行DBのER図</h1>
 <p><a href="diagrams/current-system.md">現行構造・画面遷移・業務フロー</a> · <a href="DB_DESIGN.md">テーブル定義</a> · <a href="research/2026-09-16-diagram-audit.md">図面からの設計点検</a></p>
-<p class="note">対象は <code>src-tauri/src/db/migration.rs</code> が登録する現行 schema（v1〜v9）。実店舗DBは参照していない。図は実装の説明であり、業務上の正しさの保証ではない。採用済み仕様と実装が食い違う点は設計点検に分けて記録する。</p>
+<p class="note">対象は <code>src-tauri/src/db/migration.rs</code> が登録する現行 schema（v1〜v10）。実店舗DBは参照していない。図は実装の説明であり、業務上の正しさの保証ではない。採用済み仕様と実装が食い違う点は設計点検に分けて記録する。</p>
 <ul>
 <li>線は<strong>物理FKのみ</strong>。点線は非識別関係（子の主キーに親キーを含まない）。端の丸は0を許容し、三つ又は複数を表す。親側が0..1の参照はNULL許容。</li>
 <li><code>inventory_movements.reference_type + reference_id</code> と <code>plu_slots.scanning_code = products.jan_code</code> はアプリ側の論理関連で、FKの線を引かない。</li>
@@ -90,11 +90,11 @@
     INTEGER department_id FK "NOT NULL"
     INTEGER supplier_id FK "NULL allowed"
     INTEGER selling_price "NOT NULL"
-    INTEGER cost_price "NOT NULL"
+    INTEGER cost_price_centi "NOT NULL; 1/100 yen"
     TEXT tax_rate "NOT NULL; default '10'; 10 / 8 / 0"
     TEXT maker_code "NULL allowed"
     INTEGER stock_quantity "NOT NULL; default 0; stock-unit quantity"
-    TEXT stock_unit "NOT NULL; default 'pcs'; v8: pcs / sheet / hon / bag / box / roll / kumi / set / ball / cho / m / cm"
+    TEXT stock_unit "NOT NULL; default 'pcs'; v10: pcs / sheet / hon / bag / box / kumi / set / ball / cho / m"
     BOOLEAN is_discontinued "NOT NULL; default 0"
     BOOLEAN plu_dirty "NOT NULL; default 1"
     TEXT plu_exported_at "NULL allowed; app confirmation; not register proof"
@@ -122,7 +122,7 @@
     INTEGER receiving_record_id FK "NOT NULL"
     TEXT product_code FK "NOT NULL"
     INTEGER quantity "NOT NULL"
-    INTEGER cost_price "NOT NULL"
+    INTEGER cost_price_centi "NOT NULL; 1/100 yen"
   }
 
   return_records {
@@ -177,7 +177,7 @@
     TEXT product_code FK "NOT NULL"
     TEXT disposal_type "NOT NULL; disposal / damage / other"
     INTEGER quantity "NOT NULL"
-    INTEGER cost_price "NOT NULL"
+    INTEGER cost_price_centi "NOT NULL; 1/100 yen"
     TEXT reason "NOT NULL"
   }
 
@@ -292,8 +292,8 @@
     TEXT product_code FK "NOT NULL"
     INTEGER old_selling "NOT NULL"
     INTEGER new_selling "NOT NULL"
-    INTEGER old_cost "NOT NULL"
-    INTEGER new_cost "NOT NULL"
+    INTEGER old_cost_centi "NOT NULL; 1/100 yen"
+    INTEGER new_cost_centi "NOT NULL; 1/100 yen"
     TEXT changed_at "NOT NULL"
   }
 
@@ -311,7 +311,7 @@
     TEXT product_code FK "NOT NULL"
     INTEGER system_stock "NOT NULL; at item creation; not count time"
     INTEGER actual_count "NULL allowed"
-    INTEGER valuation_cost_price "NULL allowed; cost at completion"
+    INTEGER valuation_cost_price_centi "NULL allowed; 1/100 yen; cost at completion"
     TEXT counted_at "NULL allowed"
   }
 

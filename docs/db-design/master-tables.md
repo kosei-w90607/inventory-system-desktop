@@ -11,12 +11,12 @@
 
 ## 単位と原価の精度の契約
 
-[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1・D5 の DB の側。単位は現行のスキーマ（migration v8）。原価の改名は proposed・未実装（原価の lane、D-113・D-119）で、以下の既存カラム表の原価の列は現行スキーマを記す。migration の手順は [22](../function-design/22-mnt-migration.md) §16（原価の改名は vB）、vB の番号は merge の時点の次の版（22 §16）。
+[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1・D5 の DB の側。単位と原価の列は現行のスキーマ（migration v8 と vB〈v10〉）。migration の手順は [22](../function-design/22-mnt-migration.md) §16（原価の改名と単位の CHECK の 10 個は vB）。
 
-- `products.stock_unit` の CHECK は 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）。既定値は `pcs`。v8 は既存の行の値を変えない。`ball` を含める（`決定（owner、D-113 J1）`、2026-10-08、TD-195）。`roll`・`cm` は開発・試験 DB の作り直しの起点（22 §16 の vB の手順 4）で外し、個数の単位 9 個と `m` の一覧にする（proposed・未実装、原価の lane、D-119。前提の巻・cm 0 行は 2026-10-18 版の在庫 Excel で成り立った。[decision-log](../decision-log.md) D-128 (2)）。
-- 原価の列を 1/100 円の整数へ改名する（proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`、2026-10-08、TD-195）。既存の値は変換せず、原価の列を持つ表に行の無い DB（開発・試験 DB を作り直した起点）にだけ当てる（22 §16 の vB、D-119）。対象は次の 6 列で全部:
+- `products.stock_unit` の CHECK は 10 個の code（`pcs` `sheet` `hon` `bag` `box` `kumi` `set` `ball` `cho` `m`）。既定値は `pcs`。`ball` を含める（`決定（owner、D-113 J1）`、2026-10-08、TD-195）。v8（vU）が 12 個に広げ、`roll`・`cm` は開発・試験 DB の作り直しの起点（22 §16 の vB の手順 4）で外した（D-119。前提の巻・cm 0 行は 2026-10-18 版の在庫 Excel で成り立った。[decision-log](../decision-log.md) D-128 (2)）。
+- 原価の列は 1/100 円の整数（D-113。`決定（owner、D-113 J2）`、2026-10-08、TD-195）。vB が既存の値を変換せず改名した。vB は原価の列を持つ表に行の無い DB（開発・試験 DB を作り直した起点）にだけ当たる（22 §16、D-119）。対象は次の 6 列で全部:
 
-| 表 | 今の列 | 後の列 | 意味 |
+| 表 | vB の前の列 | 今の列 | 意味 |
 |---|---|---|---|
 | products | cost_price | cost_price_centi | 原価（1/100 円、価格の基準数量あたり） |
 | receiving_items | cost_price | cost_price_centi | 入庫時点の原価（同） |
@@ -49,11 +49,11 @@
 | department_id | INTEGER | FK → departments.id, NOT NULL | 所属部門 |
 | supplier_id | INTEGER | FK → suppliers.id, NULLABLE | 主な取引先（任意） |
 | selling_price | INTEGER | NOT NULL | 売価（税込、円）。価格の基準数量あたり（下記の設計意図） |
-| cost_price | INTEGER | NOT NULL | 原価（円、税抜。売価は税込）。価格の基準数量あたり（下記の設計意図）。税の区分は共通規則 SPEC-UNIT-D5（D-128） |
+| cost_price_centi | INTEGER | NOT NULL | 原価（1/100 円、税抜。売価は税込）。価格の基準数量あたり（下記の設計意図）。精度と税の区分は共通規則 SPEC-UNIT-D5（D-128） |
 | tax_rate | TEXT | NOT NULL, DEFAULT '10' | 消費税率。'10' / '8' / '0'（非課税） |
 | maker_code | TEXT | NULLABLE | メーカー品番（例: H180-005-42）。JAN無しでもメーカー品番だけある場合あり |
-| stock_quantity | INTEGER | NOT NULL, DEFAULT 0 | 在庫数（個 or 枚 or cm） |
-| stock_unit | TEXT | NOT NULL, DEFAULT 'pcs' | 数量単位。12 個の code（CHECK。上の「単位と原価の精度の契約」） |
+| stock_quantity | INTEGER | NOT NULL, DEFAULT 0 | 在庫数（個 or 枚 or cm。長さの商品〈`m`〉は cm の整数） |
+| stock_unit | TEXT | NOT NULL, DEFAULT 'pcs' | 数量単位。10 個の code（CHECK。上の「単位と原価の精度の契約」） |
 | is_discontinued | BOOLEAN | NOT NULL, DEFAULT 0 | 廃番フラグ。1=廃番 |
 | plu_dirty | BOOLEAN | NOT NULL, DEFAULT 1 | PLU書出し必要フラグ。新規登録/売価変更でON、UI-08でTSV保存後に利用者が書出し済み確認した時点でOFF |
 | plu_exported_at | TEXT | NULLABLE | 最後にアプリ側でPLU書出し済みにした日時。NULLなら未書出し。PCツール受理やレジ反映の証明ではない |
@@ -69,11 +69,11 @@
 - **JANの無い商品の規模（店主回答、2026-03）**: 主に生地とヘア雑貨で、全体の約2割
 - **jan_codeのUNIQUE制約をつけない理由**: 同じJANを複数商品が共有するケースがある（グループコード）。UNIQUE制約をつけると登録できなくなる
 - **jan_code の形式 validation を DB に置かない理由（2026-08-11、JAN 専用欄正規化 change）**: 手入力 create 経路の JAN-8/13 + チェックディジット検証は BIZ 保存時（BIZ-01-D1）と frontend（51 UI-01b-D17）が所有し、DB CHECK は追加しない。既存 DB 行と CSV/Z004 import 経路には非 JAN 値・非 13 桁値が実在し得るため（既存データ互換）、DB 制約は既存データの migration を強制してしまう。UNIQUE を付けない既存判断も不変。
-- **selling_price / cost_priceをINTEGERにした理由**: 日本円は小数点以下がないため整数で十分。浮動小数点の丸め誤差を避ける
-- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、個数の 10 単位 = 1（1 個あたり）、`m`・`cm` = 100（1 m あたり。[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D4）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額、入庫の原価小計、廃棄のロス原価、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D18）はこの基準数量で割る（共通規則 SPEC-UNIT-D6・D7）。棚卸し記録詳細のロス原価は `数量 × 原価` のままで、長さ商品では 100 倍になる（既知の不整合、Backlog。BIZ へ移すのは棚卸しの再開〈⑤〉）
+- **selling_price / cost_price_centi をINTEGERにした理由**: 浮動小数点の丸め誤差を避ける。売価は円の整数、原価はばらした商品の 1 個の原価を小数第 2 位まで持つので 1/100 円の整数（共通規則 SPEC-UNIT-D5）
+- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price_centi は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、個数の 9 単位 = 1（1 個あたり）、`m` = 100（1 m あたり。[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D4）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額、入庫の原価小計、廃棄のロス原価、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D18）はこの基準数量で割る（共通規則 SPEC-UNIT-D6・D7）。棚卸し記録詳細のロス原価は `数量 × 原価` のままで、長さ商品では 100 倍になる（既知の不整合、Backlog。BIZ へ移すのは棚卸しの再開〈⑤〉）
 - **plu_dirtyフラグの理由**: 「レジ登録データ作成」画面の差分書出しモード（REQ-402）で「前回以降に変更があった商品」を高速に抽出するため。売価変更・新規登録でON、TSV生成だけではOFFにせず、UI-08で保存後に利用者が書出し済み確認した時点でOFFにする（D-027）。
 - **plu_exported_atの理由**: plu_dirtyだけでは「未書出し」と「アプリ側では書出し済み」の区別がつかない。書出し済み確認日時を記録しておけば「最後にアプリでPLU TSVを作成・保存済みにしたのはいつか」が分かる。ただしPCツール受理やレジ側反映はこの値では証明しない（コードと名称の反映は次の締めの Z004 の照合で分かるが、単価などは分からない。D-117 (7)）。
-- **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。stock_unit='cm'だけで判定するとcm管理でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する
+- **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。長さの単位（`m`）だけで判定すると長さの商品でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する
 - **plu_targetの理由（D-028、2026-07-03）**: 「レジでスキャン販売する商品か」は JAN の有無と相関するが一致しない（JANあり・使ってないグループコード商品、valid JAN でも PLU 枠を割かないスポット特売品が現場に実在する）。jan_code からの純導出では表現できないため、pos_stock_sync と同型の明示フラグにする。UI-01b が jan_code の 13 桁数字判定から初期値を提案し、利用者が変更できる。DB DEFAULT は安全側の 0（レジ登録は opt-in）。plu_target=0 の商品は PLU 書出し抽出と UI-00 PLU未反映通知の対象外になり、部門売り + 手動販売出庫（UI-04）で扱う。インデックスは追加しない（plu_dirty との複合検索は数千行規模のためフルスキャンで十分）
 - **stock_quantityを商品テーブルに持つ理由**: 毎回inventory_movementsを集計するより、現在の在庫数をここにキャッシュしておく方が画面表示が速い。写しの 4 項目（`stock_quantity`・要再確認の印・範囲）が記録から求め直した値と合っているかは整合性チェックで突合する（D-118 の (a)）
 
@@ -85,13 +85,13 @@
 ### 困りそうなケース
 - **独自コードの接頭辞変更**: product_codeがPKなので全参照を書き換える必要がある。→「独自コードは変更不可」を仕様で確定済み（SP-102-04）
 - **CSV取込み時にJANコードで複数商品がヒットする場合**: グループコード商品。Z004で売れた商品が「グループ全体で3個」なのか「特定の色が3個」なのか判別できない。→ グループコード商品は色を区別しない方針なので、どの商品に紐づけても在庫管理上は問題ない。ただしCSV取込みロジックで「同じJANの商品が複数あるとき、どれに紐づけるか」のルールが必要（先頭ヒット or 利用者に選択させる）
-- **布の管理パターンが複数ある**: 反物（cm管理）、カット生地（枚管理）、パッチワーク（枚管理）、セール品（不定期）。stock_unitの'pcs'が「個」にも「枚」にも使える設計。反物はstock_unit='cm'
+- **布の管理パターンが複数ある**: 反物（m管理。在庫は cm の整数）、カット生地（枚管理）、パッチワーク（枚管理）、セール品（不定期）。stock_unitの'pcs'が「個」にも「枚」にも使える設計。反物はstock_unit='m'
 
 ### 布の管理5パターンとDB上の扱い
 
 | パターン | JAN | メーカー品番 | product_code | stock_unit | 在庫の意味 |
 |---------|-----|-----------|-------------|-----------|----------|
-| 反物 | 無し | あり/なし | 独自コード（NU-xxxx） | cm | 残り何cm |
+| 反物 | 無し | あり/なし | 独自コード（NU-xxxx） | m | 残り何 m（在庫は cm の整数） |
 | 2mカット生地 | 無し | 無し | 独自コード（NU-xxxx） | pcs | 何枚 |
 | パッチワーク（セット仕入れ） | あり（使ってない） | あり/なし | 独自コード（NU-xxxx） | pcs | 何枚 |
 | 定番ファスナー（オーダーサイズ） | グループコード | あり | 独自コード（FS-xxxx） | pcs | 何本 |
@@ -218,7 +218,7 @@
 | 5 | 他化粧品 | 他化粧品 | NULL | JAN有り | |
 | 6 | バッグ | バッグ | BG | あり | |
 | 7 | エプロン | エプロン | AP | あり | |
-| 8 | 布 | 布 | NU | あり | 反物(cm)/カット生地(枚)/パッチワーク(枚) |
+| 8 | 布 | 布 | NU | あり | 反物(m)/カット生地(枚)/パッチワーク(枚) |
 | 9 | 糸 | 糸 | NULL | なし | |
 | 10 | ゴム | ゴム | GM | あり | |
 | 11 | 食品 | 食品 | NULL | 扱いなし | 在庫管理対象外 |

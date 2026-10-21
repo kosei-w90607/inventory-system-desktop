@@ -489,7 +489,13 @@ L3（Human Gate `manual`。owner は 2026-10-21 から数日は手が使いに�
 
 ## Implementation Results
 
-Fill after implementation.
+初回実装（[PR #184](https://github.com/kosei-w90607/inventory-system-desktop/pull/184)）。Scope の S1〜S7 を 2 段の Writer の run で実装した。
+
+- S1: vB は版 10（`src-tauri/src/db/schema_v10.rs`）。手順 2 の止まりの文、6 列の改名、`products` の作り直し（CHECK 10 個、§19 の写しの 3 列・`tax_rate` の CHECK・外部キー・index を保つ）、検証と COMMIT の失敗の巻き戻し。Matrix の B1〜B8・B10 と R1〜R4。既存の migration の test は T1・T4 のとおり移した。
+- S2〜S4・S6（Rust）: 列名と内部・wire の型を `_centi` に、上限を `MAX_COST_PRICE_CENTI` に、`cost_line_centi` の `* 100` を外し、商品 CSV の `原価` を `parse_hundredths`（`parse_meters_to_cm` を改名）で読む。`ProductStockUnit` から `Roll`・`Cm` を外し、商品 CSV の `巻`・`roll`・`cm` の行の error に `retired_stock_unit_hint` の直し方を添える。bindings を再生成。
+- S5・S6（TS）: `parseCostInput`・`formatCostInput`・`unitCostFromPack`（`src/lib/unit-quantity.ts`）と `formatCostYen`（`format-stock-display.ts`）を原価の全ての入口と画面で使う。商品フォームの補助と税抜の label、価格改定の Y8 の式、廃棄の合計の BigInt の twin（形式の誤りと上限越えの行は 0）、棚卸し記録詳細のロス原価の BigInt。
+- S7: 正本の同期（共通規則・22 §16・master-tables ほか、`proposed・未実装` の注記を現行の記述に）、ERD、traceability の再生成。
+- 計画からの外れと、AC の書き漏れ（AC5 の分類に U1 の enum の test が無い）は PR の本文に書いた。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 

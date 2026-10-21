@@ -27,7 +27,7 @@
 | REQ-204 / product add | UI-05-D5 | 商品追加欄は商品コード / JAN / 商品名を同じ入力で扱い、Enter で `commands.searchProducts` を実行する。1件なら明細へ追加、複数件なら候補リストから選ぶ、0件なら商品登録への導線を出す。 | UI-02/03/04 と同じ scan-like flow にして学習コストを下げる。未登録商品作成は `/products/new` へ逃がし、廃棄画面内で master mutation をしない。 |
 | REQ-204 / scanner | UI-05-D6 | バーコードスキャナは HID キーボードとして商品追加欄へ入力される前提にする。初回実装はグローバルスキャン検知を置かず、フォーカス中の入力欄 + Enter で追加し、追加後は商品追加欄へフォーカスを戻す。 | UI-02/03/04 と同じ方針。グローバル検知は全画面 UX への影響が大きく別 Design Phase。 |
 | REQ-204 / rows | UI-05-D7 | 明細の一意性は `product_code + disposal_type + reason` とし、同じ組み合わせを再追加した場合は数量を +1 する。 | 同じ商品でも「破損」と「期限切れ」など理由が異なるロスは別明細として残す必要がある。product_code だけで統合すると理由の粒度が失われる。 |
-| REQ-204 / validation | UI-05-D8 | 数量は `> 0`（個数と `cm` の商品は整数、`m` の商品は m で小数 2 桁まで受けて cm に直す。上限は `9999999`）、原価は整数 `>= 0`（上限は `999999`）、廃棄日は必須、種別は `"disposal"` / `"damage"` / `"other"`、理由は空白不可として command 前に frontend で止める。BIZ-02 は同じ validation を最終防御として持つ。保存の後の結果の欄のロス原価合計は TS の twin で TD-023 の丸め、保存した記録は BIZ が返す値（[共通規則](10-common-rules.md) SPEC-UNIT-D3・D6・D9）。（proposed・未実装、原価の lane、D-113: 原価は小数 2 桁まで〈`決定（owner、D-113 J2）`〉。SPEC-UNIT-D5） | operator-facing form では保存前に日本語 field error を出す。generated command は UI 以外からも呼べるため、業務不変条件は BIZ に置く。 |
+| REQ-204 / validation | UI-05-D8 | 数量は `> 0`（個数の商品は整数、`m` の商品は m で小数 2 桁まで受けて cm に直す。上限は `9999999`）、原価は小数 2 桁までの円 `>= 0`（上限は `999999.99`。送る値は 1/100 円の `cost_price_centi`。`決定（owner、D-113 J2）`、SPEC-UNIT-D5。error の文は `原価は0以上で、小数は2桁までで入力してください`、欄は `inputMode="decimal"`・`step="0.01"`）、廃棄日は必須、種別は `"disposal"` / `"damage"` / `"other"`、理由は空白不可として command 前に frontend で止める。BIZ-02 は同じ validation を最終防御として持つ。保存の後の結果の欄のロス原価合計は TS の twin で TD-023 の丸め（原価は 1/100 円のまま `BigInt` で掛け、原価の形式の誤りと上限越えの行は 0 として数える。共通規則 (c)）、保存した記録は BIZ が返す値（[共通規則](10-common-rules.md) SPEC-UNIT-D3・D5・D6・D9）。候補の一覧の原価は SPEC-UNIT-D5 の formatter（`¥83.33`）。 | operator-facing form では保存前に日本語 field error を出す。generated command は UI 以外からも呼べるため、業務不変条件は BIZ に置く。 |
 | REQ-204 / idempotency | UI-05-D9 | `idempotency_key` は画面で1保存試行単位に生成し、保存失敗後の同内容再試行では同じ key を再利用する。保存成功、フォームリセット、別伝票開始、または保存失敗後に fingerprint 対象項目を編集して再送する場合は新しい key にする。 | UI-02/03/04 と同じ二重登録防止方針。同じ key のまま異なる fingerprint を送ると BIZ が conflict にするため、編集再送は新規保存試行として扱う。 |
 | REQ-204 / submit | UI-05-D10 | 保存中はヘッダ、明細、商品追加、戻る/リセット導線を disabled にし、中断可能に見せない。 | backend は単一 TX。UI だけで cancel 可能に見せると在庫反映状態を誤認させる。 |
 | REQ-204 / result | UI-05-D11 | 保存成功後は record_id、登録明細数、ロス原価合計、stock_warnings、`idempotent_replay` の有無を表示し、「続けて廃棄・破損」「詳細を見る」「在庫照会へ戻る」の導線を出す。 | 廃棄・破損は売上帳票ではなく在庫とロス把握が主目的。保存後にロス原価合計を読めるようにする。 |
@@ -66,7 +66,7 @@ src/
 | `result` | 保存完了 | result panel、続けて廃棄・破損、詳細を見る、在庫照会へ戻る | `reset_for_next` / navigation |
 | `submit_error` | 保存失敗 | Alert + 入力保持 + 再実行 | `submit_same_request` / `edit_as_new_attempt` |
 
-フォーム state は `disposalDate`, `rows`, `idempotencyKey` を持つ。`rows` は `productCode`, `productName`, `departmentName`, `stockUnit`, `currentStockQuantity`, `disposalType`, `quantity`, `costPrice`, `reason` を持つ UI 内部型とし、command payload には `product_code`, `disposal_type`, `quantity`, `cost_price`, `reason` を送る。
+フォーム state は `disposalDate`, `rows`, `idempotencyKey` を持つ。`rows` は `productCode`, `productName`, `departmentName`, `stockUnit`, `currentStockQuantity`, `disposalType`, `quantity`, `costPrice`, `reason` を持つ UI 内部型とし、command payload には `product_code`, `disposal_type`, `quantity`, `cost_price_centi`, `reason` を送る。
 
 `submit_error` 後に同内容を再送する場合は `idempotencyKey` を保持し、入力を編集して再送する場合は新しい `idempotencyKey` を採番する。
 
@@ -98,7 +98,7 @@ UI-05 実装 PR では以下を generated binding に出す。
       product_code: string,
       disposal_type: "disposal" | "damage" | "other",
       quantity: number,
-      cost_price: number,
+      cost_price_centi: number,
       reason: string
     }
   ]
@@ -114,7 +114,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 - 商品追加欄は `商品コード・JAN・商品名で追加` とし、Enter で検索する。候補が複数ある場合は商品名、商品コード、部門、現在庫、原価を見せる。
 - 商品追加欄は入力中に live 候補プレビュー（商品コード・商品名・部門、最大 5 件 + 超過 footer）を表示する（UI-05-D16、挙動契約は catalog ⑮ SPEC-SUGGEST-D1〜D11）。候補は ↓/↑ または click で選択でき、候補未選択の Enter は従来どおり検索を実行する。入力値が変わると候補は即座に閉じる。
 - 商品が見つからない場合は `商品登録へ` 導線を出す。未登録商品は商品マスタに登録してから廃棄・破損へ戻ることを日本語で示す。既存明細・入力がある状態での離脱（`商品登録へ` 導線を含む）は未保存編集の離脱ガード（UI_TECH_STACK §6.11 `useUnsavedChangesWarning`）が破棄確認を出す。
-- 明細表は商品コード、商品名、部門、現在庫、種別、数量（単位を同じ cell に添える）、原価（同じ cell に「円」を添える）、理由、行削除を表示する。数量と単位を一つの値として読めるよう独立した単位列は置かず、現在庫も単位付き（例: `4 個` / `3 m`、桁区切り付き）にする。長さの商品の現在庫は m で出し、`m` の商品の数量は m で入力する（`cm` の商品は cm の整数。[共通規則](10-common-rules.md) SPEC-UNIT-D3）。
+- 明細表は商品コード、商品名、部門、現在庫、種別、数量（単位を同じ cell に添える）、原価（同じ cell に「円」を添える）、理由、行削除を表示する。数量と単位を一つの値として読めるよう独立した単位列は置かず、現在庫も単位付き（例: `4 個` / `3 m`、桁区切り付き）にする。長さの商品の現在庫は m で出し、`m` の商品の数量は m で入力する（[共通規則](10-common-rules.md) SPEC-UNIT-D3）。
 - 種別は日本語ラベルで `廃棄` / `破損` / `その他` と表示する。wire value の英語は画面に出さない。
 - 理由欄は明細ごとに入力し、空白なら保存前 validation で止める。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
@@ -156,7 +156,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 - UI-05-D3/D4: 種別 enum を日本語表示し、payload では `"disposal"` / `"damage"` / `"other"` を送る。理由空白は保存前に止める。
 - UI-05-D5/D6: 商品追加欄 Enter で検索し、1件なら行追加、複数件なら候補選択、0件なら商品登録導線を出す。
 - UI-05-D7: 同一 `product_code + disposal_type + reason` の再追加で数量が +1 され、種別または理由が違う場合は別行にする。
-- UI-05-D8: 数量/原価/種別/理由 validation と `cm` 単位表示。
+- UI-05-D8: 数量/原価（小数 2 桁の円・1/100 円の送信・BigInt の合計）/種別/理由 validation と長さの商品の m の入力と表示。
 - UI-05-D9: 同内容 retry 時に `idempotency_key` を再利用し、成功/リセット/編集再送後は新規 key になる。
 - UI-05-D10: submitting 中は戻る/リセット/入力/商品追加が disabled になる。
 - UI-05-D11: result で record_id、明細数、ロス原価合計、warning、idempotent replay が読め、保存成功時にページ先頭へスクロールする。

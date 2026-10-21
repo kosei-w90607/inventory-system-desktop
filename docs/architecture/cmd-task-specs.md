@@ -14,14 +14,14 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
-| create_product | ProductCreateRequest（name, department_id, selling_price, cost_price, tax_rate, stock_unit, initial_stock, jan_code?, maker_code?, supplier_id?, pos_stock_sync） | BIZ-01 商品新規登録 | ProductCreateResult（product_code, success） |
+| create_product | ProductCreateRequest（name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, initial_stock, jan_code?, maker_code?, supplier_id?, pos_stock_sync） | BIZ-01 商品新規登録 | ProductCreateResult（product_code, success） |
 | update_product | ProductUpdateRequest（product_code, 変更フィールド群） | BIZ-01 商品修正 | Result（success, warnings[]） |
 | toggle_discontinue | product_code | BIZ-01 廃番切替 | Result（success, new_status） |
 | search_products | SearchQuery（keyword, department_id?, is_discontinued?, sort, page, per_page） | BIZ-01 商品検索 | ProductList（items[], total_count） |
 | get_product | product_code | BIZ-01 商品取得 | Product（全フィールド＋部門名＋取引先名） |
 | preview_import | FileBytes | BIZ-01 一括インポート前半 | ImportPreview（valid_rows[], error_rows[], duplicate_rows[]） |
 | commit_import | ImportCommitRequest（valid_rows[], overwrite_codes[], old_jan_aliases[]〈{product_code, old_jan}、proposed・未実装、D-122〉） | BIZ-01 一括インポート後半 | ImportResult（created, updated, skipped, errors）。D-122: 上書きを選んだ別の行が前の JAN を持つと validation error（field `old_jan_aliases`） |
-| revise_product_price | PriceRevisionInput（product_code, new_selling_price, new_cost_price, assign_supplier_id?） | BIZ-01 行単位価格改定 | PriceRevisionResult（product_code, changed, plu_dirty_set, supplier_assigned） |
+| revise_product_price | PriceRevisionInput（product_code, new_selling_price, new_cost_price_centi, assign_supplier_id?） | BIZ-01 行単位価格改定 | PriceRevisionResult（product_code, changed, plu_dirty_set, supplier_assigned） |
 | create_supplier | name | BIZ-01 取引先（メーカー/ブランド）追加 | Supplier（同名は既存行） |
 | list_price_history | product_code, limit | BIZ-01 価格履歴参照 | PriceHistoryEntry[]（DESC、既定10・上限100） |
 
@@ -56,7 +56,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
-| get_stock_detail | product_code | BIZ-01 在庫詳細 | StockDetail（stock_quantity, selling_price, cost_price, last_receiving_date, last_sale_date） |
+| get_stock_detail | product_code | BIZ-01 在庫詳細 | StockDetail（stock_quantity, selling_price, cost_price_centi, last_receiving_date, last_sale_date） |
 | list_low_stock | LowStockQuery（include_discontinued?） | BIZ-01 在庫少一覧 | LowStockList（items[]） |
 | list_movements | MovementQuery（product_code, date_from?, date_to?, movement_type?） | BIZ-02 在庫変動履歴 | MovementList（items[], total_count） |
 

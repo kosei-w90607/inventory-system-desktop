@@ -44,7 +44,7 @@ AI Quality Workflow を inventory-system に適用するための project-local 
 - Multiple `jan_code` matches resolve by stable ordering, currently `ORDER BY product_code ASC`.
 - `pos_stock_sync` decides whether POS sales import moves stock. Frontend must not infer this from stock unit alone.
 - Product codes are either JAN-derived codes or department-prefix custom codes. Custom codes are alphabetic-prefix plus sequence and must not collide with numeric JAN codes.
-- Fabric stock can use `cm`; display and thresholds must respect `stock_unit`.
+- Fabric (length) stock uses `m` (stored as integer cm); display and thresholds must respect `stock_unit`. `roll`/`cm` were removed at the cost lane rebuild starting point (vB, D-128).
 - PLU export is app-to-register only. The app cannot confirm register-side reflection.
 - `plu_dirty` and `plu_exported_at` track app-side PLU export state.
 - PLU export format is CASIO register tool `.txt` / tab-delimited CP932 according to the current CV17 1.1.1 adapter profile. Real register import/apply confirmation remains a hardware gate.
