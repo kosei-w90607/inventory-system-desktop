@@ -28,6 +28,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs と co
 2. spec-check → plan-draft（2026-10-20、起草役、同じ commit）: 表の唯一の skip。規則は D-125 と DOC_STYLE_GUIDE §1 に在り、本 lane は規則を変えずに既存の引用へ当てるだけなので、design の段で足す設計の出力が無い（下の Design Readiness）。
 3. plan-draft（round 1 の是正）: Plan Review round 1 の是正（Review Response 参照）。
 4. plan-draft（round 2 の是正）: Plan Review round 2 の是正（Review Response 参照）。
+5. plan-draft（round 3 の P3 の一括是正）: Plan Review round 3 の後の disposition（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -57,7 +58,7 @@ Goal Invariant:
 - 設計の正本（`docs/` の設計書・runbook。lane 2b へ送る workflow の 2 file を除く）と code の comment（`src/`・`src-tauri/src/`）を読んだ人が、引用を `rg` で今の箇所へ辿れる。行番号の引用が無く（残すのは library の版を同じ行に書いた観測・変更履歴の行・規則の文の例だけ）、書き換えた symbol・節は、その引用が書かれた時点に指していた箇所と同じ物である。
 - `docs/backlog.md` の行番号の引用は、全部「書いた時点の main の commit」を同じ行に持ち、`git show` でその commit の行を引くと引用の意図の箇所が出る。
 - 書かれた時点の意図を取り戻せない引用は、本 packet の分類表に理由と処置が残り、今の行の中身を見て別の箇所へ付け替えていない。
-- lane 2b が違反 0 の状態から検査を足せる: 2b へ送る workflow の 2 件を除き、正本と comment に残す行は分類表の「残す」の行だけである。
+- lane 2b が違反 0 の状態から検査を足せる: 2b へ送る workflow の 2 件を除き、正本と comment に残す行は分類表の「残す」の行（版を足した library の行の「残す（library の版を足した観測）」を含む）だけである。
 
 ### 失敗定義
 
@@ -98,13 +99,13 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 
 起点の調査（`18db621e`）との差（`18db621e` の tree を今の `P` で数え直した数 → 今の数）: backlog が 124 → 85（lane 1 が閉じた項目を archive へ移した）、正本が 242 → 241（`10-common-rules.md` 43 → 42、`73-ui-stocktake.md` 3 → 2、`DOC_STYLE_GUIDE.md` の規則の例 +1）。`.agents`・`.claude/{rules,commands,agents}`・`README.md`・`.github`・`scripts` の hit は 0（`rg -c -e "$P" .agents .claude/rules .claude/commands .claude/agents README.md .github scripts` が何も出さない）。
 
-引用の数え方: `,N`（`CsvImportRecordDetailPage.tsx:41,140`）と、`L<N>` の後の `・N`・` / L<N>`（`SCREEN_DESIGN L42・62・426`、`SCREEN_DESIGN.md L120-133 / L167-176`）と、拡張子の無い略称の `catalog:588` は `rg -o` の数に入らないが、1 つずつ別の引用として分類表の引用の列と照合の入力に書く（分類表に手で足した 13 個）。`/:N`（`61-ui-receiving.md:30/:73`）は `rg -o` が別の token として数え、これも別の引用。範囲 `N-M` と `:N`〜`:M` は 1 つの引用で、照合の入力の N は `N-M`。分類表の引用の列は書かれた形のまま（`-` の範囲は 1 つの token `:N-M`、`〜` の範囲は両端の 2 つの token）で、AC-S5-5 は両側の数字の多重集合で照らす。
+引用の数え方: `,N`（`CsvImportRecordDetailPage.tsx:41,140`）と、`L<N>` の後の `・N`・` / L<N>`（`SCREEN_DESIGN L42・62・426`、`SCREEN_DESIGN.md L120-133 / L167-176`）と、拡張子の無い略称の `catalog:588` は `rg -o` の数に入らないが、1 つずつ別の引用として分類表の引用の列と照合の入力に書く（分類表に手で足した 14 個）。`/:N`（`61-ui-receiving.md:30/:73`）は `rg -o` が別の token として数え、これも別の引用。範囲 `N-M` と `:N`〜`:M` は 1 つの引用で、照合の入力の N は `N-M`。分類表の引用の列は書かれた形のまま（`-` の範囲は 1 つの token `:N-M`、`〜` の範囲は両端の 2 つの token）で、AC-S5-5 は両側の数字の多重集合で照らす。
 
 ### 書き換えの方法（全段で共通）
 
 最大の危険は、ずれた行番号の今の行を見て別の箇所の symbol に書き換えること。各引用について、書かれた時点の意図を次の手順で取り戻す。手順の 1〜4 の結果（採った版と書き換え先）を分類表の行に書く。
 
-1. 候補を引く: 引用を含む行から、その引用を一意に含む文字列 X を決める。path つきの引用は path から行番号まで（例 `seed_demo.rs:462`）。bare の `:N` と `,N` は、同じ行で前の path から `:N` までが記号（backtick・`・`・`〜`・`/`・`,`）だけで続くならその塊（例 `` lib.rs:118`〜`:120 ``・`CsvImportRecordDetailPage.tsx:41,140`）、間に文を挟むなら `:N` の前の 1 文字（backtick か括弧）と `:N`。`L<N>` の X は path か `SCREEN_DESIGN`・`mockup` から `L<N>` まで（例 `SCREEN_DESIGN.md L100`。path が backtick で閉じていれば、その backtick も含める）、`L<N>` の後の `・N` は同じ塊（例 `SCREEN_DESIGN L42・62`）。`git log --format='%h %p %ad %s' --abbrev=8 --date=short --pickaxe-regex -S'<X の正規表現の記号を \ で逃がした形>([^0-9]|$)' origin/main` の全 hit と、各 hit の親（`%p`。root `902647b8` には親が無い）を候補にし、古い順に並べる（squash merge なので、引用が hit の PR の中の変更の前の行を指すことがあり、親も候補に入れる）。次の 5 つは使わない（どれも分類表の中に誤った版を採る実例がある）:
+1. 候補を引く: 引用を含む行から、その引用を一意に含む文字列 X を決める。X の path は、書かれた path の basename から書く（例 backlog の `src-tauri/src/seed_demo.rs:462` も X は `seed_demo.rs:462`）。path つきの引用は basename から行番号まで。bare の `:N` と `,N` は、同じ行で前の path の basename から `:N` までが記号（backtick・`・`・`〜`・`/`・`,`）だけで続くならその塊（例 `` lib.rs:118`〜`:120 ``・`CsvImportRecordDetailPage.tsx:41,140`）、間に文を挟むなら `:N` の前の 1 文字（backtick か括弧）と `:N`。`L<N>` の X は path の basename か `SCREEN_DESIGN`・`mockup` から `L<N>` まで（例 `SCREEN_DESIGN.md L100`。path が backtick で閉じていれば、その backtick も含める）、`L<N>` の後の `・N` と ` / L<N>` は記号で続く同じ塊（例 `SCREEN_DESIGN L42・62`、`SCREEN_DESIGN.md（在庫照会画面 L120-133 / L167`）。`git log --format='%h %p %ad %s' --abbrev=8 --date=short --pickaxe-regex -S'<X の正規表現の記号を \ で逃がした形>([^0-9]|$)' origin/main` の全 hit と、各 hit の親（`%p`。root `902647b8` には親が無い）を候補にし、古い順に並べる（squash merge なので、引用が hit の PR の中の変更の前の行を指すことがあり、親も候補に入れる）。次の 5 つは使わない（どれも分類表の中に誤った版を採る実例がある）:
    - path で絞る（`-- <doc>`）: backlog への移送・複写の commit を採り、その時点で行がずれている（`MonthlySalesPage.tsx:177` は path を絞ると `bc01698f`〈Plans → backlog の移送〉で、その版の 177 行は `<div className="rounded-md border">`。絞らない候補の `6fc4abac` とその親 `7e0ccf1b` では `<TableHead>部門</TableHead>`）。
    - 最古の 1 つを採る: 別の文書が別の文で同じ file:N を先に書いた commit が最古になる（`StockStatusBadge.tsx:36` の最古の hit `2f8a6f61` は `docs/Plans.md` の別の文で、その版の 36 行は「通常」。引用の「在庫あり」は `f2ef9e52` の版。X に閉じの backtick を付けても最古は `2f8a6f61` のまま。後ろの `([^0-9]|$)` が防ぐのは前方一致〈`lib.rs:118` が `lib.rs:1188-1200` に当たる〉だけ）。
    - 引用の前後の文を含む長い文字列: 同じ行の後の書き換えの commit を採る（`PriceRevisionTable.tsx:104` の長い文字列の最古は `c1c1c5bf` で、その版の 104 行は「最近改定」。引用の「入力中」は `07302b5e`〜`e188366e` の版）。
@@ -118,7 +119,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 5. 書き換える:
    - 正本と code の comment: repo root からの path と symbol（範囲は symbol と中の目印の語）。文書は節の ID か見出し（`SCREEN_DESIGN.md L<N>` の形も同じ）。同じ文書の中の bare の `:N` も節の ID か見出しにする。`docs/screen_mockups.html` への引用は html に節が無いので、文が成り立てば引用を外し、成り立たなければ 6。bare の `:N`・`L<N>` の隣に symbol が既に書いてある引用（例 `parse_item_count`〈`:1289`〉、`run_startup_step` L84）は、採った版でその symbol が行 N を含むことを確かめて行番号だけを外す。引用の近くの時点の句（例 S2-008 の「`b2389b19` 起源」）は、symbol で引き直した後も残す理由があるかを判じ、処置の欄は先頭を「書き換えた」にして判じた結果を括弧の中に書く（例「書き換えた（`b2389b19` 起源の句は残す: 理由）」）。
    - backlog: 「`{sha8}` の時点で `{path}:{N}`」（sha8 は 2 で採った版の先頭 8 桁。親を採ったら親の SHA。`{path}` は repo root からの path〈1・2 で決めた target〉）。target が `docs/archive/**` のときも同じ句を付ける。同じ行の引用が別の版から来るときは、版ごとにこの句を置く（AC-S3-3 が行ごとに照らす）。
-   - 外部 library（`node_modules` の file・vendored の source）: 行番号は残し、同じ行に library の名前と版を書く（例「TanStack Router 1.168.23」）。版は、引用を足した hit（その文書の差分の `+` 行にその引用がある最古の hit）の時点の `package-lock.json` か `Cargo.lock` から、引いている package の版で引く（`@tanstack/router-core` と `@tanstack/react-router` は版が違う。`01-decision-rules.md:389` は 2 つを書き分けている）。DOC_STYLE_GUIDE §1 の「library の版を書いた観測」の形。下の AC の変数 `K` の library の名前の一覧に入る名前で書く。
+   - 外部 library（`node_modules` の file・vendored の source）: 行番号は残し、同じ行に library の名前と版を書く（例「TanStack Router 1.168.23」）。版は、引用を足した hit（その文書の差分の `+` 行にその引用がある最古の hit）の時点の `package-lock.json` か `Cargo.lock` から、引いている package の版で引く（`@tanstack/router-core` と `@tanstack/react-router` は版が違う。`01-decision-rules.md:389` は 2 つを書き分けている）。DOC_STYLE_GUIDE §1 の「library の版を書いた観測」の形。名前は下の AC の変数 `K` の library の名前の一覧の綴りで、backtick で囲まず `名前 版` の形で書く（例 `@tanstack/router-core 1.168.15`・`tauri-plugin-dialog 2.7.1`。`K` はこの並びだけを拾う）。分類表の処置は「残す（library の版を足した観測）」。
    - repo の外の資料: 同じ行に節の ID（例 `Q12 §1`）があれば行番号を外す。
 6. 取り戻せない（候補のどれも 2 で合わない〈root `902647b8` だけが候補で合わない行を含む〉、正本と comment で 3 の symbol・節が今の base に無い、target が決まらない）引用は、書き換えずに分類表の処置を「消えた（理由）」か「曖昧（理由）」とし、S4 で始末する。読んだ候補と行 N の中身は S5 の照合の入力（採った版 `-`）の evidence に出る。
 
@@ -127,7 +128,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 - `docs/backlog.md` の `src-tauri/src/seed_demo.rs:462`（「`sale_auto` の movement」）: 候補は親 `44f1e666` と hit `c1c1c5bf`（PR #176）。古い順に、`git show 44f1e666:src-tauri/src/seed_demo.rs` の 462 行は `sale_auto` の movement の INSERT の文で合う → 採る版は `44f1e666`〈親〉（`c1c1c5bf` の 462 行は冪等性の検査の comment で合わない）。親を候補に入れる理由の実例。
 - `docs/function-design/10-common-rules.md` の `product_service.rs:949`〜`:957`（「`price_range_error`」）: 候補は親 `67870e10` と hit `6cac578c`（PR #158）。`67870e10` の版には `price_range_error` が無く、949 行は別の関数の中で合わない。`git show 6cac578c:src-tauri/src/biz/product_service.rs` の 949 行が `fn price_range_error(`、950〜957 行がその本体で合う → 採る版は `6cac578c`〈hit〉、書き換え先は `src-tauri/src/biz/product_service.rs` の `price_range_error`。今の base では `rg -n 'fn price_range_error' src-tauri/src/biz/product_service.rs` が 965 行に出す（行番号はずれた）。
 
-### S1 正本（86 行、247 引用〈`rg -o` の 241 と手で足した 6〉）
+### S1 正本（86 行、248 引用〈`rg -o` の 241 と手で足した 7〉）
 
 分類表の S1 の行（下の「分類表」）を、上の方法で書き換える。対象の file: `docs/design-system/00-foundations.md`・`01-decision-rules.md`・`02-component-catalog.md`、`docs/function-design/` の 10・22・24・29・31・32・37・45・54・55・56・57・58・66・70・71・73、`docs/msi-distribution-runbook.md`。
 
@@ -160,11 +161,11 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 
 分類表の全行の処置の欄の先頭が「書き換えた」「残す（理由）」「lane 2b へ送る」「消えた（理由）→ 処置」「曖昧（理由）→ 処置」のどれかで、未処置が無いこと（AC-S5-5 は処置を先頭の語で読む）。
 
-全引用の照合の evidence: 分類表の S1〜S3 の行のうち処置が「書き換えた」「消えた」「曖昧」の行の、repo の中の file を target にする引用ごとに、下の「照合の入力」の block に 1 行（`ID 採った版 target N X`。採った版は 2 で採った commit の先頭 8 桁で、取り戻せない引用は `-`。N は行か範囲 `N-M`。X は 1 の文字列で、行の残り全部）を書く。`,N`・`/:N`・`L<N>・N` は 1 つずつ別の行、範囲 `N-M`・`:N`〜`:M` は 1 行。外部 library・repo 外の資料の引用は書かない。AC-S5-5 の loop の出力（引用ごとの候補の一覧と各候補の行 N−3〜M+3）を PR に残す。人手の判断（行 N を含む最も内側の要素・文が名指す語を含むか）は、その出力と採った版の抜き取り（下の Implementation Results の約束）の表で確かめる。
+全引用の照合の evidence: 分類表の S1〜S3 の行のうち処置が「書き換えた」「消えた」「曖昧」の行の、repo の中の file を target にする引用ごとに、下の「照合の入力」の block に 1 行（`ID 採った版 target N W X`。採った版は 2 で採った commit の先頭 8 桁で、取り戻せない引用は `-`。N は行か範囲 `N-M`。W は 2 で書き出した名指す語から採った空白の無い 1 語〈例 `price_range_error`・`在庫あり`〉で、名指す語が無い引用は `-`。X は 1 の文字列で、行の残り全部）を書く。`,N`・`/:N`・`L<N>・N` は 1 つずつ別の行、範囲 `N-M`・`:N`〜`:M` は 1 行。外部 library・repo 外の資料の引用は書かない。AC-S5-5 の loop の出力（引用ごとの候補の一覧と各候補の行 N−3〜M+3）を PR に残す。人手の判断（行 N を含む最も内側の要素・文が名指す語を含むか）は、出力の `CHECK` の付いた塊と採った版の抜き取り（下の Implementation Results の約束）の表で確かめる。`CHECK` は、`*` の版の N〜M に W が無いとき、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在るとき、W が `-` のときに出る。Final Review の reviewer が読むのは `CHECK` の塊と AC-S5-2 の抜き取り。
 
 ### 分類表
 
-型の語: 正本・comment・backlog（上の段）、外部 library、repo 外の資料、変更履歴、規則の例、workflow。処置の語: 「書き換えた」「残す（理由）」「lane 2b へ送る」「消えた（理由）→ 処置」「曖昧（理由）→ 処置」。処置の欄の先頭はこのどれかの語で、書き換えた行の補足（例: 時点の句を残す理由）は「書き換えた（…）」の括弧の中に書く。採った版は方法の 2 で採った commit の先頭 8 桁と、hit か親か（例 `44f1e666`〈親〉）を引用の順に `・` で区切って書き（取り戻せない引用は `-`）、照合の入力の行と同じ版にする（AC-S5-5 が照らす）。書き換え先は symbol・節の名前、backlog は付けた句。引用の列は `rg -o` の順に、書かれた形のまま並べる（`-` の範囲は `:N-M` の 1 つ、`〜` の範囲は両端の 2 つ）。`rg -o` が拾わない `,N`・`L<N>` の後の `・N`・` / L<N>`・`catalog:588` は手で足した（S1-010・S1-019・S1-020・S1-026・S1-027・S1-084・S2-011・S2-018・S3-009・S3-027・S3-029 の 13 個）。S1-079〜S1-086・S2-015〜S2-022 は `P` を 4 形に広げて足した行（起票の後に足したので段の末尾に置く）。場所の行は起点の行番号で、作業中にずれる（場所の path と引用の文字列で引き直す。S3 の行は AC-S3-3 がこの行番号で `docs/backlog.md` の行を読むので、ずれたら今の行に直す）。
+型の語: 正本・comment・backlog（上の段）、外部 library、repo 外の資料、変更履歴、規則の例、workflow。処置の語: 「書き換えた」「残す（理由）」「lane 2b へ送る」「消えた（理由）→ 処置」「曖昧（理由）→ 処置」。処置の欄の先頭はこのどれかの語で、書き換えた行の補足（例: 時点の句を残す理由）は「書き換えた（…）」の括弧の中に書く。採った版は方法の 2 で採った commit の先頭 8 桁と、hit か親か（例 `44f1e666`〈親〉）を引用の順に `・` で区切って書き（取り戻せない引用は `-`）、照合の入力の行と同じ版にする（AC-S5-5 が照らす）。書き換え先は symbol・節の名前、backlog は付けた句。引用の列は `rg -o` の順に、書かれた形のまま並べる（`-` の範囲は `:N-M` の 1 つ、`〜` の範囲は両端の 2 つ）。`rg -o` が拾わない `,N`・`L<N>` の後の `・N`・` / L<N>`・`catalog:588` は手で足した（S1-010・S1-019・S1-020・S1-026・S1-027・S1-084・S2-011・S2-018・S3-009・S3-027・S3-029 の 14 個）。S1-079〜S1-086・S2-015〜S2-022 は `P` を 4 形に広げて足した行（起票の後に足したので段の末尾に置く）。場所の行は起点の行番号。AC-S5-5 はこの行を `origin/main` で読んで X が在ることを確かめ、AC-S3-3 は S3 の行を作業中の `docs/backlog.md` で読む（引用の書き換えでは行は増減しない）。同期で行がずれたら、場所の path と引用の文字列で今の行を引き直して場所の列を直す。
 
 #### S1 の行
 
@@ -188,8 +189,8 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-016 | `docs/design-system/01-decision-rules.md:414` | `RootLayout.tsx:65` | 正本 |  |  | 未処置 |
 | S1-017 | `docs/design-system/01-decision-rules.md:419` | `router-core/dist/esm/router.js:415`・`scroll-restoration.js:118-171` | 外部 library |  |  | 未処置 |
 | S1-018 | `docs/design-system/01-decision-rules.md:420` | `scroll-restoration.js:122` | 外部 library |  |  | 未処置 |
-| S1-019 | `docs/design-system/01-decision-rules.md:421` | `scroll-restoration.js:73`・`:106` | 外部 library |  |  | 未処置 |
-| S1-020 | `docs/design-system/01-decision-rules.md:423` | `router.js:118`・`:146`・`react-router/dist/esm/Match.js:112-125` | 外部 library |  |  | 未処置 |
+| S1-019 | `docs/design-system/01-decision-rules.md:421` | `scroll-restoration.js:73`・`:106`・`:114` | 外部 library |  |  | 未処置 |
+| S1-020 | `docs/design-system/01-decision-rules.md:423` | `router.js:118`・`:146-160`・`react-router/dist/esm/Match.js:112-125` | 外部 library |  |  | 未処置 |
 | S1-021 | `docs/design-system/02-component-catalog.md:53` | `SupplierManagementPage.tsx:35-39` | 正本 |  |  | 未処置 |
 | S1-022 | `docs/design-system/02-component-catalog.md:55` | `ReceivingPage.tsx:295`・`ManualSalePage.tsx:310`・`ReturnExchangePage.tsx:419`・`DisposalPage.tsx:285`・`SupplierManagementPage.tsx:35-39`・`PageHeader.tsx:47-53`・`PageHeader.tsx:31-45` | 正本 |  |  | 未処置 |
 | S1-023 | `docs/design-system/02-component-catalog.md:200` | `MovementTable.tsx:93-99`・`OperationLogsPage.tsx:533`・`MovementTable.tsx:93-99`・`ManualSaleRecordDetailPage.tsx:149`・`MovementTable.tsx:82-91`・`StocktakeRecordDetailPage.tsx:234` | 正本 |  |  | 未処置 |
@@ -255,7 +256,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 | S1-083 | `docs/function-design/56-ui-daily-sales.md:580` | `mockup L313` | 正本 |  |  | 未処置 |
 | S1-084 | `docs/function-design/58-ui-stock-inquiry.md:2` | `SCREEN_DESIGN.md L120-133`・`L167-176` | 正本 |  |  | 未処置 |
 | S1-085 | `docs/function-design/58-ui-stock-inquiry.md:676` | `SCREEN_DESIGN.md L120-133` | 正本 |  |  | 未処置 |
-| S1-086 | `docs/function-design/70-mnt-diagnostic-log.md:258` | `src-tauri/src/lib.rs run_startup_step L84` | 正本 |  |  | 未処置 |
+| S1-086 | `docs/function-design/70-mnt-diagnostic-log.md:258` | `` `src-tauri/src/lib.rs` `run_startup_step` L84 `` | 正本 |  |  | 未処置 |
 
 #### S2 の行
 
@@ -325,7 +326,7 @@ S1〜S3 で処置を「消えた（理由）」「曖昧（理由）」にした
 S5 の全引用の照合の evidence の入力（形は S5。実装の run が埋める）。
 
 ```text 照合の入力
-# ID 採った版 target N X
+# ID 採った版 target N W X
 ```
 
 #### 残す区分（file ごと）
@@ -400,13 +401,13 @@ done
 - AC-S5-2（方法の抜き取り）: Implementation Results に抜き取りの表があり、行は分類表の ID の番号が S1 は 5 の倍数（S1-005〜S1-085 の 17 行）、S2 は 3 の倍数と S2-001（8 行）、S3 は 3 の倍数（S3-003〜S3-030 の 10 行）の計 35 行。処置が残す・lane 2b へ送るの行か、型が外部 library・repo 外の資料を含む行に当たったら、同じ段の抜き取りに入っていない次の ID の行で代える。各行に、候補を引く command（方法の 1）と候補の一覧、採った版〈hit か親〉の `git show {rev}:{path} | sed -n '{範囲}p'` の command、その版の行が属する symbol・節、書き換え先、今の base の `rg -n` の hit がある。reviewer は表から 5 行以上を選び、command を実行して「採った版の行の symbol・節 = 書き換え先」を確かめる。
 - AC-S5-3（触る file の範囲）: `git diff --name-only origin/main...HEAD | rg -v -e '^docs/function-design/' -e '^docs/design-system/0[0-2]-' -e '^docs/msi-distribution-runbook\.md$' -e '^docs/backlog\.md$' -e '^docs/Plans\.md$' -e '^docs/plans/2026-10-20-docs-file-line-rewrite\.md$' -e '^src/' -e '^src-tauri/src/'` が何も出さない（後ろの `rg` の exit 1。AC-S2-3 で bindings を再生成したら `src/lib/bindings.ts` もこの範囲に入る）。`bash scripts/ci/classify-changes.sh | rg -x 'workflow=false'` が 1 行を出す。
 - AC-S5-4（code は comment だけ）: `git diff origin/main...HEAD -- src src-tauri/src | rg '^[-+]' | rg -v '^(\+\+\+|---)' | rg -v '^[-+]\s*(//|/\*|\*|\{/\*)'` が何も出さない（後ろの `rg` の exit 1。bindings を再生成したときは `src/lib/bindings.ts` の行が出るので、その行が doc comment の JSDoc だけであることを読んで確かめる）。
-- AC-S5-5（全引用の照合）: 下の loop を repo root で実行した出力に `NG` で始まる行が無い（`| rg '^NG'` が何も出さない、exit 1）。分類表の行は `#### S1 の行`〜`#### 照合の入力` の間だけから読む。`NG` は次を出す: 照合の入力の行ごとに、target が X の中の path（拡張子つきの名前）で終わらない、候補が無い、採った版が候補〈hit と親〉に無い、分類表に同じ ID の行が無い、その行の採った版の欄〈第 6 列〉に採った版が無い〈採った版が `-` なら欄に `-` が無い〉、その版に target の file が無い。分類表の行ごとに、処置の欄の先頭が「残す」「lane 2b」でなく型が正本・comment・backlog で、引用の列の行番号の多重集合〈`-` の範囲は両端〉と照合の入力のその ID の N の数字の多重集合が違う。`--` で始まる行（外部 library・repo 外の資料を含む行）は数を読んで確かめる。各候補の行は N−3〜M+3 を出す。Writer は出力の全文を PR の comment に残し（大きければ段ごとに分ける）、Implementation Results にはその link だけを書く。reviewer は出力の `==` の塊を全部、「`*` の版で行 N を含む最も内側の要素・文が名指す語を含み、それより古い候補ではそうでない（同じ symbol なら最古が `*`）」で照らし、AC-S5-2 の 35 行で symbol の判断を確かめる。
+- AC-S5-5（全引用の照合）: 下の loop を repo root で実行した出力に `NG` で始まる行が無い（`| rg '^NG'` が何も出さない、exit 1）。分類表の行は `#### S1 の行`〜`#### 照合の入力` の間だけから読む。`NG` は次を出す: 照合の入力の行ごとに、target が X の中の path（拡張子つきの名前）で終わらない、候補が無い、採った版が候補〈hit と親〉に無い、分類表に同じ ID の行が無い、X が分類表の場所の行〈`origin/main` のその file・行〉に無い、その行の採った版の欄〈第 6 列〉に採った版が無い〈採った版が `-` なら欄に `-` が無い〉、その版に target の file が無い。分類表の行ごとに、処置の欄の先頭が「残す」「lane 2b」でなく型が正本・comment・backlog で、引用の列の行番号の多重集合〈`-` の範囲は両端〉と照合の入力のその ID の N の数字の多重集合が違う。`--` で始まる行（外部 library・repo 外の資料を含む行）は数を読んで確かめる。各候補の行は N−3〜M+3 を出す。`CHECK <ID>` は `NG` でなく、人が読む塊を絞る印: `*` の版の N〜M に W が無い、`*` より古い候補〈採った版が `-` なら全候補〉の N〜M に W が在る、W が `-`、のどれかで出る。Writer は出力の全文を PR の comment に残し（大きければ段ごとに分ける）、Implementation Results にはその link だけを書く。Final Review の reviewer は `CHECK` の付いた塊を全部、「`*` の版で行 N を含む最も内側の要素・文が名指す語を含み、それより古い候補ではそうでない（同じ symbol なら最古が `*`）」で照らし、AC-S5-2 の 35 行で symbol の判断を確かめる。場所の行は `origin/main` の行なので、同期で `origin/main` が動いたら場所の列を今の行に直してから回す。
 
 ```sh
 F=docs/plans/2026-10-20-docs-file-line-rewrite.md
 rows(){ sed -n '/^#### S1 の行$/,/^#### 照合の入力$/p' "$F" | rg '^\| S[1-3]-[0-9]{3} \|'; }
 inp(){ sed -n '/^```text 照合の入力$/,/^```$/p' "$F" | rg -v '^(```|#)'; }
-inp | while read -r id rev target n x; do
+inp | while read -r id rev target n w x; do
   re="$(printf '%s' "$x" | sed 's/[][\\.*^$+?(){}|]/\\&/g')([^0-9]|\$)"
   a=${n%-*}; b=${n#*-}
   xp=$(printf '%s' "$x" | rg -o '[A-Za-z0-9_./-]*\.[A-Za-z0-9]+' | head -n 1)
@@ -414,7 +415,7 @@ inp | while read -r id rev target n x; do
   hits=$(git log --format=%H --pickaxe-regex -S"$re" origin/main)
   cands=$(printf '%s\n' "$hits" | rg . | while read -r h; do git rev-parse "$h" "$h^@"; done | sort -u)
   full=$(git rev-parse -q --verify "$rev^{commit}")
-  echo "== $id X=$x target=$target:$n rev=$rev"
+  echo "== $id X=$x W=$w target=$target:$n rev=$rev"
   [ -n "$hits" ] || echo "NG $id: 候補が無い"
   printf '%s\n' "$cands" | rg . | xargs -r git show -s --format='%ct %H %ad' --date=short | sort -n | while read -r t c d; do
     printf '%s\n' "$hits" | rg -qx "$c" && k=hit || k=親
@@ -422,8 +423,16 @@ inp | while read -r id rev target n x; do
     echo "  $m $(printf %.8s "$c") $k $d"
     git show "$c:$target" 2>/dev/null | sed -n "$((a>3?a-3:1)),$((b+3))p" | sed "s/^/      | /"
   done
+  ck=$(printf '%s\n' "$cands" | rg . | xargs -r git show -s --format='%ct %H' | sort -n | while read -r t c; do
+    git show "$c:$target" 2>/dev/null | sed -n "${a},${b}p" | grep -qF -- "$w" && h=1 || h=0
+    if [ "$c" = "$full" ]; then [ "$h" = 1 ] || echo x; break; fi
+    [ "$h" = 1 ] && echo x
+  done)
+  { [ "$w" = - ] || [ -n "$ck" ]; } && echo "CHECK $id"
   row=$(rows | rg "^\| $id \|")
   [ -n "$row" ] || { echo "NG $id: 分類表に無い"; continue; }
+  loc=$(printf '%s' "$row" | awk -F'|' '{print $3}' | rg -o '[^` ]+:[0-9]+')
+  git show "origin/main:${loc%:*}" 2>/dev/null | sed -n "${loc##*:}p" | grep -qF -- "$x" || echo "NG $id: X が場所 $loc の行に無い"
   if [ "$rev" = - ]; then
     printf '%s' "$row" | awk -F'|' '{print $6}' | rg -q -- '-' || echo "NG $id: 分類表の採った版の欄に - が無い"
     continue
@@ -444,7 +453,7 @@ rows | while IFS='|' read -r z id loc cites type rv dest act z2; do
 done
 ```
 
-baseline（起点 `6a25f63f`、2026-10-21 に測り直した。base の tree に本 packet と `docs/Plans.md` の 1 句〈引用を含まない〉を足した branch の working tree で、上の変数を定義して各 command を逐語で実行した。`rg` の数は `docs/plans/**` を除くので base と同じ。`wc -l` は数を見るため、AC-S1-2 の `sort` は順を揃えるために付けた。`# exit` は pipe の最後の command の終了値。AC1〜AC3・AC-S2-3・AC-S2-4 は PR の Validation の欄。AC-S5-1 の 132 は S1〜S3 の表の 139 行から起票の時点で処置を決めた 7 行を除いた未処置の行。bash と zsh で出力は同じ〈`rg` の出力の順を除く〉）:
+baseline（起点 `6a25f63f`、2026-10-21 に測り直した。base の tree に本 packet と `docs/Plans.md` の 1 句〈引用を含まない〉を足した branch の working tree で、上の変数を定義して各 command を逐語で実行した。`rg` の数は `docs/plans/**` を除くので base と同じ。`wc -l` は数を見るため、AC-S1-2 の `sort` は順を揃えるために付けた。`# exit` は pipe の最後の command の終了値。AC1〜AC3・AC-S2-3・AC-S2-4 は PR の Validation の欄。AC-S5-5 の loop は上の形〈X の場所の行の確認と `CHECK` を含む〉で測った。AC-S5-1 の 132 は S1〜S3 の表の 139 行から起票の時点で処置を決めた 7 行を除いた未処置の行。bash と zsh で出力は同じ〈`rg` の出力の順を除く〉）:
 
 ```text
 $ git rev-parse --short origin/main
@@ -554,9 +563,13 @@ $ { AC-S5-5 の loop; } | rg -c '^NG'
 $ { AC-S5-5 の loop; } | rg -c '^--'
 10
 # exit=0
+
+$ { AC-S5-5 の loop; } | rg -c '^CHECK'
+(出力なし)
+# exit=1
 ```
 
-完了の時点の期待: AC-S1-1・AC-S2-1・AC-S3-1 は 0 行（後ろの `rg` の exit 1）、AC-S1-2 は 11 行、AC-S1-3 は起点と同じ 2 行、AC-S1-4 は起点と同じ 1 行、AC-S2-2 は 3 行、AC-S3-2・AC-S3-3 は出力なし、AC-S5-1 は 0 行、AC-S5-5 は `NG` の行なし（起票の時点の 122 は、型が正本・comment・backlog で未処置の行〈S1 72・S2 19・S3 31〉の引用と照合の入力の食い違い。`--` の 10 は S1-014・S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011）。
+完了の時点の期待: AC-S1-1・AC-S2-1・AC-S3-1 は 0 行（後ろの `rg` の exit 1）、AC-S1-2 は 11 行、AC-S1-3 は起点と同じ 2 行、AC-S1-4 は起点と同じ 1 行、AC-S2-2 は 3 行、AC-S3-2・AC-S3-3 は出力なし、AC-S5-1 は 0 行、AC-S5-5 は `NG` の行なし（起票の時点の 122 は、型が正本・comment・backlog で未処置の行〈S1 72・S2 19・S3 31〉の引用と照合の入力の食い違い。`--` の 10 は S1-014・S1-017〜S1-020・S1-041・S1-079・S2-009〜S2-011。完了の時点の `--` は S1-014 だけで、library の行は処置の先頭が「残す」なので数の検査から外れる）。`CHECK` は起票の時点で 0（照合の入力が空）で、完了の時点の数は Final Review の reviewer が読む塊の数として PR に書く。
 
 ## Design Readiness
 
@@ -600,6 +613,7 @@ Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件
 ## Review Focus
 
 - 方法: 候補（path で絞らない `--pickaxe-regex -S` の全 hit と親）を古い順に歩き、行 N を含む最も内側の要素・文が引用の文の名指す語を含む最古の版を採る照合で、書かれた時点の意図を取り戻せるか。照合で合わない引用を「消えた・曖昧」に落とす条件が緩すぎないか（今の行を見て付け替える逃げ道が無いか）。
+- 意味の照合: Final Review の reviewer は AC-S5-5 の出力の `CHECK` の付いた塊と AC-S5-2 の抜き取りを読む。`CHECK` の無い塊を読まないことが、W の決め方（S5）で許されるか。
 - AC: AC-S1-1・AC-S2-1・AC-S3-1 の `K` の除外が、残す行の形だけを外し、書き換え漏れを隠さないか（AC-S1-2・AC-S2-2 の行の数と ID、AC-S1-4・AC-S3-3 で照らす）。`P` の 4 つの形が拾い過ぎ（時刻・比・CSS・format・Level の `L3`・Matrix の行の label）も拾い漏らしもしないか。
 - 分類表: 起票の時点で処置を決めた 7 行と、型を決めた行（外部 library・repo 外の資料）の当否。
 - Q1（Plan Review で答える）: workflow の 2 件（`docs/ci.md:29`・`docs/agent-guidance/merge-evidence.md:160`）を lane 2b へ送るか、本 lane で直して Final Review Minimum を 2 にするか。既定: 2b へ送る（発注の Final Review Minimum 1 と、workflow の file を触ると 2 を求める規則〈DEV_WORKFLOW Workflow State・helper〉を両立する。2b は元から Double Audit）。
@@ -643,7 +657,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 | # | 出所 | 重大度 | 指摘 | 直した所 |
 |---|---|---|---|---|
-| F1 | Opus | P2 | `P` の拡張子の一覧が `index.d.mts:23`（`01-decision-rules.md:362`）と `.gitignore:38`（`src-tauri/src/lib.rs:244`）を拾わず、`catalog:588` が S3-029 の引用の列に無い。自己点検は `P` を D-125 の 3 つの形と同じ範囲と書く | AC の `P` を 4 つの形（拡張子つきの `path:N`・bare の `:N`・`L<N>`・`#L<N>`）に置き換え、`K` に `@radix-ui/[a-z-]+` を足した。分類表に S1-079〜S1-086・S2-015〜S2-022 を足し、既存の行の引用の列に 16 個（`,N` 9・bare の `:N` 6・`catalog:588`）を足した。拡張子の一覧と、それに付けた `.rb:N` の例外を消し、Design Readiness の自己点検を 4 つの形の主張に置き換えた。Scope の数え直しの表・S1〜S3 の見出し・規模・baseline を新しい `P` で測り直した |
+| F1 | Opus | P2 | `P` の拡張子の一覧が `index.d.mts:23`（`01-decision-rules.md:362`）と `.gitignore:38`（`src-tauri/src/lib.rs:244`）を拾わず、`catalog:588` が S3-029 の引用の列に無い。自己点検は `P` を D-125 の 3 つの形と同じ範囲と書く | AC の `P` を 4 つの形（拡張子つきの `path:N`・bare の `:N`・`L<N>`・`#L<N>`）に置き換え、`K` に `@radix-ui/[a-z-]+` を足した。分類表に S1-079〜S1-086・S2-015〜S2-022 を足し、既存の行の引用の列に 17 個（`,N` 10・bare の `:N` 6・`catalog:588`）を足した。拡張子の一覧と、それに付けた `.rb:N` の例外を消し、Design Readiness の自己点検を 4 つの形の主張に置き換えた。Scope の数え直しの表・S1〜S3 の見出し・規模・baseline を新しい `P` で測り直した |
 | F2 | Opus | P2 | `,N` の 2 つ目以降（`CsvImportRecordDetailPage.tsx:41,140` ほか）が引用の列・照合の入力・方法に無い | Scope に「引用の数え方」の段落を置いた: `,N`・`/:N`・`L<N>` の後の `・N` は別の引用、範囲 `N-M`・`:N`〜`:M` は 1 つの引用（照合の入力の N は `N-M`）。分類表の引用の列を書かれた形のまま（`-` の範囲は `:N-M`）にし、S5 の照合の入力の書き方に 1 行ずつと書いた。手順 2 に範囲と `,N` の文（`41,140` の例） |
 | F3 | Opus | P2 | 処置の列に「残す」の語があるだけで AC-S5-5 の数の検査を飛ばす | loop の skip を先頭一致（`残す*`・`'lane 2b'*`）にした。手順 5 の時点の句は処置の先頭を「書き換えた」にして括弧の中に理由。分類表の凡例と S5 に処置を先頭の語で読むと書いた。S4 の backlog の「当時の行として残す」は、backlog を句の形 1 つにしたので消した（下の「案から変えた点」） |
 | F4 | Opus | P3 | AC-S3-1 と `K` の除外は行の単位で、1 行に句が 1 つあれば同じ行の別の版の引用が漏れても通る | AC-S3-3 を、場所の行の `docs/backlog.md` の句の SHA の集合と照合の入力のその ID の版の集合を照らす loop に置き換えた |
@@ -660,8 +674,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 案から変えた点（現物で確かめた結果）:
 
 - loop の X の path の取り出し: 案の `${x%%:*}`・`${x%' L'*}` は、`（:147` から `（`、`` `src/components/ui/dialog.tsx` L62 `` から閉じの backtick つきの path を取り、正しい入力にも `NG` を出す（bash で確かめた）。X の中の最初の拡張子つきの名前を取る形にした。
-- `-` の範囲の引用の列: 案の数の照合は引用の列の `N-M` を両端で数えるが、分類表の列は `rg -o` の token で `-M` を落としていた。既存の行で `-M` を落とした 46 個に書き足した（足さないと正しい入力でも `NG`）。
-- 手で足す引用: 案の一覧（§5.3）は 15 個で案の本文の「17」と合わず、`docs/backlog.md:261` の `Pagination.tsx:52-53,99` の `,99` が無い。S3-027 に足した。bare の 6 個（S1-059・S3-021・S3-031）は新しい `P` の `rg -o` が拾うので、手で足したのは `,N` 9・`catalog:588`・`L<N>` の後の 3 個の 13 個。
+- `-` の範囲の引用の列: 案の数の照合は引用の列の `N-M` を両端で数えるが、分類表の列は `rg -o` の token で `-M` を落としていた。既存の行で `-M` を落とした 47 個（S1-020 の手で足した `:146-160` を含む）に書き足した（足さないと正しい入力でも `NG`）。
+- 手で足す引用: 案の一覧（§5.3）は 15 個で案の本文の「17」と合わず、`docs/backlog.md:261` の `Pagination.tsx:52-53,99` の `,99` と、S1-019 の `scroll-restoration.js:73,106,114` の `,114` が無い。S3-027 に足した。bare の 6 個（S1-059・S3-021・S3-031）は新しい `P` の `rg -o` が拾うので、手で足したのは `,N` 10・`catalog:588`・`L<N>` の後の 3 個の 14 個。
 - S1 の残す・lane 2b の行: 案の「8 行」は 7 行（起票の 6 行と S1-080）。
 - 範囲の決め: 案の §5.2 は `〜:N` を別の引用の例に挙げつつ `:N`〜`:M` を 1 つの引用とし、食い違う。`〜` は範囲の記号として 1 つの引用にした（相談役 A1。数の照合は両端の数字なのでどちらでも同じ結果）。
 - backlog の形: AC-S3-3 の「句の SHA の集合 = 照合の入力の版の集合」は、backlog の引用を symbol で引き直す道を残すと（照合の入力に版はあるが句が無い）成り立たない。backlog は句の形だけにし、Goal の「または symbol・節で引き直してある」、手順 5 の「symbol・節で引き直してもよい」、S4 の「当時の行として残す」を消した（D-127。手順 3・4 は正本と comment だけ）。
@@ -672,3 +686,21 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 注入の再現（packet の copy、bash と zsh で出力は同じ）: 正しい入力 T0 は `NG` なし。T1 は `NG S1-037: 引用の行番号 […] / 照合の入力 [949 ×7]`、T6 は `NG S3-001: target … が X の path … で終わらない`、T10 は `NG S2-014: 分類表の採った版の欄に ff655efd が無い`、T3b は `NG S2-004`。round 2 の packet の loop は、この 4 つのどれにも `NG` を出さなかった。
 
 置き換えた旧い記述（拡張子の一覧の `P` と `.rb:N` の例外、旧い loop と `*残す*`・`*'lane 2b'*` の skip、旧い AC-S5-1 の式、AC-S3-3 の「読んで確かめる」、引用の列の「範囲の終わりと `,` の 2 つ目以降は省いている」、backlog の symbol の道）は、この節の指摘の引用の他に残していない。
+
+### Plan Review round 3（監査 `8b322d78`、天井）
+
+- Codex（発注 469、Sol）: approve、P3 1。
+- Claude 側（fresh Opus 5.5、fork でない）: approve、P3 5。
+- 裁定（disposition）: 天井の後なので round は足さず、Coordinator が全部の P3 を同型の一括是正として受理した。新しい契約は P3-2 の `CHECK` だけ。
+
+| # | 出所 | 指摘 | 直した所 |
+|---|---|---|---|
+| P3-1 | Opus #1 | AC-S5-5 の loop が、照合の入力の X が分類表の場所の行に在るかを確かめない（S1-028 の X を `` `:36 `` と書くと候補が広がり、`NG` が出ない） | loop に、`origin/main` の場所の file・行に X が在るかの確認を足し、無ければ `NG`。AC-S5-5 の `NG` の説明と分類表の凡例（場所の行の読み方）を合わせた |
+| P3-2 | Opus #2 | 全部の候補の塊（`1,675` 個の実測）を reviewer 1 人が読む前提が重い | 照合の入力に名指す語 W の列を足し（`ID 採った版 target N W X`）、`*` の版の N〜M に W が無い・より古い候補に W が在る・W が `-` のときだけ `CHECK <ID>` を出す。S5・AC-S5-5・Review Focus に、Final Review の reviewer は `CHECK` の塊と AC-S5-2 の抜き取りを読むと書いた |
+| P3-3 | Opus #3 | `K` は「名前 版」の並びだけを拾うのに、手本の行は名前を backtick で囲む | 方法の 5 の library の項に、`K` の綴りで backtick で囲まず `名前 版` の形で書くと書いた |
+| P3-4 | Opus #4 | library の行の処置の先頭が「書き換えた」か「残す」か決まっていない | 方法の 5 に処置を「残す（library の版を足した観測）」と書き、Goal の 4 つめの文を揃えた |
+| P3-5 | Opus #5 | X の path が full path か basename か曖昧。` / L<N>` の X が無い | 手順 1 に「X の path は書かれた path の basename から」と書き、` / L<N>` を記号で続く塊に入れた |
+| P3-6 | Codex #1 | S1-019 の `,114`、S1-020 の `146-160`、S1-086 の途中の backtick が引用の列に無い | 3 行の引用の列を現物どおりに転記し、S1 を 248 引用・手で足した 7 に直した |
+
+- round 2 の数の訂正: round 2 の是正で「手で足した 13 個」「既存の行で `-M` を落とした 46 個」と書いたのは、S1-019 の `,114` と S1-020 の `:146-160` の `-160` を数え漏らしていた。正しくは 14 個と 47 個で、Scope・分類表の凡例・S1 の見出し・round 2 の節の数を直した。
+- 測り直し（bash と zsh で出力は同じ）: baseline の値は変わらず、AC-S5-5 は `NG` 122・`--` 10・`CHECK` 0。注入（packet の copy）では、S1-028 の X を `` `:36 `` にした入力で `NG S1-028: X が場所 docs/design-system/02-component-catalog.md:891 の行に無い` が出て、正しい X では出なかった。S3-001 の正しい入力は `NG`・`CHECK` なし、候補の中の誤った版（`c1c1c5bf`）と W `-` は `CHECK S3-001`。
