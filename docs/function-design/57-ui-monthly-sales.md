@@ -161,7 +161,7 @@ SummaryCardsBar + ModeTabs + DepartmentTable | ProductRankingTable + ExportBar
 3. `compute-comparison` → `Map<key, { prevAmount, diff, ratio | null, isComparable: boolean }>`（key 突合 + `prev_amount <= 0` 比較不可ガード）
 4. `compute-composition` → `{ key, label, count_points, length_cm, amount, ratio }[]`（部門別構成比、`grand_total === 0` ガード）
 5. `pick-top-ranking` → `MonthlySaleItem[]` 上位 10（BIZ-05 row_number 順、同順位なし前提）
-6. `sort-items` → 列ソート + null 末尾配置（4 列 + `item.ranking === 1` バッジ追従）。**sort 適用先: `ranking` + `composition` 双方** (raw `items` 非適用)。理由は (a) `ranking` 順位列の `ranking` field 保持で badge 追従 (G-3、sort-items.test.ts:79-90 で検証済)、(b) `composition` 部門別 sort 軸は ranking と独立 (利用者は順位 sort と部門集計 sort を別操作)。UI-09a (フラット → グルーピング) vs UI-09b (multi-derived) の派生木差異に対応する非対称設計
+6. `sort-items` → 列ソート + null 末尾配置（4 列 + `item.ranking === 1` バッジ追従）。**sort 適用先: `ranking` + `composition` 双方** (raw `items` 非適用)。理由は (a) `ranking` 順位列の `ranking` field 保持で badge 追従 (G-3、`src/features/monthly-sales/lib/sort-items.test.ts` の「G-3: ranking field 残存確認」で検証済)、(b) `composition` 部門別 sort 軸は ranking と独立 (利用者は順位 sort と部門集計 sort を別操作)。UI-09a (フラット → グルーピング) vs UI-09b (multi-derived) の派生木差異に対応する非対称設計
 
 ### 57.4 URL state 設計（zod 4 直接渡し）
 

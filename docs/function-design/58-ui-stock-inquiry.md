@@ -610,7 +610,7 @@ function StockInquiryPage() {
 
 #### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）
 
-- **決定**: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`DisposalPage.tsx:134` と同型、新しい state を作らない）。
+- **決定**: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`src/features/disposal/DisposalPage.tsx` の `DisposalPage` の `returnTo` と同型、新しい state を作らない）。
 - **Why**: 監査 NAV-1 のとおり、`/stock?selected=<code>` だけでは受け側の検索前ガード（§58.4）が `selected` を解除し、利用者が検索と選択をやり直す。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。
 - **Rejected**: 受け側の検索前ガードを撤去（bookmark / F5 の detail 空振り防止〈Codex Round 1 P2-2〉を壊す）/ `/stock?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）。
 
