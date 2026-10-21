@@ -230,7 +230,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,

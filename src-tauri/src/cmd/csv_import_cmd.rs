@@ -326,7 +326,7 @@ mod tests {
         let now = "2026-03-21T08:00:00";
         conn.execute(
             "INSERT INTO products (product_code, jan_code, name, department_id, selling_price,
-             cost_price, tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty,
+             cost_price_centi, tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty,
              pos_stock_sync, created_at, updated_at)
              VALUES ('TEST-001', '4912345678901', '商品A', 1, 300, 100, '10', 10, 'pcs', 0, 1, 1, ?1, ?1)",
             [now],
