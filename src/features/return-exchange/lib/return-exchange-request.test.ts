@@ -113,7 +113,7 @@ describe("return exchange request builder (UI-03 / REQ-202)", () => {
 });
 
 describe("return exchange request の単位と上限（REQ-202 / UI-03-D12 / SPEC-UNIT-D3、X1）", () => {
-  const build = (stockUnit: "m" | "cm" | "pcs", quantity: string) => {
+  const build = (stockUnit: "m" | "pcs", quantity: string) => {
     const base = createValues().rows[0];
     return buildReturnExchangeRequest(
       createValues({ rows: [{ ...base, stockUnit, quantity }] }),
@@ -136,6 +136,8 @@ describe("return exchange request の単位と上限（REQ-202 / UI-03-D12 / SPE
     expect(build("m", "1.234").errors.rows?.["RT-001:in"]).toBe(
       "数量は0.01以上で、小数は2桁までの m で入力してください",
     );
-    expect(build("cm", "0").errors.rows?.["RT-001:in"]).toBe("数量は1以上の整数で入力してください");
+    expect(build("pcs", "0").errors.rows?.["RT-001:in"]).toBe(
+      "数量は1以上の整数で入力してください",
+    );
   });
 });

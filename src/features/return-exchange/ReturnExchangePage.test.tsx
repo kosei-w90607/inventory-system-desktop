@@ -808,7 +808,7 @@ it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
 
 it.each([
   ["pcs", "1,234 個", "個"],
-  ["cm", "12.34 m", "cm"],
+  ["m", "12.34 m", "m"],
 ] as const)(
   "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
@@ -866,7 +866,6 @@ it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義�
 // REQ-202 / UI-03-D12 / SPEC-UNIT-D3: 数量欄の属性は m の商品の行だけ小数 2 桁の入力にする
 it.each([
   ["m", { inputmode: "decimal", min: "0.01", step: "0.01" }],
-  ["cm", { inputmode: "numeric", min: "1", step: null }],
   ["pcs", { inputmode: "numeric", min: "1", step: null }],
 ] as const)("UI-03-D12: %s の商品の数量欄の属性", async (unit, expected) => {
   const user = userEvent.setup();

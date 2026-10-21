@@ -699,7 +699,7 @@ it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
 
 it.each([
   ["pcs", "1,234 個", "個"],
-  ["cm", "12.34 m", "cm"],
+  ["m", "12.34 m", "m"],
 ] as const)(
   "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
@@ -752,7 +752,7 @@ it.each([
 
 // REQ-203 / UI-04-D18 / SPEC-UNIT-D7（X11）: 数量の初期値は基準数量ぶん、長さの商品は未編集の間だけ金額が数量に追従する
 describe("手動販売の数量と金額（UI-04-D18）", () => {
-  async function addProduct(unit: "m" | "cm" | "pcs") {
+  async function addProduct(unit: "m" | "pcs") {
     const user = userEvent.setup();
     mockSearchProducts.mockResolvedValue({
       status: "ok",
@@ -785,7 +785,6 @@ describe("手動販売の数量と金額（UI-04-D18）", () => {
 
   it.each([
     ["m", 1, { inputmode: "decimal", min: "0.01", step: "0.01" }],
-    ["cm", 100, { inputmode: "numeric", min: "1", step: null }],
     ["pcs", 1, { inputmode: "numeric", min: "1", step: null }],
   ] as const)(
     "UI-04-D18: %s の商品を追加すると数量 %s・金額 700 で、数量欄の属性は単位で決まる",
