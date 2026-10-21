@@ -775,7 +775,7 @@ describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {
       expect(field).not.toHaveClass("bg-background");
     }
 
-    // registerOptionClass のラジオ選択肢ラベル（:147）は対象外、bg-background のまま不変。
+    // registerOptionClass のラジオ選択肢ラベルは対象外、bg-background のまま不変。
     const registerLabel = screen.getByLabelText("レジ未処理").closest("label");
     expect(registerLabel).not.toBeNull();
     expect(registerLabel).toHaveClass("bg-background");

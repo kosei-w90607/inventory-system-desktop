@@ -241,7 +241,7 @@ fn show_pre_window_fatal(message: &str) {
 ///
 /// - debug build: `run()` の先頭から呼ばれて毎起動時に最新化
 /// - release build: 呼ばれない（bindings.ts は開発時のみ必要）
-/// - `.gitignore:38` で vendor-in に切替済（旧: gitignore 対象 / 現: PR に含めて push）
+/// - `.gitignore` の `# src/lib/bindings.ts` の行で vendor-in に切替済（旧: gitignore 対象 / 現: PR に含めて push）
 ///
 /// 現時点で specta 適用済み:
 /// - CMD-01: create_product / update_product / toggle_discontinue / search_products / list_departments / list_suppliers / get_product / preview_import / commit_import

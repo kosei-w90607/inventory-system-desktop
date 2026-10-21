@@ -121,7 +121,7 @@ beforeEach(() => {
 describe("UI-13 REQ-904 在庫整合性検証", () => {
   it("test_integrity_page_req904_initial_idle_only_run_button", () => {
     renderPage();
-    // Scope 9 UI 表示磨き batch: doc 正本（75 doc 見出し / SCREEN_DESIGN L42・62・426）に
+    // Scope 9 UI 表示磨き batch: doc 正本（75 doc 見出し / SCREEN_DESIGN の「年に数回 / 初回のみ」・「全体構成（4エリア）」・「実装フェーズ分類」）に
     // 合わせて PageHeader title を「在庫整合性検証」へ統一（サイドバー表記「整合性検証」は不変）。
     expect(screen.getByRole("heading", { name: "在庫整合性検証" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "整合性チェック実行" })).toBeEnabled();
