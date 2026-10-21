@@ -238,17 +238,13 @@ fn check_limits(conn: &Connection, version: i64) -> Result<(), DbError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::product_repo::ProductStockUnit;
 
     #[test]
     fn test_v8_req903_check_codes_match_enum() {
-        // REQ-903 / MNT-03-D13 / SPEC-UNIT-D1: v8 の CHECK の code の並びは enum の全 variant と同じ
-        let codes: Vec<String> = ProductStockUnit::ALL
-            .iter()
-            .map(|unit| format!("'{}'", unit.as_str()))
-            .collect();
-        let check = format!("CHECK(stock_unit IN ({}))", codes.join(","));
-        assert!(REBUILD_PRODUCTS_SQL.contains(&check), "{check}");
+        // REQ-903 / MNT-03-D13 / SPEC-UNIT-D1: v8 の CHECK は v8 の時点の 12 個の code（履歴）。
+        // vB の後の enum との一致は schema_v10 の test が持つ（D-128）
+        let check = "CHECK(stock_unit IN ('pcs','sheet','hon','bag','box','roll','kumi','set','ball','cho','m','cm'))";
+        assert!(REBUILD_PRODUCTS_SQL.contains(check), "{check}");
     }
 
     #[test]
@@ -259,7 +255,8 @@ mod tests {
         assert_eq!(MAX_STOCK_QUANTITY, constants::MAX_STOCK_QUANTITY);
         assert_eq!(MAX_MOVEMENT_QUANTITY, 2 * constants::MAX_STOCK_QUANTITY);
         assert_eq!(MAX_SELLING_PRICE, constants::MAX_SELLING_PRICE);
-        assert_eq!(MAX_COST_PRICE, constants::MAX_COST_PRICE);
+        // v8 の円の上限 999999 と今の上限 999999.99 円は円の桁で同じ（共通規則「掛ける lane」）
+        assert_eq!(MAX_COST_PRICE * 100 + 99, constants::MAX_COST_PRICE_CENTI);
         assert_eq!(MAX_SAFE_INTEGER, constants::MAX_SAFE_INTEGER);
     }
 }

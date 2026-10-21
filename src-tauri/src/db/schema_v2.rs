@@ -369,13 +369,13 @@ mod tests {
         let db_path = dir.path().join("test.db");
         let conn = init_database(db_path.to_str().unwrap()).unwrap();
 
-        // init_database は最新の v8 まで適用する
+        // init_database は最新の版まで適用する
         let max_version: i64 = conn
             .query_row("SELECT MAX(version) FROM schema_versions", [], |row| {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(max_version, 9);
+        assert_eq!(max_version, 10);
 
         // 4テーブルに idempotency_key カラムが存在する
         for table in &[
@@ -448,8 +448,8 @@ mod tests {
         )
         .unwrap();
 
-        // v2 適用（migrate() を呼ぶ）
-        super::super::migration::migrate(&conn).unwrap();
+        // v2 適用。products に行があるので vB（MNT-03-D14）の直前の版まで（Matrix T1 (b)）
+        super::super::migration::migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap();
 
         // バックフィル確認
         let key: String = conn
@@ -583,7 +583,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v, 9);
+        assert_eq!(v, 10);
         drop(conn);
 
         // 2回目
@@ -593,12 +593,12 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v, 9, "バージョンは変わらない");
+        assert_eq!(v, 10, "バージョンは変わらない");
 
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 9, "v1+v2+v3+v4+v5+v6+v7+v8+v9の9レコードのみ");
+        assert_eq!(count, 10, "v1+v2+v3+v4+v5+v6+v7+v8+v9+v10の10レコードのみ");
     }
 
     /// foreign_keys=ON 復元テスト（成功経路）

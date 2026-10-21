@@ -389,6 +389,17 @@ mod tests {
         .unwrap();
     }
 
+    /// 最新の版（vB の後）の DB に商品を入れる（原価の列は `cost_price_centi`。Matrix T2）
+    fn seed_product_latest(conn: &Connection, code: &str, stock: i64) {
+        conn.execute(
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi,
+                                   stock_quantity, stock_unit, created_at, updated_at)
+             VALUES (?1, '合成の商品', 1, 100, 50, ?2, 'pcs', '2026-03-10T08:00:00', '2026-03-10T08:00:00')",
+            params![code, stock],
+        )
+        .unwrap();
+    }
+
     fn seed_movement(
         conn: &Connection,
         code: &str,
@@ -457,7 +468,7 @@ mod tests {
         // REQ-903 / MNT-03-D17 手順 4〜7 / SPEC-STK-CNT-D1・D9 / Matrix M1
         let dir = tempfile::tempdir().unwrap();
         let conn = crate::db::init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(version(&conn), (9, 9));
+        assert_eq!(version(&conn), (10, 10));
         let columns = |table: &str| -> Vec<Vec<Value>> {
             dump(
                 &conn,
@@ -623,7 +634,7 @@ mod tests {
             .unwrap();
         assert_eq!(sequence_before, removed);
 
-        migration::migrate(&conn).unwrap();
+        migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap(); // products に行（Matrix T1 (b)）
 
         assert_eq!(version(&conn), (9, 9));
         let rows_after = dump(&conn, "SELECT * FROM inventory_movements ORDER BY id");
@@ -838,7 +849,7 @@ mod tests {
                 None,
                 "2026-04-01T00:00:00",
             );
-            migration::migrate(&conn).unwrap();
+            migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap(); // products に行（Matrix T1 (b)）
             assert_eq!(version(&conn), (9, 9), "{edge}");
         }
     }
@@ -860,7 +871,7 @@ mod tests {
         )
         .unwrap();
 
-        migration::migrate(&conn).unwrap();
+        migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap(); // products に行（Matrix T1 (b)）
 
         let stocks = dump(
             &conn,
@@ -938,7 +949,7 @@ mod tests {
         let (_dir, conn) = setup_v8_db();
         seed_product(&conn, "VL-B", 3);
         seed_movement(&conn, "VL-B", "receiving", 3, None, "2026-04-01T00:00:00");
-        migration::migrate(&conn).unwrap();
+        migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap(); // products に行（Matrix T1 (b)）
         let logs: i64 = conn
             .query_row("SELECT COUNT(*) FROM operation_logs", [], |row| row.get(0))
             .unwrap();
@@ -950,7 +961,7 @@ mod tests {
         // REQ-205 / SPEC-STK-CNT-D9（stock_counts の CHECK・FK）/ Matrix M7
         let dir = tempfile::tempdir().unwrap();
         let conn = crate::db::init_database(dir.path().join("t.db").to_str().unwrap()).unwrap();
-        seed_product(&conn, "VL-1", 0);
+        seed_product_latest(&conn, "VL-1", 0);
         let insert = |code: &str,
                       value: i64,
                       kind: &str,
@@ -987,7 +998,7 @@ mod tests {
         // REQ-903 / SPEC-STK-CNT-D9（写しの列の CHECK）/ Y3 / Contract Probe P1 / Matrix M8
         let dir = tempfile::tempdir().unwrap();
         let conn = crate::db::init_database(dir.path().join("t.db").to_str().unwrap()).unwrap();
-        seed_product(&conn, "VL-1", 0);
+        seed_product_latest(&conn, "VL-1", 0);
         let set = |recheck: i64, low: Option<i64>, high: Option<i64>| {
             conn.execute(
                 "UPDATE products SET stock_recheck = ?1, stock_range_low = ?2, stock_range_high = ?3
@@ -1004,7 +1015,7 @@ mod tests {
         assert!(set(1, Some(5), Some(5)).is_ok());
         assert!(set(0, None, None).is_ok());
         // 既定の INSERT（列を書かない）は 0・NULL・NULL
-        seed_product(&conn, "VL-2", 0);
+        seed_product_latest(&conn, "VL-2", 0);
         let row = dump(
             &conn,
             "SELECT stock_recheck, stock_range_low, stock_range_high FROM products WHERE product_code = 'VL-2'",
@@ -1029,7 +1040,7 @@ mod tests {
         assert!(conn.is_autocommit());
 
         // 失敗を外せば同じ DB で当たる
-        migration::migrate(&conn).unwrap();
+        migrate_up_to(&conn, crate::db::VB_VERSION - 1).unwrap(); // products に行（Matrix T1 (b)）
         assert_eq!(version(&conn), (9, 9));
     }
 
