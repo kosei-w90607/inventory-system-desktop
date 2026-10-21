@@ -14,7 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS } from "@/components/patterns/ListShell";
-import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
+import {
+  formatCostYen,
+  formatStockDisplay,
+} from "@/features/stock-inquiry/lib/format-stock-display";
 import type { ProductWithRelations } from "@/lib/bindings";
 import { CircleCheck, CircleMinus, Clock3 } from "lucide-react";
 
@@ -73,7 +76,7 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
               {yenFormatter.format(item.selling_price)}
             </TableCell>
             <TableCell className="text-right tabular-nums">
-              {yenFormatter.format(item.cost_price)}
+              {formatCostYen(item.cost_price_centi)}
             </TableCell>
             <TableCell className="text-right tabular-nums">
               {formatStockDisplay(item.stock_quantity, item.stock_unit)}

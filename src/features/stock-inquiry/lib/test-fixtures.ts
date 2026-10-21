@@ -16,7 +16,7 @@ export function makeMockProductWithRelations(
     department_id: 1,
     supplier_id: null,
     selling_price: 500,
-    cost_price: 300,
+    cost_price_centi: 30000,
     tax_rate: "10",
     maker_code: null,
     stock_quantity: 10,

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ITEM_QUANTITY_FIELD,
-  MAX_COST_PRICE,
+  MAX_COST_PRICE_CENTI,
   MAX_ITEM_QUANTITY,
   MAX_SELLING_PRICE,
   MAX_STOCK_QUANTITY,
@@ -16,14 +16,17 @@ import {
   compareQuantityPair,
   divideRoundHalfUp,
   entryQuantityStep,
+  formatCostInput,
   formatQuantityInput,
   isLengthUnit,
+  parseCostInput,
   parsePriceInput,
   parseQuantityInput,
   priceBasisQuantity,
   quantityInputAttributes,
   saleAmountYen,
   sumQuantityInputs,
+  unitCostFromPack,
   type QuantityField,
 } from "./unit-quantity";
 
@@ -44,17 +47,16 @@ describe("上限の定数と単位の種類（REQ-201 / SPEC-UNIT-D1・D11）", 
     expect(MAX_ITEM_QUANTITY).toBe(9999999);
     expect(MAX_STOCK_QUANTITY).toBe(999999999);
     expect(MAX_SELLING_PRICE).toBe(999999);
-    expect(MAX_COST_PRICE).toBe(999999);
+    expect(MAX_COST_PRICE_CENTI).toBe(99999999);
   });
 
-  it("REQ-201: 価格の基準数量は個数の 10 単位が 1、m・cm が 100", () => {
+  it("REQ-201: 価格の基準数量は個数の 9 単位が 1、m が 100", () => {
     for (const unit of [
       "pcs",
       "sheet",
       "hon",
       "bag",
       "box",
-      "roll",
       "kumi",
       "set",
       "ball",
@@ -64,14 +66,11 @@ describe("上限の定数と単位の種類（REQ-201 / SPEC-UNIT-D1・D11）", 
       expect(isLengthUnit(unit)).toBe(false);
     }
     expect(priceBasisQuantity("m")).toBe(100);
-    expect(priceBasisQuantity("cm")).toBe(100);
     expect(isLengthUnit("m")).toBe(true);
-    expect(isLengthUnit("cm")).toBe(true);
   });
 
-  it("REQ-201: 入庫・返品・廃棄の追加と再追加の量は m が 1 m、cm と個数は 1", () => {
+  it("REQ-201: 入庫・返品・廃棄の追加と再追加の量は m が 1 m、個数は 1", () => {
     expect(entryQuantityStep("m")).toBe(100);
-    expect(entryQuantityStep("cm")).toBe(1);
     expect(entryQuantityStep("ball")).toBe(1);
   });
 });
@@ -144,7 +143,7 @@ describe("parseQuantityInput（REQ-201 / UI-04-D18 / SPEC-UNIT-D3 の m の入�
     });
   });
 
-  it.each(["pcs", "cm", "ball"] as const)(
+  it.each(["pcs", "ball"] as const)(
     "REQ-201: %s の数量欄は今の整数の規則のままで、同じ上限を掛ける（X1）",
     (unit) => {
       expect(parseQuantityInput("9999999", unit, ITEM_QUANTITY_FIELD)).toEqual({
@@ -176,23 +175,20 @@ describe("入力の行の数量の加算（REQ-201 / SPEC-UNIT-D3）", () => {
     expect(formatQuantityInput(200, "m")).toBe("2");
     expect(formatQuantityInput(5, "m")).toBe("0.05");
     expect(formatQuantityInput(123456, "m")).toBe("1234.56");
-    expect(formatQuantityInput(130, "cm")).toBe("130");
     expect(formatQuantityInput(3, "pcs")).toBe("3");
   });
 
-  it("REQ-201: 再追加は m が 1.3 → 2.3、1.27 → 2.27、個数が 3 → 4、cm が 130 → 131", () => {
+  it("REQ-201: 再追加は m が 1.3 → 2.3、1.27 → 2.27、個数が 3 → 4", () => {
     expect(addToQuantityInput("1.3", "m", 100)).toBe("2.3");
     expect(addToQuantityInput("1.27", "m", 100)).toBe("2.27");
     expect(addToQuantityInput("3", "pcs", 1)).toBe("4");
-    expect(addToQuantityInput("130", "cm", 1)).toBe("131");
-    expect(addToQuantityInput("130", "cm", 100)).toBe("230");
   });
 
   it("REQ-201: 規則に合わない文字列は null（呼ぶ側が fallback を当てる）", () => {
     expect(addToQuantityInput("abc", "m", 100)).toBeNull();
     expect(addToQuantityInput("1.3", "pcs", 1)).toBeNull();
     expect(addToQuantityInput("0", "m", 100)).toBeNull();
-    expect(addToQuantityInput("", "cm", 1)).toBeNull();
+    expect(addToQuantityInput("", "m", 100)).toBeNull();
   });
 
   it("REQ-204: 行の統合は浮動小数で足さない（0.1 + 0.2 → 0.3）", () => {
@@ -209,7 +205,6 @@ describe("入力の行の数量の加算（REQ-201 / SPEC-UNIT-D3）", () => {
       min: "0.01",
       step: "0.01",
     });
-    expect(quantityInputAttributes("cm")).toEqual({ inputMode: "numeric", min: "1" });
     expect(quantityInputAttributes("pcs")).toEqual({ inputMode: "numeric", min: "1" });
   });
 });
@@ -236,13 +231,13 @@ describe("金額の twin と再集計（REQ-203 / UI-04-D18 / SPEC-UNIT-D7・D9�
     expect(divideRoundHalfUp(1 * 100, 201)).toBe(0);
   });
 
-  it("REQ-102: 価格の欄は 0 以上の整数で、上限超えを形式の error と区別する（X5・X6）", () => {
+  it("REQ-102: 売価の欄は 0 以上の整数で、上限超えを形式の error と区別する（X5）", () => {
     expect(parsePriceInput("999999", MAX_SELLING_PRICE)).toBe(999999);
     expect(parsePriceInput(" 0 ", MAX_SELLING_PRICE)).toBe(0);
     expect(parsePriceInput("1000000", MAX_SELLING_PRICE)).toBe("too_large");
-    expect(parsePriceInput("-1", MAX_COST_PRICE)).toBeNull();
-    expect(parsePriceInput("1.5", MAX_COST_PRICE)).toBeNull();
-    expect(parsePriceInput("", MAX_COST_PRICE)).toBeNull();
+    expect(parsePriceInput("-1", MAX_SELLING_PRICE)).toBeNull();
+    expect(parsePriceInput("1.5", MAX_SELLING_PRICE)).toBeNull();
+    expect(parsePriceInput("", MAX_SELLING_PRICE)).toBeNull();
   });
 
   it("REQ-501: 再集計の和が安全な整数を外れたら null（X9）", () => {
@@ -263,5 +258,78 @@ describe("金額の twin と再集計（REQ-203 / UI-04-D18 / SPEC-UNIT-D7・D9�
       { count_points: 3, length_cm: 0 },
       { count_points: 5, length_cm: 250 },
     ]);
+  });
+});
+
+describe("原価の入力・初期値・補助（REQ-101 / SPEC-UNIT-D5 / UI-01b-D24）", () => {
+  // 期待は 10 の SPEC-UNIT-D5 と D-119 の Matrix の golden から写した
+  it.each([
+    ["83.33", 8333],
+    ["1000", 100000],
+    ["0", 0],
+    ["0.00", 0],
+    ["0.29", 29],
+    ["1.15", 115],
+    ["4.35", 435],
+    ["999999.99", 99999999],
+    [" 83.33 ", 8333],
+  ])("Matrix C10: 原価の欄 %j は %s（1/100 円。浮動小数を通さない）", (text, expected) => {
+    expect(parseCostInput(text)).toBe(expected);
+  });
+
+  it("Matrix C10: 上限越えは too_large、形の誤りは null", () => {
+    expect(parseCostInput("1000000")).toBe("too_large");
+    expect(parseCostInput("99999999999999999999")).toBe("too_large");
+    for (const text of ["83.333", "1e3", "-1", "+5", ".5", "5.", ""]) {
+      expect(parseCostInput(text)).toBeNull();
+    }
+  });
+
+  it.each([
+    [100000, "1000"],
+    [8333, "83.33"],
+    [5, "0.05"],
+    [10, "0.10"],
+    [0, "0"],
+  ])("Matrix C11・C12: 原価 %s の入力の欄の初期値は %j で、解析すると元に戻る", (centi, text) => {
+    expect(formatCostInput(centi)).toBe(text);
+    expect(parseCostInput(formatCostInput(centi))).toBe(centi);
+  });
+
+  it("Matrix C12: 上限の値も往復で戻る", () => {
+    expect(formatCostInput(99999999)).toBe("999999.99");
+    expect(parseCostInput(formatCostInput(99999999))).toBe(99999999);
+  });
+
+  it.each([
+    ["1000", "12", 8333],
+    ["0.29", "2", 15],
+    ["1", "3", 33],
+    ["0.05", "2", 3],
+    ["0.04", "3", 1],
+    ["0.01", "3", 0],
+    ["999999.99", "1", 99999999],
+  ])(
+    "Matrix C13: 袋の値段 %j ÷ 入り数 %j は %s（1/100 円未満を四捨五入）",
+    (price, count, centi) => {
+      expect(unitCostFromPack(price, count)).toEqual({ value: centi, error: null });
+    },
+  );
+
+  it("Matrix C13: 入り数と袋の値段の誤りは補助の欄の文", () => {
+    for (const count of ["0", "1.5", "", "10000000"]) {
+      expect(unitCostFromPack("1000", count)).toEqual({
+        value: null,
+        error: "入り数は1以上の整数で入力してください",
+      });
+    }
+    expect(unitCostFromPack("83.333", "2")).toEqual({
+      value: null,
+      error: "原価は0以上で、小数は2桁までで入力してください",
+    });
+    expect(unitCostFromPack("1000000", "2")).toEqual({
+      value: null,
+      error: "原価が大きすぎます",
+    });
   });
 });

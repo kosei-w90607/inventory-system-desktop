@@ -1,5 +1,10 @@
 import type { ProductWithRelations } from "@/lib/bindings";
-import { addToQuantityInput, entryQuantityStep, sumQuantityInputs } from "@/lib/unit-quantity";
+import {
+  addToQuantityInput,
+  entryQuantityStep,
+  formatCostInput,
+  sumQuantityInputs,
+} from "@/lib/unit-quantity";
 import type { DisposalRow } from "../types";
 
 function makeDisposalKey(productCode: string, disposalType: string, reason: string): string {
@@ -35,10 +40,10 @@ export function productToDisposalRow(product: ProductWithRelations): DisposalRow
     departmentName: product.department_name,
     stockUnit: product.stock_unit,
     currentStockQuantity: product.stock_quantity,
-    defaultCostPrice: product.cost_price,
+    defaultCostPrice: product.cost_price_centi,
     disposalType: "damage",
     quantity: "1",
-    costPrice: String(product.cost_price),
+    costPrice: formatCostInput(product.cost_price_centi),
     reason,
   };
 }

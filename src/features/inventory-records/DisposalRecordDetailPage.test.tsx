@@ -39,7 +39,7 @@ function makeDetail(overrides: Partial<DisposalRecordDetail> = {}): DisposalReco
         stock_unit: "pcs",
         disposal_type: "damage",
         quantity: 2,
-        cost_price: 120,
+        cost_price_centi: 12000,
         reason: "袋破れ",
         line_loss_cost_centi: "24000",
       },
@@ -51,7 +51,7 @@ function makeDetail(overrides: Partial<DisposalRecordDetail> = {}): DisposalReco
         stock_unit: "pcs",
         disposal_type: "disposal",
         quantity: 3,
-        cost_price: 80,
+        cost_price_centi: 8000,
         reason: "期限切れ",
         line_loss_cost_centi: "24000",
       },
@@ -143,7 +143,7 @@ describe("DisposalRecordDetailPage (REQ-204 / REQ-206)", () => {
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "12.34 m"],
+  ["m", "12.34 m"],
 ] as const)("⑮ SC19: 廃棄詳細の %s を単位付き表示する", async (unit, expected) => {
   const detail = makeDetail();
   detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];
@@ -165,7 +165,7 @@ it("REQ-204: m の商品の廃棄は 0.5 m・166.50 円、合計 ¥167、関連�
       product_code: "DP-M",
       stock_unit: "m",
       quantity: 50,
-      cost_price: 333,
+      cost_price_centi: 33300,
       line_loss_cost_centi: "16650",
     },
   ];

@@ -1,5 +1,5 @@
 import type { ProductWithRelations } from "@/lib/bindings";
-import { addToQuantityInput, entryQuantityStep } from "@/lib/unit-quantity";
+import { addToQuantityInput, entryQuantityStep, formatCostInput } from "@/lib/unit-quantity";
 import type { ReceivingRow } from "../types";
 
 // 再追加は在庫の数量の整数で足す（`m` は +1 m）。規則に合わない文字列は初期値（SPEC-UNIT-D3）
@@ -13,7 +13,7 @@ export function productToReceivingRow(product: ProductWithRelations): ReceivingR
     productName: product.name,
     stockUnit: product.stock_unit,
     quantity: "1",
-    costPrice: String(product.cost_price),
+    costPrice: formatCostInput(product.cost_price_centi),
   };
 }
 

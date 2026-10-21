@@ -10,7 +10,7 @@ const importRow: ImportRow = {
   name: "はさみ",
   department_id: 1,
   selling_price: 500,
-  cost_price: 300,
+  cost_price_centi: 300,
   tax_rate: "10",
   stock_unit: null,
   initial_stock: null,

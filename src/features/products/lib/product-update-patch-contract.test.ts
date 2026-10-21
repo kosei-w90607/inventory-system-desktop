@@ -25,7 +25,7 @@ const ORDINARY_FIELDS = [
   "name",
   "department_id",
   "selling_price",
-  "cost_price",
+  "cost_price_centi",
   "tax_rate",
   "pos_stock_sync",
   "plu_target",

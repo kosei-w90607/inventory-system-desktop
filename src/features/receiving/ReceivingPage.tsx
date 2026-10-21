@@ -596,8 +596,9 @@ export function ReceivingPage() {
                     <TableCell>
                       <Input
                         type="number"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         min="0"
+                        step="0.01"
                         value={row.costPrice}
                         disabled={isFormLocked}
                         aria-label={`${row.productCode} の原価`}

@@ -31,11 +31,12 @@ import {
 // Traceability: REQ-201 REQ-202 REQ-203 REQ-204
 
 // 数量の欄の parse は `@/lib/unit-quantity` の `parseQuantityInput` へ移った（SPEC-UNIT-D3、X1）。
-// ここで数えるのは、数量の欄以外（原価・販売金額）に残る `parseRequiredSafeInteger` の呼出し。
+// ここで数えるのは、数量の欄以外（販売金額）に残る `parseRequiredSafeInteger` の呼出し。
+// 原価の欄は `parseCostInput`（小数 2 桁までの円 → 1/100 円。SPEC-UNIT-D5）に移った。
 const REQUEST_MODULES = [
   {
     repoPath: "src/features/receiving/lib/receiving-request.ts",
-    integerCallCount: 1,
+    integerCallCount: 0,
   },
   {
     repoPath: "src/features/manual-sale/lib/manual-sale-request.ts",
@@ -43,7 +44,7 @@ const REQUEST_MODULES = [
   },
   {
     repoPath: "src/features/disposal/lib/disposal-request.ts",
-    integerCallCount: 2,
+    integerCallCount: 0,
   },
   {
     repoPath: "src/features/return-exchange/lib/return-exchange-request.ts",
@@ -136,7 +137,7 @@ describe("request builder shared primitives", () => {
       "receiving-key",
     );
     expect(receiving.request?.items).toEqual([
-      { product_code: "RC-001", quantity: 1, cost_price: 0 },
+      { product_code: "RC-001", quantity: 1, cost_price_centi: 0 },
     ]);
 
     const manualSale = buildManualSaleRequest(
@@ -189,7 +190,7 @@ describe("request builder shared primitives", () => {
         product_code: "DP-001",
         disposal_type: "damage",
         quantity: 1,
-        cost_price: 0,
+        cost_price_centi: 0,
         reason: "破損",
       },
     ]);
@@ -237,7 +238,7 @@ describe("request builder shared primitives", () => {
       "receiving-key",
     );
     expect(receivingBelowMin.errors.rows?.["RC-001"]).toBe(
-      "数量は1以上の整数で入力してください / 原価は0以上の整数で入力してください",
+      "数量は1以上の整数で入力してください / 原価は0以上で、小数は2桁までで入力してください",
     );
 
     const manualSaleBelowMin = buildManualSaleRequest(
@@ -288,7 +289,7 @@ describe("request builder shared primitives", () => {
       "disposal-key",
     );
     expect(disposalBelowMin.errors.rows?.["row-1"]).toBe(
-      "数量は1以上の整数で入力してください / 原価は0以上の整数で入力してください",
+      "数量は1以上の整数で入力してください / 原価は0以上で、小数は2桁までで入力してください",
     );
 
     const returnBelowMin = buildReturnExchangeRequest(

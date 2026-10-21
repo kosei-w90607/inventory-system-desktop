@@ -12,7 +12,7 @@ import type { StockDetail } from "@/lib/bindings";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatStockDisplay } from "../lib/format-stock-display";
+import { formatCostYen, formatStockDisplay } from "../lib/format-stock-display";
 import { formatLastDate } from "../lib/format-last-date";
 
 export interface StockDetailContentProps {
@@ -88,7 +88,7 @@ export function StockDetailContent({ query }: StockDetailContentProps) {
               label="売価"
               value={priceFormatter.format(query.data.product.selling_price)}
             />
-            <DetailRow label="原価" value={priceFormatter.format(query.data.product.cost_price)} />
+            <DetailRow label="原価" value={formatCostYen(query.data.product.cost_price_centi)} />
             <DetailRow label="最終入庫日" value={formatLastDate(query.data.last_receiving_date)} />
             <DetailRow label="最終販売日" value={formatLastDate(query.data.last_sale_date)} />
           </div>
