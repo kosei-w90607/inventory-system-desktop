@@ -1,6 +1,6 @@
 # Test Design Matrix: 原価の lane（C）— 原価の 1/100 円と巻・cm を外す起点の migration（vB）
 
-対象 packet: [2026-10-21-cost-lane-c](../2026-10-21-cost-lane-c.md)。基準版は `6a25f63f`（main）。oracle は設計正本（[共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1・D5・D6・D10、[22](../../function-design/22-mnt-migration.md) §16、[51](../../function-design/51-ui-product-form.md) UI-01b-D22・D24、[77](../../function-design/77-ui-bulk-price-revision.md) の新原価〈案〉）の例と規則から写し、実装の定数から写さない。
+対象 packet: [2026-10-21-cost-lane-c](../2026-10-21-cost-lane-c.md)。基準版は `6a25f63f`（main）。oracle は設計正本（[共通規則](../../../function-design/10-common-rules.md) SPEC-UNIT-D1・D5・D6・D10、[22](../../../function-design/22-mnt-migration.md) §16、[51](../../../function-design/51-ui-product-form.md) UI-01b-D22・D24、[77](../../../function-design/77-ui-bulk-price-revision.md) の新原価〈案〉）の例と規則から写し、実装の定数から写さない。
 
 ## Risk
 
