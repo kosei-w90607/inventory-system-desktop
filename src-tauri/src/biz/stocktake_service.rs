@@ -503,11 +503,11 @@ pub(crate) fn legacy_complete_stocktake(
                 BizError::NotFound(format!("商品が見つかりません: {}", item.product_code))
             })?;
 
-        let valuation_cost_price = product.product.cost_price;
-        stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price)?;
+        let valuation_cost_price_centi = product.product.cost_price_centi;
+        stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price_centi)?;
 
         line_centis.push(cost_line_centi(
-            i128::from(valuation_cost_price) * 100,
+            i128::from(valuation_cost_price_centi),
             item.actual_count,
             price_basis_quantity(product.product.stock_unit),
             &item.product_code,
@@ -624,7 +624,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity,
@@ -685,7 +685,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity,
@@ -940,7 +940,7 @@ mod tests {
         product_code: &str,
         is_discontinued: bool,
         stock_quantity: i64,
-        cost_price: i64,
+        cost_price_centi: i64,
     ) {
         let product = NewProduct {
             product_code: product_code.to_string(),
@@ -949,7 +949,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price,
+            cost_price_centi,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity,
@@ -978,9 +978,9 @@ mod tests {
         product_code: &str,
         stock_unit: &str,
         stock_quantity: i64,
-        cost_price: i64,
+        cost_price_centi: i64,
     ) {
-        seed_product_custom(conn, product_code, false, stock_quantity, cost_price);
+        seed_product_custom(conn, product_code, false, stock_quantity, cost_price_centi);
         conn.execute(
             "UPDATE products SET stock_unit = ?1 WHERE product_code = ?2",
             rusqlite::params![stock_unit, product_code],
@@ -1241,8 +1241,8 @@ mod tests {
         // REQ-205: 棚卸し（確定 — 複数商品のtotal_cost計算）
         // BIZ-06 §20.5: 複数商品のtotal_cost計算
         let (_dir, mut conn) = setup_test_db();
-        seed_product_custom(&conn, "TC-001", false, 10, 500);
-        seed_product_custom(&conn, "TC-002", false, 5, 1000);
+        seed_product_custom(&conn, "TC-001", false, 10, 50_000);
+        seed_product_custom(&conn, "TC-002", false, 5, 100_000);
         let st_id = start_and_count_all(&mut conn, &[("TC-001", 3), ("TC-002", 2)]);
 
         let req = CompleteStocktakeRequest {
@@ -1250,7 +1250,7 @@ mod tests {
             force_fill: false,
         };
         let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
-        // 500*3 + 1000*2 = 3500
+        // 500 円*3 + 1000 円*2 = 3500（原価は 1/100 円の 50000・100000）
         assert_eq!(result.total_cost, 3500);
     }
 
@@ -1346,10 +1346,11 @@ mod tests {
     #[test]
     fn test_complete_req205_total_cost_overflow() {
         // REQ-205: 棚卸し（確定 — total_costオーバーフロー → ValidationFailed）
-        // BIZ-06 §20.5: オーバーフロー → ValidationFailed
+        // BIZ-06 §20.5: オーバーフロー → ValidationFailed。原価は 1/100 円として読み、
+        // 円の合計が i64 を越える条件を数量の × 100 で保つ（Matrix T2b）
         let (_dir, mut conn) = setup_test_db();
         seed_product_custom(&conn, "OV-001", false, 10, i64::MAX / 2 + 1);
-        let st_id = start_and_count_all(&mut conn, &[("OV-001", 2)]);
+        let st_id = start_and_count_all(&mut conn, &[("OV-001", 200)]);
 
         let req = CompleteStocktakeRequest {
             stocktake_id: st_id,
@@ -1382,8 +1383,8 @@ mod tests {
     fn test_complete_req205_total_cost_length_product_per_meter() {
         // REQ-205 / SPEC-STK-VAL-D1・D4 / §20.5 ステップ 5c-d・8: 長さ商品の原価は 1 m あたり
         let (_dir, mut conn) = setup_test_db();
-        seed_product_with_unit(&conn, "LEN-001", "cm", 200, 385);
-        seed_product_with_unit(&conn, "PCS-001", "pcs", 5, 300);
+        seed_product_with_unit(&conn, "LEN-001", "m", 200, 38_500);
+        seed_product_with_unit(&conn, "PCS-001", "pcs", 5, 30_000);
         let st_id = start_and_count_all(&mut conn, &[("LEN-001", 153), ("PCS-001", 5)]);
 
         let req = CompleteStocktakeRequest {
@@ -1391,7 +1392,7 @@ mod tests {
             force_fill: false,
         };
         let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
-        // 385 × 1.53 = 589.05、300 × 5 = 1500、合計 2089.05 → 2089
+        // 385 円 × 1.53 = 589.05、300 円 × 5 = 1500、合計 2089.05 → 2089
         assert_eq!(result.total_cost, 2089);
         assert_eq!(stocktake_header(&conn, st_id).1, Some(2089));
 
@@ -1408,15 +1409,15 @@ mod tests {
 
         let valuation: i64 = conn
             .query_row(
-                "SELECT valuation_cost_price FROM stocktake_items
+                "SELECT valuation_cost_price_centi FROM stocktake_items
                  WHERE stocktake_id = ?1 AND product_code = 'LEN-001'",
                 rusqlite::params![st_id],
                 |row| row.get(0),
             )
             .unwrap();
         assert_eq!(
-            valuation, 385,
-            "valuation_cost_price は基準数量あたりの原価のまま"
+            valuation, 38_500,
+            "valuation_cost_price_centi は基準数量あたりの原価のまま"
         );
     }
 
@@ -1425,7 +1426,7 @@ mod tests {
         // REQ-205 / SPEC-STK-VAL-D4: 保存値の総額は円未満を四捨五入（0.50 円 → 1、0.49 円 → 0）
         for (actual_count, expected) in [(50, 1), (49, 0)] {
             let (_dir, mut conn) = setup_test_db();
-            seed_product_with_unit(&conn, "LEN-001", "cm", 100, 1);
+            seed_product_with_unit(&conn, "LEN-001", "m", 100, 100); // 1 m あたり 1 円
             let st_id = start_and_count_all(&mut conn, &[("LEN-001", actual_count)]);
 
             let req = CompleteStocktakeRequest {
@@ -1446,7 +1447,7 @@ mod tests {
         seed_product_with_unit(&conn, "NG-002", "pcs", 10, 300);
         let st_id = start_and_count_all(&mut conn, &[("NG-001", 7), ("NG-002", 7)]);
         conn.execute(
-            "UPDATE products SET cost_price = -1 WHERE product_code = 'NG-002'",
+            "UPDATE products SET cost_price_centi = -1 WHERE product_code = 'NG-002'",
             [],
         )
         .unwrap();
@@ -1469,12 +1470,15 @@ mod tests {
         let valued: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM stocktake_items
-                 WHERE stocktake_id = ?1 AND valuation_cost_price IS NOT NULL",
+                 WHERE stocktake_id = ?1 AND valuation_cost_price_centi IS NOT NULL",
                 rusqlite::params![st_id],
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(valued, 0, "明細の valuation_cost_price は NULL のまま");
+        assert_eq!(
+            valued, 0,
+            "明細の valuation_cost_price_centi は NULL のまま"
+        );
         let stocks: Vec<i64> = conn
             .prepare("SELECT stock_quantity FROM products ORDER BY product_code")
             .unwrap()
@@ -1487,11 +1491,12 @@ mod tests {
 
     #[test]
     fn test_complete_req205_total_cost_yen_overflow() {
-        // REQ-205 / SPEC-STK-VAL-D5: i128 の合計は収まるが円額が i64 を越える → ValidationFailed
+        // REQ-205 / SPEC-STK-VAL-D5: i128 の合計は収まるが円額が i64 を越える → ValidationFailed。
+        // 原価は 1/100 円として読み、数量を × 100 にして条件を保つ（Matrix T2b）
         let (_dir, mut conn) = setup_test_db();
         seed_product_with_unit(&conn, "YO-001", "pcs", 1, i64::MAX / 2 + 1);
         seed_product_with_unit(&conn, "YO-002", "pcs", 1, i64::MAX / 2 + 1);
-        let st_id = start_and_count_all(&mut conn, &[("YO-001", 1), ("YO-002", 1)]);
+        let st_id = start_and_count_all(&mut conn, &[("YO-001", 100), ("YO-002", 100)]);
 
         let req = CompleteStocktakeRequest {
             stocktake_id: st_id,

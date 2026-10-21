@@ -116,7 +116,7 @@ impl World {
             Operation::Receive => {
                 let request = serde_json::from_value::<inventory_service::ReceivingCreateRequest>(json!({
                     "idempotency_key":key, "supplier_id":null, "receiving_date":DATE, "note":null,
-                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price":50}]
+                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price_centi":50}]
                 })).unwrap();
                 let result =
                     inventory_service::create_receiving(self.conn_mut(), request.clone()).unwrap();
@@ -141,7 +141,7 @@ impl World {
                 let request = serde_json::from_value(json!({
                     "idempotency_key":key, "disposal_date":DATE,
                     "items":[{"product_code":CODES[0],"disposal_type":"disposal",
-                        "quantity":1,"cost_price":50,"reason":"合成検証"}]
+                        "quantity":1,"cost_price_centi":50,"reason":"合成検証"}]
                 }))
                 .unwrap();
                 assert!(

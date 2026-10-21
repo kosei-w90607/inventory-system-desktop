@@ -701,9 +701,9 @@ pub(crate) fn complete_stocktake(
         safe(Some(stock_after))?;
         // 差 0 の商品も版を進めて古い context を失効させる
         bump_stock_revision(&tx, &item.product_code)?;
-        update_stocktake_item_valuation(&tx, item.id, product.cost_price)?;
+        update_stocktake_item_valuation(&tx, item.id, product.cost_price_centi)?;
         line_centis.push(cost_line_centi(
-            i128::from(product.cost_price) * 100,
+            i128::from(product.cost_price_centi),
             stock_after.max(0),
             price_basis_quantity(product.stock_unit),
             &item.product_code,

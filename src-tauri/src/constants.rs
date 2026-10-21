@@ -61,8 +61,8 @@ pub const MAX_STOCK_QUANTITY: i64 = 999_999_999;
 /// 売価の上限（円）
 pub const MAX_SELLING_PRICE: i64 = 999_999;
 
-/// 原価の上限（円）
-pub const MAX_COST_PRICE: i64 = 999_999;
+/// 原価の上限（1/100 円。999999.99 円。SPEC-UNIT-D5）
+pub const MAX_COST_PRICE_CENTI: i64 = 99_999_999;
 
 /// JavaScript の number で正確に運べる整数の絶対値の上限（2^53 - 1）
 pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;

@@ -730,10 +730,10 @@ mod tests {
 
     #[test]
     fn test_create_manual_sale_req203_stock_warning_formats_length_in_meters() {
-        // REQ-203 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m・cm）の在庫を m の形で入れる
+        // REQ-203 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m）の在庫を m の形で入れる
         let (_dir, mut conn) = setup_test_db();
         create_test_product_with_unit(&conn, "W-M", 100, "m");
-        create_test_product_with_unit(&conn, "W-CM", 100, "cm");
+        create_test_product_with_unit(&conn, "W-CM", 100, "m");
         create_test_product_with_unit(&conn, "W-PCS", 1, "pcs");
         let result = create_manual_sale(
             &mut conn,

@@ -26,7 +26,7 @@ mod tests {
         ReceivingItemInput {
             product_code: code.to_string(),
             quantity: qty,
-            cost_price: cost,
+            cost_price_centi: cost,
         }
     }
 
@@ -86,7 +86,7 @@ mod tests {
             product_code: code.to_string(),
             disposal_type: DisposalType::Disposal,
             quantity: qty,
-            cost_price: cost,
+            cost_price_centi: cost,
             reason: reason.to_string(),
         }
     }
