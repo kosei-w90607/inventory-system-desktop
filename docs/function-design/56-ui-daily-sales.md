@@ -23,7 +23,7 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 
 ### 56.1 概要
 
-`/reports/daily` route 配下に配置する読み取り専用ダッシュボード。SP-501-01〜07 + REQ-501 に直接対応する。SCREEN_DESIGN.md L100 の主動線「CSV取込み完了 → 売上レポート確認」を成立させる。
+`/reports/daily` route 配下に配置する読み取り専用ダッシュボード。SP-501-01〜07 + REQ-501 に直接対応する。SCREEN_DESIGN.md の主動線「CSV取込み完了 → 売上レポート確認」を成立させる。
 
 **REQ-401再設計後の表示領域**:
 
@@ -372,7 +372,7 @@ export function calculateEffectiveUnitPrice(item: DailySaleItem): number | null 
 - BIZ-05 `DailySalesReport` の `GrandTotal` は `{ count_points, length_cm, amount }` のみ、source 別 count を返さない（数量は種類ごとの 2 つ。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D11、§56.10 の「単位と数量」）
 - UI で `items` 配列を再走査して `auto / manual` カウントを派生計算
 - 将来 BIZ-05 を拡張して `GrandTotal.auto_count` / `manual_count` を追加すれば本関数は削除可能（Backlog 候補）
-- `source: string` に対する防御的 if-else 実装（`compute-summary.ts:14-17`）で `"auto"` / `"manual"` を識別、未知値は内訳に含めない（防御的設計、bindings.ts では literal union 化されていない）
+- `source: string` に対する防御的 if-else 実装（`src/features/daily-sales/lib/compute-summary.ts` の `computeSalesLineSummary`）で `"auto"` / `"manual"` を識別、未知値は内訳に含めない（防御的設計、bindings.ts では literal union 化されていない）
 
 ---
 
@@ -576,9 +576,9 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 
 ### 56.12 表記揺れ（3 系統許容）
 
-- **サイドバー label** = `navigation.ts:76` 「日次売上」（利用者の縦移動メニュー、簡潔さ優先）
-- **page h1** = 「日次売上」（PR-1 で mockup L313 「売上レポート」から分離。日次/月次は TabsHeader で同居するため、h1 が「売上レポート」だと L3 デモで日次か月次か判別不能だった = U4。navigation label と揃える）
-- **ウィンドウタイトル** = `RootLayout.tsx:33` 経由で「在庫管理システム - 日次売上」（navigation.title 由来、OS タスクバー識別性）
+- **サイドバー label** = `src/config/navigation.ts` の `ui-09a` の「日次売上」（利用者の縦移動メニュー、簡潔さ優先）
+- **page h1** = 「日次売上」（PR-1 で mockup の「売上レポート」から分離。日次/月次は TabsHeader で同居するため、h1 が「売上レポート」だと L3 デモで日次か月次か判別不能だった = U4。navigation label と揃える）
+- **ウィンドウタイトル** = `src/components/layout/RootLayout.tsx` の `deriveTitle` 経由で「在庫管理システム - 日次売上」（navigation.title 由来、OS タスクバー識別性）
 
 3 系統は読み手・用途が異なる（縦メニュー / 画面見出し / OS タスクバー）。PR-1 以降は label・h1 とも「日次売上」で一致、ウィンドウタイトルのみアプリ名 prefix 付き。
 

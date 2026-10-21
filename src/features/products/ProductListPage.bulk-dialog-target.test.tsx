@@ -3,7 +3,7 @@
 // SC9（Gated Amendment 2 S12 / owner L3 FAIL-4、PR #32 comment 5526295095）: PLU 一括確認
 // dialog を閉じる（cancel）とき、`bulkTarget` を null へ戻すと `pluTarget={bulkTarget ?? true}`
 // の fallback で退出アニメーション中に反対文言へ反転する latent bug があった
-// （`ProductListPage.tsx:303-309`、`b2389b19` 起源）。本 file は
+// （`src/features/products/ProductListPage.tsx` の `PluBulkTargetConfirmDialog` の props、`b2389b19` 起源）。本 file は
 // `PluBulkTargetConfirmDialog` を mock に差し替えて実際に渡される props を記録し、
 // 「対象から外す」→ cancel 後の最終 render で `open === false` かつ `pluTarget === false`
 // のまま保持されることを検証する。既存の bulk 系 test（ProductListPage.test.tsx、実 dialog

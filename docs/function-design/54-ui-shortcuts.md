@@ -104,7 +104,7 @@ global keydown listener と open state を同じ hook 内で管理すること�
 7. **Ctrl+/ 再押下** → listener が同じ判定経路を通り `setOpen(false)` → Radix Dialog が Portal から unmount（トグル動作）
 8. **Esc 押下** → Radix Dialog 標準で `onOpenChange(false)` → `setOpen(false)` → 閉じる
 9. **オーバーレイクリック** → 同上経路で閉じる
-10. **右上 × ボタンクリック** → `<DialogContent showCloseButton={true}>` 既定で挿入される閉じるボタン（`src/components/ui/dialog.tsx` L62-69）→ 閉じる
+10. **右上 × ボタンクリック** → `<DialogContent showCloseButton={true}>` 既定で挿入される閉じるボタン（`src/components/ui/dialog.tsx` の `DialogContent` の `showCloseButton` の `DialogPrimitive.Close`）→ 閉じる
 11. **Tab / Shift+Tab** → Radix focus trap で Dialog 内を順次 / 逆順移動、Dialog 外には脱出しない
 
 **除外パターン（§54.7 詳細）**:

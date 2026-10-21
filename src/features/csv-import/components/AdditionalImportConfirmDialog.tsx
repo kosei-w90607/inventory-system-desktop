@@ -75,7 +75,7 @@ export function AdditionalImportConfirmDialog({
         if (!next) onCancel();
       }}
     >
-      {/* gated Amendment 5（owner L3-lite round 3 裁定①）: 共通 alert-dialog.tsx L53 の
+      {/* gated Amendment 5（owner L3-lite round 3 裁定①）: 共通 src/components/ui/alert-dialog.tsx の AlertDialogContent の
           `data-[size=default]:sm:max-w-lg` は属性 selector 付きで詳細度が高く、素の
           `sm:max-w-3xl` では負けて default 幅のままだった。同じ data-size 修飾子を付けて
           詳細度を揃え、意図した 720px 幅を実 DOM で有効化する（共通 primitive は不変）。 */}

@@ -13,7 +13,7 @@
 // Object.defineProperty）はそのまま再利用できず、`data-list-scroll-container` を持つ
 // 要素であれば新旧どちらの mount にも効く HTMLElement.prototype 単位の geometry stub に
 // 拡張する（round 2/3 是正 Opus P1/P2 の意図——happy-dom 20.10.6 の scrollLeft は無制限の
-// raw property で、router-core 内蔵の復元（scroll-restoration.js:147）が先に
+// raw property で、router-core 内蔵の復元（@tanstack/router-core 1.168.15 の scroll-restoration.js:147）が先に
 // element.scrollLeft = scrollX を代入してしまうため、幅の clamp が無いとアプリ層の
 // scrollLeft 復元行を削除しても test が pass する生存 mutant になる）。
 
@@ -59,9 +59,9 @@ const BOX_SELECTOR = '[data-scroll-restoration-id="products-list"]';
  * MutationObserver が拾えるよう、切替え後は呼出し側が実際に子要素を追加する）。
  */
 function installBoxGeometryStub() {
-  // happy-dom（node_modules/happy-dom/lib/nodes/element/Element.js:133-174）は
+  // happy-dom 20.10.6（node_modules/happy-dom/lib/nodes/element/Element.js:133-174）は
   // scrollTop/scrollLeft/scrollHeight/scrollWidth を Element.prototype の accessor として
-  // 定義し、clientHeight/clientWidth は HTMLElement.prototype（html-element/HTMLElement.js:460,468）
+  // 定義し、clientHeight/clientWidth は HTMLElement.prototype（happy-dom 20.10.6 の html-element/HTMLElement.js:460,468）
   // に定義する。class の own accessor に上書きするには対応する prototype を個別に指定する。
   const elementProto = Element.prototype;
   const htmlElementProto = HTMLElement.prototype;
