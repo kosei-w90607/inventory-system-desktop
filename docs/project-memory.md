@@ -58,13 +58,13 @@ Keep it factual and stable.
 - PLU export real-device confirmation and Z004 field-layout enablement belong to one go-live verification flow, while `Z001`/`Z002`/`Z005` remain the official daily-report aggregate track; checklist source: `docs/plu-export-and-real-csv-verification.md`
 - POS adapter boundary is a settled architecture constraint (`D-023`): CASIO `Z001`/`Z002`/`Z004`/`Z005`, CV17, SD-card, and PC tool details are adapter facts unless a source design doc explicitly promotes a concept to the app core.
 - REQ-401 daily report redesign is a settled design direction (`D-025`): `Z001`/`Z002`/`Z005` create app-internal daily report aggregates, while `Z004` remains item-level product-sales/inventory track after PLU verification. Daily reports must not be expanded into fake `sale_records` or `inventory_movements`.
-- `stocktake_items.valuation_cost_price` freezes stocktake valuation
+- `stocktake_items.valuation_cost_price_centi` freezes stocktake valuation
 - Stocktake may proceed while CSV import remains allowed (design fact, kept by D-118. The current build stops the stocktake operations and the Z004 business commit by the stop ADR `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`)
 
 ## Key Domain Rules
 
 - Products can use JAN-based codes or department-prefix custom codes
-- Length products (fabric etc.) are entered and shown in `m` (D-113); removing `cm` at the rebuild starting point of the development and test DB is decided (D-119, when its precondition holds); the current build still accepts `cm` until the cost lane's rebuild-starting-point migration (vB, [22 §16](function-design/22-mnt-migration.md))
+- Length products (fabric etc.) are entered and shown in `m` (D-113); `roll` and `cm` were removed from the unit list at the rebuild starting point of the development and test DB (vB, [22 §16](function-design/22-mnt-migration.md), D-119/D-128). Cost is held in 1/100 yen (`*_centi`, tax-exclusive, D-128)
 - Some products must not auto-decrement stock from POS sales import
 - Register-processed returns are reflected through CSV import
 - Manual return/exchange exists for non-register cases

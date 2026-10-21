@@ -16,8 +16,8 @@ describe("PriceHistorySection UI-01b / UIDISP-D6", () => {
           changed_at: "2026-09-09T23:45:06",
           old_selling_price: 100,
           new_selling_price: 120,
-          old_cost_price: 60,
-          new_cost_price: 70,
+          old_cost_price_centi: 6000,
+          new_cost_price_centi: 7000,
         },
       ],
     });
@@ -27,6 +27,25 @@ describe("PriceHistorySection UI-01b / UIDISP-D6", () => {
       "tabular-nums",
     );
   });
+});
+
+it("Matrix C20 / SPEC-UNIT-D5: 原価 8333 → 8500 の履歴の原価の cell は ¥83.33 → ¥85", async () => {
+  vi.mocked(commands.listPriceHistory).mockResolvedValue({
+    status: "ok",
+    data: [
+      {
+        id: 2,
+        changed_at: "2026-10-21T10:00:00",
+        old_selling_price: 100,
+        new_selling_price: 100,
+        old_cost_price_centi: 8333,
+        new_cost_price_centi: 8500,
+      },
+    ],
+  });
+  render(<PriceHistorySection productCode="SYN-C20" />);
+  const cell = await screen.findByRole("cell", { name: "¥83.33 → ¥85" });
+  expect(cell).not.toHaveTextContent("8,333");
 });
 
 it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {

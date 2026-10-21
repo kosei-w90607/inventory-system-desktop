@@ -38,30 +38,26 @@ pub enum ProductStockUnit {
     Hon,
     Bag,
     Box,
-    Roll,
     Kumi,
     Set,
     Ball,
     Cho,
     M,
-    Cm,
 }
 
 impl ProductStockUnit {
     /// 全 variant（SPEC-UNIT-D1 の表の順）。在庫少の並びと DB の読取りがここから作る
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 10] = [
         Self::Pcs,
         Self::Sheet,
         Self::Hon,
         Self::Bag,
         Self::Box,
-        Self::Roll,
         Self::Kumi,
         Self::Set,
         Self::Ball,
         Self::Cho,
         Self::M,
-        Self::Cm,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -71,13 +67,11 @@ impl ProductStockUnit {
             Self::Hon => "hon",
             Self::Bag => "bag",
             Self::Box => "box",
-            Self::Roll => "roll",
             Self::Kumi => "kumi",
             Self::Set => "set",
             Self::Ball => "ball",
             Self::Cho => "cho",
             Self::M => "m",
-            Self::Cm => "cm",
         }
     }
 
@@ -121,7 +115,7 @@ pub struct Product {
     pub department_id: i64,
     pub supplier_id: Option<i64>,
     pub selling_price: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub tax_rate: ProductTaxRate,
     pub maker_code: Option<String>,
     pub stock_quantity: i64,
@@ -168,7 +162,7 @@ pub struct NewProduct {
     pub department_id: i64,
     pub supplier_id: Option<i64>,
     pub selling_price: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub tax_rate: String,
     pub maker_code: Option<String>,
     pub stock_quantity: i64,
@@ -199,7 +193,7 @@ pub struct ProductUpdates {
     pub department_id: Option<i64>,
     pub supplier_id: Option<Option<i64>>,
     pub selling_price: Option<i64>,
-    pub cost_price: Option<i64>,
+    pub cost_price_centi: Option<i64>,
     pub tax_rate: Option<String>,
     pub maker_code: Option<Option<String>>,
     /// 値を検査しない（個数の単位どうしの判定は BIZ、BIZ-01-D8）
@@ -250,8 +244,8 @@ pub struct NewPriceHistory {
     pub product_code: String,
     pub old_selling: i64,
     pub new_selling: i64,
-    pub old_cost: i64,
-    pub new_cost: i64,
+    pub old_cost_centi: i64,
+    pub new_cost_centi: i64,
 }
 
 /// 価格履歴の読取り用行マッピング
@@ -260,8 +254,8 @@ pub struct PriceHistoryEntry {
     pub id: i64,
     pub old_selling_price: i64,
     pub new_selling_price: i64,
-    pub old_cost_price: i64,
-    pub new_cost_price: i64,
+    pub old_cost_price_centi: i64,
+    pub new_cost_price_centi: i64,
     pub changed_at: String,
 }
 
@@ -337,7 +331,7 @@ fn row_to_product(row: &rusqlite::Row) -> rusqlite::Result<Product> {
         department_id: row.get(3)?,
         supplier_id: row.get(4)?,
         selling_price: row.get(5)?,
-        cost_price: row.get(6)?,
+        cost_price_centi: row.get(6)?,
         tax_rate: parse_tax_rate(row.get(7)?)?,
         maker_code: row.get(8)?,
         stock_quantity: row.get(9)?,
@@ -657,7 +651,7 @@ pub fn find_by_product_code(
 ) -> Result<Option<ProductWithRelations>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -691,7 +685,7 @@ pub fn insert_product(conn: &DbConnection, product: &NewProduct) -> Result<(), D
     conn.execute(
         "INSERT INTO products (
             product_code, jan_code, name, department_id, supplier_id,
-            selling_price, cost_price, tax_rate, maker_code,
+            selling_price, cost_price_centi, tax_rate, maker_code,
             stock_quantity, stock_unit, is_discontinued,
             plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
             created_at, updated_at
@@ -703,7 +697,7 @@ pub fn insert_product(conn: &DbConnection, product: &NewProduct) -> Result<(), D
             product.department_id,
             product.supplier_id,
             product.selling_price,
-            product.cost_price,
+            product.cost_price_centi,
             product.tax_rate,
             product.maker_code,
             product.stock_quantity,
@@ -728,7 +722,7 @@ pub fn insert_product(conn: &DbConnection, product: &NewProduct) -> Result<(), D
 pub fn find_by_jan_code(conn: &DbConnection, jan_code: &str) -> Result<Vec<Product>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT product_code, jan_code, name, department_id, supplier_id,
-                selling_price, cost_price, tax_rate, maker_code,
+                selling_price, cost_price_centi, tax_rate, maker_code,
                 stock_quantity, stock_unit, is_discontinued,
                 plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
                 created_at, updated_at
@@ -748,7 +742,7 @@ pub fn find_by_jan_code(conn: &DbConnection, jan_code: &str) -> Result<Vec<Produ
 pub fn find_plu_dirty_products(conn: &DbConnection) -> Result<Vec<Product>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT product_code, jan_code, name, department_id, supplier_id,
-                selling_price, cost_price, tax_rate, maker_code,
+                selling_price, cost_price_centi, tax_rate, maker_code,
                 stock_quantity, stock_unit, is_discontinued,
                 plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
                 created_at, updated_at
@@ -768,7 +762,7 @@ pub fn find_plu_dirty_products(conn: &DbConnection) -> Result<Vec<Product>, DbEr
 pub fn find_plu_dirty_products_for_plu(conn: &DbConnection) -> Result<Vec<ProductForPlu>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -792,7 +786,7 @@ pub fn find_plu_dirty_products_for_plu(conn: &DbConnection) -> Result<Vec<Produc
 pub fn find_active_products(conn: &DbConnection) -> Result<Vec<Product>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT product_code, jan_code, name, department_id, supplier_id,
-                selling_price, cost_price, tax_rate, maker_code,
+                selling_price, cost_price_centi, tax_rate, maker_code,
                 stock_quantity, stock_unit, is_discontinued,
                 plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
                 created_at, updated_at
@@ -812,7 +806,7 @@ pub fn find_active_products(conn: &DbConnection) -> Result<Vec<Product>, DbError
 pub fn find_active_products_for_plu(conn: &DbConnection) -> Result<Vec<ProductForPlu>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -926,7 +920,7 @@ pub fn search_products(
         .ok_or_else(|| DbError::QueryFailed("page/per_page overflow".to_string()))?;
     let data_sql = format!(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -1003,7 +997,7 @@ pub fn find_products_for_bulk_plu_target(
     };
     let sql = format!(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at
@@ -1060,8 +1054,8 @@ pub fn update_product(
         params.push(Box::new(price));
         idx += 1;
     }
-    if let Some(cost) = updates.cost_price {
-        set_clauses.push(format!("cost_price = ?{}", idx));
+    if let Some(cost) = updates.cost_price_centi {
+        set_clauses.push(format!("cost_price_centi = ?{}", idx));
         params.push(Box::new(cost));
         idx += 1;
     }
@@ -1134,14 +1128,14 @@ pub fn update_product(
 pub fn insert_price_history(conn: &DbConnection, history: &NewPriceHistory) -> Result<(), DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO price_history (product_code, old_selling, new_selling, old_cost, new_cost, changed_at)
+        "INSERT INTO price_history (product_code, old_selling, new_selling, old_cost_centi, new_cost_centi, changed_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             history.product_code,
             history.old_selling,
             history.new_selling,
-            history.old_cost,
-            history.new_cost,
+            history.old_cost_centi,
+            history.new_cost_centi,
             now,
         ],
     )?;
@@ -1155,7 +1149,7 @@ pub fn list_price_history(
     limit: u32,
 ) -> Result<Vec<PriceHistoryEntry>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, old_selling, new_selling, old_cost, new_cost, changed_at
+        "SELECT id, old_selling, new_selling, old_cost_centi, new_cost_centi, changed_at
          FROM price_history
          WHERE product_code = ?1
          ORDER BY changed_at DESC, id DESC
@@ -1168,8 +1162,8 @@ pub fn list_price_history(
                 id: row.get(0)?,
                 old_selling_price: row.get(1)?,
                 new_selling_price: row.get(2)?,
-                old_cost_price: row.get(3)?,
-                new_cost_price: row.get(4)?,
+                old_cost_price_centi: row.get(3)?,
+                new_cost_price_centi: row.get(4)?,
                 changed_at: row.get(5)?,
             })
         },
@@ -1234,7 +1228,7 @@ pub struct StockDetail {
 pub fn get_stock_detail(conn: &DbConnection, product_code: &str) -> Result<StockDetail, DbError> {
     let mut stmt = conn.prepare(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -1305,7 +1299,7 @@ pub fn list_low_stock_products(
     params.push(threshold_length.into());
     let sql = format!(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
-                p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
+                p.selling_price, p.cost_price_centi, p.tax_rate, p.maker_code,
                 p.stock_quantity, p.stock_unit, p.is_discontinued,
                 p.plu_dirty, p.plu_exported_at, p.plu_target, p.pos_stock_sync,
                 p.created_at, p.updated_at,
@@ -1365,7 +1359,7 @@ mod tests {
             department_id,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,
@@ -2221,7 +2215,7 @@ mod tests {
         assert_eq!(found.product.name, "更新後の名前");
         assert_eq!(found.product.selling_price, 999);
         // 変更していないフィールドは元のまま
-        assert_eq!(found.product.cost_price, 300);
+        assert_eq!(found.product.cost_price_centi, 300);
     }
 
     #[test]
@@ -2422,8 +2416,8 @@ mod tests {
             product_code: "PH-001".to_string(),
             old_selling: 500,
             new_selling: 600,
-            old_cost: 300,
-            new_cost: 350,
+            old_cost_centi: 300,
+            new_cost_centi: 350,
         };
         insert_price_history(&conn, &history).unwrap();
 
@@ -2489,7 +2483,7 @@ mod tests {
         plu_dirty: bool,
     ) {
         conn.execute(
-            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price,
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi,
                     tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty,
                     plu_target, pos_stock_sync, created_at, updated_at)
              VALUES (?1, ?2, ?3, 500, 300, '10', 10, 'pcs', ?4, ?5, 1, 1,
@@ -2707,7 +2701,7 @@ mod tests {
         for index in 0..count {
             conn.execute(
                 "INSERT INTO price_history
-                 (product_code, old_selling, new_selling, old_cost, new_cost, changed_at)
+                 (product_code, old_selling, new_selling, old_cost_centi, new_cost_centi, changed_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 rusqlite::params![
                     product_code,
@@ -2748,7 +2742,7 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO price_history
-                 (id, product_code, old_selling, new_selling, old_cost, new_cost, changed_at)
+                 (id, product_code, old_selling, new_selling, old_cost_centi, new_cost_centi, changed_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 rusqlite::params![
                     id,

@@ -653,7 +653,7 @@ it("UI-13-D3: m の商品の不一致は 27.5 m・27 m、補正の結果は 27.5
   runIntegrityCheck.mockResolvedValue(
     checkResult([
       { ...mismatch("SYN-M", 2750, 2700), stock_unit: "m" },
-      { ...mismatch("SYN-CM", 100, 150), stock_unit: "cm" },
+      { ...mismatch("SYN-CM", 100, 150), stock_unit: "m" },
       mismatch("SYN-PCS", 1234, 1230),
     ]),
   );
@@ -800,7 +800,7 @@ describe("UI-13 REQ-904 写しの 4 項目と記録から求め直した値", ()
       checkResult([
         {
           ...mismatch("U3-CM"),
-          stock_unit: "cm",
+          stock_unit: "m",
           copy: copy(1250),
           derived: copy(1200, [1150, 1300]),
           differing_fields: ["quantity", "recheck", "range"],

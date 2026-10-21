@@ -686,7 +686,7 @@ describe("UI-11c REQ-902", () => {
         },
         {
           product_code: "SYN-CM",
-          stock_unit: "cm",
+          stock_unit: "m",
           old_stock: 2700,
           new_stock: 2750,
           adjustment: 50,

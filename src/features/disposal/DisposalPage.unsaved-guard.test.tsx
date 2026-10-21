@@ -90,7 +90,7 @@ beforeEach(() => {
         makeMockProductWithRelations({
           product_code: "DP-001",
           name: "廃棄商品",
-          cost_price: 120,
+          cost_price_centi: 120,
         }),
       ],
       total_count: 1,

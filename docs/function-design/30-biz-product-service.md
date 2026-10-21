@@ -12,17 +12,17 @@
 
 ### 単位と原価の精度の契約（D-113、BIZ-01-D8）
 
-[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。単位・上限・商品 CSV の単位と初期在庫は現行の契約で、原価の 1/100 円の分だけ注記のとおり未実装。
+[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。単位・原価の 1/100 円・上限・商品 CSV の単位と初期在庫と原価は現行の契約。
 
-- `stock_unit` は 12 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。update と商品 CSV の上書きは個数の単位どうしの変更だけを許す（下の 2 つの段）。`roll`・`cm` を一覧から外すのは開発・試験 DB の作り直しの起点（proposed・未実装、原価の lane、D-119。共通規則 SPEC-UNIT-D1）。
+- `stock_unit` は 10 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。update と商品 CSV の上書きは個数の単位どうしの変更だけを許す（下の 2 つの段）。`roll`・`cm` は開発・試験 DB の作り直しの起点（vB）で一覧から外した（D-119・D-128。共通規則 SPEC-UNIT-D1）。
 - （D-119。owner の決定 U2 = b）update と商品 CSV の上書きで、個数の種類の単位どうしの変更だけを許す（共通規則 SPEC-UNIT-D2）。`ProductUpdateRequest` に通常 field の `stock_unit: Option<ProductStockUnit>`（omitted / null は更新しない）を足し、`ProductUpdates.stock_unit` で UPDATE する。検査は §4.4 の手順 2 で（手順 2 の今の検査〈商品名・売価・原価・部門・取引先〉の後）、値を持ち今の単位と違うとき、今の単位と新しい単位がどちらも `stock_unit_kind` = `Count` でなければ `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")`。値が今の単位と同じなら、省くのは `stock_unit` の SET と detail_json の key `stock_unit` だけ（通常の UPDATE とログ行は §4.4 の手順 5・6 の今の契約のまま。BIZ-01-D7 の「変更した」の規則）。在庫・明細・価格は変えない（個数の単位の価格の基準数量はどれも 1）。単位の変更は `plu_dirty` の理由にならない（PLU の file は単位を持たない。§4.4 の手順 4 の売価の変更・手順 4b の対象化だけが立てる）。操作ログは BIZ-01-D7 の規則で key `stock_unit` に `{"old": code, "new": code}` を書く（商品 CSV の上書きの経路も同じ形、下の上書きの段）。
-- （proposed・未実装、原価の lane、D-113）原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く。今は `format!` で `"cost_price":{"old":…,"new":…}` を書く）。どちらも detail_json の原価の key を `cost_price_centi`、値を 1/100 円の整数にする（同じ key に円と 1/100 円が混ざると、後から区別できない。ログは書き換えない契約）。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、22 §16 の vB）ので、key `cost_price`（円）の記録はその DB に無く、読む側（[74](74-ui-operation-logs.md) §74.8）は `cost_price_centi` だけを知ればよい。
-- 売価・原価・初期在庫の上限（共通規則の同じ節）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は円の整数で 0 以上 `999999`（越えれば `原価が大きすぎます`。原価の lane が上の `99999999`〈1/100 円〉へ書き換える）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。初期在庫の負は、create が `初期在庫は0以上で入力してください`、商品 CSV（preview の行の error と commit）が `初期在庫の値が不正です: '{値}'`。
-- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（commit も新規の行の単位を 12 個の code と確かめる）。
-- 上書き（§4.9 の `overwrite_codes`）の単位（D-119）: 正規化した `在庫単位` が既存の商品の単位と違う行は、今の単位と CSV の単位がどちらも個数の種類なら単位を `ProductUpdates.stock_unit` で上書きする。種類をまたぐか、どちらかが長さの単位なら行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: {登録の語}、CSV: {値}）`。commit は wire の行を信頼せず、TX の中で同じ規則で再検証し、外れれば `ValidationFailed` で TX 全体を戻す（文の `{値}` は wire の行の code）。wire の行の単位が 12 個の code に無ければ、新規の行と同じ `在庫単位が正しくありません: {code}` で TX 全体を戻す（preview は code に正規化した行だけを返すので、preview を通らない wire にだけ当たる）。空は今の単位のまま。種類をまたいで上書きできると、`m` の商品を `ball` で上書きしたときに在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
+- 原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`。原価の lane、D-128）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く）。どちらも detail_json の原価の key は `cost_price_centi`、値は 1/100 円の整数（同じ key に円と 1/100 円が混ざると、後から区別できない。ログは書き換えない契約）。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、22 §16 の vB）ので、key `cost_price`（円）の記録はその DB に無く、読む側（[74](74-ui-operation-logs.md) §74.8）は `cost_price_centi` だけを知ればよい。
+- 売価・原価・初期在庫の上限（共通規則の同じ節）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は 1/100 円で 0 以上 `99999999`（`MAX_COST_PRICE_CENTI`。越えれば `原価が大きすぎます`）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。初期在庫の負は、create が `初期在庫は0以上で入力してください`、商品 CSV（preview の行の error と commit）が `初期在庫の値が不正です: '{値}'`。
+- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 10 個の code か表示の語（`個` `枚` `本` `袋` `箱` `組` `セット` `玉` `丁` `m`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（commit も新規の行の単位を 10 個の code と確かめる）。vB で外した `cm`・`巻`・`roll` の行の error には、preview と commit の両方で `retired_stock_unit_hint` の直し方を添える（共通規則 SPEC-UNIT-D10）。
+- 上書き（§4.9 の `overwrite_codes`）の単位（D-119）: 正規化した `在庫単位` が既存の商品の単位と違う行は、今の単位と CSV の単位がどちらも個数の種類なら単位を `ProductUpdates.stock_unit` で上書きする。種類をまたぐか、どちらかが長さの単位なら行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: {登録の語}、CSV: {値}）`。commit は wire の行を信頼せず、TX の中で同じ規則で再検証し、外れれば `ValidationFailed` で TX 全体を戻す（文の `{値}` は wire の行の code）。wire の行の単位が 10 個の code に無ければ、新規の行と同じ `在庫単位が正しくありません: {code}` で TX 全体を戻す（preview は code に正規化した行だけを返すので、preview を通らない wire にだけ当たる）。空は今の単位のまま。種類をまたいで上書きできると、`m` の商品を `ball` で上書きしたときに在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
   - `plu_dirty`: 上書きの行が、上書きで書く列（§4.9 の手順 2 a. の UPDATE が書く JAN・商品名・部門・売価・原価・税率と、CSV が値を持つときだけ書く取引先・メーカー品番・在庫連動・PLU対象）のうち `在庫単位` の他は全て既存の商品と同じ（単位だけの変更）なら `plu_dirty` を変えない（単位の変更は `plu_dirty` の理由にならない、上の update の段と同じ）。それ以外の上書きの行は §4.9 の手順 2 d. のとおり `plu_dirty=1`。
   - 操作ログ: 単位を変えた商品ごとに、同じ TX の中で `product_update` のログを 1 行書き、summary は商品修正と同じ `商品を更新しました: {商品コード}`、detail_json は BIZ-01-D7 の形で key `stock_unit` だけを持つ（`{"stock_unit":{"old":code,"new":code}}`。同じ行で他の列が変わっても、上書きの経路は単位の key だけを書く。他の列の前後は今どおり記録しない）。§4.9 の手順 4 の件数の要約のログ（TX の外）は今のまま。理由: 商品修正の経路と同じ種類・同じ形なので操作ログ画面の読み方が 1 つで済み、TX の中なので単位を変えた commit にだけ必ず残り、商品ごとに元の単位を追える（件数の要約に前後の一覧を入れる案は TX の外で、書けなかったときに元の単位を失う）。
-- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は整数（小数 2 桁までを 1/100 円にするのは proposed・未実装、原価の lane、D-113。SPEC-UNIT-D5 の入力の規則）。`売価` は整数のまま。
+- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は小数 2 桁までの円を `parse_hundredths`（`初期在庫` の m と同じ関数）で 1/100 円にする（SPEC-UNIT-D5・D10。行の error の分け方は D10）。`売価` は整数のまま。
 - 在庫計数 Excel の売価・原価は税抜で、アプリの売価は税込（台帳 TD-166）。Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む。
 
 ### 4.1 モジュール構成
@@ -48,9 +48,9 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 - name: String
 - department_id: i64
 - selling_price: i64
-- cost_price: i64
+- cost_price_centi: i64
 - tax_rate: ProductTaxRate（"10" / "8" / "0"）
-- stock_unit: ProductStockUnit（12 個の code。共通規則 SPEC-UNIT-D1）
+- stock_unit: ProductStockUnit（10 個の code。共通規則 SPEC-UNIT-D1）
 - initial_stock: i64（0なら在庫なし）
 - maker_code: Option<String>
 - supplier_id: Option<i64>
@@ -65,7 +65,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 1. **バリデーション**
    a. name が空文字 → BizError::ValidationFailed("商品名は必須です")
    b. selling_price < 0 → BizError::ValidationFailed("売価は0以上で入力してください")
-   c. cost_price < 0 → BizError::ValidationFailed("原価は0以上で入力してください")
+   c. cost_price_centi < 0 → BizError::ValidationFailed("原価は0以上で入力してください")
    d. tax_rate / stock_unit は wire 境界で `ProductTaxRate` / `ProductStockUnit` として型検査済み
    e. department_idの存在チェック → product_repo::find_department_by_id()。None → BizError::ValidationFailed("指定された部門が存在しません")
    f. supplier_idがSomeの場合 → 存在チェック。None → BizError::ValidationFailed("指定された取引先が存在しません")
@@ -173,14 +173,14 @@ fn update_product(conn: &mut DbConnection, product_code: &str, req: &ProductUpda
 ```
 
 **ProductUpdateRequest構造体**: 全フィールドがOption型
-- name, department_id, selling_price, cost_price, tax_rate, maker_code, supplier_id, pos_stock_sync, plu_target
+- name, department_id, selling_price, cost_price_centi, tax_rate, maker_code, supplier_id, pos_stock_sync, plu_target
 - stock_unit（通常 field。BIZ-01-D8 の個数の単位どうしの検査）
 
 **部分更新wire契約（PRODUCT-PATCH-D1 / REQ-102）**:
 
 | field群 | JSON omitted | JSON null | JSON value |
 |---|---|---|---|
-| 通常field: `name`, `department_id`, `selling_price`, `cost_price`, `tax_rate`, `pos_stock_sync`, `plu_target`, `stock_unit` | 更新しない | 更新しない | 値を設定する |
+| 通常field: `name`, `department_id`, `selling_price`, `cost_price_centi`, `tax_rate`, `pos_stock_sync`, `plu_target`, `stock_unit` | 更新しない | 更新しない | 値を設定する |
 | clear可能field: `supplier_id`, `maker_code` | 更新しない | 値をclearする | 値を設定する |
 
 Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` とし、後者はmissingとnullを区別するcustom deserializerを維持する。`ProductUpdateRequest` 全体にserde defaultを明示して、tauri-spectaがcommand入力用のgenerated `ProductUpdateRequest_Deserialize`を全property optionalとして生成できるようにする。`ProductUpdateRequest_Serialize` はcommand入力契約ではなく、frontendは `_Deserialize` を直接使う。
@@ -192,10 +192,10 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
    - stock_unit は上の検査の後に、今の単位との個数の単位どうしの変更だけを許す（BIZ-01-D8）
 3. **トランザクション開始（BEGIN）**
 4. **価格変更チェック**
-   - selling_priceまたはcost_priceがSomeで、既存値と異なる場合:
+   - selling_priceまたはcost_price_centiがSomeで、既存値と異なる場合:
      - product_repo::insert_price_history() を呼ぶ
      - old_selling = existing.selling_price, new_selling = req.selling_price.unwrap_or(existing.selling_price)
-     - old_cost, new_costも同様
+     - old_cost_centi, new_cost_centiも同様
    - selling_priceが変わった場合 → updatesにplu_dirty=trueを追加
 4b. **plu_target / JAN 遷移チェック**（BIZ-01-D3 / SPEC-PLS-D4、D-117 (1)）
    - plu_target が Some で既存値 0 → 1 に変わる場合 → updatesにplu_dirty=trueを追加（レジ登録が新たに必要になったため）
@@ -213,7 +213,7 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
 - バリデーション失敗 → BizError::ValidationFailed
 - DB操作失敗 → ROLLBACK → BizError::DatabaseError
 
-**設計判断（BIZ-01-D7、商品修正の操作ログの detail_json、2026-10-06）**: detail_json は JSON object で、変更した field ごとに key を 1 つ持ち、値は `{"old": 変更前, "new": 変更後}` とする。key は ProductUpdateRequest の field 名（`name` / `department_id` / `supplier_id` / `selling_price` / `cost_price` / `tax_rate` / `maker_code` / `pos_stock_sync` / `plu_target` / `stock_unit`）。「変更した」は、request の field が値を持ち（clear 可能 field の JSON null を含む。PRODUCT-PATCH-D1）、更新前の商品の値と違うこと。値を持っても更新前と同じ field は書かない。値の型: `name` は文字列、`maker_code` は文字列か null（clear）、`department_id`・`selling_price`・`cost_price` は整数、`supplier_id` は整数か null（clear）、`tax_rate` は DB と同じ文字列（`"10"` / `"8"` / `"0"`）、`pos_stock_sync`・`plu_target` は真偽値、`stock_unit` は code の文字列（`"pcs"` 等）。部門・取引先は products 表が持つ ID のまま書き、名前を引かない。JSON は serde_json で組み立て、文字列を手で連結しない（商品名の `"` や `\` で壊れた JSON を作らない）。key の順序は契約にしない。読む側は操作ログ画面（74 §74.8 の既知 key 要約と技術情報の raw JSON）。この形より前に書かれた記録（売価・原価の片方だけが変わっても両方を持つ）は書き換えない。
+**設計判断（BIZ-01-D7、商品修正の操作ログの detail_json、2026-10-06）**: detail_json は JSON object で、変更した field ごとに key を 1 つ持ち、値は `{"old": 変更前, "new": 変更後}` とする。key は ProductUpdateRequest の field 名（`name` / `department_id` / `supplier_id` / `selling_price` / `cost_price_centi` / `tax_rate` / `maker_code` / `pos_stock_sync` / `plu_target` / `stock_unit`）。「変更した」は、request の field が値を持ち（clear 可能 field の JSON null を含む。PRODUCT-PATCH-D1）、更新前の商品の値と違うこと。値を持っても更新前と同じ field は書かない。値の型: `name` は文字列、`maker_code` は文字列か null（clear）、`department_id`・`selling_price`・`cost_price_centi` は整数、`supplier_id` は整数か null（clear）、`tax_rate` は DB と同じ文字列（`"10"` / `"8"` / `"0"`）、`pos_stock_sync`・`plu_target` は真偽値、`stock_unit` は code の文字列（`"pcs"` 等）。部門・取引先は products 表が持つ ID のまま書き、名前を引かない。JSON は serde_json で組み立て、文字列を手で連結しない（商品名の `"` や `\` で壊れた JSON を作らない）。key の順序は契約にしない。読む側は操作ログ画面（74 §74.8 の既知 key 要約と技術情報の raw JSON）。この形より前に書かれた記録（売価・原価の片方だけが変わっても両方を持つ）は書き換えない。
 - 却下 (a) 売価・原価のどちらかが変わったら両方を書く今の形を残し、他の field だけを足す: field ごとに規則が違い、読む側が key の有無で「変えた field」を判断できない。
 - 却下 (b) request が値を持つ field を、変更の有無に関わらず全部書く: 変えていない値が並び、何を変えたかが読み取りにくい（owner の L3 所感 2026-09-10「更新したのに詳細情報なし」の起点は、何を変えたかが残らないこと）。
 - 却下 (c) 変更後の値だけを書く: step 6 の「変更前後」と `db-design/tracking-system-tables.md` §18 の「商品修正なら変更前後のフィールド名・値」に反する。
@@ -232,14 +232,14 @@ fn revise_product_price(
 ) -> Result<PriceRevisionResult, BizError>
 ```
 
-- `PriceRevisionInput { product_code, new_selling_price: i64, new_cost_price: i64, assign_supplier_id: Option<i64> }`
+- `PriceRevisionInput { product_code, new_selling_price: i64, new_cost_price_centi: i64, assign_supplier_id: Option<i64> }`
 - `PriceRevisionResult { product_code, changed: bool, plu_dirty_set: bool, supplier_assigned: bool }`
 
 **処理ステップ**:
 
-1. 商品を取得し、不存在は `BizError::NotFound` とする。`new_selling_price` / `new_cost_price` は 0 以上の整数だけを受け付ける
+1. 商品を取得し、不存在は `BizError::NotFound` とする。`new_selling_price`（円）/ `new_cost_price_centi`（1/100 円）は 0 以上の整数だけを受け付ける
 2. 売価・原価とも現値と同じなら価格改定は no-op（`changed=false`）。price_history と `product_price_revise` operation log は書かない
-3. 変更がある場合は 1 transaction で、価格改定用の部分更新、price_history の old/new 4 値（`old_selling` / `new_selling` / `old_cost` / `new_cost`）、`system_repo::insert_operation_log(operation_type = "product_price_revise")` を書く
+3. 変更がある場合は 1 transaction で、価格改定用の部分更新、price_history の old/new 4 値（`old_selling` / `new_selling` / `old_cost_centi` / `new_cost_centi`）、`system_repo::insert_operation_log(operation_type = "product_price_revise")` を書く
 4. `plu_dirty` は売価変更時のみ 1 にする。**原価のみの変更では plu_dirty を立てない**（PLU TSV に原価列はない）
 5. `assign_supplier_id` が Some の場合も、**supplier_id が NULL のときだけ**設定する。既存の非 NULL 値は上書きしない（SPEC-PRV-D6）。結果の `supplier_assigned` はこの成否を表す
 6. 途中失敗は products / price_history / operation_logs の変更をまとめて rollback する
@@ -433,7 +433,7 @@ struct ImportRow {
     name: String,
     department_id: i64,
     selling_price: i64,
-    cost_price: i64,
+    cost_price_centi: i64,
     tax_rate: String,
     stock_unit: Option<String>,     // 省略時 "pcs"
     initial_stock: Option<i64>,     // 省略時 0
@@ -483,7 +483,7 @@ struct OldJanAliasAnswer {
    - 商品コード: 空でないこと。空でなければ 100 文字（UTF-16 code unit）以内であること。超過は「商品コードは100文字以内で入力してください」（BIZ-01-D5）
    - 商品名: 空でないこと
    - 部門ID: 整数変換可能、departments に存在すること
-   - 売価・原価: 0以上の整数
+   - 売価: 0以上の整数。原価: 小数 2 桁までの円（SPEC-UNIT-D10 の `原価` の行の error の分け方）
    - 税率: '10', '8', '0' のいずれか
    - `PLU対象=1` かつ JAN が 13 桁数字でない、または check digit 不正の場合は preview warning を付けて `plu_target=0` に正規化する
    - バリデーション失敗 → error_rows に追加

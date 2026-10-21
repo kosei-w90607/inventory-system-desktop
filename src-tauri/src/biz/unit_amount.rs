@@ -22,12 +22,11 @@ pub fn stock_unit_kind(unit: ProductStockUnit) -> StockUnitKind {
         | ProductStockUnit::Hon
         | ProductStockUnit::Bag
         | ProductStockUnit::Box
-        | ProductStockUnit::Roll
         | ProductStockUnit::Kumi
         | ProductStockUnit::Set
         | ProductStockUnit::Ball
         | ProductStockUnit::Cho => StockUnitKind::Count,
-        ProductStockUnit::M | ProductStockUnit::Cm => StockUnitKind::Length,
+        ProductStockUnit::M => StockUnitKind::Length,
     }
 }
 
@@ -57,7 +56,7 @@ fn div_round_half_up(numerator: i128, basis: i64) -> i128 {
 
 /// 行（商品別）の金額（1/100 円）。`原価(1/100 円) × 数量 ÷ 基準数量` を四捨五入する（SPEC-UNIT-D6）
 ///
-/// 原価が円の整数の間は、呼ぶ側が `i128::from(原価(円)) * 100` を渡す。
+/// 呼ぶ側は DB の 1/100 円の原価を `i128::from` でそのまま渡す。
 pub fn cost_line_centi(
     cost_price_centi: i128,
     quantity: i64,
@@ -135,14 +134,14 @@ mod tests {
         matches!(result, Err(BizError::ValidationFailed(msg)) if msg.contains("オーバーフロー"))
     }
 
-    /// 円の原価を 1/100 円にして渡す（原価が円の整数の間の呼び方）
+    /// 円の原価を 1/100 円にして渡す（35 §20.5a の円の golden を確かめる test の helper）
     fn line(cost_yen: i64, quantity: i64, basis: i64) -> Result<i128, BizError> {
         cost_line_centi(i128::from(cost_yen) * 100, quantity, basis, "L")
     }
 
     #[test]
     fn test_valuation_req205_price_basis_by_unit() {
-        // REQ-205 / SPEC-STK-VAL-D1 / SPEC-UNIT-D1: 種類と基準数量は在庫単位で決まる（正本の 12 個の表）
+        // REQ-205 / SPEC-STK-VAL-D1 / SPEC-UNIT-D1: 種類と基準数量は在庫単位で決まる（正本の 10 個の表）
         use ProductStockUnit as U;
         use StockUnitKind::{Count, Length};
         let table = [
@@ -151,13 +150,11 @@ mod tests {
             (U::Hon, Count, 1),
             (U::Bag, Count, 1),
             (U::Box, Count, 1),
-            (U::Roll, Count, 1),
             (U::Kumi, Count, 1),
             (U::Set, Count, 1),
             (U::Ball, Count, 1),
             (U::Cho, Count, 1),
             (U::M, Length, 100),
-            (U::Cm, Length, 100),
         ];
         assert_eq!(table.map(|(unit, _, _)| unit), ProductStockUnit::ALL);
         for (unit, kind, basis) in table {

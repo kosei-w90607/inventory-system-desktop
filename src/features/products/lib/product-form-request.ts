@@ -12,10 +12,11 @@ import type {
 } from "@/lib/bindings";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import {
+  formatCostInput,
   isLengthUnit,
-  MAX_COST_PRICE,
   MAX_SELLING_PRICE,
   MAX_STOCK_QUANTITY,
+  parseCostInput,
   parsePriceInput,
   parseQuantityInput,
   type QuantityField,
@@ -67,15 +68,22 @@ const INITIAL_STOCK_FIELD: QuantityField = {
   integerError: "初期在庫は0以上の整数で入力してください",
 };
 
-// 売価・原価の欄（円の整数、0 以上で上限まで。X5・X6）
-function readPrice(
-  text: string,
-  max: number,
-  label: "売価" | "原価",
-): { value: number; error: null } | { value: null; error: string } {
-  const parsed = parsePriceInput(text, max);
-  if (parsed === null) return { value: null, error: `${label}は0以上の整数で入力してください` };
-  if (parsed === "too_large") return { value: null, error: `${label}が大きすぎます` };
+type FieldResult = { value: number; error: null } | { value: null; error: string };
+
+// 売価の欄（税込の円の整数、0 以上で上限まで。X5）
+function readSellingPrice(text: string): FieldResult {
+  const parsed = parsePriceInput(text, MAX_SELLING_PRICE);
+  if (parsed === null) return { value: null, error: "売価は0以上の整数で入力してください" };
+  if (parsed === "too_large") return { value: null, error: "売価が大きすぎます" };
+  return { value: parsed, error: null };
+}
+
+// 原価の欄（税抜の円の小数 2 桁まで → 1/100 円。SPEC-UNIT-D5・X6）
+function readCost(text: string): FieldResult {
+  const parsed = parseCostInput(text);
+  if (parsed === null)
+    return { value: null, error: "原価は0以上で、小数は2桁までで入力してください" };
+  if (parsed === "too_large") return { value: null, error: "原価が大きすぎます" };
   return { value: parsed, error: null };
 }
 
@@ -90,7 +98,7 @@ export function productToFormValues(product: ProductWithRelations): ProductFormV
     name: product.name,
     departmentId: product.department_id,
     sellingPrice: String(product.selling_price),
-    costPrice: String(product.cost_price),
+    costPrice: formatCostInput(product.cost_price_centi),
     taxRate: product.tax_rate === "8" || product.tax_rate === "0" ? product.tax_rate : "10",
     stockUnit: product.stock_unit,
     // 修正の画面では read-only の「現在庫」として単位つきで出す（検証も送信もしない）
@@ -107,8 +115,8 @@ export function buildCreateProductRequest(
   departments: Department[],
 ): ProductFormBuildResult<ProductCreateRequest> {
   const errors: ProductFormBuildResult<ProductCreateRequest>["errors"] = {};
-  const sellingPrice = readPrice(values.sellingPrice, MAX_SELLING_PRICE, "売価");
-  const costPrice = readPrice(values.costPrice, MAX_COST_PRICE, "原価");
+  const sellingPrice = readSellingPrice(values.sellingPrice);
+  const costPrice = readCost(values.costPrice);
   const initialStock = parseQuantityInput(
     values.initialStock,
     values.stockUnit,
@@ -151,7 +159,7 @@ export function buildCreateProductRequest(
       name: values.name.trim(),
       department_id: departmentId,
       selling_price: sellingPrice.value,
-      cost_price: costPrice.value,
+      cost_price_centi: costPrice.value,
       tax_rate: values.taxRate,
       stock_unit: values.stockUnit,
       initial_stock: initialStock.value,
@@ -169,8 +177,8 @@ export function buildUpdateProductRequest(
   original: ProductWithRelations,
 ): ProductFormBuildResult<ProductUpdateRequest_Deserialize> {
   const errors: ProductFormBuildResult<ProductUpdateRequest_Deserialize>["errors"] = {};
-  const sellingPrice = readPrice(values.sellingPrice, MAX_SELLING_PRICE, "売価");
-  const costPrice = readPrice(values.costPrice, MAX_COST_PRICE, "原価");
+  const sellingPrice = readSellingPrice(values.sellingPrice);
+  const costPrice = readCost(values.costPrice);
   const request: ProductUpdateRequest_Deserialize = {};
 
   if (values.name.trim() === "") errors.name = "商品名を入力してください";
@@ -186,7 +194,7 @@ export function buildUpdateProductRequest(
   if (values.departmentId !== original.department_id) request.department_id = values.departmentId;
   if (values.supplierId !== original.supplier_id) request.supplier_id = values.supplierId;
   if (sellingPrice.value !== original.selling_price) request.selling_price = sellingPrice.value;
-  if (costPrice.value !== original.cost_price) request.cost_price = costPrice.value;
+  if (costPrice.value !== original.cost_price_centi) request.cost_price_centi = costPrice.value;
   if (values.taxRate !== original.tax_rate) request.tax_rate = values.taxRate;
 
   const makerCode = trimToNullable(values.makerCode);

@@ -10,6 +10,7 @@
 
 use super::migration_tx;
 use super::schema_v1;
+use super::schema_v10;
 use super::schema_v2;
 use super::schema_v3;
 use super::schema_v4;
@@ -83,6 +84,11 @@ fn migrations() -> Vec<Migration> {
             version: 9,
             description: "在庫の並びの鍵・計数の表・写しの列（D-118 (a)）",
             kind: MigrationKind::Custom(schema_v9::apply_v9_stock_ledger),
+        },
+        Migration {
+            version: 10,
+            description: "原価を1/100円の列へ、単位から巻・cmを外す（作り直しの起点）",
+            kind: MigrationKind::Custom(schema_v10::apply_v10_cost_centi_origin),
         },
     ]
 }
@@ -225,6 +231,7 @@ mod tests {
         init_database,
         migration_tx::{self, FailurePoint},
         schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, schema_v6, schema_v7, DbError,
+        VB_VERSION,
     };
     use rusqlite::types::Value;
     use rusqlite::Connection;
@@ -401,7 +408,13 @@ mod tests {
             .split("#[cfg(test)]")
             .next()
             .unwrap();
-        for source in [migration, schema_v2, schema_v3, schema_v8, schema_v9] {
+        let schema_v10 = include_str!("schema_v10.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        for source in [
+            migration, schema_v2, schema_v3, schema_v8, schema_v9, schema_v10,
+        ] {
             assert!(!source.contains("execute_batch(\"ROLLBACK;\").ok()"));
             assert!(!source.contains("execute_batch(\"COMMIT;\")"));
         }
@@ -410,11 +423,13 @@ mod tests {
         assert_eq!(schema_v3.matches("rollback_after_error").count(), 2);
         assert_eq!(schema_v8.matches("rollback_after_error").count(), 1);
         assert_eq!(schema_v9.matches("rollback_after_error").count(), 1);
+        assert_eq!(schema_v10.matches("rollback_after_error").count(), 1);
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v8.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v9.matches("commit_transaction").count(), 1);
+        assert_eq!(schema_v10.matches("commit_transaction").count(), 1);
     }
 
     // -----------------------------------------------------------------------
@@ -739,7 +754,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 9);
+        assert_eq!(v1, 10);
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -749,15 +764,15 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 9, "バージョンが変わってはいけない");
+        assert_eq!(v2, 10, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが9件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9）
+        // schema_versionsにレコードが10件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9 + v10）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 9,
-            "マイグレーションレコードは9件（v1+v2+v3+v4+v5+v6+v7+v8+v9）"
+            count, 10,
+            "マイグレーションレコードは10件（v1+v2+v3+v4+v5+v6+v7+v8+v9+v10）"
         );
     }
 
@@ -784,7 +799,8 @@ mod tests {
             .unwrap();
         }
 
-        super::migrate(&conn).unwrap();
+        // products に行があるので vB（MNT-03-D14）の直前の版まで（Matrix T1 (b)）
+        super::migrate_up_to(&conn, VB_VERSION - 1).unwrap();
 
         let version: i64 = conn
             .query_row("SELECT MAX(version) FROM schema_versions", [], |row| {
@@ -827,7 +843,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 9);
+        assert_eq!(version, 10);
 
         for table_name in &[
             "daily_report_imports",
@@ -891,7 +907,7 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (9, 9));
+        assert_eq!((max_version, version_count), (10, 10));
     }
 
     #[test]
@@ -907,7 +923,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 9);
+        assert_eq!(max_version, 10);
         assert_eq!(slot_count, 4_784);
     }
 
@@ -1353,32 +1369,11 @@ mod tests {
         (dir, conn)
     }
 
-    fn dump(conn: &Connection, sql: &str) -> Vec<Vec<rusqlite::types::Value>> {
-        let mut statement = conn.prepare(sql).unwrap();
-        let columns = statement.column_count();
-        statement
-            .query_map([], |row| (0..columns).map(|i| row.get(i)).collect())
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
-    }
+    use crate::db::test_support::{dump, products_definition};
 
     fn foreign_keys(conn: &Connection) -> i64 {
         conn.query_row("PRAGMA foreign_keys", [], |row| row.get(0))
             .unwrap()
-    }
-
-    /// `products` の定義（列の名前・順・型・notnull・既定値・pk、自身の FK、index）
-    fn products_definition(conn: &Connection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
-        vec![
-            dump(conn, "SELECT * FROM pragma_table_info('products')"),
-            dump(conn, "SELECT * FROM pragma_foreign_key_list('products')"),
-            dump(
-                conn,
-                "SELECT name, sql FROM sqlite_master
-                 WHERE type = 'index' AND tbl_name = 'products' ORDER BY name",
-            ),
-        ]
     }
 
     /// v8 が読む全表の全行と `products` の定義（失敗で何も変わらないことの比較に使う）
@@ -1550,7 +1545,11 @@ mod tests {
         // REQ-903 / MNT-03-D13: 新規の DB（v1 から v8）と行 0 の v7 の DB で成功する
         let dir = tempfile::tempdir().unwrap();
         let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(max_version_and_count(&conn), (9, 9));
+        assert_eq!(max_version_and_count(&conn), (10, 10));
+        // v8 の CHECK（12 個）は v8 まで当てた新規の DB で確かめる。最新の版の CHECK は vB の test（Matrix T1 (c)）
+        let conn = Connection::open(dir.path().join("fresh-v8.db")).unwrap();
+        super::migrate_up_to(&conn, 8).unwrap();
+        assert_eq!(max_version_and_count(&conn), (8, 8));
         for code in V8_UNIT_CODES {
             assert!(
                 can_insert_unit(&conn, &format!("V8-FRESH-{code}"), code),
@@ -1561,7 +1560,8 @@ mod tests {
 
         let (_dir, conn) = setup_v7_only_db();
         let definition_before = products_definition(&conn);
-        super::migrate(&conn).unwrap();
+        // 期待の列の定義は vB の前の名前（cost_price）なので vB の直前の版まで（Matrix T1 (b)）
+        super::migrate_up_to(&conn, VB_VERSION - 1).unwrap();
         assert_eq!(max_version_and_count(&conn), (9, 9));
         let mut definition_expected = definition_before;
         // vL（22 §19 手順 6）が products の末尾に写しの 3 列を足す。FK と index は同じ
@@ -1667,14 +1667,32 @@ mod tests {
             drop(conn);
 
             // 接続を破棄して同じ file を開き直すと、v8 を当て直さずに開ける。開き直しは最新の版まで当てるので、
-            // fixture の棚卸しの行を消してから開く（vL の手順 1 で止まらないように。止まり自体は vL の test）
+            // fixture が入れた全ての表の行を子から消してから開く（vL の手順 1・vB の手順 2 で止まらないように。
+            // 止まり自体は vL・vB の test）
             let raw = Connection::open(dir.path().join("test.db")).unwrap();
-            raw.execute_batch("DELETE FROM stocktake_items; DELETE FROM stocktakes;")
-                .unwrap();
+            raw.execute_batch(
+                "DELETE FROM stocktake_items; DELETE FROM stocktakes;
+                 DELETE FROM price_history; DELETE FROM inventory_movements;
+                 DELETE FROM sale_records; DELETE FROM disposal_items; DELETE FROM disposal_records;
+                 DELETE FROM manual_sale_items; DELETE FROM manual_sales;
+                 DELETE FROM return_items; DELETE FROM return_records;
+                 DELETE FROM receiving_items; DELETE FROM receiving_records;
+                 DELETE FROM products; DELETE FROM suppliers;",
+            )
+            .unwrap();
+            assert!(dump(&raw, "SELECT * FROM pragma_foreign_key_check").is_empty());
             drop(raw);
             let conn = init_database(dir.path().join("test.db").to_str().unwrap()).unwrap();
             assert_eq!(foreign_keys(&conn), 1);
-            assert_eq!(max_version_and_count(&conn), (9, 9));
+            assert_eq!(max_version_and_count(&conn), (10, 10));
+            assert_eq!(
+                schema_version_rows(&conn)
+                    .iter()
+                    .filter(|v| **v == 8)
+                    .count(),
+                1,
+                "v8 を当て直さない"
+            );
         }
         // (4) COMMIT の後で foreign_keys の復元が error: 版 8 は残る
         {
@@ -2030,28 +2048,35 @@ mod tests {
         let db_path = dir.path().join("test.db");
         let conn = init_database(db_path.to_str().unwrap()).unwrap();
 
-        // products.tax_rate に不正値 → 失敗すべき
+        // products.tax_rate に不正値 → 失敗すべき（列名の誤りで常に失敗しないよう CHECK の文まで見る。Matrix T2a (i)）
         let result = conn.execute(
-            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price, tax_rate, stock_unit, created_at, updated_at)
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, created_at, updated_at)
              VALUES ('TEST001', 'テスト商品', 1, 100, 50, '15', 'pcs', '2026-04-03T00:00:00', '2026-04-03T00:00:00')",
             [],
         );
-        assert!(result.is_err(), "tax_rate '15' は CHECK制約で弾かれるべき");
+        assert!(
+            result
+                .as_ref()
+                .is_err_and(|e| e.to_string().contains("CHECK constraint failed")),
+            "tax_rate '15' は CHECK制約で弾かれるべき: {result:?}"
+        );
 
         // products.stock_unit に不正値 → 失敗すべき
         let result = conn.execute(
-            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price, tax_rate, stock_unit, created_at, updated_at)
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, created_at, updated_at)
              VALUES ('TEST002', 'テスト商品2', 1, 100, 50, '10', 'kg', '2026-04-03T00:00:00', '2026-04-03T00:00:00')",
             [],
         );
         assert!(
-            result.is_err(),
-            "stock_unit 'kg' は CHECK制約で弾かれるべき"
+            result
+                .as_ref()
+                .is_err_and(|e| e.to_string().contains("CHECK constraint failed")),
+            "stock_unit 'kg' は CHECK制約で弾かれるべき: {result:?}"
         );
 
         // 正常値 → 成功すべき
         let result = conn.execute(
-            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price, tax_rate, stock_unit, created_at, updated_at)
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, created_at, updated_at)
              VALUES ('TEST003', 'テスト商品3', 1, 100, 50, '10', 'pcs', '2026-04-03T00:00:00', '2026-04-03T00:00:00')",
             [],
         );
@@ -2065,16 +2090,23 @@ mod tests {
         let db_path = dir.path().join("test.db");
         let conn = init_database(db_path.to_str().unwrap()).unwrap();
 
-        // 存在しない department_id → 失敗すべき
-        let result = conn.execute(
-            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price, tax_rate, stock_unit, created_at, updated_at)
-             VALUES ('TEST001', 'テスト商品', 9999, 100, 50, '10', 'pcs', '2026-04-03T00:00:00', '2026-04-03T00:00:00')",
-            [],
-        );
+        // 存在しない department_id → 失敗すべき（列名の誤りで常に失敗しないよう文まで見る。Matrix T2a (i)）
+        let insert = |code: &str, department_id: i64| {
+            conn.execute(
+                "INSERT INTO products (product_code, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, created_at, updated_at)
+                 VALUES (?1, 'テスト商品', ?2, 100, 50, '10', 'pcs', '2026-04-03T00:00:00', '2026-04-03T00:00:00')",
+                rusqlite::params![code, department_id],
+            )
+        };
+        let result = insert("TEST001", 9999);
         assert!(
-            result.is_err(),
-            "存在しないdepartment_idは外部キー制約で弾かれるべき"
+            result
+                .as_ref()
+                .is_err_and(|e| e.to_string().contains("FOREIGN KEY constraint failed")),
+            "存在しないdepartment_idは外部キー制約で弾かれるべき: {result:?}"
         );
+        // 対照: 存在する部門なら通る
+        assert!(insert("TEST002", 1).is_ok());
     }
 
     /// インデックスが作成されていること

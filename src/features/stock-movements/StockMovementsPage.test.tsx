@@ -42,7 +42,7 @@ function makeStockDetail(overrides: Partial<StockDetail> = {}): StockDetail {
       department_id: 1,
       supplier_id: null,
       selling_price: 120,
-      cost_price: 80,
+      cost_price_centi: 80,
       tax_rate: "10",
       maker_code: null,
       stock_quantity: 3,

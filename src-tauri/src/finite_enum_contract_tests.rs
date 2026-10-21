@@ -9,19 +9,17 @@ use crate::db::return_repo::{ReturnDirection, ReturnExchangeType};
 use crate::db::sales_repo::CsvImportStatus;
 
 /// `ProductStockUnit` の variant と wire の文字列の対（SPEC-UNIT-D1 の表の順）
-const PRODUCT_STOCK_UNIT_WIRE: [(ProductStockUnit, &str); 12] = [
+const PRODUCT_STOCK_UNIT_WIRE: [(ProductStockUnit, &str); 10] = [
     (ProductStockUnit::Pcs, "pcs"),
     (ProductStockUnit::Sheet, "sheet"),
     (ProductStockUnit::Hon, "hon"),
     (ProductStockUnit::Bag, "bag"),
     (ProductStockUnit::Box, "box"),
-    (ProductStockUnit::Roll, "roll"),
     (ProductStockUnit::Kumi, "kumi"),
     (ProductStockUnit::Set, "set"),
     (ProductStockUnit::Ball, "ball"),
     (ProductStockUnit::Cho, "cho"),
     (ProductStockUnit::M, "m"),
-    (ProductStockUnit::Cm, "cm"),
 ];
 
 /// wildcard の無い match で次の variant を引く（variant を足すと compile error でここを直させる）
@@ -32,22 +30,20 @@ fn next_product_stock_unit(unit: ProductStockUnit) -> Option<ProductStockUnit> {
         U::Sheet => Some(U::Hon),
         U::Hon => Some(U::Bag),
         U::Bag => Some(U::Box),
-        U::Box => Some(U::Roll),
-        U::Roll => Some(U::Kumi),
+        U::Box => Some(U::Kumi),
         U::Kumi => Some(U::Set),
         U::Set => Some(U::Ball),
         U::Ball => Some(U::Cho),
         U::Cho => Some(U::M),
-        U::M => Some(U::Cm),
-        U::Cm => None,
+        U::M => None,
     }
 }
 
 #[test]
 fn test_product_stock_unit_all_req101_lists_every_variant_once() {
-    // REQ-101 / SPEC-UNIT-D1・D10（X12）: ALL は 12 個・重複なしで、対の表の variant の並びと一致する
+    // REQ-101 / SPEC-UNIT-D1・D10（X12）: ALL は 10 個・重複なしで、対の表の variant の並びと一致する
     let all = ProductStockUnit::ALL;
-    assert_eq!(all.len(), 12);
+    assert_eq!(all.len(), 10);
     let by_match: Vec<ProductStockUnit> =
         std::iter::successors(Some(ProductStockUnit::Pcs), |unit| {
             next_product_stock_unit(*unit)
@@ -57,9 +53,11 @@ fn test_product_stock_unit_all_req101_lists_every_variant_once() {
     let codes: std::collections::HashSet<&str> = all.iter().map(|unit| unit.as_str()).collect();
     assert_eq!(codes.len(), all.len(), "重複なし");
     assert_eq!(all, PRODUCT_STOCK_UNIT_WIRE.map(|(unit, _)| unit));
-    // 一覧に無い kg は wire で受けない
-    assert!(serde_json::from_str::<ProductStockUnit>("\"kg\"").is_err());
-    assert_eq!(ProductStockUnit::from_code("kg"), None);
+    // 一覧に無い kg と、vB で外した roll・cm（D-128）は wire でも code でも受けない
+    for code in ["kg", "roll", "cm"] {
+        assert!(serde_json::from_str::<ProductStockUnit>(&format!("\"{code}\"")).is_err());
+        assert_eq!(ProductStockUnit::from_code(code), None, "{code}");
+    }
     assert_eq!(
         ProductStockUnit::from_code("ball"),
         Some(ProductStockUnit::Ball)

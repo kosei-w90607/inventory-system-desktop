@@ -426,7 +426,7 @@ mod tests {
                     .map(|quantity| ReceivingItemInput {
                         product_code: "E1".into(),
                         quantity,
-                        cost_price: 100,
+                        cost_price_centi: 100,
                     })
                     .into(),
             },
@@ -457,7 +457,7 @@ mod tests {
                     product_code: "E1".into(),
                     disposal_type: DisposalType::Disposal,
                     quantity: 1,
-                    cost_price: 100,
+                    cost_price_centi: 100,
                     reason: "破損".into(),
                 }],
             },

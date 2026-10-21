@@ -51,7 +51,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         department_name: "毛糸",
         stock_unit: "pcs",
         quantity: 2,
-        cost_price: 111,
+        cost_price_centi: 11100,
         line_cost_centi: "22200",
       },
       {
@@ -61,7 +61,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         department_name: "ボタン",
         stock_unit: "pcs",
         quantity: 3,
-        cost_price: 333,
+        cost_price_centi: 33300,
         line_cost_centi: "99900",
       },
     ],
@@ -311,7 +311,7 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "12.34 m"],
+  ["m", "12.34 m"],
 ] as const)("⑮ SC19: 入庫・返品・手動販売詳細の %s を単位付き表示する", async (unit, expected) => {
   const receiving = makeReceivingDetail();
   receiving.items = [{ ...receiving.items[0], stock_unit: unit, quantity: 1234 }];
@@ -357,7 +357,7 @@ describe("記録詳細の単位つきの数量と在庫変動（REQ-207 / UI-06c
         product_code: "RCV-M",
         stock_unit: "m",
         quantity: 250,
-        cost_price: 333,
+        cost_price_centi: 33300,
         line_cost_centi: "83250",
       },
       {
@@ -365,7 +365,7 @@ describe("記録詳細の単位つきの数量と在庫変動（REQ-207 / UI-06c
         product_code: "RCV-PCS",
         stock_unit: "pcs",
         quantity: 3,
-        cost_price: 0,
+        cost_price_centi: 0,
         line_cost_centi: "0",
       },
     ];

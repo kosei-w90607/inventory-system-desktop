@@ -20,7 +20,7 @@ pub(super) fn create_test_product_with_jan(
 ) {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price, tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty, pos_stock_sync, created_at, updated_at)
+        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price_centi, tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty, pos_stock_sync, created_at, updated_at)
          VALUES (?1, ?2, ?3, 1, 100, 50, '10', ?4, 'pcs', 0, 1, ?5, ?6, ?7)",
         rusqlite::params![product_code, jan_code, format!("テスト商品 {}", product_code), stock, pos_stock_sync, now, now],
     )

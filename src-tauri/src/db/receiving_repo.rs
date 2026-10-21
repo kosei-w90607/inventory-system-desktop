@@ -29,7 +29,7 @@ pub struct NewReceivingItem {
     pub receiving_record_id: i64,
     pub product_code: String,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
 }
 
 /// 入庫記録一覧表示用（supplier_name JOIN済み）
@@ -52,7 +52,7 @@ pub struct ReceivingRecordDetailItem {
     pub department_name: String,
     pub stock_unit: ProductStockUnit,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     /// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
     // repo は空で返し、BIZ が必ず埋める
     pub line_cost_centi: String,
@@ -105,13 +105,13 @@ pub fn insert_receiving_record(
 /// receiving_items に1行INSERT
 pub fn insert_receiving_item(conn: &DbConnection, item: &NewReceivingItem) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+        "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi)
          VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![
             item.receiving_record_id,
             item.product_code,
             item.quantity,
-            item.cost_price,
+            item.cost_price_centi,
         ],
     )?;
     Ok(())
@@ -230,7 +230,7 @@ pub fn get_receiving_record_detail(
             d.name,
             p.stock_unit,
             ri.quantity,
-            ri.cost_price
+            ri.cost_price_centi
          FROM receiving_items ri
          JOIN products p ON p.product_code = ri.product_code
          JOIN departments d ON d.id = p.department_id
@@ -246,7 +246,7 @@ pub fn get_receiving_record_detail(
                 department_name: row.get(3)?,
                 stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
-                cost_price: row.get(6)?,
+                cost_price_centi: row.get(6)?,
                 line_cost_centi: String::new(),
             })
         })?
@@ -343,7 +343,7 @@ mod tests {
             receiving_record_id: record_id,
             product_code: "TEST-RCV".to_string(),
             quantity: 10,
-            cost_price: 300,
+            cost_price_centi: 300,
         };
         insert_receiving_item(&conn, &item).unwrap();
 
@@ -396,7 +396,7 @@ mod tests {
             receiving_record_id: record_id,
             product_code: "NONEXISTENT".to_string(),
             quantity: 1,
-            cost_price: 100,
+            cost_price_centi: 100,
         };
         let result = insert_receiving_item(&conn, &item);
         assert!(
@@ -416,7 +416,7 @@ mod tests {
             receiving_record_id: 9999,
             product_code: "TEST-FKR".to_string(),
             quantity: 1,
-            cost_price: 100,
+            cost_price_centi: 100,
         };
         let result = insert_receiving_item(&conn, &item);
         assert!(
@@ -582,7 +582,7 @@ mod tests {
                 receiving_record_id: record_id,
                 product_code: "RCV-DET".to_string(),
                 quantity: 4,
-                cost_price: 250,
+                cost_price_centi: 250,
             },
         )
         .unwrap();
@@ -605,7 +605,7 @@ mod tests {
         assert_eq!(detail.items[0].product_code, "RCV-DET");
         // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
         assert_eq!(detail.items[0].quantity, 4);
-        assert_eq!(detail.items[0].cost_price, 250);
+        assert_eq!(detail.items[0].cost_price_centi, 250);
         assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
         assert_eq!(detail.movements.len(), 1);
         assert_eq!(

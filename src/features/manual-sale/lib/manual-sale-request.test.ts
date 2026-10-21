@@ -78,7 +78,7 @@ describe("manual sale request builder (UI-04 / REQ-203)", () => {
 });
 
 describe("manual sale request の単位と上限（REQ-203 / UI-04-D18 / SPEC-UNIT-D3、X1）", () => {
-  const build = (stockUnit: "m" | "cm" | "pcs", quantity: string, amount = "910") => {
+  const build = (stockUnit: "m" | "pcs", quantity: string, amount = "910") => {
     const base = createValues().rows[0];
     return buildManualSaleRequest(
       createValues({ rows: [{ ...base, stockUnit, quantity, amount }] }),
@@ -87,11 +87,10 @@ describe("manual sale request の単位と上限（REQ-203 / UI-04-D18 / SPEC-UN
     );
   };
 
-  it("UI-04-D18 (8): payload の数量は cm の整数（m の 1.3 は 130、cm の 130 は 130）", () => {
+  it("UI-04-D18 (8): payload の数量は cm の整数（m の 1.3 は 130）", () => {
     expect(build("m", "1.3").request?.items).toEqual([
       { product_code: "MS-001", quantity: 130, amount: 910 },
     ]);
-    expect(build("cm", "130").request?.items[0]?.quantity).toBe(130);
   });
 
   it("REQ-203: 数量は上限の端まで送れ、1 つ外と形式の error は request を作らない", () => {

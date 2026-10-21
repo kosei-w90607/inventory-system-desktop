@@ -1,6 +1,6 @@
 // src/features/products/components/StockUnitField.tsx
 //
-// UI-01b-D6 / UI-01b-D22: 単位は 12 個の表示の語から選ぶ。長さの単位（m・cm）を選ぶと
+// UI-01b-D6 / UI-01b-D22: 単位は 10 個の表示の語から選ぶ。長さの単位（m）を選ぶと
 // POS 在庫同期 off を提案するが、利用者 override を保持する。
 // 自動提案は onPosStockSyncSuggest（touched を立てない）、利用者の checkbox 操作は
 // onPosStockSyncChange（touched を立てる）を使い、2 つの経路を分離する。
@@ -45,7 +45,7 @@ export function StockUnitField({
   const handleUnitChange = (next: ProductStockUnit) => {
     onStockUnitChange(next);
     // create mode かつ checkbox 未操作（posSyncTouched=false）のときだけ自動提案する。
-    // 長さの単位（m・cm）で false を提案、個数の単位で既定値 true を復元する。
+    // 長さの単位（m）で false を提案、個数の単位で既定値 true を復元する。
     // touched を立てる onPosStockSyncChange は呼ばない（利用者 override と区別するため）。
     if (mode === "create" && !posSyncTouched) {
       onPosStockSyncSuggest(!isLengthUnit(next));
@@ -103,7 +103,7 @@ export function StockUnitField({
         </label>
         {mode === "create" && isLengthUnit(stockUnit) ? (
           <p className="text-xs text-muted-foreground">
-            長さ（m・cm）の商品は在庫同期しない設定を提案します。必要なら変更できます。
+            長さ（m）の商品は在庫同期しない設定を提案します。必要なら変更できます。
           </p>
         ) : null}
       </div>

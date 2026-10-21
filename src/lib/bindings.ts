@@ -415,8 +415,8 @@ export type CmdErrorKind = "validation" | "duplicate" | "not_found" | "internal"
 export type CostDiff = {
 	product_code: string,
 	product_name: string,
-	master_cost_price: number,
-	received_cost_price: number,
+	master_cost_price_centi: number,
+	received_cost_price_centi: number,
 };
 
 /**
@@ -649,7 +649,7 @@ export type DisposalItemInput = {
 	product_code: string,
 	disposal_type: DisposalType,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	reason: string,
 };
 
@@ -674,7 +674,7 @@ export type DisposalRecordDetailItem = {
 	stock_unit: ProductStockUnit,
 	disposal_type: DisposalType,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	reason: string,
 	// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
 	line_loss_cost_centi: string,
@@ -791,7 +791,7 @@ export type ImportRow = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: string,
 	stock_unit: string | null,
 	initial_stock: number | null,
@@ -1172,8 +1172,8 @@ export type PriceHistoryEntry = {
 	id: number,
 	old_selling_price: number,
 	new_selling_price: number,
-	old_cost_price: number,
-	new_cost_price: number,
+	old_cost_price_centi: number,
+	new_cost_price_centi: number,
 	changed_at: string,
 };
 
@@ -1181,7 +1181,7 @@ export type PriceHistoryEntry = {
 export type PriceRevisionInput = {
 	product_code: string,
 	new_selling_price: number,
-	new_cost_price: number,
+	new_cost_price_centi: number,
 	assign_supplier_id: number | null,
 };
 
@@ -1205,7 +1205,7 @@ export type Product = {
 	department_id: number,
 	supplier_id: number | null,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: ProductTaxRate,
 	maker_code: string | null,
 	stock_quantity: number,
@@ -1233,7 +1233,7 @@ export type ProductCreateRequest = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: ProductTaxRate,
 	stock_unit: ProductStockUnit,
 	initial_stock: number,
@@ -1263,7 +1263,7 @@ export type ProductResponse = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	// 商品の単位。`stock_quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3 の表の 9）
 	stock_unit: ProductStockUnit,
 	stock_quantity: number,
@@ -1293,7 +1293,7 @@ export type ProductSearchQuery = {
 	per_page: number,
 };
 
-export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "roll" | "kumi" | "set" | "ball" | "cho" | "m" | "cm";
+export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "kumi" | "set" | "ball" | "cho" | "m";
 
 export type ProductTaxRate = "10" | "8" | "0";
 
@@ -1306,7 +1306,7 @@ export type ProductUpdateRequest_Deserialize = {
 	department_id?: number | null,
 	supplier_id?: number | null,
 	selling_price?: number | null,
-	cost_price?: number | null,
+	cost_price_centi?: number | null,
 	tax_rate?: ProductTaxRate | null,
 	maker_code?: string | null,
 	pos_stock_sync?: boolean | null,
@@ -1321,7 +1321,7 @@ export type ProductUpdateRequest_Serialize = {
 	department_id: number | null,
 	supplier_id: number | null,
 	selling_price: number | null,
-	cost_price: number | null,
+	cost_price_centi: number | null,
 	tax_rate: ProductTaxRate | null,
 	maker_code: string | null,
 	pos_stock_sync: boolean | null,
@@ -1367,7 +1367,7 @@ export type ReceivingCreateResult = {
 export type ReceivingItemInput = {
 	product_code: string,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 };
 
 // 入庫記録詳細
@@ -1393,7 +1393,7 @@ export type ReceivingRecordDetailItem = {
 	department_name: string,
 	stock_unit: ProductStockUnit,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
 	line_cost_centi: string,
 };
@@ -1675,7 +1675,7 @@ export type StocktakeRecordDetailItem = {
 	system_stock: number,
 	actual_count: number | null,
 	counted_at: string | null,
-	valuation_cost_price: number | null,
+	valuation_cost_price_centi: number | null,
 	adjustment_quantity: number,
 	stock_after: number,
 };

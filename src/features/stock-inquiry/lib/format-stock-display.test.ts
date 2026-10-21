@@ -1,6 +1,6 @@
 // src/features/stock-inquiry/lib/format-stock-display.test.ts
 //
-// REQ-301 / SPEC-UNIT-D3・D9: 数量と単位の表示の formatter（12 個の単位、長さは m の形）。
+// REQ-301 / SPEC-UNIT-D3・D9: 数量と単位の表示の formatter（10 個の単位、長さは m の形）。
 // golden の表は Rust の `format_length_m`・`csv_total_quantity` の test と独立に写している。
 // 設計: docs/function-design/10-common-rules.md SPEC-UNIT-D3 / 58-ui-stock-inquiry.md §58.6
 
@@ -11,6 +11,7 @@ import type { ProductStockUnit } from "@/lib/bindings";
 import {
   STOCK_UNIT_LABELS,
   formatCentiYen,
+  formatCostYen,
   formatLengthM,
   formatLengthOrPlain,
   formatQuantityTotal,
@@ -27,13 +28,11 @@ const UNIT_TABLE: readonly (readonly [ProductStockUnit, string])[] = [
   ["hon", "本"],
   ["bag", "袋"],
   ["box", "箱"],
-  ["roll", "巻"],
   ["kumi", "組"],
   ["set", "セット"],
   ["ball", "玉"],
   ["cho", "丁"],
   ["m", "m"],
-  ["cm", "cm"],
 ];
 
 describe("formatStockDisplay (REQ-301 単位表示)", () => {
@@ -41,21 +40,19 @@ describe("formatStockDisplay (REQ-301 単位表示)", () => {
     expect(formatStockDisplay(10, "pcs")).toBe("10 個");
   });
 
-  it("REQ-301: cm の商品も m の形で出す（生地、SPEC-UNIT-D3）", () => {
-    expect(formatStockDisplay(300, "cm")).toBe("3 m");
+  it("REQ-301: 長さの商品は m の形で出す（生地、SPEC-UNIT-D3）", () => {
+    expect(formatStockDisplay(300, "m")).toBe("3 m");
   });
 
   it("REQ-301: 在庫 0 でも単位付きで表示する", () => {
-    expect(formatStockDisplay(0, "cm")).toBe("0 m");
+    expect(formatStockDisplay(0, "m")).toBe("0 m");
   });
 
-  it("REQ-301 / SPEC-UNIT-D9: 12 個の単位をすべて表示の語で出す（— を出す単位が無い）", () => {
+  it("REQ-301 / SPEC-UNIT-D9: 10 個の単位をすべて表示の語で出す（— を出す単位が無い）", () => {
     expect(Object.keys(STOCK_UNIT_LABELS)).toEqual(UNIT_TABLE.map(([code]) => code));
     for (const [code, label] of UNIT_TABLE) {
       expect(formatStockUnitLabel(code)).toBe(label);
-      expect(formatStockDisplay(3, code)).toBe(
-        code === "m" || code === "cm" ? "0.03 m" : `3 ${label}`,
-      );
+      expect(formatStockDisplay(3, code)).toBe(code === "m" ? "0.03 m" : `3 ${label}`);
     }
     expect(formatStockDisplay(3, "ball")).toBe("3 玉");
     expect(formatStockDisplay(1234, "pcs")).toBe("1,234 個");
@@ -71,10 +68,9 @@ describe("formatStockDisplay (REQ-301 単位表示)", () => {
     [5, "0.05 m"],
     [-123456, "-1,234.56 m"],
     [999999999, "9,999,999.99 m"],
-  ])("REQ-301 / SPEC-UNIT-D3: 長さ %s cm は %s（golden、m も cm も同じ形）", (cm, expected) => {
+  ])("REQ-301 / SPEC-UNIT-D3: 長さ %s cm は %s（golden）", (cm, expected) => {
     expect(formatLengthM(cm)).toBe(expected);
     expect(formatStockDisplay(cm, "m")).toBe(expected);
-    expect(formatStockDisplay(cm, "cm")).toBe(expected);
   });
 });
 
@@ -109,7 +105,6 @@ describe("集計・単価・行の金額の formatter（REQ-501 / REQ-502 / SPEC
     expect(formatUnitQuantityTotal(3, 0, "pcs")).toBe("3 点");
     expect(formatUnitQuantityTotal(1234, 0, "pcs")).toBe("1,234 点");
     expect(formatUnitQuantityTotal(0, 0, "m")).toBe("0 m");
-    expect(formatUnitQuantityTotal(0, 0, "cm")).toBe("0 m");
     expect(formatUnitQuantityTotal(0, 0, "pcs")).toBe("0 点");
     expect(formatUnitQuantityTotal(5, 250, null)).toBe("5 点・2.5 m");
     expect(formatUnitQuantityTotal(0, 0, null)).toBe("0 点");
@@ -117,7 +112,6 @@ describe("集計・単価・行の金額の formatter（REQ-501 / REQ-502 / SPEC
 
   it("REQ-501: 単価は長さの商品が 1 m あたり、個数の商品は今どおり", () => {
     expect(formatUnitPrice(700, "m")).toBe("¥700/m");
-    expect(formatUnitPrice(700, "cm")).toBe("¥700/m");
     expect(formatUnitPrice(1700, "pcs")).toBe("¥1,700");
   });
 
@@ -137,9 +131,20 @@ describe("集計・単価・行の金額の formatter（REQ-501 / REQ-502 / SPEC
     expect(formatCentiYen(centi)).toBe(expected);
   });
 
+  it.each([
+    [100000, "¥1,000"],
+    [8333, "¥83.33"],
+    [5, "¥0.05"],
+    [10, "¥0.10"],
+    [0, "¥0"],
+    [99999999, "¥999,999.99"],
+  ])("Matrix C11 / SPEC-UNIT-D5: 原価 %s（1/100 円）は %s（半角の ¥）", (centi, expected) => {
+    expect(formatCostYen(centi)).toBe(expected);
+  });
+
   it("REQ-303: 長さの商品だけ m にし、個数と単位の分からない行は語を付けない数", () => {
     expect(formatLengthOrPlain(2750, "m")).toBe("27.5 m");
-    expect(formatLengthOrPlain(-50, "cm")).toBe("-0.5 m");
+    expect(formatLengthOrPlain(-50, "m")).toBe("-0.5 m");
     expect(formatLengthOrPlain(13, "pcs")).toBe("13");
     expect(formatLengthOrPlain(2750, undefined)).toBe("2750");
     expect(formatLengthOrPlain(2750, "ball", (q) => q.toLocaleString("ja-JP"))).toBe("2,750");
@@ -152,10 +157,6 @@ describe("集計・単価・行の金額の formatter（REQ-501 / REQ-502 / SPEC
 describe("formatStockUnitLabel (Gated Amendment 6 S45)", () => {
   it("pcs は「個」", () => {
     expect(formatStockUnitLabel("pcs")).toBe("個");
-  });
-
-  it("cm はそのまま「cm」", () => {
-    expect(formatStockUnitLabel("cm")).toBe("cm");
   });
 
   it("m はそのまま「m」（入力の単位を示す）", () => {
@@ -203,9 +204,9 @@ describe("SC16 fs literal: no raw {row.stockUnit} interpolation remains in src",
 
 it.each([
   [1234, "pcs", "1,234 個"],
-  [1234, "cm", "12.34 m"],
+  [1234, "m", "12.34 m"],
   [10, "pcs", "10 個"],
-  [300, "cm", "3 m"],
+  [300, "m", "3 m"],
   [-1234, "pcs", "-1,234 個"],
 ] as const)("⑮ SC22: 数量 %s %s の桁区切り表示", (quantity, unit, expected) => {
   expect(formatStockDisplay(quantity, unit)).toBe(expected);

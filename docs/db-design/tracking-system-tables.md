@@ -32,7 +32,7 @@
 この節は全部 (b)（proposed・未実装）。
 
 - `stocktakes` と `stocktake_items` は対象の一覧と評価の保存に残す。`stocktake_items.actual_count`・`counted_at` は、その明細の効く計数を表示のために写す（計数の値の正本は stock_counts）。`system_stock` は明細を作った時点の帳簿で、差異の計算に使わない参考値（表示する差異は 35 の新契約）。
-- 完了の TX で `valuation_cost_price`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_settlement_no`・`cutoff_count_id`（INTEGER NULL。完了の時点の取り込み済みの最大の精算回数〈取込みが無ければ NULL〉・`stock_counts` の最大 id。完了の前は NULL）。入出庫の movement はカーソルを持たず、業務日で切る（ADR D6）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
+- 完了の TX で `valuation_cost_price_centi`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_settlement_no`・`cutoff_count_id`（INTEGER NULL。完了の時点の取り込み済みの最大の精算回数〈取込みが無ければ NULL〉・`stock_counts` の最大 id。完了の前は NULL）。入出庫の movement はカーソルを持たず、業務日で切る（ADR D6）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
 - 自動の 0 の入力（auto_filled・force_fill）を持たない。完了の時点で廃番かつ在庫 0 の商品の明細は、未計数でも完了を止めない（計数の記録を作らない）。
 
 ### 移行（SPEC-STK-CNT-D10）
@@ -116,8 +116,8 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | old_selling | INTEGER | NOT NULL | 変更前売価 |
 | new_selling | INTEGER | NOT NULL | 変更後売価 |
-| old_cost | INTEGER | NOT NULL | 変更前原価 |
-| new_cost | INTEGER | NOT NULL | 変更後原価 |
+| old_cost_centi | INTEGER | NOT NULL | 変更前原価（1/100 円） |
+| new_cost_centi | INTEGER | NOT NULL | 変更後原価（1/100 円） |
 | changed_at | TEXT | NOT NULL | 変更日時 |
 
 ### 設計意図
@@ -151,15 +151,15 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | system_stock | INTEGER | NOT NULL | 明細を作った時点の帳簿（参考値。下の設計意図の「system_stockの時点」） |
 | actual_count | INTEGER | NULLABLE | 実カウント数。NULLなら未入力（D-118 の runtime からは、その明細の効く計数〈`stock_counts`〉を表示のために写した値） |
-| valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
+| valuation_cost_price_centi | INTEGER | NULLABLE | 確定時の評価原価（1/100 円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
 | counted_at | TEXT | NULLABLE | カウント日時（YYYY-MM-DDTHH:MM:SS）。NULLなら未入力 |
 
 ### 設計意図
 - **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。
 - **system_stockの時点**（2026-10-16、D-118 で改めた。それまでの SPEC-STK-TIME-D8-L1 は置き換えた）: 明細を作った時点（棚卸しの開始時、または棚卸し中の商品登録時）の帳簿で、差異の計算に使わない参考値。計数の値の正本は `stock_counts`、差異の表示は [35](../function-design/35-biz-stocktake-service.md) の新契約（効く計数の値と、ADR D3 の判定表でその計数に入っている記録だけから求めた帳簿の差）。現行 build（旧本体）の明細も同じ意味で、旧本体のカウント（35 §20.4 の update_count）では更新しない。
 - **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。NULLの件数が「未入力」の件数として進捗バーに使われる
-- **valuation_cost_priceの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_priceの値をコピーしてくる
-- **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
+- **valuation_cost_price_centiの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_price_centiの値をコピーしてくる
+- **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price_centi・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
 
 ### 困りそうなケースと対応方針（2026-03-28 確定）
 

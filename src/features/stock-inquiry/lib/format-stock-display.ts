@@ -1,7 +1,7 @@
 // src/features/stock-inquiry/lib/format-stock-display.ts
 //
 // 数量と単位の表示の純関数（SPEC-UNIT-D3 の表示・D9 の formatter）。
-// 個数の単位は「10 個」、長さの単位（`m`・`cm`）はどちらも m の形「1.3 m」で出す。
+// 個数の単位は「10 個」、長さの単位（`m`）は m の形「1.3 m」で出す。
 // 単位は `ProductStockUnit` で受け、全 variant を型で網羅する（fallback を置かない）。
 //
 // 設計: docs/function-design/10-common-rules.md SPEC-UNIT-D3 / 58-ui-stock-inquiry.md §58.6
@@ -16,13 +16,11 @@ export const STOCK_UNIT_LABELS: Record<ProductStockUnit, string> = {
   hon: "本",
   bag: "袋",
   box: "箱",
-  roll: "巻",
   kumi: "組",
   set: "セット",
   ball: "玉",
   cho: "丁",
   m: "m",
-  cm: "cm",
 };
 
 /**
@@ -40,14 +38,14 @@ export function formatLengthM(quantityCm: number): string {
   return `${quantityCm < 0 ? "-" : ""}${whole}${decimals} m`;
 }
 
-/** 数量を単位つきの文字列にする（`10 個`・`3 玉`・`1.3 m`。`cm` の商品も m の形） */
+/** 数量を単位つきの文字列にする（`10 個`・`3 玉`・`1.3 m`） */
 export function formatStockDisplay(quantity: number, unit: ProductStockUnit): string {
   return isLengthUnit(unit)
     ? formatLengthM(quantity)
     : `${quantity.toLocaleString("ja-JP")} ${STOCK_UNIT_LABELS[unit]}`;
 }
 
-/** 数量を伴わない単位の表示（入力の行の単位欄。`cm` の商品は入力の単位の `cm`） */
+/** 数量を伴わない単位の表示（入力の行の単位欄） */
 export function formatStockUnitLabel(unit: ProductStockUnit): string {
   return STOCK_UNIT_LABELS[unit];
 }
@@ -94,6 +92,16 @@ export function formatCentiYen(centi: string): string {
     .replace(/^0+(?=\d)/, "")
     .replace(/\B(?=(\d{3})+$)/g, ",");
   return `${whole}.${padded.slice(-2)} 円`;
+}
+
+/**
+ * 原価（1/100 円の整数）の表示（SPEC-UNIT-D5、Y3）。割り切れれば円の整数、そうでなければ小数 2 桁で、
+ * 前に半角の `¥`、整数部に 3 桁区切り（`¥1,000`・`¥83.33`・`¥0.05`）。原価を出す全ての画面がこれを使う。
+ */
+export function formatCostYen(centi: number): string {
+  const fraction = centi % 100;
+  const whole = ((centi - fraction) / 100).toLocaleString("ja-JP");
+  return `¥${whole}${fraction === 0 ? "" : `.${String(fraction).padStart(2, "0")}`}`;
 }
 
 /**

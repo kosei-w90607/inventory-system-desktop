@@ -33,7 +33,7 @@ import {
   SupplierPickerDialog,
   supplierCurrentLabel,
 } from "@/features/suppliers/components/SupplierPickerDialog";
-import { isLengthUnit } from "@/lib/unit-quantity";
+import { formatCostInput, isLengthUnit, unitCostFromPack } from "@/lib/unit-quantity";
 import { suggestPluTarget } from "../lib/jan-code";
 import type { ProductFormValues, ProductTaxRate } from "../lib/product-form-request";
 import { DiscontinueConfirmDialog } from "./DiscontinueConfirmDialog";
@@ -352,7 +352,7 @@ export function ProductForm({
 
       <FormSection
         title="価格"
-        description="売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。"
+        description="売価は税込の円の整数、原価は税抜の円で小数 2 桁まで入力します。長さ（m）の商品は 1 m あたりの値段です。"
       >
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1">
@@ -368,16 +368,24 @@ export function ProductForm({
             <FieldError message={errors.sellingPrice} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cost-price">原価（必須{perMeter}）</Label>
+            <Label htmlFor="cost-price">原価（税抜、必須{perMeter}）</Label>
             <Input
               id="cost-price"
-              inputMode="numeric"
+              inputMode="decimal"
               value={values.costPrice}
               onChange={(event) => {
                 update("costPrice", event.target.value);
               }}
             />
             <FieldError message={errors.costPrice} />
+            {/* UI-01b-D24: 個数の単位の商品だけ。長さの単位にすると閉じて隠れ、開き直すと空から始まる */}
+            {isLengthUnit(values.stockUnit) ? null : (
+              <CostPackHelper
+                onApply={(centi) => {
+                  update("costPrice", formatCostInput(centi));
+                }}
+              />
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="tax-rate">税率</Label>
@@ -472,5 +480,66 @@ export function ProductForm({
         }}
       />
     </form>
+  );
+}
+
+/** 原価の「袋の値段から出す」の補助（UI-01b-D24）。2 つの欄の値は保存せず、閉じると捨てる */
+function CostPackHelper({ onApply }: { onApply: (centi: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [packPrice, setPackPrice] = useState("");
+  const [packCount, setPackCount] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = () => {
+    setOpen((current) => !current);
+    setPackPrice("");
+    setPackCount("");
+    setError(null);
+  };
+
+  return (
+    <div className="space-y-2 pt-1">
+      <Button type="button" variant="outline" size="sm" aria-expanded={open} onClick={toggle}>
+        袋の値段から出す
+      </Button>
+      {open ? (
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-1">
+            <Label htmlFor="cost-pack-price">袋の値段（円）</Label>
+            <Input
+              id="cost-pack-price"
+              inputMode="decimal"
+              value={packPrice}
+              onChange={(event) => {
+                setPackPrice(event.target.value);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cost-pack-count">入り数</Label>
+            <Input
+              id="cost-pack-count"
+              inputMode="numeric"
+              value={packCount}
+              onChange={(event) => {
+                setPackCount(event.target.value);
+              }}
+            />
+          </div>
+          <FieldError message={error ?? undefined} />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              const result = unitCostFromPack(packPrice, packCount);
+              setError(result.error);
+              if (result.value !== null) onApply(result.value);
+            }}
+          >
+            原価に入れる
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }

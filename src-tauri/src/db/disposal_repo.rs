@@ -59,7 +59,7 @@ pub struct NewDisposalItem {
     pub product_code: String,
     pub disposal_type: String,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub reason: String,
 }
 
@@ -112,7 +112,7 @@ pub struct DisposalRecordDetailItem {
     pub stock_unit: ProductStockUnit,
     pub disposal_type: DisposalType,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub reason: String,
     /// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
     // repo は空で返し、BIZ が必ず埋める
@@ -161,14 +161,14 @@ pub fn insert_disposal_record(
 /// disposal_items に1行INSERT
 pub fn insert_disposal_item(conn: &DbConnection, item: &NewDisposalItem) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
+        "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price_centi, reason)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             item.disposal_record_id,
             item.product_code,
             item.disposal_type,
             item.quantity,
-            item.cost_price,
+            item.cost_price_centi,
             item.reason,
         ],
     )?;
@@ -647,7 +647,7 @@ pub fn get_disposal_record_detail(
             p.stock_unit,
             di.disposal_type,
             di.quantity,
-            di.cost_price,
+            di.cost_price_centi,
             di.reason
          FROM disposal_items di
          JOIN products p ON p.product_code = di.product_code
@@ -665,7 +665,7 @@ pub fn get_disposal_record_detail(
                 stock_unit: parse_stock_unit(row.get(4)?)?,
                 disposal_type: parse_disposal_type(row.get(5)?)?,
                 quantity: row.get(6)?,
-                cost_price: row.get(7)?,
+                cost_price_centi: row.get(7)?,
                 reason: row.get(8)?,
                 line_loss_cost_centi: String::new(),
             })
@@ -827,7 +827,7 @@ mod tests {
         .unwrap();
         let id = conn.last_insert_rowid();
         conn.execute(
-            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi)
              VALUES (?1, 'IR-RCV-X', 1, 100)",
             rusqlite::params![id],
         )
@@ -879,7 +879,7 @@ mod tests {
                 product_code: "IR-DSP-X".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 1,
-                cost_price: 100,
+                cost_price_centi: 100,
                 reason: "破損".to_string(),
             },
         )
@@ -906,7 +906,7 @@ mod tests {
             product_code: "TEST-DSP".to_string(),
             disposal_type: "damage".to_string(),
             quantity: 2,
-            cost_price: 300,
+            cost_price_centi: 300,
             reason: "袋破れ".to_string(),
         };
         insert_disposal_item(&conn, &item).unwrap();
@@ -925,12 +925,22 @@ mod tests {
         };
         let id = insert_disposal_record(&conn, &dr).unwrap();
 
-        let result = conn.execute(
-            "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
-             VALUES (?1, 'TEST-DCHK', 'invalid', 1, 100, 'test')",
-            rusqlite::params![id],
+        let insert = |disposal_type: &str| {
+            conn.execute(
+                "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price_centi, reason)
+                 VALUES (?1, 'TEST-DCHK', ?2, 1, 100, 'test')",
+                rusqlite::params![id, disposal_type],
+            )
+        };
+        // 列名の誤りで常に失敗して緑にならないよう、CHECK の文と正の対照を見る（Matrix T2a (i)）
+        let result = insert("invalid");
+        assert!(
+            result
+                .as_ref()
+                .is_err_and(|e| e.to_string().contains("CHECK constraint failed")),
+            "不正 disposal_type は CHECK で拒否: {result:?}"
         );
-        assert!(result.is_err(), "不正 disposal_type は CHECK で拒否");
+        assert!(insert("damage").is_ok(), "正しい disposal_type は通る");
     }
 
     #[test]
@@ -951,7 +961,7 @@ mod tests {
             product_code: "TEST-DRSN".to_string(),
             disposal_type: "other".to_string(),
             quantity: 1,
-            cost_price: 50,
+            cost_price_centi: 50,
             reason: "任意の理由テキスト — 自由記述OK".to_string(),
         };
         insert_disposal_item(&conn, &item).unwrap(); // CHECK なしなのでOK
@@ -1061,7 +1071,7 @@ mod tests {
                 product_code: "DSP-DET-1".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 2,
-                cost_price: 120,
+                cost_price_centi: 120,
                 reason: "袋破れ".to_string(),
             },
         )
@@ -1073,7 +1083,7 @@ mod tests {
                 product_code: "DSP-DET-2".to_string(),
                 disposal_type: "disposal".to_string(),
                 quantity: 3,
-                cost_price: 80,
+                cost_price_centi: 80,
                 reason: "期限切れ".to_string(),
             },
         )
@@ -1099,10 +1109,10 @@ mod tests {
         assert_eq!(detail.items[0].product_name, "テスト商品");
         // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
         assert_eq!(detail.items[0].quantity, 2);
-        assert_eq!(detail.items[0].cost_price, 120);
+        assert_eq!(detail.items[0].cost_price_centi, 120);
         assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
         assert_eq!(detail.items[1].quantity, 3);
-        assert_eq!(detail.items[1].cost_price, 80);
+        assert_eq!(detail.items[1].cost_price_centi, 80);
     }
 
     #[test]
@@ -1139,7 +1149,7 @@ mod tests {
                     product_code: product_code.to_string(),
                     disposal_type: "damage".to_string(),
                     quantity: 1,
-                    cost_price: 100,
+                    cost_price_centi: 100,
                     reason: "破損".to_string(),
                 },
             )
@@ -1190,7 +1200,7 @@ mod tests {
         .unwrap();
         let receiving_id = conn.last_insert_rowid();
         conn.execute(
-            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price) \
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi) \
              VALUES (?1, 'IR-RCV', 1, 100)",
             rusqlite::params![receiving_id],
         )
@@ -1242,7 +1252,7 @@ mod tests {
                 product_code: "IR-DSP".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 1,
-                cost_price: 100,
+                cost_price_centi: 100,
                 reason: "破損".to_string(),
             },
         )
@@ -1552,7 +1562,7 @@ mod tests {
             seed_product(&conn, &code);
             conn.execute(
                 "INSERT INTO stocktake_items
-                 (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+                 (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at)
                  VALUES (?1, ?2, 10, 9, 100, '2026-08-06T12:00:00')",
                 rusqlite::params![stocktake_id, code],
             )
@@ -1747,7 +1757,7 @@ mod tests {
         let stocktake_id = seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
         conn.execute(
             "INSERT INTO stocktake_items
-             (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+             (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at)
              VALUES (?1, 'INPROGRESS-TARGET', 10, 10, 100, '2026-08-06T12:00:00')",
             rusqlite::params![stocktake_id],
         )
