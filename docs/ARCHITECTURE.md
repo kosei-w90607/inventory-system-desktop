@@ -180,7 +180,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | BIZ-03 | Z004商品別CSV取込みパイプライン | REQ-401 | 4段階処理（Parse→Validate→Preview→Commit）。商品別売上、在庫引落し、重複チェック、ロールバック、csv_import_errors記録。現行 build では業務 commit・取消を停止している（停止 ADR。新しい形は D-118 の (b)） |
 | BIZ-04 | PLU書出しロジック | REQ-402 | 商品マスタ→PLU登録候補生成。plu_target=1商品の抽出（三分バケット: 対象/対象外/要修正）、全件/差分モード、同一JAN dedup、adapter提供のレジ制約警告、PLUファイル生成とapp-side書出し済み確認を分離したplu_dirty/plu_exported_at更新制御（D-028） |
 | BIZ-05 | 売上集計ロジック | REQ-501, 502 | 日次・月次の売上集計。商品別売上は sale_records、公式日報集計は daily_report_* を参照し、両者の意味を分けて返す |
-| BIZ-06 | 棚卸しロジック | REQ-205 | 棚卸し開始（全商品のstocktake_items生成）・カウント入力・確定（total_cost計算、valuation_cost_price記録、差異補正のinventory_movements記録）。現行 build では開始・カウント入力・確定を停止している（停止 ADR。確定の新しい形は D-118 の (b)）。進行中は1件まで制約。新規商品登録時の自動追加 |
+| BIZ-06 | 棚卸しロジック | REQ-205 | 棚卸し開始（全商品のstocktake_items生成）・カウント入力・確定（total_cost計算、valuation_cost_price_centi記録、差異補正のinventory_movements記録）。現行 build では開始・カウント入力・確定を停止している（停止 ADR。確定の新しい形は D-118 の (b)）。進行中は1件まで制約。新規商品登録時の自動追加 |
 | BIZ-07 | 整合性チェックロジック | QR系 | 写しの 4 項目（`stock_quantity`・要再確認の印・範囲）と記録から求め直した値（BIZ-02 の `derive_stock`）の突合。補正は `recompute_stock` で写しを書く（D-118 の (a)）。差異発見時の利用者確認フロー |
 | BIZ-08 | 日報取込みロジック | REQ-401 | Z001/Z002/Z005 bundleのParse→Validate→Preview→Commit、日報テーブル保存、論理rollback。sale_records/inventory_movementsへ擬似展開しない |
 | BIZ-09 | システム設定・操作ログロジック | REQ-902, 905 | 設定一覧取得・設定upsert・操作ログ検索（日付validation所有）・operation_type一覧。system_repoを呼ぶBIZ境界（D-060。仕様詳細は38-biz-system-service.md） |

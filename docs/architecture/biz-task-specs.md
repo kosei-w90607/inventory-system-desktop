@@ -56,7 +56,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
    - tax_rate: '10', '8', '0'のいずれか
    - stock_unit: 10 個の code のいずれか（共通規則 SPEC-UNIT-D1）
 3. トランザクション内で実行
-   - productsにINSERT（plu_dirty=1, plu_exported_at=NULL, pos_stock_sync=デフォルト1。利用者が商品登録画面で明示的にOFFにできる。stock_unit='cm'の場合は初期値0を提案するがUIで変更可能）
+   - productsにINSERT（plu_dirty=1, plu_exported_at=NULL, pos_stock_sync=デフォルト1。利用者が商品登録画面で明示的にOFFにできる。長さの単位（stock_unit='m'）の場合は初期値0を提案するがUIで変更可能（UI-01b-D6・D22））
    - 初期在庫 > 0 の場合 → inventory_movementsにINSERT（movement_type='receiving', quantity=初期在庫, stock_after=初期在庫）
    - 進行中の棚卸し（stocktakes.status='in_progress'）があれば → stocktake_itemsに自動追加（actual_count=NULL）
    - operation_logsに記録（operation_type='product_create'）

@@ -23,7 +23,7 @@ pub(crate) fn recompute_stock(tx: &rusqlite::Transaction<'_>, product_code: &str
 
 ### 単位と原価の精度の契約（D-113）
 
-[共通規則](10-common-rules.md) SPEC-UNIT-D2・D5・D6・D11 の BIZ-02 の側。単位・上限・行の金額は現行の契約で、原価の 1/100 円の分だけ注記のとおり未実装。
+[共通規則](10-common-rules.md) SPEC-UNIT-D2・D5・D6・D11 の BIZ-02 の側。単位・上限・行の金額・原価の 1/100 円は現行の契約。
 
 - 入庫・返品・手動販売・廃棄の Request の `quantity` は今どおり在庫の数量の正の整数（長さの商品は cm）。m の入力は UI が cm に直して送る（SPEC-UNIT-D3）。BIZ の検証（INV-1a）は上限を持つ（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）: 1 明細の数量は 1 以上 `9999999`。`quantity <= 0` の検証の隣（`receiving.rs:126`・`manual_sale.rs:141`・`disposal.rs:123`、返品は `validate_return_request_shape` の `returns.rs:99`）で、在庫を動かすかどうかの分岐より前に全明細を検査する（レジ処理済みの返品〈`register_processed`〉の明細は `apply_stock_change` を通らずに `return_items` へ保存される: `returns.rs:254`〜`:255`）。越えれば `ValidationFailed`（`明細{n}: 数量が大きすぎます`）で何も書かない。`apply_stock_change` は、計算の後の `stock_after` の絶対値が在庫の上限 `999999999` を越えれば、書く前に `ValidationFailed`（`在庫数が大きすぎます`）で TX 全体を戻す（`recompute_stock` が写しを書く直前の検査。上の D-118 の節）。`create_receiving`・`create_disposal` は、保存の前に明細から行の金額（`cost_line_centi`）と合計（`cost_total_yen`）を求めて `check_safe_integer`（`±9007199254740991`）に通し、範囲外は `ValidationFailed`（`合計金額が大きすぎます`）で TX 全体を戻す（在庫・記録・明細・変動・操作ログを書かない。`receiving.rs:156`・`disposal.rs:159`）。保存した明細は書き換えないので、記録詳細（§12.6a）が同じ明細から求める合計は検査した値と同じになり、記録詳細の読取りに範囲の検査を置かない。
 - 入庫・廃棄の明細の原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`。原価の lane、D-128）。BIZ は明細の原価も 0 以上・`99999999`（`999999.99` 円。`MAX_COST_PRICE_CENTI`）以下を負の検査の隣で検査し、超えれば `ValidationFailed("原価が大きすぎます")`（SPEC-UNIT-D5。UI を通らない IPC でも上限を超える値を保存しない）。§12.3 の原価の差分（CostDiff）は 1/100 円の値で完全一致を比べる。§12.8 の fingerprint の item 行の原価は 1/100 円の 10 進文字列にする。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、[22](22-mnt-migration.md) §16 の vB）ので、円の原価で作った fingerprint の記録はその DB に無い。
