@@ -58,11 +58,11 @@ pub struct StocktakeItem {
     pub counted_at: Option<String>,
 }
 
-/// 棚卸し明細（商品名・部門名付き、一覧表示用）
+/// 棚卸し明細の行（商品名・部門名・単位・写しの範囲付き。効く計数・差異・理由は BIZ が求める。35）
 ///
 /// 20-io-product-repo.md §2.11
-#[derive(Debug, Clone, serde::Serialize, specta::Type)]
-pub struct StocktakeItemDetail {
+#[derive(Debug, Clone)]
+pub struct StocktakeItemRow {
     pub id: i64,
     pub stocktake_id: i64,
     pub product_code: String,
@@ -73,19 +73,46 @@ pub struct StocktakeItemDetail {
     pub counted_at: Option<String>,
     pub current_stock: i64,
     pub is_discontinued: bool,
+    pub stock_unit: ProductStockUnit,
+    pub stock_range_low: Option<i64>,
+    pub stock_range_high: Option<i64>,
 }
 
-/// 棚卸し確定処理用明細（3フィールド。35-biz §20.5）
-///
-/// actual_count は force_fill 後に NULL なしが保証されるため i64 で直接取得。
+/// 完了の検査と評価に使う明細（35「完了」）
 #[derive(Debug, Clone)]
-pub struct StocktakeItemForComplete {
+pub struct StocktakeItemForCompletion {
     pub id: i64,
     pub product_code: String,
-    pub actual_count: i64,
+    /// 明細を参照する計数がある（「計数済み」）
+    pub counted: bool,
+    pub is_discontinued: bool,
+    pub stock_quantity: i64,
+    pub stock_recheck: bool,
+    pub cost_price_centi: i64,
+    pub stock_unit: ProductStockUnit,
 }
 
-/// 未入力明細（force_fill用）
+/// 商品の写し（要再確認の対象と計数の欄の文脈。40 の CountRecoveryTarget）
+#[derive(Debug, Clone)]
+pub struct StockCopyRow {
+    pub product_code: String,
+    pub name: String,
+    pub stock_unit: ProductStockUnit,
+    pub stock_quantity: i64,
+    pub stock_recheck: bool,
+    pub stock_range_low: Option<i64>,
+    pub stock_range_high: Option<i64>,
+}
+
+/// 完了の時点のカーソル（tracking。完了していなければ全て None）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct StocktakeCutoff {
+    pub settlement_no: Option<i64>,
+    pub count_id: Option<i64>,
+    pub movement_id: Option<i64>,
+}
+
+/// 未入力明細
 #[derive(Debug, Clone)]
 pub struct UncountedItem {
     pub stocktake_item_id: i64,
@@ -108,19 +135,15 @@ pub struct LastStocktakeSummary {
     pub total_cost: i64,
 }
 
-/// 棚卸し記録詳細の補正明細（補正 movement 起点）。
-#[derive(Debug, Clone, serde::Serialize, specta::Type)]
-pub struct StocktakeRecordDetailItem {
+/// 棚卸し記録詳細の明細の行（明細と header から読む。補正の movement から読まない。65）
+#[derive(Debug, Clone)]
+pub struct StocktakeRecordItemRow {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
     pub stock_unit: ProductStockUnit,
-    pub system_stock: i64,
-    pub actual_count: Option<i64>,
-    pub counted_at: Option<String>,
+    pub valuation_quantity: Option<i64>,
     pub valuation_cost_price_centi: Option<i64>,
-    pub adjustment_quantity: i64,
-    pub stock_after: i64,
 }
 
 /// 棚卸し記録詳細の IO 内部型。
@@ -128,8 +151,8 @@ pub struct StocktakeRecordDetailItem {
 pub struct StocktakeRecordDetailCore {
     pub header: Stocktake,
     pub item_count: i64,
-    pub items: Vec<StocktakeRecordDetailItem>,
-    pub movements: Vec<super::inventory_repo::MovementRecord>,
+    pub items: Vec<StocktakeRecordItemRow>,
+    pub cutoff: StocktakeCutoff,
 }
 
 // ---------------------------------------------------------------------------
@@ -249,11 +272,20 @@ pub fn complete_stocktake(
     id: i64,
     total_cost: i64,
     completed_at: &str,
+    cutoff: StocktakeCutoff,
 ) -> Result<(), DbError> {
     let affected = conn.execute(
-        "UPDATE stocktakes SET status = 'completed', total_cost = ?1, completed_at = ?2
-         WHERE id = ?3 AND status = 'in_progress'",
-        rusqlite::params![total_cost, completed_at, id],
+        "UPDATE stocktakes SET status = 'completed', total_cost = ?1, completed_at = ?2,
+             cutoff_settlement_no = ?3, cutoff_count_id = ?4, cutoff_movement_id = ?5
+         WHERE id = ?6 AND status = 'in_progress'",
+        rusqlite::params![
+            total_cost,
+            completed_at,
+            cutoff.settlement_no,
+            cutoff.count_id,
+            cutoff.movement_id,
+            id
+        ],
     )?;
     if affected == 0 {
         return Err(DbError::NotFound);
@@ -279,17 +311,19 @@ pub fn update_stocktake_item_count(
     Ok(affected == 1)
 }
 
-/// 棚卸し明細の評価原価を更新する
+/// 棚卸し明細の評価原価と評価数量を固定する（完了の TX。35）
 ///
 /// 20-io-product-repo.md §2.11
 pub fn update_stocktake_item_valuation(
     conn: &DbConnection,
     item_id: i64,
     valuation_cost_price_centi: i64,
+    valuation_quantity: i64,
 ) -> Result<(), DbError> {
     conn.execute(
-        "UPDATE stocktake_items SET valuation_cost_price_centi = ?1 WHERE id = ?2",
-        rusqlite::params![valuation_cost_price_centi, item_id],
+        "UPDATE stocktake_items SET valuation_cost_price_centi = ?1, valuation_quantity = ?2
+         WHERE id = ?3",
+        rusqlite::params![valuation_cost_price_centi, valuation_quantity, item_id],
     )?;
     Ok(())
 }
@@ -299,7 +333,8 @@ pub fn update_stocktake_item_valuation(
 /// 20-io-product-repo.md §2.11
 pub fn count_uncounted_items(conn: &DbConnection, stocktake_id: i64) -> Result<i64, DbError> {
     let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM stocktake_items WHERE stocktake_id = ?1 AND actual_count IS NULL",
+        "SELECT COUNT(*) FROM stocktake_items si
+         WHERE si.stocktake_id = ?1 AND NOT EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)",
         rusqlite::params![stocktake_id],
         |row| row.get(0),
     )?;
@@ -345,11 +380,11 @@ pub fn find_stocktake_item_by_code(
     conn: &DbConnection,
     stocktake_id: i64,
     code: &str,
-) -> Result<Option<StocktakeItemDetail>, DbError> {
+) -> Result<Option<StocktakeItemRow>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT si.id, si.stocktake_id, si.product_code, p.name, d.name,
                 si.system_stock, si.actual_count, si.counted_at, p.stock_quantity,
-                p.is_discontinued
+                p.is_discontinued, p.stock_unit, p.stock_range_low, p.stock_range_high
          FROM stocktake_items si
          JOIN products p ON si.product_code = p.product_code
          JOIN departments d ON p.department_id = d.id
@@ -360,23 +395,12 @@ pub fn find_stocktake_item_by_code(
     )?;
     let mut rows = stmt.query(rusqlite::params![stocktake_id, code])?;
     match rows.next()? {
-        Some(row) => Ok(Some(StocktakeItemDetail {
-            id: row.get(0)?,
-            stocktake_id: row.get(1)?,
-            product_code: row.get(2)?,
-            name: row.get(3)?,
-            department_name: row.get(4)?,
-            system_stock: row.get(5)?,
-            actual_count: row.get(6)?,
-            counted_at: row.get(7)?,
-            current_stock: row.get(8)?,
-            is_discontinued: row.get(9)?,
-        })),
+        Some(row) => Ok(Some(item_row(row)?)),
         None => Ok(None),
     }
 }
 
-/// 未入力明細の一覧を取得する（force_fill用）
+/// 未計数（明細を参照する計数が無い）明細の一覧を取得する
 ///
 /// 20-io-product-repo.md §2.11
 pub fn list_uncounted_items(
@@ -384,40 +408,14 @@ pub fn list_uncounted_items(
     stocktake_id: i64,
 ) -> Result<Vec<UncountedItem>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, product_code FROM stocktake_items
-         WHERE stocktake_id = ?1 AND actual_count IS NULL
-         ORDER BY id",
+        "SELECT si.id, si.product_code FROM stocktake_items si
+         WHERE si.stocktake_id = ?1 AND NOT EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)
+         ORDER BY si.id",
     )?;
     let rows = stmt.query_map(rusqlite::params![stocktake_id], |row| {
         Ok(UncountedItem {
             stocktake_item_id: row.get(0)?,
             product_code: row.get(1)?,
-        })
-    })?;
-    let mut items = Vec::new();
-    for row in rows {
-        items.push(row?);
-    }
-    Ok(items)
-}
-
-/// 棚卸し確定用の全明細を取得する（actual_count NOT NULL のみ）
-///
-/// 20-io-product-repo.md §2.11
-pub fn get_stocktake_items_for_complete(
-    conn: &DbConnection,
-    stocktake_id: i64,
-) -> Result<Vec<StocktakeItemForComplete>, DbError> {
-    let mut stmt = conn.prepare(
-        "SELECT id, product_code, actual_count FROM stocktake_items
-         WHERE stocktake_id = ?1 AND actual_count IS NOT NULL
-         ORDER BY id",
-    )?;
-    let rows = stmt.query_map(rusqlite::params![stocktake_id], |row| {
-        Ok(StocktakeItemForComplete {
-            id: row.get(0)?,
-            product_code: row.get(1)?,
-            actual_count: row.get(2)?,
         })
     })?;
     let mut items = Vec::new();
@@ -436,10 +434,10 @@ pub fn get_stocktake_progress(
 ) -> Result<StocktakeProgress, DbError> {
     conn.query_row(
         "SELECT COUNT(*) AS total,
-                COUNT(actual_count) AS counted,
-                COUNT(*) - COUNT(actual_count) AS uncounted
-         FROM stocktake_items
-         WHERE stocktake_id = ?1",
+                COALESCE(SUM(EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)), 0) AS counted,
+                COUNT(*) - COALESCE(SUM(EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)), 0) AS uncounted
+         FROM stocktake_items si
+         WHERE si.stocktake_id = ?1",
         rusqlite::params![stocktake_id],
         |row| {
             Ok(StocktakeProgress {
@@ -454,8 +452,7 @@ pub fn get_stocktake_progress(
 
 /// 棚卸し対象商品を全件取得する（フィルタなし）
 ///
-/// architecture/biz-task-specs.md BIZ-06 ステップ3+4 の和集合 = 全商品。
-/// BIZ層で is_discontinued/stock_quantity に基づく auto-fill 分岐を制御する。
+/// architecture/biz-task-specs.md BIZ-06 ステップ3+4 の和集合 = 全商品（自動の 0 の入力は持たない。35）。
 ///
 /// 20-io-product-repo.md §2.11
 pub fn find_stocktake_eligible_products(
@@ -493,7 +490,7 @@ pub fn list_stocktake_items(
     counted_only: Option<bool>,
     page: u32,
     per_page: u32,
-) -> Result<super::PaginatedResult<StocktakeItemDetail>, DbError> {
+) -> Result<super::PaginatedResult<StocktakeItemRow>, DbError> {
     if page < 1 {
         return Err(DbError::QueryFailed("page must be >= 1".to_string()));
     }
@@ -512,9 +509,15 @@ pub fn list_stocktake_items(
 
     if let Some(counted) = counted_only {
         if counted {
-            conditions.push("si.actual_count IS NOT NULL".to_string());
+            conditions.push(
+                "EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)"
+                    .to_string(),
+            );
         } else {
-            conditions.push("si.actual_count IS NULL".to_string());
+            conditions.push(
+                "NOT EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)"
+                    .to_string(),
+            );
         }
     }
 
@@ -541,7 +544,7 @@ pub fn list_stocktake_items(
     let data_sql = format!(
         "SELECT si.id, si.stocktake_id, si.product_code, p.name, d.name,
                 si.system_stock, si.actual_count, si.counted_at, p.stock_quantity,
-                p.is_discontinued
+                p.is_discontinued, p.stock_unit, p.stock_range_low, p.stock_range_high
          FROM stocktake_items si
          JOIN products p ON si.product_code = p.product_code
          JOIN departments d ON p.department_id = d.id
@@ -549,20 +552,7 @@ pub fn list_stocktake_items(
         where_clause, per_page, offset
     );
     let mut stmt = conn.prepare(&data_sql)?;
-    let rows = stmt.query_map(params_ref.as_slice(), |row| {
-        Ok(StocktakeItemDetail {
-            id: row.get(0)?,
-            stocktake_id: row.get(1)?,
-            product_code: row.get(2)?,
-            name: row.get(3)?,
-            department_name: row.get(4)?,
-            system_stock: row.get(5)?,
-            actual_count: row.get(6)?,
-            counted_at: row.get(7)?,
-            current_stock: row.get(8)?,
-            is_discontinued: row.get(9)?,
-        })
-    })?;
+    let rows = stmt.query_map(params_ref.as_slice(), item_row)?;
     let mut items = Vec::new();
     for row in rows {
         items.push(row?);
@@ -576,7 +566,7 @@ pub fn list_stocktake_items(
     })
 }
 
-/// 棚卸し記録のヘッダ、補正明細、関連在庫変動を取得する。
+/// 棚卸し記録のヘッダ、明細、完了の時点のカーソルを取得する（補正の movement は読まない。65）。
 ///
 /// 20-io-product-repo.md §2.11a / REQ-206 / REQ-207
 pub fn get_stocktake_record_detail(
@@ -589,70 +579,146 @@ pub fn get_stocktake_record_detail(
         [stocktake_id],
         |row| row.get(0),
     )?;
-
+    let cutoff = conn.query_row(
+        "SELECT cutoff_settlement_no, cutoff_count_id, cutoff_movement_id
+         FROM stocktakes WHERE id = ?1",
+        [stocktake_id],
+        |row| {
+            Ok(StocktakeCutoff {
+                settlement_no: row.get(0)?,
+                count_id: row.get(1)?,
+                movement_id: row.get(2)?,
+            })
+        },
+    )?;
     let mut item_stmt = conn.prepare(
         "SELECT si.product_code, p.name, d.name, p.stock_unit,
-                si.system_stock, si.actual_count, si.counted_at, si.valuation_cost_price_centi,
-                im.quantity, im.stock_after
-         FROM inventory_movements im
-         JOIN stocktake_items si
-           ON si.stocktake_id = im.reference_id
-          AND si.product_code = im.product_code
+                si.valuation_quantity, si.valuation_cost_price_centi
+         FROM stocktake_items si
          JOIN products p ON p.product_code = si.product_code
          JOIN departments d ON d.id = p.department_id
-         WHERE im.reference_type = 'stocktake'
-           AND im.reference_id = ?1
-           AND im.is_voided = 0
+         WHERE si.stocktake_id = ?1
          ORDER BY si.product_code ASC",
     )?;
     let items = item_stmt
         .query_map([stocktake_id], |row| {
-            Ok(StocktakeRecordDetailItem {
+            Ok(StocktakeRecordItemRow {
                 product_code: row.get(0)?,
                 product_name: row.get(1)?,
                 department_name: row.get(2)?,
                 stock_unit: parse_stock_unit(row.get(3)?)?,
-                system_stock: row.get(4)?,
-                actual_count: row.get(5)?,
-                counted_at: row.get(6)?,
-                valuation_cost_price_centi: row.get(7)?,
-                adjustment_quantity: row.get(8)?,
-                stock_after: row.get(9)?,
+                valuation_quantity: row.get(4)?,
+                valuation_cost_price_centi: row.get(5)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-
-    let mut movement_stmt = conn.prepare(
-        "SELECT id, product_code, movement_type, quantity, stock_after,
-                reference_type, reference_id, note, created_at
-         FROM inventory_movements
-         WHERE reference_type = 'stocktake'
-           AND reference_id = ?1
-           AND is_voided = 0
-         ORDER BY created_at ASC, id ASC",
-    )?;
-    let movements = movement_stmt
-        .query_map([stocktake_id], |row| {
-            Ok(super::inventory_repo::MovementRecord {
-                id: row.get(0)?,
-                product_code: row.get(1)?,
-                movement_type: super::inventory_repo::parse_movement_type(row.get(2)?)?,
-                quantity: row.get(3)?,
-                stock_after: row.get(4)?,
-                reference_type: super::inventory_repo::parse_reference_type(row.get(5)?),
-                reference_id: row.get(6)?,
-                source: None,
-                note: row.get(7)?,
-                created_at: row.get(8)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-
     Ok(StocktakeRecordDetailCore {
         header,
         item_count,
         items,
-        movements,
+        cutoff,
+    })
+}
+
+/// 完了の検査と評価に使う明細を id の順で取得する（35「完了」）
+pub fn list_items_for_completion(
+    conn: &DbConnection,
+    stocktake_id: i64,
+) -> Result<Vec<StocktakeItemForCompletion>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT si.id, si.product_code, EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id),
+                p.is_discontinued, p.stock_quantity, p.stock_recheck, p.cost_price_centi, p.stock_unit
+         FROM stocktake_items si
+         JOIN products p ON p.product_code = si.product_code
+         WHERE si.stocktake_id = ?1
+         ORDER BY si.id",
+    )?;
+    let rows = stmt
+        .query_map([stocktake_id], |row| {
+            Ok(StocktakeItemForCompletion {
+                id: row.get(0)?,
+                product_code: row.get(1)?,
+                counted: row.get(2)?,
+                is_discontinued: row.get(3)?,
+                stock_quantity: row.get(4)?,
+                stock_recheck: row.get(5)?,
+                cost_price_centi: row.get(6)?,
+                stock_unit: parse_stock_unit(row.get(7)?)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 進行中の棚卸しのその商品の明細（明細 ID・棚卸し ID）。無ければ None（40 の回復先）
+pub fn find_active_item_for_product(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<Option<(i64, i64)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT si.id, si.stocktake_id FROM stocktake_items si
+         JOIN stocktakes st ON st.id = si.stocktake_id
+         WHERE st.status = 'in_progress' AND si.product_code = ?1
+         ORDER BY st.started_at DESC, st.id DESC, si.id ASC LIMIT 1",
+    )?;
+    let mut rows = stmt.query([product_code])?;
+    match rows.next()? {
+        Some(row) => Ok(Some((row.get(0)?, row.get(1)?))),
+        None => Ok(None),
+    }
+}
+
+/// 商品の写し（名前・単位・在庫・要再確認の印と範囲）。無ければ None
+pub fn find_stock_copy(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<Option<StockCopyRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT product_code, name, stock_unit, stock_quantity, stock_recheck,
+                stock_range_low, stock_range_high
+         FROM products WHERE product_code = ?1",
+    )?;
+    let mut rows = stmt.query([product_code])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(StockCopyRow {
+            product_code: row.get(0)?,
+            name: row.get(1)?,
+            stock_unit: parse_stock_unit(row.get(2)?)?,
+            stock_quantity: row.get(3)?,
+            stock_recheck: row.get(4)?,
+            stock_range_low: row.get(5)?,
+            stock_range_high: row.get(6)?,
+        })),
+        None => Ok(None),
+    }
+}
+
+/// 写しが要再確認（`stock_recheck = 1`）の商品コードを商品コードの順で返す（35「読取り」）
+pub fn list_recheck_product_codes(conn: &DbConnection) -> Result<Vec<String>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT product_code FROM products WHERE stock_recheck = 1 ORDER BY product_code",
+    )?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+fn item_row(row: &rusqlite::Row) -> rusqlite::Result<StocktakeItemRow> {
+    Ok(StocktakeItemRow {
+        id: row.get(0)?,
+        stocktake_id: row.get(1)?,
+        product_code: row.get(2)?,
+        name: row.get(3)?,
+        department_name: row.get(4)?,
+        system_stock: row.get(5)?,
+        actual_count: row.get(6)?,
+        counted_at: row.get(7)?,
+        current_stock: row.get(8)?,
+        is_discontinued: row.get(9)?,
+        stock_unit: parse_stock_unit(row.get(10)?)?,
+        stock_range_low: row.get(11)?,
+        stock_range_high: row.get(12)?,
     })
 }
 
@@ -879,7 +945,18 @@ mod tests {
             rusqlite::params![stocktake_id, product_code, system_stock, actual_count],
         )
         .unwrap();
-        conn.last_insert_rowid()
+        let item_id = conn.last_insert_rowid();
+        // 計数済みは明細を参照する計数があること（35。Matrix T11）。数のある明細には同じ値の計数を入れる
+        if let Some(value) = actual_count {
+            conn.execute(
+                "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
+                     stocktake_item_id, counted_at)
+                 VALUES (?1, ?2, 'default', '2026-10-01', ?3, '2026-10-01T10:00:00')",
+                rusqlite::params![product_code, value, item_id],
+            )
+            .unwrap();
+        }
+        item_id
     }
 
     // ===== UI-10 T-R1: find_stocktake_item_by_code =====
@@ -1053,12 +1130,22 @@ mod tests {
         let (_dir, conn) = setup_test_db();
         let id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
 
-        complete_stocktake(&conn, id, 150000, "2026-12-31T18:00:00").unwrap();
+        let cutoff = StocktakeCutoff {
+            settlement_no: Some(7),
+            count_id: None,
+            movement_id: Some(0),
+        };
+        complete_stocktake(&conn, id, 150000, "2026-12-31T18:00:00", cutoff).unwrap();
 
         let st = find_stocktake_by_id(&conn, id).unwrap().unwrap();
         assert_eq!(st.status, "completed");
         assert_eq!(st.total_cost, Some(150000));
         assert_eq!(st.completed_at, Some("2026-12-31T18:00:00".to_string()));
+        // 完了の TX がカーソルも書く（35・tracking。期待を変える。Matrix T11）
+        assert_eq!(
+            get_stocktake_record_detail(&conn, id).unwrap().cutoff,
+            cutoff
+        );
     }
 
     #[test]
@@ -1068,7 +1155,13 @@ mod tests {
         let (_dir, conn) = setup_test_db();
         let id = create_stocktake(&conn, "completed", "2026-10-01T09:00:00");
 
-        let result = complete_stocktake(&conn, id, 100, "2026-12-31T18:00:00");
+        let result = complete_stocktake(
+            &conn,
+            id,
+            100,
+            "2026-12-31T18:00:00",
+            StocktakeCutoff::default(),
+        );
         assert!(
             matches!(result, Err(DbError::NotFound)),
             "完了済みの棚卸しに対して NotFound が返るべき: {:?}",
@@ -1121,16 +1214,18 @@ mod tests {
         let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
         let item_id = seed_stocktake_item(&conn, st_id, "SV-001", 10, Some(8));
 
-        update_stocktake_item_valuation(&conn, item_id, 300).unwrap();
+        update_stocktake_item_valuation(&conn, item_id, 300, 8).unwrap();
 
-        let val: Option<i64> = conn
+        let (val, quantity): (Option<i64>, Option<i64>) = conn
             .query_row(
-                "SELECT valuation_cost_price_centi FROM stocktake_items WHERE id = ?1",
+                "SELECT valuation_cost_price_centi, valuation_quantity FROM stocktake_items WHERE id = ?1",
                 rusqlite::params![item_id],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
         assert_eq!(val, Some(300));
+        // 評価数量も固定する（35。期待を変える。Matrix T11）
+        assert_eq!(quantity, Some(8));
     }
 
     // ===== FUNC-2.11: count_uncounted_items テスト =====
@@ -1232,59 +1327,6 @@ mod tests {
     }
 
     // ===== FUNC-2.11: get_stocktake_items_for_complete テスト =====
-
-    #[test]
-    fn test_get_items_for_complete_req205_normal() {
-        // REQ-205: 棚卸し（確定用明細取得 — 全件入力済み）
-        // FUNC-2.11: get_stocktake_items_for_complete — 全件入力済み
-        let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "IC-001");
-        seed_product(&conn, "IC-002");
-        let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
-        seed_stocktake_item(&conn, st_id, "IC-001", 10, Some(8));
-        seed_stocktake_item(&conn, st_id, "IC-002", 5, Some(5));
-
-        let items = get_stocktake_items_for_complete(&conn, st_id).unwrap();
-        assert_eq!(items.len(), 2);
-        assert_eq!(items[0].actual_count, 8);
-        assert_eq!(items[1].actual_count, 5);
-    }
-
-    #[test]
-    fn test_get_items_for_complete_req205_partial() {
-        // REQ-205: 棚卸し（確定用明細取得 — 一部入力済み）
-        // FUNC-2.11: get_stocktake_items_for_complete — 一部入力済み
-        let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "IP-001");
-        seed_product(&conn, "IP-002");
-        let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
-        seed_stocktake_item(&conn, st_id, "IP-001", 10, Some(8));
-        seed_stocktake_item(&conn, st_id, "IP-002", 5, None);
-
-        let items = get_stocktake_items_for_complete(&conn, st_id).unwrap();
-        assert_eq!(items.len(), 1, "入力済みのみ返却");
-        assert_eq!(items[0].product_code, "IP-001");
-    }
-
-    #[test]
-    fn test_get_items_for_complete_req205_excludes_null() {
-        // REQ-205: 棚卸し（確定用明細取得 — NULL行は除外）
-        // FUNC-2.11 R-4: NULL行が返らないこと
-        let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "EN-001");
-        seed_product(&conn, "EN-002");
-        seed_product(&conn, "EN-003");
-        let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
-        seed_stocktake_item(&conn, st_id, "EN-001", 10, Some(10));
-        seed_stocktake_item(&conn, st_id, "EN-002", 5, None); // NULL
-        seed_stocktake_item(&conn, st_id, "EN-003", 3, Some(0));
-
-        let items = get_stocktake_items_for_complete(&conn, st_id).unwrap();
-        assert_eq!(items.len(), 2);
-        for item in &items {
-            assert_ne!(item.product_code, "EN-002", "NULL行は除外されるべき");
-        }
-    }
 
     // ===== FUNC-2.11: get_stocktake_progress テスト =====
 
@@ -1534,98 +1576,5 @@ mod tests {
         assert_eq!(detail.header.total_cost, Some(600));
         assert_eq!(detail.item_count, 2);
         assert_eq!(detail.items.len(), 1);
-    }
-
-    #[test]
-    fn test_get_stocktake_record_detail_req207_correction_items_live_basis() {
-        let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "SRD-LIVE");
-        seed_product(&conn, "SRD-ALPHA");
-        conn.execute(
-            "UPDATE products SET name = 'ライブ基準商品', stock_quantity = 10 WHERE product_code = 'SRD-LIVE'",
-            [],
-        )
-        .unwrap();
-        let stocktake_id =
-            create_completed_stocktake(&conn, "2026-08-02T09:00:00", "2026-08-02T18:00:00", 3000);
-        seed_stocktake_item(&conn, stocktake_id, "SRD-LIVE", 10, Some(10));
-        seed_stocktake_item(&conn, stocktake_id, "SRD-ALPHA", 4, Some(3));
-        conn.execute(
-            "UPDATE stocktake_items SET valuation_cost_price_centi = 300, counted_at = '2026-08-02T17:00:00'
-             WHERE stocktake_id = ?1",
-            [stocktake_id],
-        )
-        .unwrap();
-        conn.execute(
-            "UPDATE products SET stock_quantity = 8 WHERE product_code = 'SRD-LIVE'",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
-             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00', '2026-04-01', 0)",
-            [stocktake_id],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
-             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01', '2026-04-01', 0)",
-            [stocktake_id],
-        )
-        .unwrap();
-
-        let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
-
-        assert_eq!(
-            detail.items.len(),
-            2,
-            "snapshot 差 0 でも補正 movement 行を返す"
-        );
-        let product_codes: Vec<&str> = detail
-            .items
-            .iter()
-            .map(|item| item.product_code.as_str())
-            .collect();
-        assert_eq!(product_codes, vec!["SRD-ALPHA", "SRD-LIVE"]);
-        let live_item = &detail.items[1];
-        assert_eq!(live_item.system_stock, 10);
-        assert_eq!(live_item.actual_count, Some(10));
-        assert_eq!(live_item.adjustment_quantity, 2);
-        assert_eq!(live_item.stock_after, 10);
-    }
-
-    #[test]
-    fn test_get_stocktake_record_detail_req207_movements_filter() {
-        let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "SRD-FILTER");
-        let stocktake_id =
-            create_completed_stocktake(&conn, "2026-08-03T09:00:00", "2026-08-03T18:00:00", 0);
-        seed_stocktake_item(&conn, stocktake_id, "SRD-FILTER", 0, Some(1));
-        for (reference_type, reference_id, is_voided) in [
-            ("stocktake", stocktake_id, 0),
-            ("stocktake", stocktake_id, 1),
-            ("stocktake", stocktake_id + 1_000, 0),
-            ("receiving_record", stocktake_id, 0),
-        ] {
-            conn.execute(
-                "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
-                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00', '2026-04-01', 0)",
-                rusqlite::params![reference_type, reference_id, is_voided],
-            )
-            .unwrap();
-        }
-
-        let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
-        assert_eq!(detail.movements.len(), 1);
-        assert_eq!(detail.items.len(), 1);
-
-        let in_progress_id = create_stocktake(&conn, "in_progress", "2026-08-04T09:00:00");
-        seed_stocktake_item(&conn, in_progress_id, "SRD-FILTER", 1, None);
-        let in_progress = get_stocktake_record_detail(&conn, in_progress_id).unwrap();
-        assert!(in_progress.items.is_empty());
-        assert!(in_progress.movements.is_empty());
     }
 }

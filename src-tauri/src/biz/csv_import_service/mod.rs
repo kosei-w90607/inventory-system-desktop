@@ -14,6 +14,26 @@ mod test_support;
 #[cfg(test)]
 mod tests;
 
+/// 欠けた精算回数の区間（32 の知らせ、40 の `SettlementPendingHint.missing`。1 つの番号なら from = to）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+pub struct SettlementGap {
+    pub from: i64,
+    pub to: i64,
+}
+
+/// 昇順で重複の無い精算回数の並びの間の欠けを、連続した区間にまとめて昇順で返す
+/// （区間の数は欠けた番号の数に依らない。32）
+pub(crate) fn missing_ranges(present: &[i64]) -> Vec<SettlementGap> {
+    present
+        .windows(2)
+        .filter(|pair| pair[1] - pair[0] > 1)
+        .map(|pair| SettlementGap {
+            from: pair[0] + 1,
+            to: pair[1] - 1,
+        })
+        .collect()
+}
+
 // CMD層が使用する API を一元化するため、各処理の再エクスポートを維持
 #[allow(unused_imports)]
 pub use commit::commit_csv_import;

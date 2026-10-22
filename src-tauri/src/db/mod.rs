@@ -77,7 +77,7 @@ pub use sales_repo::{
 #[allow(unused_imports)]
 pub use stocktake_repo::{
     LastStocktakeSummary, NewStocktakeItem, ProductForStocktake, Stocktake, StocktakeItem,
-    StocktakeItemDetail, StocktakeItemForComplete, StocktakeProgress, UncountedItem,
+    StocktakeItemRow, StocktakeProgress, UncountedItem,
 };
 #[allow(unused_imports)]
 pub use system_repo::{AppSetting, NewOperationLog, OperationLog};

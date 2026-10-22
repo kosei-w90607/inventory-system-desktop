@@ -3,7 +3,7 @@
 //! docs/function-design/42-cmd-sales-stocktake.md §22.5 に基づく実装。
 
 use crate::biz::stocktake_service::StocktakeRecordDetail;
-use crate::biz::stocktake_service::{self, CompleteStocktakeRequest, UpdateCountRequest};
+use crate::biz::stocktake_service::{self, CompleteStocktakeRequest};
 use crate::biz::{LastStocktakeSummary, Stocktake, StocktakeItemDetail, StocktakeProgress};
 use crate::cmd::{AppState, CmdError};
 use tauri::State;
@@ -22,6 +22,11 @@ pub struct StocktakeItemListResponse {
     pub total_count: u32,
     pub page: u32,
     pub per_page: u32,
+}
+
+/// PC の今日（ローカルの日付）。BIZ は時計を読まず、CMD がここから 1 か所で渡す（42）
+fn today() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -141,37 +146,14 @@ pub fn get_stocktake_record(
     stocktake_service::get_stocktake_record(&conn, stocktake_id).map_err(CmdError::from)
 }
 
-/// 棚卸しアイテムのカウントを更新する
+/// 棚卸しを完了する（拒否は `stocktake_guard` の `completion_blocked`。42）
 ///
-/// actual_count < 0 は防御的チェックでブロック（BIZ層にも同じチェックあり）。
-#[tauri::command]
-#[specta::specta]
-pub fn update_count(
-    state: State<AppState>,
-    stocktake_item_id: i64,
-    actual_count: i64,
-) -> Result<stocktake_service::UpdateCountResult, CmdError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
-    let req = UpdateCountRequest {
-        stocktake_item_id,
-        actual_count,
-    };
-    stocktake_service::update_count(&conn, &req).map_err(CmdError::from)
-}
-
-/// 棚卸しを確定する
-///
-/// force_fill=true で未入力をシステム在庫と同じとみなす。
-/// 確定後に整合性チェック（D-2統合）を自動実行し、結果を含めて返す。
+/// 完了後に整合性チェック（D-2統合）を自動実行し、結果を含めて返す。CMD は PC の今日を BIZ へ渡す。
 #[tauri::command]
 #[specta::specta]
 pub fn complete_stocktake(
     state: State<AppState>,
     stocktake_id: i64,
-    force_fill: bool,
 ) -> Result<stocktake_service::StocktakeResult, CmdError> {
     let mut conn = state
         .db
@@ -179,7 +161,7 @@ pub fn complete_stocktake(
         .map_err(|error| CmdError::internal("DB接続エラー", error))?;
     let req = CompleteStocktakeRequest {
         stocktake_id,
-        force_fill,
+        today: today(),
     };
     stocktake_service::complete_stocktake(&mut conn, &req).map_err(CmdError::from)
 }
@@ -223,95 +205,6 @@ mod tests {
         .unwrap();
         let item_id = conn.last_insert_rowid();
         (dir, conn, stocktake_id, item_id)
-    }
-
-    // 35 §20.0 からの独立転記（42 §22.10。production定数をimportしない）。
-    const BIZ06_STOP: &str = "棚卸しの開始・数の保存・確定は一時停止中です。数えた後の入出庫が確定で打ち消される不具合を直すまで使えません。";
-
-    fn all_tables(state: &AppState) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
-        let conn = state.db.lock().unwrap();
-        let names: Vec<String> = conn
-            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-            .unwrap()
-            .query_map([], |row| row.get(0))
-            .unwrap()
-            .collect::<Result<_, _>>()
-            .unwrap();
-        names
-            .iter()
-            .map(|name| {
-                let mut stmt = conn
-                    .prepare(&format!("SELECT * FROM \"{name}\" ORDER BY rowid"))
-                    .unwrap();
-                let width = stmt.column_count();
-                stmt.query_map([], |row| (0..width).map(|col| row.get(col)).collect())
-                    .unwrap()
-                    .collect::<Result<_, _>>()
-                    .unwrap()
-            })
-            .collect()
-    }
-
-    fn assert_stopped(err: CmdError) {
-        assert_eq!(err.kind, CmdErrorKind::Validation);
-        assert_eq!(err.message, BIZ06_STOP);
-        assert_eq!(err.field, None);
-        assert_eq!(err.error_id, None);
-    }
-
-    #[test]
-    fn test_update_count_req205_negative_stops_before_validation() {
-        // REQ-205 / SPEC-STOP-D1,D2: 実CMDの負数でも入力検査より先に停止し、wireを独立転記で固定する。
-        let negative_counts: Vec<i64> = vec![-1, -100, i64::MIN];
-        for count in negative_counts {
-            let (_dir, conn, _stocktake_id, item_id) = setup_in_progress_stocktake();
-            let app = tauri::test::mock_builder()
-                .manage(app_state_for_test(conn))
-                .build(tauri::test::mock_context(tauri::test::noop_assets()))
-                .unwrap();
-            let before = all_tables(&app.state::<AppState>());
-
-            let err = update_count(app.state::<AppState>(), item_id, count).unwrap_err();
-
-            assert_stopped(err);
-            assert_eq!(before, all_tables(&app.state::<AppState>()));
-        }
-    }
-
-    #[test]
-    fn test_update_count_req205_zero_stops() {
-        // REQ-205 / SPEC-STOP-D1,D2: 実CMDで0も停止し、明細を更新しない。
-        let (_dir, conn, _stocktake_id, item_id) = setup_in_progress_stocktake();
-        let app = tauri::test::mock_builder()
-            .manage(app_state_for_test(conn))
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap();
-        let before = all_tables(&app.state::<AppState>());
-
-        let err = update_count(app.state::<AppState>(), item_id, 0).unwrap_err();
-
-        assert_stopped(err);
-        assert_eq!(before, all_tables(&app.state::<AppState>()));
-    }
-
-    #[test]
-    fn test_start_and_complete_stocktake_req205_stop() {
-        // REQ-205 / SPEC-STOP-D1,D2: 実CMDの開始・確定（force_fillの有無、進行中あり）も停止する。
-        let (_dir, conn, stocktake_id, _item_id) = setup_in_progress_stocktake();
-        let app = tauri::test::mock_builder()
-            .manage(app_state_for_test(conn))
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap();
-        let before = all_tables(&app.state::<AppState>());
-
-        assert_stopped(start_stocktake(app.state::<AppState>()).unwrap_err());
-        for force_fill in [false, true] {
-            assert_stopped(
-                complete_stocktake(app.state::<AppState>(), stocktake_id, force_fill).unwrap_err(),
-            );
-        }
-
-        assert_eq!(before, all_tables(&app.state::<AppState>()));
     }
 
     #[test]

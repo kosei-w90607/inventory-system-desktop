@@ -49,7 +49,7 @@ fn add(a: i64, b: i64) -> Result<i64, BizError> {
 }
 
 /// 計数 `a` の窓が `b` の窓より完全に後か（ADR D3 の「計数どうし」）
-fn is_after(a: &StockCountRow, b: &StockCountRow) -> bool {
+pub(crate) fn is_after(a: &StockCountRow, b: &StockCountRow) -> bool {
     match (a.fresh, b.fresh) {
         // fresh はそれより先に保存された全ての計数より後。後に保存された fresh には負ける
         (true, true) => a.id > b.id,
@@ -265,6 +265,36 @@ pub(crate) fn derive_ledger(ledger: &Ledger) -> Result<DerivedStock, BizError> {
         range: (!reasons.is_empty()).then_some((low, high)),
         recheck_reasons: reasons,
     })
+}
+
+/// 効く計数の代表（衝突のときは写しの土台の計数）と差異（代表の値 − その計数に入っている記録だけから
+/// 求めた帳簿。35「読取り」）。計数が無ければ None
+pub(crate) fn representative_count(
+    ledger: &Ledger,
+) -> Result<Option<(StockCountRow, i64)>, BizError> {
+    let (effective, _) = effective_counts(&ledger.counts)?;
+    let Some(rep) = effective.first().map(|count| (*count).clone()) else {
+        return Ok(None);
+    };
+    let book = derive_ledger(&Ledger {
+        counts: ledger
+            .counts
+            .iter()
+            .filter(|count| is_after(&rep, count))
+            .cloned()
+            .collect(),
+        movements: ledger
+            .movements
+            .iter()
+            .filter(|movement| judge(&rep, movement, ledger) == Window::Included)
+            .cloned()
+            .collect(),
+        settlements: ledger.settlements.clone(),
+        linked_sale_imports: Vec::new(),
+    })?
+    .stock;
+    let difference = rep.count_value.checked_sub(book).ok_or_else(overflow)?;
+    Ok(Some((rep, difference)))
 }
 
 /// 1 商品の求め直しの入力を読む（21・24）

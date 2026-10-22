@@ -59,6 +59,7 @@ pub enum CmdErrorKind {
     IdempotencyConflict,
     StocktakeInProgress,
     StocktakeNotInProgress,
+    StocktakeGuard,
     RestoreFailedRecovered,
     RestoreFailedUnrecoverable,
     RestoreDurabilityUnknown,
@@ -69,7 +70,7 @@ pub enum CmdErrorKind {
 /// docs/function-design/40-cmd-product.md §5.3 + 41-cmd-pos.md §17.4
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct CmdError {
-    /// エラー分類（`CmdErrorKind` の12値）
+    /// エラー分類（`CmdErrorKind` の13値）
     pub kind: CmdErrorKind,
     /// 利用者向け日本語メッセージ
     pub message: String,
@@ -77,6 +78,8 @@ pub struct CmdError {
     pub field: Option<String>,
     /// 診断ログとの相関 ID（internal / restore_* 系のみ）
     pub error_id: Option<String>,
+    /// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
+    pub stocktake_recovery: Option<crate::biz::stocktake_service::StocktakeRecovery>,
 }
 
 impl CmdError {
@@ -119,6 +122,7 @@ impl CmdError {
             message: message.to_string(),
             field: None,
             error_id: Some(error_id),
+            stocktake_recovery: None,
         }
     }
 }
@@ -142,24 +146,28 @@ impl From<BizError> for CmdError {
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::ValidationFailedAt { message, field } => CmdError {
                 kind: CmdErrorKind::Validation,
                 message,
                 field: Some(field),
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::NotFound(msg) => CmdError {
                 kind: CmdErrorKind::NotFound,
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::DuplicateProductCode(code) => CmdError {
                 kind: CmdErrorKind::Duplicate,
                 message: format!("この商品コードは既に使用されています: {}", code),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::DatabaseError(_) => unreachable!("handled before generic logging"),
             BizError::ImportError(msg) => CmdError {
@@ -167,30 +175,42 @@ impl From<BizError> for CmdError {
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::ExportError(msg) => CmdError {
                 kind: CmdErrorKind::ExportError,
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::IdempotencyConflict(msg) => CmdError {
                 kind: CmdErrorKind::IdempotencyConflict,
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::StocktakeInProgress(msg) => CmdError {
                 kind: CmdErrorKind::StocktakeInProgress,
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             },
             BizError::StocktakeNotInProgress(msg) => CmdError {
                 kind: CmdErrorKind::StocktakeNotInProgress,
                 message: msg,
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
+            },
+            BizError::StocktakeGuard { message, recovery } => CmdError {
+                kind: CmdErrorKind::StocktakeGuard,
+                message,
+                field: None,
+                error_id: None,
+                stocktake_recovery: Some(recovery),
             },
         }
     }

@@ -26,9 +26,7 @@ pub use crate::db::product_repo::{
 #[allow(unused_imports)]
 pub use crate::db::sales_repo::CsvImport;
 #[allow(unused_imports)]
-pub use crate::db::stocktake_repo::{
-    LastStocktakeSummary, Stocktake, StocktakeItemDetail, StocktakeProgress,
-};
+pub use crate::db::stocktake_repo::{LastStocktakeSummary, Stocktake, StocktakeProgress};
 #[allow(unused_imports)]
 pub use crate::db::system_repo::{AppSetting, OperationLog};
 #[allow(unused_imports)]
@@ -37,6 +35,8 @@ pub use crate::db::DbConnection;
 pub use crate::db::DbError;
 #[allow(unused_imports)]
 pub use crate::db::PaginatedResult;
+#[allow(unused_imports)]
+pub use stocktake_service::StocktakeItemDetail;
 // CMD-02〜05 用 re-export
 pub use crate::db::disposal_repo::{
     DisposalRecordDetail, DisposalRecordSummary, InventoryRecordQuery, InventoryRecordSummary,
@@ -76,6 +76,11 @@ pub enum BizError {
     StocktakeInProgress(String),
     /// 棚卸し未進行（BIZ-06）
     StocktakeNotInProgress(String),
+    /// 棚卸しの守りの拒否と回復先（40。完了の拒否・在庫連動を始める拒否）
+    StocktakeGuard {
+        message: String,
+        recovery: stocktake_service::StocktakeRecovery,
+    },
 }
 
 impl fmt::Display for BizError {
@@ -95,6 +100,7 @@ impl fmt::Display for BizError {
             BizError::IdempotencyConflict(msg) => write!(f, "冪等性キー競合: {}", msg),
             BizError::StocktakeInProgress(msg) => write!(f, "棚卸し進行中: {}", msg),
             BizError::StocktakeNotInProgress(msg) => write!(f, "棚卸し未進行: {}", msg),
+            BizError::StocktakeGuard { message, .. } => write!(f, "棚卸しの確認: {}", message),
         }
     }
 }

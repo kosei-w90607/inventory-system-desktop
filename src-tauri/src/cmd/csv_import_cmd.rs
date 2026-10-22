@@ -45,6 +45,7 @@ pub fn parse_and_validate_csv(
             message: "ファイルサイズが上限(20MB)を超えています".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
 
@@ -123,6 +124,7 @@ pub fn commit_csv_import(
             message: "不正なプレビュートークンです".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
 
@@ -141,6 +143,7 @@ pub fn commit_csv_import(
                         .to_string(),
                     field: None,
                     error_id: None,
+                    stocktake_recovery: None,
                 });
             }
             Some(cached) => {
@@ -160,6 +163,7 @@ pub fn commit_csv_import(
                                 .to_string(),
                         field: None,
                         error_id: None,
+                        stocktake_recovery: None,
                     });
                 }
                 cached.clone()

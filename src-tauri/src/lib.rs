@@ -340,7 +340,6 @@ fn export_bindings_to(bindings_path: &std::path::Path) -> Result<(), String> {
         cmd::stocktake_cmd::find_stocktake_item,
         cmd::stocktake_cmd::get_last_completed_stocktake,
         cmd::stocktake_cmd::get_stocktake_record,
-        cmd::stocktake_cmd::update_count,
         cmd::stocktake_cmd::complete_stocktake,
         cmd::integrity_cmd::run_integrity_check,
         cmd::integrity_cmd::fix_integrity,
@@ -1555,7 +1554,6 @@ pub fn run() {
             cmd::stocktake_cmd::find_stocktake_item,
             cmd::stocktake_cmd::get_last_completed_stocktake,
             cmd::stocktake_cmd::get_stocktake_record,
-            cmd::stocktake_cmd::update_count,
             cmd::stocktake_cmd::complete_stocktake,
             // CMD-11 部分: 整合性チェック
             cmd::integrity_cmd::run_integrity_check,
