@@ -33,9 +33,9 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: aba17e2e2422695b2ffff6bcd3fd9bebebf24339
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
@@ -54,6 +54,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 5. plan-gate のまま是正（round 1、2026-10-22、Coordinator）: round 1 の reject を起草役が `9adc7047`・`097d319c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。owner が過去の取込みを記録から取り消す入口を導入の前の関門に入れた（repo 外の回答台帳 TD-380。b1 の範囲は変えない）。
 6. plan-gate のまま是正（round 2、2026-10-22、Coordinator）: round 2 の reject を起草役が `1688ccb9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 7. plan-gate（round 3、上限、2026-10-23、Coordinator）: round 3 は両者 reject（Codex に P1 1）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした。起草役が `8655cb64` で直した（下の Review Response）。plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が P1 / P2 = 0 を報告し、owner が実装の前の R4 を承認した後。
+8. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側の fresh Opus 5.5 が closure で P1・P2 が無いと報告した（Review Response 参照）。Codex の closure は利用上限で 2026-10-24 まで得られず、`docs/AGENT_OPERATING_MANUAL.md` §3.3・座組表の Codex 停止中の列（Plan Review は fresh Opus 5.5 だけで進める）に従い、owner の決定（repo 外の回答台帳 TD-389。TD-387 を見直した）で進めた。closure の P3 4 件は plan-gate のまま起草役が `5c45d253`・`aba17e2e` で直した（Plan Commit は是正の後の版）。owner は同じ回答で実装の前の R4 を承認した（TD-389）。実装の commit はまだ無い。
 
 ## Owner Effort Budget
 
@@ -63,7 +64,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 4（2026-10-22: 起票の owner の判断事項 (i)〜(iii) の 3〈TD-377〜TD-379、1 回の問い合わせに束ねた〉、記録から取り消す入口を関門に入れる判断 1〈TD-380〉） | 4（実装の前の R4 の承認 1、L3 と最後の head の `r4` 1、Ready 1、merge 1） | 1（Plan Review の round の天井の判断か L3 の 2 round 目の 1。予備の 1 を TD-380 に使った） | 9 = 4 + 4 + 1 |
+| 介入 | 9 | 7（2026-10-22: 起票の owner の判断事項 (i)〜(iii) の 3〈TD-377〜TD-379、1 回の問い合わせに束ねた〉、記録から取り消す入口を関門に入れる判断 1〈TD-380〉。2026-10-23: Codex の closure を待つ判断 1〈TD-387〉、closure の N1 の直し方 1〈TD-388〉、Codex を待たずに進める判断と実装の前の R4 の承認 1〈TD-389〉） | 3（L3 と最後の head の `r4` 1、Ready 1、merge 1） | 0（予備の 1 を TD-388 に使った） | 10 = 7 + 3 + 0（上限を 1 超える見込み。次の owner の判断〈L3 と最後の head の `r4`〉と同じ 1 回で上限の改定を諮る。`docs/DEV_WORKFLOW.md` Owner Effort Budget） |
 
 owner の操作の回数を減らす工夫: (1) 起票の判断事項は 1 回の問い合わせに束ね、選択肢に推奨を付け、返事は記号 1 つで済む形にする。(2) L3 と最後の head の `r4` の承認を同じ 1 回で頼む（(a) と同じ）。(3) L3 の入力物（商品 CSV と合成の Z004）は S9 の tracked の生成の test から L3 の日に Coordinator が作り、L3 の DB も Coordinator が用意して差し替え（Test Plan の「L3 の DB の用意と差し替え」）、Windows の path を省略しない形で台本と一緒に渡す（owner は file も DB も作らない。round 2 の是正で生成の方式に合わせた）。(4) L3 の項目を 1 本の通しの台本に並べ、前の段の結果を次の段の入力にする（計数 → 取込み → 要再確認 → 入れ直し → 完了 → 記録の詳細）。(5) L3 Eligibility の (3)（DB の手での改変や PC の時計の変更）に当たる項目は L3 に入れず、自動 test と Coordinator が渡す画面の写しで見る（下の Test Plan）。(6) Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
 
@@ -910,3 +911,10 @@ round 3（`c7468bd1`、上限）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3
 - P1: 唯一の取込みを取り消した後に、別のレジ・番号の戻った精算が fresh な計数のカーソルの内と扱われる → 32 の順 2 は取り消した取込みとも machine_no を比べ（ADR D4）、fresh な計数の n は n の active な取込みがあるときだけ使う（ADR D3）。順 5 は active だけのまま（取り消した誤った版の精算日との偽の拒否を避ける）。Matrix L13・Z22・Z23。
 - P2: 未来の日付の精算と入出庫が完了の評価に入り、後の比較で外れて偽の差 → 完了の後の比較の範囲をカーソル（精算・movement・計数）と完了の前の記録で決める（35・ADR D6・D9。`stocktakes` に `cutoff_movement_id` を足し vZ の列は 7 つ。起草役が原則を入出庫にも当てたのを Coordinator が採った）。Matrix R2 (a)〜(c)。商品フォームから棚卸しへの導線は離脱の確認（UI-USW-D1）を通り、戻ったフォームで在庫連動を付け直す（51・73、L3-4、U9・U12）。
 - P3: AC11 に撤去した名前の docs の検索（除外に decision-log・backlog）、M1 の列を名指し、AC2 は comment の行を除く、K8・T2 の開始の操作ログの detail の key。
+
+closure（`995c288b`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 4）。Codex GPT-6 Astra（発注 508）は利用上限で途中で終わり結果が無い。owner の決定（repo 外の回答台帳 TD-389）で §3.3 に従い Claude 側の closure で plan-approved へ進め、Codex が戻ったら 508 を Plan Commit の版に当てて流し、指摘は Gated Amendment で扱う。Coordinator が P3 4 件を全部採用し、plan-gate のまま起草役が直した（`5c45d253`・`aba17e2e`）。
+
+- N1（owner の決定 TD-388）: 32 の順 2 は取り消した取込みとも machine_no を比べたまま、比べる先が取り消した取込みだけのときは拒否の文でその取込み（取込みID・精算回数・取込み日・レジ番号）を名指す。照合の基準を入れ替える操作は作らない（残りの危険と ADR の Revisit）。ADR D4・D7、24 の照合先の読取り、Matrix Z2・Z22。
+- N2: 完了の後の比較の範囲の原則から計数を除く（完了の後に保存した計数は次の観測）。ADR D6、35、tracking、Matrix R2 (d)。
+- N3: Matrix の K2 に取消と取り込み直しの列（完了の (iii) の n を n の active な取込みがあるときだけ使うことを観測する）。発注の初めの列は (iii) でなく (i) が出て観測にならず、起草役が止めて代案を出した（MANUAL §5.6）。
+- N4: 24 の読取りを「新設する」と 1 通りに（取り消したものを含めて探し、active を優先する照合先を返す）。
