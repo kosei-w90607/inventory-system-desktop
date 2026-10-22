@@ -1,6 +1,5 @@
 # ツール・プラグイン・Skill コマンド一覧（在庫管理システム）
 
-最終更新: 2026-06-07
 対象: `/home/kosei/projects/inventory-system-public` 配下で確認できる設定・README相当（`CLAUDE.md`, `SKILL.md`, 各設定ファイル）
 
 ---

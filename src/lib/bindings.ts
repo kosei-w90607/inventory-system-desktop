@@ -290,14 +290,14 @@ export const commands = {
 	/**
 	 *  在庫整合性チェックを実行する
 	 *
-	 *  全商品の products.stock_quantity と SUM(inventory_movements.quantity) を突合。
+	 *  全商品の写しの 4 項目（在庫数・要再確認の印・範囲）と、記録から求め直した値を突合する（36）。
 	 *  読み取り専用。
 	 */
 	runIntegrityCheck: () => typedError<IntegrityResult, CmdError>(__TAURI_INVOKE("run_integrity_check")),
 	/**
 	 *  指定商品の在庫を整合性チェック結果に基づいて補正する
 	 *
-	 *  stock_quantity を movements 合計値に補正し、操作ログに記録する。
+	 *  写しと記録から求め直した値が違う商品だけ、写しを求め直しの結果に補正し、操作ログに記録する（36）。
 	 */
 	fixIntegrity: (productCodes: string[]) => typedError<IntegrityFixResult, CmdError>(__TAURI_INVOKE("fix_integrity", { productCodes })),
 	// 全設定を取得する（§43.3）
@@ -415,8 +415,8 @@ export type CmdErrorKind = "validation" | "duplicate" | "not_found" | "internal"
 export type CostDiff = {
 	product_code: string,
 	product_name: string,
-	master_cost_price: number,
-	received_cost_price: number,
+	master_cost_price_centi: number,
+	received_cost_price_centi: number,
 };
 
 /**
@@ -649,7 +649,7 @@ export type DisposalItemInput = {
 	product_code: string,
 	disposal_type: DisposalType,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	reason: string,
 };
 
@@ -674,7 +674,7 @@ export type DisposalRecordDetailItem = {
 	stock_unit: ProductStockUnit,
 	disposal_type: DisposalType,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	reason: string,
 	// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
 	line_loss_cost_centi: string,
@@ -791,7 +791,7 @@ export type ImportRow = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: string,
 	stock_unit: string | null,
 	initial_stock: number | null,
@@ -802,6 +802,9 @@ export type ImportRow = {
 	plu_target?: boolean | null,
 	warnings?: string[],
 };
+
+// 写しと求めた値で違う項目（重複なし、この順。36）
+export type IntegrityField = "quantity" | "recheck" | "range";
 
 // 整合性補正結果
 export type IntegrityFixResult = {
@@ -816,9 +819,11 @@ export type IntegrityMismatch = {
 	name: string,
 	// 商品の単位。数量は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
 	stock_unit: ProductStockUnit,
-	stock_quantity: number,
-	movements_sum: number,
-	difference: number,
+	// 保存している値
+	copy: StockCopy,
+	// 記録から求め直した値
+	derived: StockCopy,
+	differing_fields: IntegrityField[],
 };
 
 // 整合性チェック結果
@@ -1167,8 +1172,8 @@ export type PriceHistoryEntry = {
 	id: number,
 	old_selling_price: number,
 	new_selling_price: number,
-	old_cost_price: number,
-	new_cost_price: number,
+	old_cost_price_centi: number,
+	new_cost_price_centi: number,
 	changed_at: string,
 };
 
@@ -1176,7 +1181,7 @@ export type PriceHistoryEntry = {
 export type PriceRevisionInput = {
 	product_code: string,
 	new_selling_price: number,
-	new_cost_price: number,
+	new_cost_price_centi: number,
 	assign_supplier_id: number | null,
 };
 
@@ -1200,7 +1205,7 @@ export type Product = {
 	department_id: number,
 	supplier_id: number | null,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: ProductTaxRate,
 	maker_code: string | null,
 	stock_quantity: number,
@@ -1228,7 +1233,7 @@ export type ProductCreateRequest = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	tax_rate: ProductTaxRate,
 	stock_unit: ProductStockUnit,
 	initial_stock: number,
@@ -1258,7 +1263,7 @@ export type ProductResponse = {
 	name: string,
 	department_id: number,
 	selling_price: number,
-	cost_price: number,
+	cost_price_centi: number,
 	// 商品の単位。`stock_quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3 の表の 9）
 	stock_unit: ProductStockUnit,
 	stock_quantity: number,
@@ -1288,7 +1293,7 @@ export type ProductSearchQuery = {
 	per_page: number,
 };
 
-export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "roll" | "kumi" | "set" | "ball" | "cho" | "m" | "cm";
+export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "kumi" | "set" | "ball" | "cho" | "m";
 
 export type ProductTaxRate = "10" | "8" | "0";
 
@@ -1301,11 +1306,13 @@ export type ProductUpdateRequest_Deserialize = {
 	department_id?: number | null,
 	supplier_id?: number | null,
 	selling_price?: number | null,
-	cost_price?: number | null,
+	cost_price_centi?: number | null,
 	tax_rate?: ProductTaxRate | null,
 	maker_code?: string | null,
 	pos_stock_sync?: boolean | null,
 	plu_target?: boolean | null,
+	// 個数の単位どうしの変更だけを許す（SPEC-UNIT-D2・BIZ-01-D8）
+	stock_unit?: ProductStockUnit | null,
 };
 
 // 商品更新リクエスト（FUNC-4.4）
@@ -1314,11 +1321,13 @@ export type ProductUpdateRequest_Serialize = {
 	department_id: number | null,
 	supplier_id: number | null,
 	selling_price: number | null,
-	cost_price: number | null,
+	cost_price_centi: number | null,
 	tax_rate: ProductTaxRate | null,
 	maker_code: string | null,
 	pos_stock_sync: boolean | null,
 	plu_target: boolean | null,
+	// 個数の単位どうしの変更だけを許す（SPEC-UNIT-D2・BIZ-01-D8）
+	stock_unit: ProductStockUnit | null,
 };
 
 // 商品更新結果（FUNC-4.4）
@@ -1358,7 +1367,7 @@ export type ReceivingCreateResult = {
 export type ReceivingItemInput = {
 	product_code: string,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 };
 
 // 入庫記録詳細
@@ -1384,7 +1393,7 @@ export type ReceivingRecordDetailItem = {
 	department_name: string,
 	stock_unit: ProductStockUnit,
 	quantity: number,
-	cost_price: number,
+	cost_price_centi: number,
 	// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
 	line_cost_centi: string,
 };
@@ -1558,14 +1567,21 @@ export type StartStocktakeResult = {
 	auto_filled_count: number,
 };
 
-// 在庫補正詳細
+// 在庫補正詳細（差は持たず、画面は before → after を並べる。75 §75.6）
 export type StockAdjustment = {
 	product_code: string,
 	// 商品の単位（SPEC-UNIT-D3 の表の 11）
 	stock_unit: ProductStockUnit,
-	old_stock: number,
-	new_stock: number,
-	adjustment: number,
+	before: StockCopy,
+	after: StockCopy,
+};
+
+// 写しの 4 項目（保存している値、または記録から求め直した値。36）
+export type StockCopy = {
+	stock_quantity: number,
+	stock_recheck: boolean,
+	stock_range_low: number | null,
+	stock_range_high: number | null,
 };
 
 // 在庫補正の詳細（rollback結果に含まれる）
@@ -1659,7 +1675,7 @@ export type StocktakeRecordDetailItem = {
 	system_stock: number,
 	actual_count: number | null,
 	counted_at: string | null,
-	valuation_cost_price: number | null,
+	valuation_cost_price_centi: number | null,
 	adjustment_quantity: number,
 	stock_after: number,
 };

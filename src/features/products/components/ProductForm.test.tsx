@@ -27,6 +27,7 @@ vi.mock("@/lib/bindings", () => ({
 
 import { makeMockDepartment, makeMockSupplier } from "../lib/test-fixtures";
 import {
+  buildCreateProductRequest,
   createProductFormDefaults,
   productToFormValues,
   type ProductFormValues,
@@ -40,7 +41,7 @@ describe("ProductForm (UI-01b)", () => {
       product_code: "P-001",
       jan_code: "4901234567890",
       stock_quantity: 20,
-      stock_unit: "cm",
+      stock_unit: "m",
       is_discontinued: true,
     });
 
@@ -65,7 +66,7 @@ describe("ProductForm (UI-01b)", () => {
     );
 
     expect(screen.getByLabelText("商品コード")).toHaveValue("P-001");
-    // UI-01b-D11: read-only 入力は readOnly 属性で示す（数量単位 select は disabled 維持）
+    // UI-01b-D11: read-only 入力は readOnly 属性で示す（長さの単位の商品の数量単位 select は disabled）
     expect(screen.getByLabelText("JANコード")).toHaveAttribute("readonly");
     expect(screen.getByLabelText("現在庫")).toHaveAttribute("readonly");
     expect(screen.getByLabelText("数量単位")).toBeDisabled();
@@ -77,6 +78,54 @@ describe("ProductForm (UI-01b)", () => {
     expect(screen.getByRole("heading", { name: "分類と取引先" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "価格" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "在庫" })).toBeInTheDocument();
+  });
+
+  function renderStockSection(mode: "create" | "edit", stockUnit: "pcs" | "m") {
+    const product = makeMockProductWithRelations({ stock_unit: stockUnit, stock_quantity: 12 });
+    render(
+      <ProductForm
+        mode={mode}
+        values={
+          mode === "edit"
+            ? productToFormValues(product)
+            : { ...createProductFormDefaults, stockUnit }
+        }
+        departments={[makeMockDepartment()]}
+        suppliers={[makeMockSupplier()]}
+        errors={{}}
+        saveError={null}
+        supplierWarning={null}
+        productCodeLabel={mode === "edit" ? product.product_code : "自動"}
+        isDiscontinued={false}
+        isSaving={false}
+        posSyncTouched={false}
+        onValuesChange={vi.fn()}
+        onPosSyncTouchedChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+  }
+
+  it("UI-01b-D23: edit の個数の単位の商品は数量単位 select が押せる", () => {
+    renderStockSection("edit", "pcs");
+    expect(screen.getByLabelText("数量単位")).toBeEnabled();
+    expect(screen.getByLabelText("現在庫")).toHaveAttribute("readonly");
+  });
+
+  it.each([
+    [
+      "create",
+      "pcs",
+      "初期在庫と数量単位を設定します。登録後は、数量単位を個数の単位どうし（例: 個 → 玉）でだけ変更できます。",
+    ],
+    ["edit", "pcs", "現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。"],
+    ["edit", "m", "現在庫と数量単位は登録後に変更できません。"],
+  ] as const)("UI-01b-D23: 在庫の節の説明文は mode と単位で 3 つ（%s・%s）", (mode, unit, text) => {
+    renderStockSection(mode, unit);
+    expect(screen.getByText(text)).toBeInTheDocument();
+    // 旧い create の文（読点の無い「登録後は数量単位を変更…」）は出ない
+    expect(screen.queryByText(/登録後は数量単位を変更/)).toBeNull();
   });
 
   it("discontinue requires confirmation and cancel keeps state", async () => {
@@ -126,10 +175,10 @@ describe("ProductForm (UI-01b)", () => {
     expect(onToggleDiscontinue).not.toHaveBeenCalled();
   });
 
-  // REQ-101 / UI-01b-D6: pcs→cm→pcs（checkbox 未操作）で posStockSync が true に復元される
+  // REQ-101 / UI-01b-D6: pcs→m→pcs（checkbox 未操作）で posStockSync が true に復元される
   // 自動提案経路（onPosStockSyncSuggest）は onPosSyncTouchedChange を呼ばない。
   // functional update 化後は updater function が渡されるため、prev を適用して実値を検証する。
-  it("create pcs→cm→pcs without checkbox: posStockSync restores to true (no touched set)", async () => {
+  it("create pcs→m→pcs without checkbox: posStockSync restores to true (no touched set)", async () => {
     const user = userEvent.setup();
     // updater function を prev に適用して最終的な values を得るヘルパー
     function applyUpdater(
@@ -161,21 +210,21 @@ describe("ProductForm (UI-01b)", () => {
       />,
     );
 
-    // pcs→cm: update が 2 回発火する（stockUnit の更新 + suggest による posStockSync 更新）。
+    // pcs→m: update が 2 回発火する（stockUnit の更新 + suggest による posStockSync 更新）。
     // functional update なので各呼び出しは prev を受け取り、順次適用される。
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
     // 2 回の updater を順次適用した結果として両フィールドが更新されている
-    expect(latestValues.stockUnit).toBe("cm");
+    expect(latestValues.stockUnit).toBe("m");
     expect(latestValues.posStockSync).toBe(false);
 
-    latestValues = { ...createProductFormDefaults, stockUnit: "cm", posStockSync: false };
+    latestValues = { ...createProductFormDefaults, stockUnit: "m", posStockSync: false };
 
-    // cm→pcs: suggest で posStockSync=true が復元される（touched は立たない）
+    // m→pcs: suggest で posStockSync=true が復元される（touched は立たない）
     rerender(
       <ProductForm
         mode="create"
-        values={{ ...createProductFormDefaults, stockUnit: "cm", posStockSync: false }}
+        values={{ ...createProductFormDefaults, stockUnit: "m", posStockSync: false }}
         departments={[makeMockDepartment()]}
         suppliers={[makeMockSupplier()]}
         errors={{}}
@@ -233,9 +282,9 @@ describe("ProductForm (UI-01b)", () => {
       );
     }
 
-    // REQ-101 / UI-01b-D6: create mode で pcs→cm に変更すると
-    // stockUnit="cm" かつ posStockSync=false に両方更新される（lost update が起きないこと）
-    it("pcs→cm: both stockUnit and posStockSync update correctly without lost update", async () => {
+    // REQ-101 / UI-01b-D6: create mode で pcs→m に変更すると
+    // stockUnit="m" かつ posStockSync=false に両方更新される（lost update が起きないこと）
+    it("pcs→m: both stockUnit and posStockSync update correctly without lost update", async () => {
       const user = userEvent.setup();
       render(<StatefulProductForm />);
 
@@ -243,25 +292,25 @@ describe("ProductForm (UI-01b)", () => {
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("pcs");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("true");
 
-      // cm を選択
+      // m を選択
       await user.click(screen.getByLabelText("数量単位"));
-      await user.click(await screen.findByRole("option", { name: "cm" }));
+      await user.click(await screen.findByRole("option", { name: "m" }));
 
-      // lost update がないなら: stockUnit="cm" かつ posStockSync=false になる
-      expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
+      // lost update がないなら: stockUnit="m" かつ posStockSync=false になる
+      expect(screen.getByTestId("stock-unit")).toHaveTextContent("m");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
       // touched は立っていない（suggest 経路）
       expect(screen.getByTestId("pos-sync-touched")).toHaveTextContent("false");
     });
 
-    // REQ-101 / UI-01b-D6: pcs→cm→pcs（checkbox 未操作）で posStockSync が true に復元される
-    it("pcs→cm→pcs without checkbox: posStockSync restores to true", async () => {
+    // REQ-101 / UI-01b-D6: pcs→m→pcs（checkbox 未操作）で posStockSync が true に復元される
+    it("pcs→m→pcs without checkbox: posStockSync restores to true", async () => {
       const user = userEvent.setup();
       render(<StatefulProductForm />);
 
       await user.click(screen.getByLabelText("数量単位"));
-      await user.click(await screen.findByRole("option", { name: "cm" }));
-      expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
+      await user.click(await screen.findByRole("option", { name: "m" }));
+      expect(screen.getByTestId("stock-unit")).toHaveTextContent("m");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       await user.click(screen.getByLabelText("数量単位"));
@@ -281,10 +330,10 @@ describe("ProductForm (UI-01b)", () => {
       expect(screen.getByTestId("pos-sync-touched")).toHaveTextContent("true");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
-      // 単位を cm に変更しても suggest が発火しないので利用者の false が保持される
+      // 単位を m に変更しても suggest が発火しないので利用者の false が保持される
       await user.click(screen.getByLabelText("数量単位"));
-      await user.click(await screen.findByRole("option", { name: "cm" }));
-      expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
+      await user.click(await screen.findByRole("option", { name: "m" }));
+      expect(screen.getByTestId("stock-unit")).toHaveTextContent("m");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       // 単位を pcs に戻しても suggest が発火しないので false のまま
@@ -564,8 +613,8 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
       id: 2,
       old_selling_price: 100,
       new_selling_price: 120,
-      old_cost_price: 60,
-      new_cost_price: 70,
+      old_cost_price_centi: 6000,
+      new_cost_price_centi: 7000,
       changed_at: "2026-07-06T17:15:16",
     };
     mockListPriceHistory.mockResolvedValue({ status: "ok", data: [entry] });
@@ -579,16 +628,18 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
       "売価",
       "原価",
     ]);
-    // SC16 Amendment 2: 既存 JPY formatter の円記号を維持し、接頭語と ISO の T を除く。
+    // SC16 Amendment 2: 売価は既存 JPY formatter の円記号を維持し、原価は SPEC-UNIT-D5 の半角の ¥。
+    // 接頭語と ISO の T を除く。
     const cells = screen.getAllByRole("cell");
     expect(cells.map((cell) => cell.textContent)).toEqual([
       "2026-07-06 17:15:16",
       "￥100 → ￥120",
-      "￥60 → ￥70",
+      "¥60 → ¥70",
     ]);
     expect(cells[0]).not.toHaveTextContent("T");
+    expect(cells[1]).toHaveTextContent(/^￥/);
+    expect(cells[2]).toHaveTextContent(/^¥/);
     for (const cell of cells.slice(1)) {
-      expect(cell).toHaveTextContent(/^￥/);
       expect(cell).not.toHaveTextContent(/売価|原価/);
     }
     edit.unmount();
@@ -606,16 +657,16 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
           id: 9,
           old_selling_price: 200,
           new_selling_price: 210,
-          old_cost_price: 100,
-          new_cost_price: 105,
+          old_cost_price_centi: 10000,
+          new_cost_price_centi: 10500,
           changed_at: "2026-07-06T17:15:16",
         },
         {
           id: 8,
           old_selling_price: 180,
           new_selling_price: 200,
-          old_cost_price: 90,
-          new_cost_price: 100,
+          old_cost_price_centi: 9000,
+          new_cost_price_centi: 10000,
           changed_at: "2026-07-05T09:10:11",
         },
       ],
@@ -630,12 +681,12 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
       within(newestRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["2026-07-06 17:15:16", "￥200 → ￥210", "￥100 → ￥105"]);
+    ).toEqual(["2026-07-06 17:15:16", "￥200 → ￥210", "¥100 → ¥105"]);
     expect(
       within(olderRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["2026-07-05 09:10:11", "￥180 → ￥200", "￥90 → ￥100"]);
+    ).toEqual(["2026-07-05 09:10:11", "￥180 → ￥200", "¥90 → ¥100"]);
     expect(newest.compareDocumentPosition(older) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -647,8 +698,8 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
           id: 1,
           old_selling_price: 1,
           new_selling_price: 2,
-          old_cost_price: 1,
-          new_cost_price: 2,
+          old_cost_price_centi: 1,
+          new_cost_price_centi: 2,
           changed_at: "ROW",
         },
       ],
@@ -772,7 +823,7 @@ describe("ProductForm native input tokens（Lane 5 SC4e）", () => {
       product_code: "P-001",
       jan_code: "4901234567890",
       stock_quantity: 20,
-      stock_unit: "cm",
+      stock_unit: "m",
     });
 
     render(
@@ -864,7 +915,7 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker�
     // onValuesChange は React.Dispatch<SetStateAction<...>> なので functional updater
     // (prev) => ({ ...prev, departmentId: Number(value) }) を受け取る。updater を解決して
     // departmentId が number（"1" でなく 1）であることを検査する
-    // （ProductForm.tsx:284 の Number() 欠落 mutant を kill する）。
+    // （src/features/products/components/ProductForm.tsx の部門の Select の onValueChange の Number() 欠落 mutant を kill する）。
     const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
       prev: ProductFormValues,
     ) => ProductFormValues;
@@ -873,7 +924,7 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker�
     );
 
     // P2-4: 部門選択後に親が departmentId を null へ reset した経路
-    // （ProductForm.tsx:282 の controlled value "" → undefined mutant を kill する）。
+    // （src/features/products/components/ProductForm.tsx の部門の Select の controlled value "" → undefined mutant を kill する）。
     act(() => {
       setValues((prev) => ({ ...prev, departmentId: null }));
     });
@@ -992,29 +1043,28 @@ describe("ProductForm (UI-01b-D22)", () => {
     );
   }
 
-  it.each(["m", "cm"] as const)(
+  it.each(["m"] as const)(
     "UI-01b-D22: 単位 %s では売価・原価の label に「1 m あたり」が付く",
     (stockUnit) => {
       renderForm("create", { ...createProductFormDefaults, stockUnit });
       expect(screen.getByLabelText("売価（必須、1 m あたり）")).toBeInTheDocument();
-      expect(screen.getByLabelText("原価（必須、1 m あたり）")).toBeInTheDocument();
+      expect(screen.getByLabelText("原価（税抜、必須、1 m あたり）")).toBeInTheDocument();
     },
   );
 
-  it("UI-01b-D22: 個数の単位では「1 m あたり」を出さず、価格の節の説明は税込の円の整数と書く", () => {
+  it("UI-01b-D22: 個数の単位では「1 m あたり」を出さず、価格の節の説明は税込・税抜と書く", () => {
     renderForm("create", { ...createProductFormDefaults, stockUnit: "ball" });
     expect(screen.getByLabelText("売価（必須）")).toBeInTheDocument();
-    expect(screen.getByLabelText("原価（必須）")).toBeInTheDocument();
+    expect(screen.getByLabelText("原価（税抜、必須）")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。",
+        "売価は税込の円の整数、原価は税抜の円で小数 2 桁まで入力します。長さ（m）の商品は 1 m あたりの値段です。",
       ),
     ).toBeInTheDocument();
   });
 
   it.each([
     ["create", "m", "decimal"],
-    ["create", "cm", "numeric"],
     ["create", "pcs", "numeric"],
   ] as const)(
     "UI-01b-D22: %s で単位 %s の初期在庫の欄の inputMode は %s",
@@ -1044,4 +1094,94 @@ describe("ProductForm (UI-01b-D22)", () => {
       expect(screen.getByLabelText("数量単位")).toHaveTextContent(unitLabel);
     },
   );
+});
+
+// Matrix C14 / UI-01b-D22・D24 / D-128: 原価の 1/100 円、税抜の label、「袋の値段から出す」の補助
+describe("ProductForm cost centi, label and pack helper (UI-01b-D24)", () => {
+  function renderCostForm(mode: "create" | "edit", initial: ProductFormValues) {
+    const latest: { values: ProductFormValues } = { values: initial };
+    function Harness() {
+      const [values, setValues] = React.useState<ProductFormValues>(initial);
+      latest.values = values;
+      return (
+        <ProductForm
+          mode={mode}
+          values={values}
+          departments={[makeMockDepartment()]}
+          suppliers={[makeMockSupplier()]}
+          errors={{}}
+          saveError={null}
+          supplierWarning={null}
+          productCodeLabel={mode === "edit" ? "P-001" : undefined}
+          isSaving={false}
+          posSyncTouched={false}
+          onValuesChange={setValues}
+          onPosSyncTouchedChange={vi.fn()}
+          onSubmit={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      );
+    }
+    render(<Harness />);
+    return latest;
+  }
+
+  const department = makeMockDepartment({ id: 1, code_prefix: "KM" });
+  const createValues = {
+    ...createProductFormDefaults,
+    name: "合成の試験品",
+    departmentId: 1,
+    sellingPrice: "100",
+  };
+
+  it("Matrix C14: 個数の単位で 1000 円 ÷ 12 を原価に入れると 83.33 で、request は 8333 だけを送る", async () => {
+    const user = userEvent.setup();
+    const latest = renderCostForm("create", createValues);
+    await user.click(screen.getByRole("button", { name: "袋の値段から出す" }));
+    await user.type(screen.getByLabelText("袋の値段（円）"), "1000");
+    await user.type(screen.getByLabelText("入り数"), "12");
+    await user.click(screen.getByRole("button", { name: "原価に入れる" }));
+    expect(screen.getByLabelText("原価（税抜、必須）")).toHaveValue("83.33");
+    const request = buildCreateProductRequest(latest.values, [department]).request;
+    expect(request?.cost_price_centi).toBe(8333);
+    expect(JSON.stringify(request)).not.toMatch(/1000|"12"|pack/);
+    expect(screen.getByLabelText("原価（税抜、必須）")).toHaveAttribute("inputmode", "decimal");
+  });
+
+  it("Matrix C14: 入り数の誤りは補助の欄に出して原価の欄を変えず、閉じて開き直すと 2 つの欄は空", async () => {
+    const user = userEvent.setup();
+    renderCostForm("create", { ...createValues, costPrice: "50" });
+    const toggle = screen.getByRole("button", { name: "袋の値段から出す" });
+    await user.click(toggle);
+    await user.type(screen.getByLabelText("袋の値段（円）"), "1000");
+    await user.type(screen.getByLabelText("入り数"), "0");
+    await user.click(screen.getByRole("button", { name: "原価に入れる" }));
+    expect(screen.getByText("入り数は1以上の整数で入力してください")).toBeInTheDocument();
+    expect(screen.getByLabelText("原価（税抜、必須）")).toHaveValue("50");
+    await user.click(toggle);
+    expect(screen.queryByLabelText("袋の値段（円）")).toBeNull();
+    await user.click(toggle);
+    expect(screen.getByLabelText("袋の値段（円）")).toHaveValue("");
+    expect(screen.getByLabelText("入り数")).toHaveValue("");
+  });
+
+  it("Matrix C14: 単位を m に変えると補助は閉じて隠れ、label は 1 m あたり", async () => {
+    const user = userEvent.setup();
+    renderCostForm("create", createValues);
+    await user.click(screen.getByRole("button", { name: "袋の値段から出す" }));
+    expect(screen.getByLabelText("袋の値段（円）")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "m" }));
+    expect(screen.queryByRole("button", { name: "袋の値段から出す" })).toBeNull();
+    expect(screen.queryByLabelText("袋の値段（円）")).toBeNull();
+    expect(screen.getByLabelText("原価（税抜、必須、1 m あたり）")).toBeInTheDocument();
+  });
+
+  it("Matrix C14: 修正の画面を原価 8333 の商品で開くと原価の欄は 83.33", () => {
+    renderCostForm(
+      "edit",
+      productToFormValues(makeMockProductWithRelations({ cost_price_centi: 8333 })),
+    );
+    expect(screen.getByLabelText("原価（税抜、必須）")).toHaveValue("83.33");
+  });
 });

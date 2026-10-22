@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
+  Info,
   Loader2,
   RotateCcw,
   ShieldCheck,
@@ -45,7 +47,14 @@ import {
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { formatLengthOrPlain } from "@/features/stock-inquiry/lib/format-stock-display";
-import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/bindings";
+import {
+  commands,
+  type IntegrityField,
+  type IntegrityFixResult,
+  type IntegrityResult,
+  type ProductStockUnit,
+  type StockCopy,
+} from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -65,10 +74,65 @@ function groupedNumber(value: number): string {
   return value.toLocaleString("ja-JP");
 }
 
-function differenceLabel(difference: number): string {
-  if (difference > 0) return "システム在庫が多い";
-  if (difference < 0) return "入出庫の合計が多い";
-  return "差異なし";
+// 75 / 36: 違う項目は文字で示す（色だけで示さない）
+const FIELD_LABELS: Record<IntegrityField, string> = {
+  quantity: "在庫数",
+  recheck: "要再確認",
+  range: "範囲",
+};
+
+function fieldsLabel(fields: IntegrityField[]): string {
+  return fields.map((field) => FIELD_LABELS[field]).join("・");
+}
+
+// 在庫数と、要再確認なら後ろに「（要再確認 {low}〜{high}）」（75、OperationLogsPage と同じ書き方）
+function formatStockCopy(
+  copy: StockCopy,
+  unit: ProductStockUnit,
+  plain?: (value: number) => string,
+): string {
+  const quantity = formatLengthOrPlain(copy.stock_quantity, unit, plain);
+  if (!copy.stock_recheck || copy.stock_range_low === null || copy.stock_range_high === null)
+    return quantity;
+  const low = formatLengthOrPlain(copy.stock_range_low, unit, plain);
+  const high = formatLengthOrPlain(copy.stock_range_high, unit, plain);
+  return `${quantity}（要再確認 ${low}〜${high}）`;
+}
+
+// 75 冒頭の注記: 移行（vL）が写しを直した integrity_fix の行（新しい順の最新 100 行の中で最新のもの）
+const MIGRATION_NOTICE_QUERY = {
+  page: 1,
+  per_page: 100,
+  operation_type: "integrity_fix",
+  start_date: null,
+  end_date: null,
+};
+
+interface MigrationNotice {
+  createdAt: string;
+  fixedCount: number;
+}
+
+function findMigrationNotice(
+  items: { detail_json: string | null; created_at: string }[],
+): MigrationNotice | null {
+  for (const item of items) {
+    if (!item.detail_json) continue;
+    try {
+      const detail: unknown = JSON.parse(item.detail_json);
+      if (!detail || typeof detail !== "object" || Array.isArray(detail)) continue;
+      const { trigger, fixed_count: fixedCount } = detail as Record<string, unknown>;
+      if (
+        trigger === "migration" &&
+        typeof fixedCount === "number" &&
+        Number.isSafeInteger(fixedCount)
+      )
+        return { createdAt: item.created_at, fixedCount };
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export function IntegrityCheckPage() {
@@ -101,6 +165,22 @@ export function IntegrityCheckPage() {
     gcTime: 300_000,
     retry: 0,
   });
+
+  // 読取りに失敗したら知らせを出さず、チェックの操作は止めない（75）
+  const migrationNoticeQuery = useQuery({
+    queryKey: queryKeys.operationLogs.list(MIGRATION_NOTICE_QUERY),
+    queryFn: () =>
+      unwrapResult(commands.listLogs(MIGRATION_NOTICE_QUERY), {
+        source: "commands",
+        cmd: "list_logs",
+      }),
+    staleTime: 0,
+    gcTime: 300_000,
+    retry: 0,
+  });
+  const migrationNotice = migrationNoticeQuery.data
+    ? findMigrationNotice(migrationNoticeQuery.data.items)
+    : null;
 
   const isBusy = pendingOperation !== null;
   const mismatches = useMemo(() => result?.mismatches ?? [], [result]);
@@ -208,10 +288,24 @@ export function IntegrityCheckPage() {
           }
         />
         <p className="text-sm text-muted-foreground">
-          システム在庫と入出庫の記録を照合し、差異を確認します。
+          保存している在庫数と、入出庫などの記録から求め直した在庫数を照合し、差異を確認します。
         </p>
         <p className="text-sm font-medium">直近の確認日時: {latestCheckText}</p>
       </div>
+
+      {migrationNotice ? (
+        <Alert role="status">
+          <Info aria-hidden="true" />
+          <AlertDescription>
+            <p>
+              {`更新のときに在庫数を記録から求め直し、${migrationNotice.fixedCount.toLocaleString("ja-JP")}商品の在庫数を直しました（${formatDateTime(migrationNotice.createdAt)}）。直した前後は操作ログで見られます。`}
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/settings/logs">操作ログを開く</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {operationError ? (
         <Alert variant="destructive">
@@ -299,8 +393,8 @@ export function IntegrityCheckPage() {
                         >
                           <span className="font-mono font-medium">{adjustment.product_code}</span>
                           <span>
-                            {formatLengthOrPlain(adjustment.old_stock, adjustment.stock_unit)} →{" "}
-                            {formatLengthOrPlain(adjustment.new_stock, adjustment.stock_unit)}
+                            {formatStockCopy(adjustment.before, adjustment.stock_unit)} →{" "}
+                            {formatStockCopy(adjustment.after, adjustment.stock_unit)}
                           </span>
                         </li>
                       ))}
@@ -355,10 +449,10 @@ export function IntegrityCheckPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-32">商品コード</TableHead>
-                      <TableHead className="min-w-56">名前</TableHead>
-                      <TableHead className="w-28 text-right">システム在庫</TableHead>
-                      <TableHead className="w-28 text-right">入出庫の合計</TableHead>
-                      <TableHead className="min-w-40 text-right">差異</TableHead>
+                      <TableHead className="min-w-56">商品名</TableHead>
+                      <TableHead className="min-w-40">違う項目</TableHead>
+                      <TableHead className="w-28 text-right">保存している値</TableHead>
+                      <TableHead className="w-28 text-right">記録から求め直した値</TableHead>
                       <TableHead className="w-32 text-center">操作</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -371,40 +465,14 @@ export function IntegrityCheckPage() {
                             {item.product_code}
                           </TableCell>
                           <TableCell>{item.name}</TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {formatLengthOrPlain(
-                              item.stock_quantity,
-                              item.stock_unit,
-                              groupedNumber,
-                            )}
+                          <TableCell>
+                            <Badge variant="outline">{fieldsLabel(item.differing_fields)}</Badge>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatLengthOrPlain(
-                              item.movements_sum,
-                              item.stock_unit,
-                              groupedNumber,
-                            )}
+                            {formatStockCopy(item.copy, item.stock_unit, groupedNumber)}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex flex-col items-end gap-1">
-                              <span
-                                className={
-                                  item.difference > 0
-                                    ? "font-semibold text-success-strong tabular-nums"
-                                    : item.difference < 0
-                                      ? "font-semibold text-destructive-strong tabular-nums"
-                                      : "font-semibold text-muted-foreground tabular-nums"
-                                }
-                              >
-                                {item.difference > 0 ? "+" : ""}
-                                {formatLengthOrPlain(
-                                  item.difference,
-                                  item.stock_unit,
-                                  groupedNumber,
-                                )}
-                              </span>
-                              <Badge variant="outline">{differenceLabel(item.difference)}</Badge>
-                            </div>
+                          <TableCell className="text-right tabular-nums">
+                            {formatStockCopy(item.derived, item.stock_unit, groupedNumber)}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-center gap-2">
@@ -453,21 +521,21 @@ export function IntegrityCheckPage() {
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>在庫数を入出庫の合計に合わせて補正します</AlertDialogTitle>
+            <AlertDialogTitle>在庫数を記録から求め直した値に合わせて補正します</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              補正すると元に戻せません。選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。
+              補正すると元に戻せません。選択した商品の保存している値を記録から求め直した値に合わせて更新し、操作ログに記録します。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Alert variant="warning">
             <AlertTriangle aria-hidden="true" />
             <AlertTitle>補正すると元に戻せません</AlertTitle>
             <AlertDescription>
-              選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。
+              選択した商品の保存している値を記録から求め直した値に合わせて更新し、操作ログに記録します。
             </AlertDescription>
           </Alert>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              補正する商品（システム在庫 → 入出庫の合計）
+              補正する商品（保存している値 → 記録から求め直した値）
             </p>
             <div className="max-h-72 overflow-y-auto rounded-md border">
               <ul className="divide-y">
@@ -476,8 +544,8 @@ export function IntegrityCheckPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-mono font-medium">{item.product_code}</span>
                       <span className="font-medium tabular-nums">
-                        {formatLengthOrPlain(item.stock_quantity, item.stock_unit)} →{" "}
-                        {formatLengthOrPlain(item.movements_sum, item.stock_unit)}
+                        {formatStockCopy(item.copy, item.stock_unit)} →{" "}
+                        {formatStockCopy(item.derived, item.stock_unit)}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.name}</p>

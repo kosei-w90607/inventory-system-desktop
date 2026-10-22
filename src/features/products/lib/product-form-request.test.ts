@@ -58,12 +58,12 @@ describe("buildCreateProductRequest (UI-01b-D4/D6)", () => {
     expect(result.errors.janCode).toContain("独自コード発番対象");
   });
 
-  it("preserves cm POS sync override in payload", () => {
-    const result = buildCreateProductRequest(validValues({ stockUnit: "cm", posStockSync: true }), [
+  it("preserves m POS sync override in payload", () => {
+    const result = buildCreateProductRequest(validValues({ stockUnit: "m", posStockSync: true }), [
       prefixDepartment,
     ]);
 
-    expect(result.request).toMatchObject({ stock_unit: "cm", pos_stock_sync: true });
+    expect(result.request).toMatchObject({ stock_unit: "m", pos_stock_sync: true });
   });
 
   it("REQ-402 sends PLU target in create payload", () => {
@@ -130,7 +130,7 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
       product_code: "P-001",
       jan_code: "4901234567890",
       stock_quantity: 20,
-      stock_unit: "cm",
+      stock_unit: "m",
       supplier_id: 3,
       maker_code: "A-1",
     });
@@ -157,13 +157,25 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
     expect(result.request).not.toHaveProperty("stock_unit");
   });
 
+  it("UI-01b-D23: 個数の単位の商品は単位を変えたときだけ stock_unit を送る", () => {
+    const original = makeMockProductWithRelations({ stock_unit: "pcs" });
+    const changed = buildUpdateProductRequest(
+      { ...productToFormValues(original), stockUnit: "ball" },
+      original,
+    );
+    expect(changed.request).toEqual({ stock_unit: "ball" });
+
+    const unchanged = buildUpdateProductRequest(productToFormValues(original), original);
+    expect(unchanged.request).not.toHaveProperty("stock_unit");
+  });
+
   it("UI-01b PRODUCT-PATCH-D1 sends ordinary and clearable values without unrelated fields", () => {
     const original = makeMockProductWithRelations({
       name: "変更前",
       department_id: 1,
       supplier_id: null,
       selling_price: 500,
-      cost_price: 300,
+      cost_price_centi: 30000,
       tax_rate: "10",
       maker_code: null,
       pos_stock_sync: true,
@@ -191,7 +203,7 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
       department_id: 4,
       supplier_id: 9,
       selling_price: 1200,
-      cost_price: 700,
+      cost_price_centi: 70000,
       tax_rate: "8",
       maker_code: "M-9",
       pos_stock_sync: false,
@@ -210,7 +222,7 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
   });
 });
 
-// UI-01b-D22 / SPEC-UNIT-D3（X3・X5・X6）: 12 個の単位、m の初期在庫、売価・原価・初期在庫の上限
+// UI-01b-D22 / SPEC-UNIT-D3・D5（X3・X5・X6）: 10 個の単位、m の初期在庫、売価・原価・初期在庫の上限
 describe("product form request の単位と上限（UI-01b-D22 / REQ-101）", () => {
   const create = (overrides: Partial<ProductFormValues>) =>
     buildCreateProductRequest(validValues(overrides), [prefixDepartment]);
@@ -225,21 +237,31 @@ describe("product form request の単位と上限（UI-01b-D22 / REQ-101）", ()
     expect(create({ stockUnit: "m", initialStock: "0.005" }).errors.initialStock).toBe(
       "数量は0以上で、小数は2桁までの m で入力してください",
     );
-    // cm と個数の単位は今の整数の規則のまま
-    expect(create({ stockUnit: "cm", initialStock: "25" }).request?.initial_stock).toBe(25);
+    // 個数の単位は今の整数の規則のまま
     expect(create({ stockUnit: "ball", initialStock: "3" }).request).toMatchObject({
       stock_unit: "ball",
       initial_stock: 3,
     });
-    expect(create({ stockUnit: "cm", initialStock: "25.5" }).errors.initialStock).toBe(
+    expect(create({ stockUnit: "ball", initialStock: "25.5" }).errors.initialStock).toBe(
       "初期在庫は0以上の整数で入力してください",
     );
   });
 
   it("UI-01b-D22: 売価・原価・初期在庫は上限の端まで受け、1 つ外は欄の error で request を作らない", () => {
     expect(
-      create({ sellingPrice: "999999", costPrice: "999999", initialStock: "999999999" }).request,
-    ).toMatchObject({ selling_price: 999999, cost_price: 999999, initial_stock: 999999999 });
+      create({ sellingPrice: "999999", costPrice: "999999.99", initialStock: "999999999" }).request,
+    ).toMatchObject({
+      selling_price: 999999,
+      cost_price_centi: 99999999,
+      initial_stock: 999999999,
+    });
+    expect(create({ costPrice: "83.33" }).request?.cost_price_centi).toBe(8333);
+    expect(create({ costPrice: "83.333" }).errors.costPrice).toBe(
+      "原価は0以上で、小数は2桁までで入力してください",
+    );
+    expect(create({ sellingPrice: "83.33" }).errors.sellingPrice).toBe(
+      "売価は0以上の整数で入力してください",
+    );
     expect(create({ stockUnit: "m", initialStock: "9999999.99" }).request?.initial_stock).toBe(
       999999999,
     );
@@ -259,20 +281,18 @@ describe("product form request の単位と上限（UI-01b-D22 / REQ-101）", ()
     );
   });
 
-  it("UI-01b-D22: 修正の画面は 12 個の単位をそのまま出し、現在庫を単位つきで出す", () => {
+  it("UI-01b-D22: 修正の画面は 10 個の単位をそのまま出し、現在庫を単位つきで出す", () => {
     for (const unit of [
       "pcs",
       "sheet",
       "hon",
       "bag",
       "box",
-      "roll",
       "kumi",
       "set",
       "ball",
       "cho",
       "m",
-      "cm",
     ] as const) {
       expect(
         productToFormValues(makeMockProductWithRelations({ stock_unit: unit })).stockUnit,
@@ -304,9 +324,13 @@ describe("product form request の単位と上限（UI-01b-D22 / REQ-101）", ()
     });
     expect(
       buildUpdateProductRequest(
-        { ...productToFormValues(original), sellingPrice: "999999", costPrice: "999999" },
+        { ...productToFormValues(original), sellingPrice: "999999", costPrice: "999999.99" },
         original,
       ).request,
-    ).toEqual({ selling_price: 999999, cost_price: 999999 });
+    ).toEqual({ selling_price: 999999, cost_price_centi: 99999999 });
+    // 修正の画面の原価の初期値は小数 2 桁までの円（8333 → 83.33。SPEC-UNIT-D5）
+    expect(
+      productToFormValues(makeMockProductWithRelations({ cost_price_centi: 8333 })).costPrice,
+    ).toBe("83.33");
   });
 });

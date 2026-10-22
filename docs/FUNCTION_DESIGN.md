@@ -1,8 +1,8 @@
 # 在庫管理システム 関数設計書
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。現行の API の本文と新しい契約の案を区別し、以下の既存機能の一覧を新方式の実装完了として扱わない。旧 ADR（時点証拠、superseded）の節は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。ほかは (b)（proposed・未実装）で、現行の API の本文と (b) の契約の案を区別し、以下の既存機能の一覧を (b) の実装完了として扱わない。旧 ADR（時点証拠、superseded）の節は置き換えた。
 
 | 境界 | 詳細の source |
 |---|---|
@@ -11,11 +11,10 @@
 | 回復型・POS・計数の wire・DB の交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
 | 画面 | [51](function-design/51-ui-product-form.md)、[55](function-design/55-ui-csv-import.md)、[58](function-design/58-ui-stock-inquiry.md)、[60](function-design/60-ui-product-import.md)、[65](function-design/65-inventory-record-traceability.md)、[66](function-design/66-ui-stock-movements.md)、[73](function-design/73-ui-stocktake.md) |
 
-永続化は [DB 設計](DB_DESIGN.md) へ集約する。実装・SQL migration・binding の生成は後続の runtime で行い、本 docs の同期では行わない。
+永続化は [DB 設計](DB_DESIGN.md) へ集約する。(b) の実装・SQL migration・binding の生成は後続の runtime で行い、本 docs の同期では行わない。
 
-> **最終更新**: 2026-07-29 / UI request builder shared primitives 追加
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）
-> **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase。後続段階は実装進行に合わせて追記する
+> **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase
 
 ### 現時点の対象モジュール
 - IO-01: SQLiteデータアクセス層（db::init, product_repo, inventory_repo, system_repo, stocktake_repo, sales_repo）
@@ -97,7 +96,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 ### 記述方針
 - 各関数について「関数要求」「引数・戻り値」「処理ステップ」「エラーハンドリング」を記述
 - Rustの型名・モジュール構造を意識するが、Rustの文法そのものは書かない（擬似コードレベル）
-- 第1〜第2段階に必要な関数から着手。後続段階の関数は実装進行に合わせて追記
+- 第1〜第2段階に必要な関数から着手し、後続段階の関数も各サブ文書に置いた
 
 ---
 
@@ -119,7 +118,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [IO-08: EJパーサー](function-design/29-io-ej-parser.md) — parse_ej（EJ 1 file を取引単位の記録へ構造復元、24バイト固定幅・CP932・CRLF、純関数）
 
 ### MNT層（保守）
-- [MNT-01: バックアップ・リストア](function-design/71-mnt-backup.md) — create_backup（VACUUM INTO）, restore_backup, check_auto_backup, list_backups
+- [MNT-01: バックアップ・リストア](function-design/71-mnt-backup.md) — create_backup（VACUUM INTO）, restore_backup, check_auto_backup, list_backups, PC の外の控え（prepare_offsite_medium / check_offsite_backup / offsite_status / reset_offsite_state / stop_offsite_backup）と inspect_backup（D-114、runtime は後続の lane）
 - [MNT-02: 操作ログ管理](function-design/72-mnt-log-manager.md) — cleanup_old_logs（起動時自動削除）
 - [MNT-03: スキーママイグレーション](function-design/22-mnt-migration.md) — migration v1（初期スキーマ）〜 v4（日報取込みテーブル）
 - [MNT-04: アプリケーション診断ログ](function-design/70-mnt-diagnostic-log.md) — init_diagnostics, cleanup_old_log_files, 既存コードへのtracing埋め込み方針
@@ -171,13 +170,3 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 
 ### トレーサビリティ
 - [REQ トレーサビリティマトリクス](function-design/90-traceability.md) — AUTO-GENERATED（`cd src-tauri && cargo run --bin generate_traceability` で再生成。REQ ↔ 設計書 ↔ テスト対応表、`-- --check` が CI / pre-push の drift gate）
-
----
-
-## 今後の追記予定
-
-第6段階以降の関数設計は実装進行に合わせて追記する:
-- ~~第4段階残り: IO-04~~ → 25-io-plu-formatter.md 作成済み（2026-04-08）
-- ~~第5段階: BIZ-05, BIZ-06, BIZ-07, IO-03, CMD-09/10, BIZ-01拡張~~ → 全設計書作成済み（2026-04-12）
-- ~~第5.5段階: MNT-04（診断ログ）~~ → 70-mnt-diagnostic-log.md 作成済み（2026-04-13）
-- ~~第6段階: MNT-01, MNT-02, IO-05, IO-06, CMD-11残り~~ → 全設計書作成済み（2026-04-13）

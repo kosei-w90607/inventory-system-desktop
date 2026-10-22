@@ -166,7 +166,7 @@ describe("ProductTable の数量と単価（REQ-501 / SPEC-UNIT-D3）", () => {
   it("REQ-501: m の商品は 1.3 m・¥700/m、個数の商品は 3 個・¥700、小計と合計は 5 点・1.8 m", () => {
     const items = [
       makeMockItem({ product_code: "M-1", stock_unit: "m", quantity: 130, amount: 910 }),
-      makeMockItem({ product_code: "CM-1", stock_unit: "cm", quantity: 50, amount: 350 }),
+      makeMockItem({ product_code: "CM-1", stock_unit: "m", quantity: 50, amount: 350 }),
       makeMockItem({ product_code: "PCS-1", stock_unit: "pcs", quantity: 3, amount: 2100 }),
       makeMockItem({ product_code: "SHEET-1", stock_unit: "sheet", quantity: 2, amount: 400 }),
       makeMockItem({ product_code: "RET-1", stock_unit: "m", quantity: -130, amount: -910 }),

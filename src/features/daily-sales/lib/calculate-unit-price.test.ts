@@ -31,11 +31,10 @@ describe("calculateEffectiveUnitPrice", () => {
 
 // SPEC-UNIT-D3 の単価: |金額| × 基準数量 ÷ |数量| を円未満で四捨五入（長さは 1 m あたり）
 describe("calculateEffectiveUnitPrice の単位（SPEC-UNIT-D3）", () => {
-  it("SPEC-UNIT-D3: 長さの商品は 1 m あたり（910 円 ÷ 130 cm → 700、cm の商品も同じ）", () => {
-    const price = (stock_unit: "m" | "cm" | "pcs", amount: number, quantity: number) =>
+  it("SPEC-UNIT-D3: 長さの商品は 1 m あたり（910 円 ÷ 130 cm → 700）", () => {
+    const price = (stock_unit: "m" | "pcs", amount: number, quantity: number) =>
       calculateEffectiveUnitPrice(makeMockItem({ stock_unit, amount, quantity }));
     expect(price("m", 910, 130)).toBe(700);
-    expect(price("cm", 910, 130)).toBe(700);
     expect(price("m", -910, -130)).toBe(700);
     expect(price("m", 1000, 130)).toBe(769);
     expect(price("m", 1, 200)).toBe(1);

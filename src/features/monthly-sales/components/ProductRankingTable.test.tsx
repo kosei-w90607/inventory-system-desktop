@@ -149,7 +149,7 @@ describe("ProductRankingTable の数量（REQ-502 / SPEC-UNIT-D3）", () => {
       key: string,
       count_points: number,
       length_cm: number,
-      stock_unit: "m" | "cm" | "pcs",
+      stock_unit: "m" | "pcs",
       ranking: number,
     ) =>
       makeMockProductRankingRow({ key, label: key, count_points, length_cm, stock_unit, ranking });

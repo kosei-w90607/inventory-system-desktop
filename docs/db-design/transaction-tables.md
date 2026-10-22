@@ -1,8 +1,8 @@
 # テーブル定義（トランザクション）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2）との接続。以下の入庫・返品交換・手動販売・廃棄の header / item の列と符号規約は変えない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2）との接続。以下の入庫・返品交換・手動販売・廃棄の header / item の列と符号規約は変えない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは全部の項目（2 つ目の窓の判定は求め直しの側にあり、計数を保存する経路が入るのは (b)。それまでは計数が無く、在庫と `stock_after` の値は和と同じ）。
 
 - 在庫を動かす TX は、header / item・inventory_movements（並びの鍵 `business_date` = header の日付〈`receiving_date`・`return_date`・`sale_date`・`disposal_date`〉、`phase` = 0）を書き、同じ TX で触れた商品を求め直して写し（`products.stock_quantity` ほか）を書く。どれかの失敗で TX 全体を戻す。
 - header の日付は業務の日付 D で、計数に入っているかは ADR D3 の窓の判定表で決まる（既定の計数と同じ日付なら決まらない、fresh な計数より先に保存したものは入っている、など）。日付を計数の日付より前にした入力は、計数のある商品の在庫に足されない（数えた数に入っているとみなす。ADR の Consequences）。
@@ -10,7 +10,7 @@
 
 ## 金額の丸めと、原価の 1/100 円
 
-入庫の原価小計・合計と廃棄のロス原価は、明細の `quantity` と原価と商品の単位の価格の基準数量から BIZ が求める（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D6）。列は足さず、行の金額を保存しない。`receiving_items.cost_price` と `disposal_items.cost_price` を `cost_price_centi`（1/100 円）へ改名するのは proposed・未実装（原価の lane、D-113。既存の値は変換せず、行の無い DB にだけ当てる〈22 §16 の vB、D-119〉。[master-tables](master-tables.md) の「単位と原価の精度の契約」、`決定（owner、D-113 J2）`）で、以下のカラム表は現行スキーマを記す。
+入庫の原価小計・合計と廃棄のロス原価は、明細の `quantity` と原価と商品の単位の価格の基準数量から BIZ が求める（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D6）。列は足さず、行の金額を保存しない。`receiving_items` と `disposal_items` の原価は `cost_price_centi`（1/100 円。vB が改名した。既存の値は変換せず、行の無い DB にだけ当たる〈22 §16、D-119〉。[master-tables](master-tables.md) の「単位と原価の精度の契約」、`決定（owner、D-113 J2）`）。
 
 ---
 
@@ -43,11 +43,11 @@
 | receiving_record_id | INTEGER | FK → receiving_records.id, NOT NULL | 親ヘッダ |
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | quantity | INTEGER | NOT NULL | 入庫数量（個 or cm） |
-| cost_price | INTEGER | NOT NULL | 入庫時点の原価（単価変動に対応） |
+| cost_price_centi | INTEGER | NOT NULL | 入庫時点の原価（1/100 円。単価変動に対応） |
 
 ### 設計意図
 - **ヘッダ＋明細に分けた理由**: 1回の入庫で複数商品を記録する（伝票1枚=ヘッダ1件、商品行=明細N件）。画面ラフの入庫リストがこの構造
-- **cost_priceを明細に持つ理由**: 入庫時点の原価を記録。商品マスタの原価は後から変わる可能性があるが、入庫時にいくらで仕入れたかは変わらない事実
+- **cost_price_centiを明細に持つ理由**: 入庫時点の原価を記録。商品マスタの原価は後から変わる可能性があるが、入庫時にいくらで仕入れたかは変わらない事実
 - `receiving_records.supplier_id` は取引先統合（SPEC-SUP-D4）で残す側の取引先へ付け替わり得る。統合は同一実体の重複解消であり、入庫日・明細・原価の事実は変更しない
 
 ### 入出庫記録追跡の完成形（2026-06-27 追加）
@@ -65,9 +65,9 @@
 取引先Aから毛糸3種類が届いた:
   receiving_records: id=1, supplier_id=1, receiving_date="2026-03-21"
   receiving_items: 
-    id=1, receiving_record_id=1, product_code="4976383262108", quantity=12, cost_price=111
-    id=2, receiving_record_id=1, product_code="4976383262207", quantity=8, cost_price=111
-    id=3, receiving_record_id=1, product_code="4979738052116", quantity=10, cost_price=222
+    id=1, receiving_record_id=1, product_code="4976383262108", quantity=12, cost_price_centi=11100
+    id=2, receiving_record_id=1, product_code="4976383262207", quantity=8, cost_price_centi=11100
+    id=3, receiving_record_id=1, product_code="4979738052116", quantity=10, cost_price_centi=22200
 
 → 同時に products.stock_quantity をそれぞれ +12, +8, +10
 → 同時に inventory_movements に3行挿入（movement_type="receiving"）
@@ -204,9 +204,9 @@ CSV取込みで拾えない販売を補完記録する。PLU全商品登録後�
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | disposal_type | TEXT | NOT NULL | 種別。'disposal'（廃棄）/ 'damage'（破損）/ 'other' |
 | quantity | INTEGER | NOT NULL | 数量 |
-| cost_price | INTEGER | NOT NULL | 原価（ロス金額の計算用） |
+| cost_price_centi | INTEGER | NOT NULL | 原価（1/100 円。ロス金額の計算用） |
 | reason | TEXT | NOT NULL | 理由（例: 袋破れ、色焼け） |
 
 ### 設計意図
-- **cost_priceを明細に持つ理由**: ロス原価の合計を画面で表示するため（棚卸し時のロス把握）。商品マスタの原価は変わる可能性があるが、廃棄時点の原価を記録しておく
+- **cost_price_centiを明細に持つ理由**: ロス原価の合計を画面で表示するため（棚卸し時のロス把握）。商品マスタの原価は変わる可能性があるが、廃棄時点の原価を記録しておく
 - **disposal_typeを明細に持つ理由**: 1回の記録で「破損1件＋廃棄2件」のように種別が混在できる

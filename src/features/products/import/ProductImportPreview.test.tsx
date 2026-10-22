@@ -12,7 +12,7 @@ function row(code: string, pluTarget: boolean | null, warnings: string[] = []): 
     name: `商品 ${code}`,
     department_id: 1,
     selling_price: 100,
-    cost_price: 50,
+    cost_price_centi: 50,
     tax_rate: "10",
     stock_unit: "pcs",
     initial_stock: null,

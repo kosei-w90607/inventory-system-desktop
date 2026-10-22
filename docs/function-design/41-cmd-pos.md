@@ -637,7 +637,7 @@ D-117 の撤去（`import_plu_register_snapshot`、summary の件数、`over_lim
     "department_id": 3,
     "department_name": "毛糸",
     "selling_price": 648,
-    "cost_price": 111,
+    "cost_price_centi": 11100,
     "stock_quantity": 14,
     "plu_dirty": true,
     "plu_exported_at": null
@@ -649,7 +649,7 @@ D-117 の撤去（`import_plu_register_snapshot`、summary の件数、`over_lim
     "department_id": 2,
     "department_name": "ヘア雑貨",
     "selling_price": 880,
-    "cost_price": 440,
+    "cost_price_centi": 44000,
     "stock_quantity": 5,
     "plu_dirty": true,
     "plu_exported_at": "2026-03-15T15:00:00"

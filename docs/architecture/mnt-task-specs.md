@@ -1,10 +1,10 @@
 # タスク仕様（MNT層）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) の migration は実装済み）
 
-SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。新しい業務判断を MNT へ移さない。
+SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。新しい業務判断を MNT へ移さない。(a)（ADR SPEC-STK-CNT-D12）の migration は v9 で実装済み（`src-tauri/src/db/schema_v9.rs`）。(b) の列（`csv_imports`・`sale_records`・棚卸しの完了）を足す migration は proposed・未実装。
 
-- MNT-03 は [DB の新契約](../DB_DESIGN.md) の列と表を 1 TX で足し、既存の movement の並びの鍵を埋めて写しを求め直す。棚卸しか Z004 の取込みを持つ DB では何も変えずに失敗する（開発・試験 DB の作り直しは別の承認）。旧行を推定の位置で新しい軸へ移さない。
+- MNT-03 は [DB の新契約](../DB_DESIGN.md) の列と表を 1 TX で足し、既存の movement の並びの鍵を埋めて写しを求め直す。棚卸しか Z004 の取込みを持つ DB では何も変えずに失敗する（開発・試験 DB はリリースの前まで作り直してよい。D-123。手順は [22 §19](../function-design/22-mnt-migration.md)）。旧行を推定の位置で新しい軸へ移さない。
 - MNT-01 の backup / 復旧の規則は変えない。計数の context を持たないので、DB 接続の交換で失効させるものは無い（[43](../function-design/43-cmd-settings-log.md)）。
 
 旧 ADR（時点証拠）の分類・legacy の上限・context の失効は置き換えた。
@@ -43,6 +43,13 @@ SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの 
 4. DB再接続 + PRAGMA再設定
 5. スキーママイグレーション実行（古いバックアップからの復元時にスキーマが古い可能性）
 6. operation_logsに記録（operation_type='backup_restore'）
+
+**PC の外の控え（D-114）:**
+1. 利用者が USB メモリを保存先として用意する（目印を置き、DB の外の状態の file に登録する）
+2. 用意した媒体が見えている間、確かめ済みの最新のバックアップを写し、読み戻して SHA-256 で照合してから正式名にする
+3. 最後に PC の外へ写せた日時を状態の file に残し、3 日以上前なら「控えが古い」として画面とホームで知らせる（原因が PC の中の backup の古さなら、その直し方を出す）。状態の file が読めなければ、画面の操作で退避して作り直す。PC の外の控えは任意で、画面の操作でやめられる（状態の file を退避名へ移す）
+4. 復元の前に控えを読取り専用で確かめ、新しすぎる版・壊れた控えを確認の手順の前に止める
+（正本は [71 §71.11〜§71.13](../function-design/71-mnt-backup.md)）
 
 **【制御構造】**
 - 自動バックアップ: app_settings.backup_enabled=1かつbackup_timeに達したら実行。アプリ起動中のみ

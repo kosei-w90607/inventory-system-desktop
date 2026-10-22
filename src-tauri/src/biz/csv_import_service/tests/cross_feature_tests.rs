@@ -87,19 +87,7 @@ impl World {
         let (dir, conn) = db::test_support::setup_test_db();
         for sku in 0..CODES.len() {
             create_test_product_with_jan(&conn, CODES[sku], JANS[sku], INITIAL[sku], sku == 0);
-            inventory_repo::insert_movement(
-                &conn,
-                &NewMovement {
-                    product_code: CODES[sku].into(),
-                    movement_type: MovementType::Receiving,
-                    quantity: INITIAL[sku],
-                    stock_after: INITIAL[sku],
-                    reference_type: None,
-                    reference_id: None,
-                    note: Some("合成初期在庫".into()),
-                },
-            )
-            .unwrap();
+            // 初期在庫の movement は create_test_product_with_jan が入れる（Matrix T3・T5）
         }
         Self {
             dir,
@@ -128,7 +116,7 @@ impl World {
             Operation::Receive => {
                 let request = serde_json::from_value::<inventory_service::ReceivingCreateRequest>(json!({
                     "idempotency_key":key, "supplier_id":null, "receiving_date":DATE, "note":null,
-                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price":50}]
+                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price_centi":50}]
                 })).unwrap();
                 let result =
                     inventory_service::create_receiving(self.conn_mut(), request.clone()).unwrap();
@@ -153,7 +141,7 @@ impl World {
                 let request = serde_json::from_value(json!({
                     "idempotency_key":key, "disposal_date":DATE,
                     "items":[{"product_code":CODES[0],"disposal_type":"disposal",
-                        "quantity":1,"cost_price":50,"reason":"合成検証"}]
+                        "quantity":1,"cost_price_centi":50,"reason":"合成検証"}]
                 }))
                 .unwrap();
                 assert!(
@@ -548,6 +536,8 @@ fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
             reference_type: None,
             reference_id: None,
             note: Some("合成mutation".into()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap();

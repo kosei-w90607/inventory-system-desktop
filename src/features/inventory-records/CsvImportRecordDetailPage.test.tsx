@@ -314,7 +314,7 @@ it.each([
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "12.34 m"],
+  ["m", "12.34 m"],
 ] as const)("⑮ SC19: CSV詳細の %s を単位付き表示する", async (unit, expected) => {
   const detail = makeDetail();
   detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];

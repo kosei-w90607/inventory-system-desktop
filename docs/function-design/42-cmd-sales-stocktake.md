@@ -83,6 +83,28 @@ fn get_daily_sales(
 3. Ok → DailySalesReport をそのまま返す
 4. Err(BizError) → CmdError に変換して返す
 
+#### get_daily_report_sheet（proposed・未実装、D-120）
+
+**関数要求**: 指定日の日報の紙の内容（1 日 1 枚）を取得する。内容と規則は BIZ-05 の [34 §19.3a](34-biz-sales-service.md) の SALES-SHEET-D1〜D6 が持ち、CMD は変換だけを行う。
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+#[specta::specta]
+fn get_daily_report_sheet(
+    state: State<AppState>,
+    date: String,
+) -> Result<DailyReportSheet, CmdError>
+```
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::sales_service::get_daily_report_sheet(&conn, &date) を呼ぶ
+3. Ok → DailyReportSheet をそのまま返す
+4. Err(BizError) → CmdError に変換して返す（§22.3 の既存の変換。新しい kind・文言は足さない）
+
+登録（runtime の lane）: `lib.rs` の specta `collect_commands` と `invoke_handler` に足し、`cargo run --bin generate_bindings` で `src/lib/bindings.ts` を再生成する（§22.8）。
+
 #### get_monthly_sales
 
 **関数要求**: 指定月の売上レポートを取得する
@@ -370,12 +392,15 @@ fn commit_import(
     state: State<AppState>,
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
+    old_jan_aliases: Vec<OldJanAliasAnswer>, // proposed・未実装（JAN の別名の runtime の lane、D-122）
 ) -> Result<ImportResult, CmdError>
 ```
 
+`old_jan_aliases` は、前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）に「ある」と答えた上書きの行の `{ product_code, old_jan }` の組（`OldJanAliasAnswer`、30 §4.8。`old_jan` は preview の `old_jan_question` の値をそのまま返す）。省略できる引数にはしない（UI は 1 つの build で常に送る。空の一覧が全て「ない」）。generated の呼出しは `commands.commitImport(validRows, overwriteCodes, oldJanAliases)`。CMD は検査を持たず BIZ に渡すだけ（形の検査と commit の判定は BIZ の §4.9 手順 0b・2 e.）。error の型・field・message・回復は 30 §4.9.2 の判定表（J1〜J7）が持ち、CMD は既存の変換（§22.3 の `ValidationFailedAt` の行と、40 §5.3 の `ValidationFailed → "validation"`）でそのまま写す: `ValidationFailedAt { message, field }` は kind `validation` で field を保ち（現物 `src-tauri/src/cmd/mod.rs` の `impl From<BizError> for CmdError` の `field: Some(field)`、test `test_cmd_error_req205_from_validation_failed_at_preserves_field`）、`ValidationFailed` は kind `validation`・field null になる。field `"old_jan_aliases"` が付くのは判定表の J6 だけ（増える wire はこの field の値だけ）。
+
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得
-2. biz::product_service::commit_import(&mut conn, valid_rows, overwrite_codes) を呼ぶ
+2. biz::product_service::commit_import(&mut conn, valid_rows, overwrite_codes, old_jan_aliases) を呼ぶ
 3. Ok → ImportResult を返す
 4. Err(BizError) → CmdError に変換
 

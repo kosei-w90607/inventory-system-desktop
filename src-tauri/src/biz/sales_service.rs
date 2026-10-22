@@ -208,7 +208,7 @@ pub struct SalesCsvExportResult {
 /// 34-biz-sales-service.md セクション19.3
 pub fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, BizError> {
     // Step 1: 日付バリデーション
-    validate_date(date)?;
+    crate::biz::inventory_service::validate_business_date(date)?;
 
     // Step 2: 商品別売上取得 + DB型 -> BIZ型マッピング
     let db_rows = sales_repo::get_daily_sales_records(conn, date)?;
@@ -503,19 +503,6 @@ fn translate_source(source: &DailySaleSource) -> &str {
     }
 }
 
-/// YYYY-MM-DD 形式の日付をバリデーションする
-fn validate_date(date: &str) -> Result<(), BizError> {
-    NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
-        if date.len() == 10 && date.chars().nth(4) == Some('-') && date.chars().nth(7) == Some('-')
-        {
-            BizError::ValidationFailed("存在しない日付です".to_string())
-        } else {
-            BizError::ValidationFailed("日付の形式が不正です（YYYY-MM-DD）".to_string())
-        }
-    })?;
-    Ok(())
-}
-
 /// YYYY-MM 形式の月をバリデーションし、(year, month) を返す
 fn validate_month(month: &str) -> Result<(i32, u32), BizError> {
     if month.len() != 7 || month.chars().nth(4) != Some('-') {
@@ -714,7 +701,7 @@ mod tests {
             department_id: dept_id,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,
@@ -1580,7 +1567,7 @@ mod tests {
         seed_product_unit(&conn, "K-PCS", 1, "pcs");
         seed_product_unit(&conn, "K-SHEET", 1, "sheet");
         seed_product_unit(&conn, "K-M", 1, "m");
-        seed_product_unit(&conn, "K-CM", 1, "cm");
+        seed_product_unit(&conn, "K-CM", 1, "m");
         seed_sale(&conn, "K-PCS", "2026-03-21", 3, 2100, "auto");
         seed_sale(&conn, "K-SHEET", "2026-03-21", 2, 400, "auto");
         seed_sale(&conn, "K-M", "2026-03-21", 130, 910, "manual");
@@ -1600,7 +1587,7 @@ mod tests {
         assert_eq!(
             units,
             vec![
-                ("K-CM", ProductStockUnit::Cm, 50),
+                ("K-CM", ProductStockUnit::M, 50),
                 ("K-M", ProductStockUnit::M, 130),
                 ("K-PCS", ProductStockUnit::Pcs, 3),
                 ("K-SHEET", ProductStockUnit::Sheet, 2),
@@ -1766,7 +1753,7 @@ mod tests {
         // 月次の部門別は長さが 0 なら今と同じ整数、そうでなければ画面と同じ文字列
         let (_dir, conn) = setup_test_db();
         seed_product_unit(&conn, "C1-M", 1, "m");
-        seed_product_unit(&conn, "C2-CM", 1, "cm");
+        seed_product_unit(&conn, "C2-CM", 1, "m");
         seed_product_unit(&conn, "C3-M", 1, "m");
         seed_product_unit(&conn, "C4-M", 1, "m");
         seed_product_unit(&conn, "C5-M", 1, "m");
@@ -1808,7 +1795,7 @@ mod tests {
         seed_product_unit(&conn, "D1-PCS", 1, "pcs");
         seed_product_unit(&conn, "D1-SHEET", 1, "sheet");
         seed_product_unit(&conn, "D1-M", 1, "m");
-        seed_product_unit(&conn, "D1-CM", 1, "cm");
+        seed_product_unit(&conn, "D1-CM", 1, "m");
         seed_product_unit(&conn, "D2-PCS", 2, "pcs");
         seed_product_unit(&conn, "D3-M", 3, "m");
         seed_product_unit(&conn, "D4-M", 4, "m");

@@ -41,7 +41,7 @@ pub struct NewStocktakeItem {
 pub struct ProductForStocktake {
     pub product_code: String,
     pub stock_quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub is_discontinued: bool,
 }
 
@@ -118,7 +118,7 @@ pub struct StocktakeRecordDetailItem {
     pub system_stock: i64,
     pub actual_count: Option<i64>,
     pub counted_at: Option<String>,
-    pub valuation_cost_price: Option<i64>,
+    pub valuation_cost_price_centi: Option<i64>,
     pub adjustment_quantity: i64,
     pub stock_after: i64,
 }
@@ -285,11 +285,11 @@ pub fn update_stocktake_item_count(
 pub fn update_stocktake_item_valuation(
     conn: &DbConnection,
     item_id: i64,
-    valuation_cost_price: i64,
+    valuation_cost_price_centi: i64,
 ) -> Result<(), DbError> {
     conn.execute(
-        "UPDATE stocktake_items SET valuation_cost_price = ?1 WHERE id = ?2",
-        rusqlite::params![valuation_cost_price, item_id],
+        "UPDATE stocktake_items SET valuation_cost_price_centi = ?1 WHERE id = ?2",
+        rusqlite::params![valuation_cost_price_centi, item_id],
     )?;
     Ok(())
 }
@@ -462,7 +462,7 @@ pub fn find_stocktake_eligible_products(
     conn: &DbConnection,
 ) -> Result<Vec<ProductForStocktake>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT product_code, stock_quantity, cost_price, is_discontinued
+        "SELECT product_code, stock_quantity, cost_price_centi, is_discontinued
          FROM products
          ORDER BY product_code ASC",
     )?;
@@ -470,7 +470,7 @@ pub fn find_stocktake_eligible_products(
         Ok(ProductForStocktake {
             product_code: row.get(0)?,
             stock_quantity: row.get(1)?,
-            cost_price: row.get(2)?,
+            cost_price_centi: row.get(2)?,
             is_discontinued: row.get(3)?,
         })
     })?;
@@ -592,7 +592,7 @@ pub fn get_stocktake_record_detail(
 
     let mut item_stmt = conn.prepare(
         "SELECT si.product_code, p.name, d.name, p.stock_unit,
-                si.system_stock, si.actual_count, si.counted_at, si.valuation_cost_price,
+                si.system_stock, si.actual_count, si.counted_at, si.valuation_cost_price_centi,
                 im.quantity, im.stock_after
          FROM inventory_movements im
          JOIN stocktake_items si
@@ -615,7 +615,7 @@ pub fn get_stocktake_record_detail(
                 system_stock: row.get(4)?,
                 actual_count: row.get(5)?,
                 counted_at: row.get(6)?,
-                valuation_cost_price: row.get(7)?,
+                valuation_cost_price_centi: row.get(7)?,
                 adjustment_quantity: row.get(8)?,
                 stock_after: row.get(9)?,
             })
@@ -1143,7 +1143,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,
@@ -1165,7 +1165,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 7,
@@ -1587,7 +1587,7 @@ mod tests {
 
         let val: Option<i64> = conn
             .query_row(
-                "SELECT valuation_cost_price FROM stocktake_items WHERE id = ?1",
+                "SELECT valuation_cost_price_centi FROM stocktake_items WHERE id = ?1",
                 rusqlite::params![item_id],
                 |row| row.get(0),
             )
@@ -1620,7 +1620,7 @@ mod tests {
         product_code: &str,
         is_discontinued: bool,
         stock_quantity: i64,
-        cost_price: i64,
+        cost_price_centi: i64,
         department_id: i64,
     ) {
         let product = NewProduct {
@@ -1630,7 +1630,7 @@ mod tests {
             department_id,
             supplier_id: None,
             selling_price: 500,
-            cost_price,
+            cost_price_centi,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity,
@@ -1805,7 +1805,7 @@ mod tests {
         let p = &products[0];
         assert_eq!(p.product_code, "EF-001");
         assert_eq!(p.stock_quantity, 5);
-        assert_eq!(p.cost_price, 250);
+        assert_eq!(p.cost_price_centi, 250);
         assert!(p.is_discontinued);
     }
 
@@ -1978,14 +1978,14 @@ mod tests {
         seed_stocktake_item(&conn, stocktake_id, "SRD-001", 10, Some(10));
         seed_stocktake_item(&conn, stocktake_id, "SRD-002", 4, Some(3));
         conn.execute(
-            "UPDATE stocktake_items SET valuation_cost_price = 300 WHERE stocktake_id = ?1",
+            "UPDATE stocktake_items SET valuation_cost_price_centi = 300 WHERE stocktake_id = ?1",
             [stocktake_id],
         )
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-002', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic correction', 0, '2026-08-01T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-002', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic correction', 0, '2026-08-01T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
@@ -2013,7 +2013,7 @@ mod tests {
         seed_stocktake_item(&conn, stocktake_id, "SRD-LIVE", 10, Some(10));
         seed_stocktake_item(&conn, stocktake_id, "SRD-ALPHA", 4, Some(3));
         conn.execute(
-            "UPDATE stocktake_items SET valuation_cost_price = 300, counted_at = '2026-08-02T17:00:00'
+            "UPDATE stocktake_items SET valuation_cost_price_centi = 300, counted_at = '2026-08-02T17:00:00'
              WHERE stocktake_id = ?1",
             [stocktake_id],
         )
@@ -2025,15 +2025,15 @@ mod tests {
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();
@@ -2073,8 +2073,8 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00')",
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00', '2026-04-01', 0)",
                 rusqlite::params![reference_type, reference_id, is_voided],
             )
             .unwrap();

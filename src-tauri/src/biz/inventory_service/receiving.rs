@@ -4,7 +4,7 @@ use crate::biz::unit_amount::{
     check_safe_integer, cost_line_centi, cost_total_yen, price_basis_quantity,
 };
 use crate::biz::BizError;
-use crate::constants::{MAX_COST_PRICE, MAX_LINE_QUANTITY};
+use crate::constants::{MAX_COST_PRICE_CENTI, MAX_LINE_QUANTITY};
 use crate::db::inventory_repo::{MovementType, ReferenceType};
 use crate::db::product_repo;
 use crate::db::receiving_repo;
@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 
 use super::common::{
     apply_stock_change, compute_fingerprint, negative_stock_warning_message,
-    IDEMPOTENCY_KEY_MAX_LEN,
+    validate_business_date, IDEMPOTENCY_KEY_MAX_LEN,
 };
 
 /// 入庫記録リクエスト（31-biz-inventory-service.md §12.3）
@@ -32,7 +32,7 @@ pub struct ReceivingCreateRequest {
 pub struct ReceivingItemInput {
     pub product_code: String,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
 }
 
 /// 入庫記録の結果
@@ -50,8 +50,8 @@ pub struct ReceivingCreateResult {
 pub struct CostDiff {
     pub product_code: String,
     pub product_name: String,
-    pub master_cost_price: i64,
-    pub received_cost_price: i64,
+    pub master_cost_price_centi: i64,
+    pub received_cost_price_centi: i64,
 }
 
 /// 入庫記録ヘッダと明細を登録し、各明細について在庫を増加させる
@@ -82,6 +82,9 @@ pub fn create_receiving(
         ));
     }
 
+    // 業務日の形と暦の検査（DB を見ない検証の段。冪等の再送の判定と TX より前。31）
+    validate_business_date(&req.receiving_date)?;
+
     // fingerprint 算出（リクエストフィールドのみ使用、DB参照不要）
     let supplier_str = req
         .supplier_id
@@ -91,7 +94,7 @@ pub fn create_receiving(
     let item_lines: Vec<String> = req
         .items
         .iter()
-        .map(|i| format!("{}|{}|{}", i.product_code, i.quantity, i.cost_price))
+        .map(|i| format!("{}|{}|{}", i.product_code, i.quantity, i.cost_price_centi))
         .collect();
     let fingerprint = compute_fingerprint(&header, &item_lines);
 
@@ -129,13 +132,13 @@ pub fn create_receiving(
                 i + 1
             )));
         }
-        if item.cost_price < 0 {
+        if item.cost_price_centi < 0 {
             return Err(BizError::ValidationFailed(format!(
                 "明細{}: 原価は0以上必要です",
                 i + 1
             )));
         }
-        if item.cost_price > MAX_COST_PRICE {
+        if item.cost_price_centi > MAX_COST_PRICE_CENTI {
             return Err(BizError::ValidationFailed(format!(
                 "明細{}: 原価が大きすぎます",
                 i + 1
@@ -146,7 +149,7 @@ pub fn create_receiving(
                 BizError::NotFound(format!("商品が見つかりません: {}", item.product_code))
             })?;
         line_centis.push(cost_line_centi(
-            i128::from(item.cost_price) * 100,
+            i128::from(item.cost_price_centi),
             item.quantity,
             price_basis_quantity(product.product.stock_unit),
             &item.product_code,
@@ -216,12 +219,14 @@ pub fn create_receiving(
                 receiving_record_id: record_id,
                 product_code: item.product_code.clone(),
                 quantity: item.quantity,
-                cost_price: item.cost_price,
+                cost_price_centi: item.cost_price_centi,
             },
         )?;
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.receiving_date,
+            None,
             item.quantity,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -266,12 +271,12 @@ pub fn create_receiving(
     for item in &req.items {
         match product_repo::find_by_product_code(conn, &item.product_code) {
             Ok(Some(product)) => {
-                if item.cost_price != product.product.cost_price {
+                if item.cost_price_centi != product.product.cost_price_centi {
                     detected_cost_diffs.push(CostDiff {
                         product_code: item.product_code.clone(),
                         product_name: product.product.name,
-                        master_cost_price: product.product.cost_price,
-                        received_cost_price: item.cost_price,
+                        master_cost_price_centi: product.product.cost_price_centi,
+                        received_cost_price_centi: item.cost_price_centi,
                     });
                 }
             }
@@ -331,7 +336,7 @@ mod tests {
         ReceivingItemInput {
             product_code: code.to_string(),
             quantity: qty,
-            cost_price: cost,
+            cost_price_centi: cost,
         }
     }
 
@@ -404,6 +409,46 @@ mod tests {
         let req2 = make_receiving_req("recv-key-3", vec![receiving_item("RCV-003", 5, 200)]);
         let result = create_receiving(&mut conn, req2);
         assert!(matches!(result, Err(BizError::IdempotencyConflict(_))));
+    }
+
+    #[test]
+    fn test_receiving_req209_cost_diff_compares_centi() {
+        // REQ-209 / 31 §12.3 / Matrix C8: 原価差分は 1/100 円どうしの完全一致（83.33 と 83.34 を区別する）
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "C8-A", 10);
+        conn.execute(
+            "UPDATE products SET cost_price_centi = 8333 WHERE product_code = 'C8-A'",
+            [],
+        )
+        .unwrap();
+        let diff = create_receiving(
+            &mut conn,
+            make_receiving_req("c8-diff", vec![receiving_item("C8-A", 1, 8334)]),
+        )
+        .unwrap();
+        assert_eq!(diff.cost_diffs.len(), 1);
+        assert_eq!(diff.cost_diffs[0].master_cost_price_centi, 8333);
+        assert_eq!(diff.cost_diffs[0].received_cost_price_centi, 8334);
+        let same = create_receiving(
+            &mut conn,
+            make_receiving_req("c8-same", vec![receiving_item("C8-A", 1, 8333)]),
+        )
+        .unwrap();
+        assert!(same.cost_diffs.is_empty());
+    }
+
+    #[test]
+    fn test_receiving_req201_fingerprint_distinguishes_centi_cost() {
+        // REQ-201 / 31 §12.8 / Matrix C9: fingerprint は 1/100 円の原価を区別し、冪等の再送と扱わない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "C9-A", 10);
+        let req = |cost: i64| make_receiving_req("c9-key", vec![receiving_item("C9-A", 1, cost)]);
+        create_receiving(&mut conn, req(8333)).unwrap();
+        let result = create_receiving(&mut conn, req(8334));
+        assert!(
+            matches!(result, Err(BizError::IdempotencyConflict(_))),
+            "{result:?}"
+        );
     }
 
     #[test]
@@ -580,7 +625,7 @@ mod tests {
         create_test_product(&conn, "PRVC-A", 10);
         create_test_product(&conn, "PRVC-B", 20);
         conn.execute(
-            "UPDATE products SET cost_price = 500 WHERE product_code IN ('PRVC-A', 'PRVC-B')",
+            "UPDATE products SET cost_price_centi = 50000 WHERE product_code IN ('PRVC-A', 'PRVC-B')",
             [],
         )
         .unwrap();
@@ -588,8 +633,8 @@ mod tests {
         let req = make_receiving_req(
             "req209-detect",
             vec![
-                receiving_item("PRVC-A", 2, 501),
-                receiving_item("PRVC-B", 3, 499),
+                receiving_item("PRVC-A", 2, 50100),
+                receiving_item("PRVC-B", 3, 49900),
             ],
         );
         let result = create_receiving(&mut conn, req).unwrap();
@@ -599,12 +644,12 @@ mod tests {
         assert_eq!(result.cost_diffs.len(), 2);
         assert_eq!(result.cost_diffs[0].product_code, "PRVC-A");
         assert_eq!(result.cost_diffs[0].product_name, "テスト商品 PRVC-A");
-        assert_eq!(result.cost_diffs[0].master_cost_price, 500);
-        assert_eq!(result.cost_diffs[0].received_cost_price, 501);
+        assert_eq!(result.cost_diffs[0].master_cost_price_centi, 50000);
+        assert_eq!(result.cost_diffs[0].received_cost_price_centi, 50100);
         assert_eq!(result.cost_diffs[1].product_code, "PRVC-B");
         assert_eq!(result.cost_diffs[1].product_name, "テスト商品 PRVC-B");
-        assert_eq!(result.cost_diffs[1].master_cost_price, 500);
-        assert_eq!(result.cost_diffs[1].received_cost_price, 499);
+        assert_eq!(result.cost_diffs[1].master_cost_price_centi, 50000);
+        assert_eq!(result.cost_diffs[1].received_cost_price_centi, 49900);
 
         let record_count: i64 = conn
             .query_row(
@@ -638,14 +683,14 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         create_test_product(&conn, "PRVC-MATCH", 10);
         conn.execute(
-            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-MATCH'",
+            "UPDATE products SET cost_price_centi = 50000 WHERE product_code = 'PRVC-MATCH'",
             [],
         )
         .unwrap();
 
         let result = create_receiving(
             &mut conn,
-            make_receiving_req("req209-match", vec![receiving_item("PRVC-MATCH", 1, 500)]),
+            make_receiving_req("req209-match", vec![receiving_item("PRVC-MATCH", 1, 50000)]),
         )
         .unwrap();
 
@@ -659,11 +704,14 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         create_test_product(&conn, "PRVC-REPLAY", 10);
         conn.execute(
-            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-REPLAY'",
+            "UPDATE products SET cost_price_centi = 50000 WHERE product_code = 'PRVC-REPLAY'",
             [],
         )
         .unwrap();
-        let req = make_receiving_req("req209-replay", vec![receiving_item("PRVC-REPLAY", 1, 501)]);
+        let req = make_receiving_req(
+            "req209-replay",
+            vec![receiving_item("PRVC-REPLAY", 1, 50100)],
+        );
 
         let created = create_receiving(&mut conn, req.clone()).unwrap();
         assert!(created.created);
@@ -681,14 +729,14 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         create_test_product(&conn, "PRVC-TX", 10);
         conn.execute(
-            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-TX'",
+            "UPDATE products SET cost_price_centi = 50000 WHERE product_code = 'PRVC-TX'",
             [],
         )
         .unwrap();
 
         let result = create_receiving(
             &mut conn,
-            make_receiving_req("req209-tx", vec![receiving_item("PRVC-TX", 4, 501)]),
+            make_receiving_req("req209-tx", vec![receiving_item("PRVC-TX", 4, 50100)]),
         )
         .unwrap();
 
@@ -704,7 +752,7 @@ mod tests {
         assert_eq!(record_count, 1);
         let item_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM receiving_items WHERE receiving_record_id = ?1 AND product_code = 'PRVC-TX' AND quantity = 4 AND cost_price = 501",
+                "SELECT COUNT(*) FROM receiving_items WHERE receiving_record_id = ?1 AND product_code = 'PRVC-TX' AND quantity = 4 AND cost_price_centi = 50100",
                 [result.record_id],
                 |row| row.get(0),
             )
@@ -748,7 +796,7 @@ mod tests {
             &mut conn,
             make_receiving_req(
                 "lim-r-ok",
-                vec![receiving_item("LIM-R", 9_999_999, 999_999)],
+                vec![receiving_item("LIM-R", 9_999_999, 99_999_999)],
             ),
         )
         .unwrap();
@@ -756,7 +804,7 @@ mod tests {
 
         for (key, quantity, cost, message) in [
             ("lim-r-qty", 10_000_000, 300, "明細2: 数量が大きすぎます"),
-            ("lim-r-cost", 1, 1_000_000, "明細2: 原価が大きすぎます"),
+            ("lim-r-cost", 1, 100_000_000, "明細2: 原価が大きすぎます"),
         ] {
             let before = write_surface(&conn, &RECEIVING_TABLES);
             let result = create_receiving(
@@ -808,11 +856,11 @@ mod tests {
         assert_eq!(stock_of(&conn, "STK-NEAR"), 999_999_999);
     }
 
-    /// X8 の fixture: 上限の明細（原価 999999・数量 9999999）を A1〜A9 に 100 行ずつ（900 行、8999990100000900 円）
+    /// X8 の fixture: 上限に近い明細（原価 99999900〈999999 円〉・数量 9999999）を A1〜A9 に 100 行ずつ（900 行、8999990100000900 円）
     fn limit_lines_900() -> Vec<(String, i64, i64)> {
         (1..=9)
             .flat_map(|product| {
-                std::iter::repeat_n((format!("X8-A{product}"), 9_999_999, 999_999), 100)
+                std::iter::repeat_n((format!("X8-A{product}"), 9_999_999, 99_999_900), 100)
             })
             .collect()
     }
@@ -853,8 +901,8 @@ mod tests {
         // 902 行でちょうど 9007199254740991 円は成功し、記録詳細も同じ合計を返す
         let (_dir, mut conn) = setup_total_limit_db();
         let mut edge = limit_lines_900();
-        edge.push(("X8-B".to_string(), 7_209_161, 999_999));
-        edge.push(("X8-B".to_string(), 1, 949_252));
+        edge.push(("X8-B".to_string(), 7_209_161, 99_999_900));
+        edge.push(("X8-B".to_string(), 1, 94_925_200));
         let result = create_receiving(
             &mut conn,
             make_receiving_req("x8-edge", receiving_items_from(&edge)),
@@ -867,10 +915,10 @@ mod tests {
 
         // 1 円外（最後の行の原価 949253）と、上限の明細 901 行は拒み、何も書かない
         let mut one_over = limit_lines_900();
-        one_over.push(("X8-B".to_string(), 7_209_161, 999_999));
-        one_over.push(("X8-B".to_string(), 1, 949_253));
+        one_over.push(("X8-B".to_string(), 7_209_161, 99_999_900));
+        one_over.push(("X8-B".to_string(), 1, 94_925_300));
         let mut lines_901 = limit_lines_900();
-        lines_901.push(("X8-B".to_string(), 9_999_999, 999_999));
+        lines_901.push(("X8-B".to_string(), 9_999_999, 99_999_900));
         for (key, lines) in [("x8-over", one_over), ("x8-901", lines_901)] {
             let (_dir, mut conn) = setup_total_limit_db();
             let before = write_surface(&conn, &RECEIVING_TABLES);
@@ -890,10 +938,10 @@ mod tests {
 
     #[test]
     fn test_create_receiving_req201_stock_warning_formats_length_in_meters() {
-        // REQ-201 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m・cm）の在庫を m の形で入れる
+        // REQ-201 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m）の在庫を m の形で入れる
         let (_dir, mut conn) = setup_test_db();
         create_test_product_with_unit(&conn, "W-M", -130, "m");
-        create_test_product_with_unit(&conn, "W-CM", -130, "cm");
+        create_test_product_with_unit(&conn, "W-CM", -130, "m");
         create_test_product_with_unit(&conn, "W-PCS", -3, "pcs");
         let result = create_receiving(
             &mut conn,
@@ -915,5 +963,72 @@ mod tests {
                 "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn test_create_receiving_req201_rejects_noncanonical_date() {
+        // REQ-201 / Y1・31「業務日の形と暦の検査」/ Contract Probe P6 / Matrix W1: 形の違う日付は何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W1-RCV", 3);
+        let dates = [
+            "2026-4-7",
+            " 2026-04-07",
+            "+2026-04-07",
+            "-0001-04-07",
+            "+10000-04-07",
+            "2026/04/07",
+            "",
+        ];
+        for (i, date) in dates.iter().enumerate() {
+            let before = write_surface(&conn, &RECEIVING_TABLES);
+            let mut req =
+                make_receiving_req(&format!("w1-{i}"), vec![receiving_item("W1-RCV", 2, 100)]);
+            req.receiving_date = date.to_string();
+            let result = create_receiving(&mut conn, req);
+            assert_rejected_without_writes(
+                &conn,
+                &RECEIVING_TABLES,
+                &before,
+                result,
+                "日付の形式が不正です（YYYY-MM-DD）",
+            );
+        }
+    }
+
+    #[test]
+    fn test_create_receiving_req201_rejects_nonexistent_date() {
+        // REQ-201 / Y1（実在） / Matrix W2
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W2-RCV", 3);
+        let before = write_surface(&conn, &RECEIVING_TABLES);
+        let mut req = make_receiving_req("w2", vec![receiving_item("W2-RCV", 2, 100)]);
+        req.receiving_date = "2026-02-30".to_string();
+        let result = create_receiving(&mut conn, req);
+        assert_rejected_without_writes(
+            &conn,
+            &RECEIVING_TABLES,
+            &before,
+            result,
+            "存在しない日付です",
+        );
+    }
+
+    #[test]
+    fn test_create_receiving_req201_movement_business_date_is_header_date() {
+        // REQ-201 / 31（業務日は header の日付）/ SPEC-STK-CNT-D1 / Matrix W6
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W6-RCV", 0);
+        let mut req = make_receiving_req("w6", vec![receiving_item("W6-RCV", 2, 100)]);
+        req.receiving_date = "2026-05-03".to_string();
+        create_receiving(&mut conn, req).unwrap();
+        let key: (String, i64, Option<i64>) = conn
+            .query_row(
+                "SELECT business_date, phase, settlement_no FROM inventory_movements
+                 WHERE product_code = 'W6-RCV' AND reference_type = 'receiving_record'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(key, ("2026-05-03".to_string(), 0, None));
     }
 }

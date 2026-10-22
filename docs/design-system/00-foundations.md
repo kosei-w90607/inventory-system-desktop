@@ -185,7 +185,7 @@ SCREEN_DESIGN.md §2 で定義された 4色エリア（緑=毎日の業務 / �
 | body | 16px (1rem) | 1.5 | 400 | 本文、テーブルセル |
 | label | 14px (0.875rem) | 1.5 | 500 | ラベル、ボタン、タブ |
 | caption | 14px (0.875rem) | 1.5 | 400 | 補助説明、タイムスタンプ、ラベルと値のラベル。muted（`text-sm text-muted-foreground`）。12px は badge の中だけ。badge 以外の 12px は現行の画面に残り、その画面を触る lane が 14px へ寄せる |
-| metric（数値強調） | 30px（既存 `text-3xl`） | 1.2 | 600 | サマリカードの主値。「ラベルは小さく muted、値は大きく」（04 原則 5、本書「ラベルと値」）が指す既存実装インスタンス。`StocktakePage.tsx:933` で使用中の現行 Tailwind class を規範化（新規提案値ではない） |
+| metric（数値強調） | 30px（既存 `text-3xl`） | 1.2 | 600 | サマリカードの主値。「ラベルは小さく muted、値は大きく」（04 原則 5、本書「ラベルと値」）が指す既存実装インスタンス。`src/features/stocktake/StocktakePage.tsx` の仕入原価総額の card の値（`formatYen(result.total_cost)`）で使用中の現行 Tailwind class を規範化（新規提案値ではない） |
 
 **根拠**: refactoring-ui §2 "Hierarchy" *"Establish hierarchy through size, weight, and color — don't rely on size alone."* 本書では sizeとweightの組合せ（例: h1は size=24 + weight=600、body は size=16 + weight=400）で4段の階層を作る。
 

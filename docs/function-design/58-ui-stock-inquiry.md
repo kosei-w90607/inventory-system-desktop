@@ -1,5 +1,5 @@
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
-> **入力ドキュメント**: ARCHITECTURE.md（UI-06a タスク仕様）、SCREEN_DESIGN.md（在庫照会画面 L120-133 / L167-176）、screen_mockups.html（モックアップ、historical reference）、20-io-product-repo.md（IO-01 get_stock_detail / list_low_stock / search_products）、44-cmd-inventory.md（CMD-06 get_stock_detail / list_low_stock）、40-cmd-product.md（CMD-01 search_products）、57-ui-monthly-sales.md（UI-09b 業務ロジックあり版テンプレ）、56-ui-daily-sales.md（UI-09a 2 useQuery 部分障害許容テンプレ）
+> **入力ドキュメント**: ARCHITECTURE.md（UI-06a タスク仕様）、SCREEN_DESIGN.md（在庫照会画面）、screen_mockups.html（モックアップ、historical reference）、20-io-product-repo.md（IO-01 get_stock_detail / list_low_stock / search_products）、44-cmd-inventory.md（CMD-06 get_stock_detail / list_low_stock）、40-cmd-product.md（CMD-01 search_products）、57-ui-monthly-sales.md（UI-09b 業務ロジックあり版テンプレ）、56-ui-daily-sales.md（UI-09a 2 useQuery 部分障害許容テンプレ）
 
 ## 58. UI-06a: 在庫照会画面
 
@@ -47,11 +47,11 @@ export type Product = {
   department_id: number;
   supplier_id: number | null;
   selling_price: number;
-  cost_price: number;
+  cost_price_centi: number;
   tax_rate: ProductTaxRate;
   maker_code: string | null;
   stock_quantity: number;
-  stock_unit: ProductStockUnit; // "pcs" | "cm"（Q-4）
+  stock_unit: ProductStockUnit; // 10 個の code（SPEC-UNIT-D1）
   is_discontinued: boolean;
   plu_dirty: boolean;
   plu_exported_at: string | null;
@@ -104,7 +104,7 @@ export type PaginatedResult<T> = {
 | 新規 | `src/features/stock-inquiry/StockInquiryPage.tsx` | 最上位 page、失敗 4 状態出し分け + 主動線 + sub 動線 | 100-140 |
 | 新規 | `src/features/stock-inquiry/types.ts` | `StockStatus = "ok" \| "low" \| "stockout"` / `ListChipFilter = "all" \| "stockout" \| "low_stock"` / `StockInquiryListResult` 正規化型 | 30-45 |
 | 新規 | `src/features/stock-inquiry/lib/derive-stock-state.ts` | 在庫状態派生（source 引数で色分け契約 H 準拠、閾値持たない） | 20-30 |
-| 新規 | `src/features/stock-inquiry/lib/format-stock-display.ts` | 在庫数 + 単位表示（Q-4 `"pcs"` / `"cm"` + fallback「—」） | 20-30 |
+| 新規 | `src/features/stock-inquiry/lib/format-stock-display.ts` | 在庫数 + 単位表示（10 個の code を型で網羅） | 20-30 |
 | 新規 | `src/features/stock-inquiry/lib/format-last-date.ts` | `string \| null → string`（None → 「—」、Q-2） | 15-25 |
 | 新規 | `src/features/stock-inquiry/lib/filter-low-stock-list.ts` | `list_low_stock` 結果の q / dept sub-filter + stockout/low 分岐 | 30-45 |
 | 新規 | `src/features/stock-inquiry/lib/test-fixtures.ts` | `makeMockProductWithRelations` + `makeMockStockDetail` factory | 30-45 |
@@ -163,7 +163,7 @@ SearchBar + StatusChips + DepartmentFilter（options={departmentOptions} / selec
 
 **派生 4 純関数の責務分担**:
 1. `derive-stock-state` → `(item, source) → StockStatus`（色分け契約 H、`source === "search" && stock_quantity > 0` のみ `"ok"`）
-2. `format-stock-display` → `(quantity, unit) → string`（`"10 個"` / `"300 cm"` / fallback「—」、Q-4）
+2. `format-stock-display` → `(quantity, unit) → string`（`"10 個"` / `"3 m"`）
 3. `format-last-date` → `(value: string | null) → string`（None → 「—」、Q-2）
 4. `filter-low-stock-list` → `(items, q, dept, status) → ProductWithRelations[]`（`list_low_stock` 結果の sub-filter + stockout/low 分岐）
 
@@ -367,14 +367,14 @@ export function useStockInquiry(params: {
 
 #### format-stock-display（[quantity, unit] → string）
 
-- `unit: ProductStockUnit` を受け、12 個の code を型で網羅する（fallback の `"—"` を置かず、単位を足すと型検査で止まる。[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11）。
+- `unit: ProductStockUnit` を受け、10 個の code を型で網羅する（fallback の `"—"` を置かず、単位を足すと型検査で止まる。[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11）。
 - 個数の単位 → `"10 個"`・`"3 玉"`（数量 + D1 の表示の語。数量は `toLocaleString("ja-JP")` で桁区切り: `1,234 個`）
-- 長さの単位（`m`・`cm` とも）→ cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`、`cm` の商品の `300` も `3 m`。SPEC-UNIT-D3。整数の演算で作り、`toLocaleString` に小数を渡さない）
+- 長さの単位（`m`）→ cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`、`300` → `3 m`。SPEC-UNIT-D3。整数の演算で作り、`toLocaleString` に小数を渡さない）
 
 #### formatStockUnitLabel（[unit] → string、Gated Amendment 6 S45）
 
 - 単位列（入庫等）や数量 input に添える単位（廃棄 / 返品交換 / 手動販売）の unit code を日本語ラベルへ変換する
-- SPEC-UNIT-D1 の表示の語を返す（`pcs` → `"個"`、`ball` → `"玉"`、`m` → `"m"`。`cm` の商品は入力の単位の `"cm"`）
+- SPEC-UNIT-D1 の表示の語を返す（`pcs` → `"個"`、`ball` → `"玉"`、`m` → `"m"`）
 
 #### 数量を出すほかの画面と formatter（D-113）
 
@@ -565,7 +565,7 @@ function StockInquiryPage() {
 | file | 主内容 |
 |---|---|
 | `derive-stock-state.test.ts` | source=search + stock>0 → ok / source=search + stock<=0 → stockout / source=low_stock + stock>0 → low / source=low_stock + stock<=0 → stockout / stock=0 境界 |
-| `format-stock-display.test.ts` | `"pcs"` → 「個」/ `"cm"` → 「cm」/ unexpected → 「—」（Q-4 網羅） |
+| `format-stock-display.test.ts` | 10 個の code の表示の語（`"pcs"` → 「個」、`"m"` → 「m」）と長さの m の形、原価の formatter（`¥83.33`） |
 | `format-last-date.test.ts` | null → 「—」/ `YYYY-MM-DD` そのまま / 空文字扱い |
 | `filter-low-stock-list.test.ts` | stockout 分岐 / low_stock 分岐 / q 部分一致 / dept 絞り込み / 複合 / 空配列 / `filterAndSortLowStockList`: 取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順ソート（UI-06a-D4） |
 | `useStockInquiry.test.tsx` | search → PaginatedResult 正規化（source/totalCount、`truncated` は撤去済み） / low_stock → 配列正規化 / status=all+q空 で enabled=false / 1 件自動展開 / status 切替 → selected clear → 新 list 1 件で再展開 / detail 部分障害 / list 成功 + selected 不在 → clear（C-P2-1） / isAllEmpty + selected → clear + detail 非発火（Round 1 P2-2） / page が queryKey とクエリ引数に反映される（SPEC-UIBB-3/4） / SPEC-UIBB-9: `departmentOptionsQuery` が `listDepartments()` を呼び、page/q/dept/status 変更後も候補が不変で選択中部門から別部門へ直接切替できる（round 1 P1-3、DSR-10）。status 変更（all → low_stock → stockout）も候補不変であることを追加 assert（round 2 P2-3）。同一 `QueryClient` 上で page/q/dept/status を変えても `listDepartments` の call count = 1 に留まる（round 2 P2-3、query-key 安定性の mutant 検出）。`queryKeys.stockInquiry.departmentOptions()` が無引数で呼ぶたびに同一・一定の key を返す unit test（round 2 P1-1、無引数化の regression 防止） / 手動クローズ後、同一検索条件では自動展開が再発火しない・条件変化後は再度発火する対 test（UI-06a-D5） / ページ送りで前ページの stale selected が維持されたままでも新条件の単一結果が自動展開する（round 2 P2 是正、fix 前 FAIL） |
@@ -582,7 +582,7 @@ function StockInquiryPage() {
 - frontend 責務: BIZ が返した集合を表示・分類
 - BIZ 責務: 何が「在庫少」かを判定（app_settings の `stock_low_threshold` / `stock_low_threshold_fabric` を読み `list_low_stock` で適用）
 - frontend に持ってよい派生: `list_low_stock` 結果内で `stock_quantity <= 0` なら「在庫切れ」、`> 0` なら「在庫少」
-- frontend に持ってはいけない派生: `stock_unit === "cm" ? 500 : 3` のような閾値判定（drift 源）
+- frontend に持ってはいけない派生: `stock_unit === "m" ? 500 : 3` のような閾値判定（drift 源）
 
 #### 契約 H 在庫状態の高視認性表示（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）
 
@@ -610,7 +610,7 @@ function StockInquiryPage() {
 
 #### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）
 
-- **決定**: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`DisposalPage.tsx:134` と同型、新しい state を作らない）。
+- **決定**: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`src/features/disposal/DisposalPage.tsx` の `DisposalPage` の `returnTo` と同型、新しい state を作らない）。
 - **Why**: 監査 NAV-1 のとおり、`/stock?selected=<code>` だけでは受け側の検索前ガード（§58.4）が `selected` を解除し、利用者が検索と選択をやり直す。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。
 - **Rejected**: 受け側の検索前ガードを撤去（bookmark / F5 の detail 空振り防止〈Codex Round 1 P2-2〉を壊す）/ `/stock?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）。
 
@@ -656,13 +656,14 @@ function StockInquiryPage() {
 | 系統 | 表示 | 内部 |
 |---|---|---|
 | 在庫数（個物） | 「10 個」 | `stock_quantity` integer + `stock_unit = "pcs"` |
-| 在庫数（生地） | 「300 cm」 | `stock_quantity` integer + `stock_unit = "cm"` |
+| 在庫数（生地） | 「3 m」 | `stock_quantity` integer（cm）+ `stock_unit = "m"` |
 | 在庫数（unexpected unit） | 「—」 | fallback（Q-4） |
 | 最終入庫日 / 最終販売日 None | 「—」（Q-2） | `string \| null`（null） |
 | 在庫状態（在庫切れ） | `CircleAlertIcon` + 「在庫切れ」Badge（在庫数 red は補助） | `StockStatus = "stockout"` |
 | 在庫状態（在庫少） | `TriangleAlertIcon` + 「在庫少」Badge（在庫数 amber は補助） | `StockStatus = "low"`（list_low_stock 由来時のみ） |
 | 在庫状態（在庫あり） | 「在庫あり」Badge | `StockStatus = "ok"` |
-| 金額（売価 / 原価） | 「¥1,234」 | `Intl.NumberFormat` |
+| 金額（売価） | 「￥1,234」 | `Intl.NumberFormat`（今のまま） |
+| 金額（原価、1/100 円） | 「¥83.33」・「¥1,000」 | `formatCostYen`（[共通規則](10-common-rules.md) SPEC-UNIT-D5。半角の `¥`） |
 | 画面名「在庫照会」と CMD `get_stock_detail` / `list_low_stock` の命名差異 | 画面表示「在庫照会」 | CMD は実態（詳細取得 / 在庫少一覧）に即した命名（memory `feedback-naming-must-match-reality.md`） |
 
 ### 58.13 非目的（IO/BIZ 同型表）
@@ -673,7 +674,7 @@ function StockInquiryPage() {
 | 状態チップ件数バッジ | Phase 2 では状態チップに件数バッジを表示しない。理由: 件数の意味が検索条件・部門フィルタ・在庫少閾値 contract と結合し、追加 query / count contract が必要になるため。在庫切れ・在庫少件数の常時把握はホームサマリ（UI-00）で提供し、UI-06a ではチップをフィルタ操作に限定する | Phase 4 UI-06c または count API 設計時に再評価（UI-06b は独立画面ではないため対象外、D-047） |
 | 在庫変動履歴の本体実装 | UI-06c で `/stock/$code/movements` として実装。UI-06a は詳細カードから active link で接続する | 画面本体の正典は [66-ui-stock-movements.md](66-ui-stock-movements.md) |
 | `list_movements` specta 化 | PR #112 で generated `commands.listMovements` / `MovementRecord.source` contract を追加済み。UI-06c はその consumer として実装する | 画面本体の正典は [66-ui-stock-movements.md](66-ui-stock-movements.md) |
-| 詳細カード CSV 出力 / 印刷 | SCREEN_DESIGN.md L120-133 に言及なし | scope 外 |
+| 詳細カード CSV 出力 / 印刷 | SCREEN_DESIGN.md に言及なし | scope 外 |
 | `stock_low_threshold` 設定変更 UI | 閾値設定は別画面 | UI-11a 閾値設定画面 |
 | 廃番商品の表示トグル UI | `include_discontinued` 固定 false、scope 抑制 | Phase 4 で再検討 |
 

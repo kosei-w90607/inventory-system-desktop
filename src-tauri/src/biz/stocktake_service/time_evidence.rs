@@ -552,6 +552,8 @@ pub(crate) fn save_stocktake_count(
                         note: Some(format!(
                             "棚卸しの再実測: 帳簿{system_stock} → 実数{actual_count}"
                         )),
+                        business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                        settlement_no: None,
                     },
                     "recount",
                     Some(recount_id),
@@ -666,6 +668,8 @@ pub(crate) fn complete_stocktake(
                                 "棚卸し補正: 実数{n} − 保存時の帳簿{}",
                                 item.system_stock
                             )),
+                            business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                            settlement_no: None,
                         },
                         "completion",
                         None,
@@ -697,9 +701,9 @@ pub(crate) fn complete_stocktake(
         safe(Some(stock_after))?;
         // 差 0 の商品も版を進めて古い context を失効させる
         bump_stock_revision(&tx, &item.product_code)?;
-        update_stocktake_item_valuation(&tx, item.id, product.cost_price)?;
+        update_stocktake_item_valuation(&tx, item.id, product.cost_price_centi)?;
         line_centis.push(cost_line_centi(
-            i128::from(product.cost_price) * 100,
+            i128::from(product.cost_price_centi),
             stock_after.max(0),
             price_basis_quantity(product.stock_unit),
             &item.product_code,

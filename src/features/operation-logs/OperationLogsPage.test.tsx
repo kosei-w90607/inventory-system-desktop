@@ -686,7 +686,7 @@ describe("UI-11c REQ-902", () => {
         },
         {
           product_code: "SYN-CM",
-          stock_unit: "cm",
+          stock_unit: "m",
           old_stock: 2700,
           new_stock: 2750,
           adjustment: 50,
@@ -732,6 +732,125 @@ describe("UI-11c REQ-902", () => {
       expect(row).toHaveTextContent("差分 -50");
     }
   });
+
+  // UI-11c-D14 / REQ-902 / Matrix U6: 記録済みの形（old_stock・new_stock・adjustment）と 36 の before/after の形
+  it("integrity_fix の記録済みの形と before/after の形の両方を読む", async () => {
+    const stockCopy = (quantity: number, range: [number, number] | null = null) => ({
+      stock_quantity: quantity,
+      stock_recheck: range !== null,
+      stock_range_low: range?.[0] ?? null,
+      stock_range_high: range?.[1] ?? null,
+    });
+    const renderDetail = async (detail: Record<string, unknown>) => {
+      listLogs.mockResolvedValue({
+        status: "ok",
+        data: {
+          items: [{ ...log(JSON.stringify(detail)), operation_type: "integrity_fix" }],
+          total_count: 1,
+          page: 1,
+          per_page: 20,
+        },
+      });
+      renderPage();
+      await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
+    };
+    const detail = {
+      fixed_count: 3,
+      skipped_count: 0,
+      adjustments: [
+        { product_code: "U6-LEGACY", old_stock: 10, new_stock: 7, adjustment: -3 },
+        {
+          product_code: "U6-RANGE",
+          stock_unit: "pcs",
+          before: stockCopy(5, [4, 6]),
+          after: stockCopy(5, [3, 7]),
+        },
+        {
+          product_code: "U6-M",
+          stock_unit: "m",
+          before: stockCopy(2750),
+          after: stockCopy(2700, [2650, 2800]),
+        },
+      ],
+      trigger: "migration",
+    };
+    await renderDetail(detail);
+
+    const rows = within(screen.getByRole("region", { name: "整合性補正の内容" })).getAllByRole(
+      "listitem",
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent("U6-LEGACY");
+    expect(rows[0]).toHaveTextContent("旧在庫 10 → 新在庫 7");
+    expect(rows[0]).toHaveTextContent("差分 -3");
+    expect(rows[1]).toHaveTextContent("U6-RANGE");
+    expect(rows[1]).toHaveTextContent("5（要再確認 4〜6） → 5（要再確認 3〜7）");
+    expect(rows[2]).toHaveTextContent("27.5 m → 27 m（要再確認 26.5 m〜28 m）");
+    const summary = screen.getByRole("group", { name: "ログ詳細の要約" });
+    expect(within(summary).queryByText(JSON.stringify(detail.adjustments))).toBeNull();
+  });
+
+  it.each([
+    [
+      "recheck without range",
+      { stock_quantity: 5, stock_recheck: true, stock_range_low: null, stock_range_high: null },
+    ],
+    [
+      "range without recheck",
+      { stock_quantity: 5, stock_recheck: false, stock_range_low: 4, stock_range_high: 6 },
+    ],
+    [
+      "recheck not boolean",
+      { stock_quantity: 5, stock_recheck: 1, stock_range_low: null, stock_range_high: null },
+    ],
+    [
+      "unsafe quantity",
+      {
+        stock_quantity: Number.MAX_SAFE_INTEGER + 1,
+        stock_recheck: false,
+        stock_range_low: null,
+        stock_range_high: null,
+      },
+    ],
+    ["after missing", null],
+  ])(
+    "UI-11c-D14 / REQ-902 / U6: どちらの形にも合わない要素（%s）は技術情報へ回す",
+    async (_name, after) => {
+      const adjustments = [
+        {
+          product_code: "U6-BAD",
+          before: {
+            stock_quantity: 5,
+            stock_recheck: false,
+            stock_range_low: null,
+            stock_range_high: null,
+          },
+          ...(after === null ? {} : { after }),
+        },
+      ];
+      listLogs.mockResolvedValue({
+        status: "ok",
+        data: {
+          items: [
+            {
+              ...log(JSON.stringify({ fixed_count: 1, adjustments })),
+              operation_type: "integrity_fix",
+            },
+          ],
+          total_count: 1,
+          page: 1,
+          per_page: 20,
+        },
+      });
+      renderPage();
+      await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
+
+      expect(screen.queryByRole("region", { name: "整合性補正の内容" })).toBeNull();
+      const summary = screen.getByRole("group", { name: "ログ詳細の要約" });
+      expect(within(summary).getByText(JSON.stringify(adjustments))).toBeVisible();
+      expect(screen.getByText("技術情報（JSON）")).toBeInTheDocument();
+    },
+  );
 
   it("test_operation_logs_req902_t9_renders_integrity_adjustments_as_scoped_plain_text", async () => {
     const detail = {

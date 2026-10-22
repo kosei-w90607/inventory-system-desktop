@@ -9,6 +9,7 @@ export interface DisposalRow {
   departmentName: string;
   stockUnit: ProductStockUnit;
   currentStockQuantity: number;
+  /** 商品の原価（1/100 円） */
   defaultCostPrice: number;
   disposalType: DisposalType;
   quantity: string;

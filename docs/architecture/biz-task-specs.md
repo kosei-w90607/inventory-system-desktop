@@ -1,8 +1,8 @@
 # タスク仕様（BIZ層）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とし、既存の処理を新方式の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
+SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）と、停止中の旧本体の BIZ-03 の取消・BIZ-06 の確定が、補正した商品・無効にした商品だけを求め直す形。ほかの項目は (b)（proposed・未実装）で、既存の処理を (b) の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。共有 JAN の在庫連動の拒否、在庫連動を始めるときの連動しない間の売上の検査、初期在庫の movement と求め直し。
 - BIZ-02 / BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。並びの鍵付きの movement、求め直しの関数（写しを書く唯一の経路）、要再確認の判定。整合性は写しと求め直しの比較で、補正は求め直しを写しへ書く（操作ログの必須は変えない）。
@@ -25,11 +25,11 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【データ構造】**
 
 入力データ:
-- 商品登録: product_code（JANまたは自動発番）, name, department_id, selling_price, cost_price, tax_rate, stock_unit, 初期在庫数, jan_code（任意）, maker_code（任意）, supplier_id（任意）
+- 商品登録: product_code（JANまたは自動発番）, name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, 初期在庫数, jan_code（任意）, maker_code（任意）, supplier_id（任意）
 - 商品修正: product_code（変更不可）, 変更対象フィールド群
 - 廃番切替: product_code, is_discontinued
 - 一括インポート: CSVファイルバイト列（任意列 `PLU対象`）
-- 価格改定: product_code, new_selling_price, new_cost_price, assign_supplier_id（任意）
+- 価格改定: product_code, new_selling_price, new_cost_price_centi, assign_supplier_id（任意）
 - 取引先追加: name
 - 価格履歴参照: product_code, limit
 
@@ -52,11 +52,11 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 2. 入力バリデーション
    - name: 必須、空文字不可
    - department_id: departmentsに存在すること
-   - selling_price, cost_price: 0以上の整数
+   - selling_price（円）, cost_price_centi（1/100 円）: 0以上の整数
    - tax_rate: '10', '8', '0'のいずれか
-   - stock_unit: 'pcs', 'cm'のいずれか
+   - stock_unit: 10 個の code のいずれか（共通規則 SPEC-UNIT-D1）
 3. トランザクション内で実行
-   - productsにINSERT（plu_dirty=1, plu_exported_at=NULL, pos_stock_sync=デフォルト1。利用者が商品登録画面で明示的にOFFにできる。stock_unit='cm'の場合は初期値0を提案するがUIで変更可能）
+   - productsにINSERT（plu_dirty=1, plu_exported_at=NULL, pos_stock_sync=デフォルト1。利用者が商品登録画面で明示的にOFFにできる。長さの単位（stock_unit='m'）の場合は初期値0を提案するがUIで変更可能（UI-01b-D6・D22））
    - 初期在庫 > 0 の場合 → inventory_movementsにINSERT（movement_type='receiving', quantity=初期在庫, stock_after=初期在庫）
    - 進行中の棚卸し（stocktakes.status='in_progress'）があれば → stocktake_itemsに自動追加（actual_count=NULL）
    - operation_logsに記録（operation_type='product_create'）
@@ -79,7 +79,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **廃番切替:**
 1. product_codeで既存商品を取得
 2. is_discontinuedを反転
-3. 廃番化は `plu_target=0` と slot 解放 trigger を伴う。復帰は `plu_target` を自動で戻さない
+3. 廃番化は `plu_target=0` にする。復帰は `plu_target` を自動で戻さない。枠は D-117 の後は解放しない（下の `PLU対象` の節。今の build は解放する、BIZ-04 の「runtime の状態」）
 4. operation_logsに記録（operation_type='product_discontinue'）
 
 **独自コード発番:**
@@ -100,9 +100,12 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 7. 各商品について初期在庫ありならinventory_movementsにINSERT
 8. operation_logsに記録
 
-**CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で撤去）:**
+**CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で外す。今の build には `bulk_set_plu_target` が残る）:**
 - `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。不正 JAN の `1` は warning + `0`
-- 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117）
+- 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117。今の build は解放する、BIZ-04 の「runtime の状態」）
+
+**前の JAN の別名（D-122、proposed・未実装）:**
+- 上書きで JAN を直す行のうち、前の JAN をその商品だけが持ち、新規の行がその JAN を持たない行に「前の番号のバーコードが付いた現物は店にありますか」を出す（既定「ない」。上書きの選択に依らない条件で広めに出す）。「ある」の行は、commit が実際の上書きの選択で 30 BIZ-01-D9 の判定表を満たすとき（取込みの後にその JAN を誰も持たない等）だけ前の JAN を別名として残し、満たさなければ判定表の error で全体を戻す。商品が JAN を持つと、その JAN の別名は DB の trigger が消す
 
 **【制御構造】**
 - 独自コード発番はトランザクション内でnext_seqのread→increment→writeを行い排他制御（SQLiteの暗黙ロックで十分）
@@ -113,7 +116,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 ### BIZ-02: 在庫変動ロジック
 
-**タスク要求**: 入庫・返品・手動販売出庫・廃棄による在庫変動を統一的に処理する。products.stock_quantityの更新とinventory_movementsの記録を常にセットで実行し、入庫保存後は原価差分を保存 transaction と独立に返す（REQ-209 / SPEC-PRV-D8）
+**タスク要求**: 入庫・返品・手動販売出庫・廃棄による在庫変動を統一的に処理する。inventory_movementsの記録と、その商品の写し（products.stock_quantity ほか）の記録からの求め直し（`recompute_stock`）を常に同じ TX で実行し、入庫保存後は原価差分を保存 transaction と独立に返す（REQ-209 / SPEC-PRV-D8）
 
 **理由**: 在庫変動は4つの異なる画面（入庫/返品/手動販売/廃棄）から発生するが、「在庫を増減してその履歴を記録する」という共通処理がある。これをBIZ-02に集約することで、在庫整合性のルールが1箇所にまとまる
 
@@ -124,7 +127,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 入庫固有の入力:
 - receiving_record: supplier_id, receiving_date, note
-- receiving_items[]: product_code, quantity, cost_price
+- receiving_items[]: product_code, quantity, cost_price_centi
 
 返品固有の入力:
 - return_record: return_type('return'/'exchange'), return_date, register_processed, receipt_image_path, note
@@ -136,7 +139,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 廃棄固有の入力:
 - disposal_record: disposal_date
-- disposal_items[]: product_code, disposal_type('disposal'/'damage'/'other'), quantity, cost_price, reason
+- disposal_items[]: product_code, disposal_type('disposal'/'damage'/'other'), quantity, cost_price_centi, reason
 
 出力データ:
 - 処理結果: 成功/失敗、変動後の在庫数、在庫マイナス警告の有無
@@ -146,11 +149,11 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【処理構造】**
 
 **共通在庫変動処理（全ての入出庫から呼ばれる内部関数）:**
-1. product_codeでproductsを取得
-2. 新しい在庫数を計算: stock_after = products.stock_quantity + quantity
-3. stock_after < 0 の場合 → 在庫マイナス警告フラグをセット（処理は止めない）
-4. products.stock_quantityをstock_afterに更新
-5. inventory_movementsにINSERT（movement_type, quantity, stock_after, reference_type, reference_id）
+1. product_codeでproductsを取得（無ければ NotFound）
+2. inventory_movementsに並びの鍵付きでINSERT（movement_type, quantity, reference_type, reference_id, business_date, settlement_no。stock_after は仮に今の写しの値）
+3. その商品の写しを記録から求め直して書く（BIZ-02 の recompute_stock。在庫の上限の外は書く前に TX 全体を戻す）
+4. 2 の movement の stock_after を、求め直した写しの値に更新する
+5. stock_after < 0 の場合 → 在庫マイナス警告フラグをセット（処理は止めない）
 
 **入庫記録の処理手順:**
 1. 入力バリデーション（supplier_idがsuppliersに存在、各itemのproduct_codeが存在、quantity > 0）
@@ -187,7 +190,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
    - operation_logsに記録（operation_type='manual_sale_create'）
 
 **廃棄・破損記録の処理手順:**
-1. 入力バリデーション（quantity > 0, cost_price >= 0, reason非空）
+1. 入力バリデーション（quantity > 0, cost_price_centi >= 0, reason非空）
 2. トランザクション内で実行
    - disposal_recordsにINSERT → record_idを取得
    - 各disposal_itemについて:
@@ -237,7 +240,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 1. parsed_rowsの空レコード除外（JAN=0000...、quantity=0 and amount=0）
 2. 実データ行についてproducts.jan_codeで検索
    - ヒット1件 → matched_rowsに追加。pos_stock_syncフラグをコピー
-   - ヒット0件 → error_rowsに追加（error_type='unmatched_product'）
+   - ヒット0件 → 前の JAN の別名（D-122、proposed・未実装）があればその商品で matched_rows に追加、無ければ error_rowsに追加（error_type='unmatched_product'）
    - ヒット複数件 → ORDER BY product_code ASCで先頭に紐付け
 3. Stage 1のparse_errorsもerror_rowsにマージ
 4. ValidateResultを構築
@@ -251,7 +254,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 3. PreviewDataを構築してフロントエンドに返す
 4. **ここでフロントエンドからの利用者操作を待つ**
 
-**Stage 4: Commit**
+**Stage 4: Commit**（以下の Commit とロールバックの手順は、現行 build では停止中の旧本体の記述。[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[32](../function-design/32-biz-csv-import-service.md) §15.0）
 1. preview statusと `additional_import_confirmed` の組合せを検証する
 2. トランザクション内で同一file_hashを再検査し、続けて同日active import ID snapshotを再取得する。不一致は「同日の取込み状況が変わりました。再度プレビューしてください」で副作用なく止める
 3. 既存importを変更せず、トランザクション内で新規分だけ実行
@@ -260,7 +263,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
      - sale_recordsにINSERT（source='auto', csv_import_id=import_id, source_line_no=line_no）
      - pos_stock_sync=1の場合:
        - 在庫視点でquantityを変換（返品:sale_records.quantity<0→inventory_movements.quantity=+|quantity|、通常販売→inventory_movements.quantity=-quantity）
-       - products.stock_quantity更新 + inventory_movementsにINSERT（movement_type='sale_auto', reference_type='csv_import', reference_id=import_id）
+       - inventory_movementsにINSERT（movement_type='sale_auto', reference_type='csv_import', reference_id=import_id）し、その商品を `recompute_stock` で求め直す（BIZ-02 の `apply_stock_change`）
      - pos_stock_sync=0の場合 → sale_recordsのみ、在庫は動かさない
    - error_rowsがある場合 → csv_import_errorsにINSERT
    - csv_imports.status / total_items / total_amount / skipped_countを確定
@@ -272,7 +275,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 2. トランザクション内で実行
    - 関連するsale_recordsをis_voided=1に更新
    - 関連するinventory_movementsをis_voided=1に更新
-   - is_voided=1にした各inventory_movementsについてproducts.stock_quantityを逆方向に補正
+   - is_voided=1にしたinventory_movementsの商品ごとに `recompute_stock` で求め直す（補償の movement は作らない）
    - csv_imports.statusを'rolled_back'に更新
    - operation_logsに記録（operation_type='csv_rollback'）
 3. 同一settlement_dateの他のactive importは変更しない
@@ -293,7 +296,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【データ構造】**
 
 入力データ:
-- DailyReportSourceFile[]（filename, bytes）。標準はレジの SD から読んだ候補の束（IO-09 経由、§37.9 `scan_register_sd_daily_reports`、D-111）、予備は利用者が選んだ 3 ファイル（dialog の path を持ち、自動で見つけた SD の root の下の file は SD の入力として扱う。37 §37.3 手順 1a）。SD の探し方の選択は BIZ-08 の `DailyReportSdSelection`（CMD-12 が作る。IO-09 の型にしない）
+- DailyReportSourceFile[]（filename, bytes）。標準はレジの SD から読んだ候補の束（IO-09 経由、§37.9 `scan_register_sd_daily_reports`、D-111。runtime は未実装〈Draft PR #172〉で、今の build は下の予備の 3 ファイルだけ）、予備は利用者が選んだ 3 ファイル（dialog の path を持ち、自動で見つけた SD の root の下の file は SD の入力として扱う。37 §37.3 手順 1a）。SD の探し方の選択は BIZ-08 の `DailyReportSdSelection`（CMD-12 が作る。IO-09 の型にしない）
 
 段階間受け渡しデータ:
 - DailyReportSdScan（SD の候補の一覧と状態〈取り込める / 取込み済み / 同じ精算を取込み済み / そろわない / 読めない〉、BIZ-08-D3）
@@ -377,6 +380,8 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 ### BIZ-04: PLU書出しロジック
 
 **タスク要求**: 毎日の SD の読取りで Z004 全スロットダンプからレジ占有を照合し、JAN 単位の memory No. を永続予約し、CV17 用 product 行を生成・確認する（D-072 / D-117 / REQ-907）。
+
+> **runtime の状態**: 本節は D-117 の後の形（採用済み）。今の build は、占有を利用者が選ぶ Z004 で照合し（`biz/plu_export_service.rs` の `import_plu_register_snapshot`）、`plu_target` 1→0・廃番化・JAN の変更で枠を解放し（`release_plu_slot_for_jan`、`release_pending`）、Clear 行を書く（`PLU_CLEAR_ROW_ENABLED = true`）。撤去と SD の読取りでの照合への切替えは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。
 
 **データ構造**: `plu_slots`、products、snapshot 用 app_settings、operation_logs。prepare / confirm は exact product_code set と `memory_no` を受け渡す。要修正理由に `no_free_slot` を含む。
 
@@ -474,16 +479,16 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 1. stocktake_itemsのactual_countを更新、counted_at=現在日時
 2. 差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算（棚卸し中もCSV取込みで在庫が動くため）
 
-**棚卸し確定:**
+**棚卸し確定:**（棚卸しの開始・カウント入力・確定は、現行 build では停止中の旧本体の記述。[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[35](../function-design/35-biz-stocktake-service.md) §20.0）
 1. 未入力（actual_count=NULL）の商品が残っていないかチェック → 残っていれば警告（確定を阻止、または「未入力はシステム在庫と同じとみなす」選択肢）
 2. トランザクション内で実行
    - 各stocktake_itemについて:
-     - valuation_cost_price = 現在のproducts.cost_price をセット
+     - valuation_cost_price_centi = 現在のproducts.cost_price_centi をセット
      - difference = products.stock_quantity - actual_count
      - difference ≠ 0 の場合:
        - inventory_movementsにINSERT（movement_type='stocktake', quantity=actual_count - products.stock_quantity, stock_after=actual_count, reference_type='stocktake', reference_id=stocktake_id）
-       - products.stock_quantityをactual_countに更新
-   - total_cost = 商品別の金額（valuation_cost_price・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
+       - 補正の movement を足した後、その商品を `recompute_stock` で求め直す
+   - total_cost = 商品別の金額（valuation_cost_price_centi・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
    - stocktakes.total_cost, completed_at, status='completed'を更新
    - operation_logsに記録（operation_type='stocktake_complete', detail_jsonに差異件数・total_cost）
 3. COMMIT
@@ -498,13 +503,13 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 ### BIZ-07: 整合性チェックロジック
 
-**タスク要求**: products.stock_quantityとinventory_movementsの集計値を突合し、不整合を検出する
+**タスク要求**: products の写しの 4 項目と、記録から求め直した値（BIZ-02 の derive_stock）を突合し、不整合を検出する
 
-**理由**: stock_quantityはキャッシュ値であり、バグやクラッシュで実際の変動履歴合計とずれる可能性がある。定期的なチェックで不整合を早期発見する
+**理由**: 写しは記録から求め直した派生値であり、バグや DB の外からの編集で記録とずれる可能性がある。定期的なチェックで不整合を早期発見する
 
 **【前提条件】**
 - inventory_movementsは全商品の完全な在庫変動履歴を持つ。初期在庫投入もmovement_type='receiving'としてinventory_movementsに記録される（DB_DESIGN.md「stock_quantity整合性チェック」の前提条件に明記済み）
-- この前提が成立するため、SUM(inventory_movements.quantity WHERE is_voided=0) が理論上の正しい在庫数となる
+- この前提が成立するため、記録から求め直した値（計数の無い商品では SUM(inventory_movements.quantity WHERE is_voided=0) と同じ）が理論上の正しい在庫数となる
 - 初期投入漏れやpos_stock_sync=0の商品でも、inventory_movementsに記録がある限りチェックは有効
 
 **【データ構造】**
@@ -512,26 +517,24 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 入力データ: なし（全商品を対象）
 
 出力データ:
-- チェック結果: [{product_code, name, stock_quantity（現在値）, movements_sum（履歴合計）, difference}], 不整合件数
+- チェック結果: [{product_code, name, stock_unit, copy（写しの 4 項目）, derived（求め直した 4 項目）, differing_fields}], 不整合件数
 
-内部で扱うテーブル: products, inventory_movements, operation_logs
+内部で扱うテーブル: products, inventory_movements, stock_counts, operation_logs
 
 **【処理構造】**
 
-1. 全商品について以下を計算:
-   - movements_sum = SUM(inventory_movements.quantity WHERE product_code=? AND is_voided=0)
-   - difference = products.stock_quantity - movements_sum
-2. difference ≠ 0 の商品を不整合リストに追加
+1. 全商品について、写しの 4 項目と derive_stock の値を比べ、違う項目（数・要再確認・範囲）を求める
+2. 違う項目のある商品を不整合リストに追加（数が同じで印・範囲だけが違う商品も含む）
 3. 不整合が0件 → 「問題ありません」で完了
 4. 不整合がある場合 → 不整合リストを利用者に表示
 5. 利用者が「補正する」を選択した場合:
-   - 各不整合商品について products.stock_quantity を movements_sum へ直接更新する（inventory_movements に行は追加しない — BIZ-07-D2 / D-051、詳細は function-design/36-biz-integrity-check.md §21.4）
-   - 補正内容は同一TX内の operation_logs（operation_type='integrity_fix'、old/new 付き）へ必須記録し、記録失敗時は補正ごとロールバックする（BIZ-07-D3、D-6の明示例外）
+   - 各不整合商品について写しを求め直しの結果（recompute_stock）へ直接更新する（inventory_movements に行は追加しない — BIZ-07-D2 / D-051、詳細は function-design/36-biz-integrity-check.md §21.4）
+   - 補正内容は同一TX内の operation_logs（operation_type='integrity_fix'、before/after 付き）へ必須記録し、記録失敗時は補正ごとロールバックする（BIZ-07-D3、D-6の明示例外）
 6. チェック実行の operation_logs 記録（operation_type='integrity_check', detail_jsonに不整合件数）はTX外 best-effort のまま（D-6準拠）。補正の記録はステップ5のTX内 'integrity_fix' ログが担う（2ログ分離）
 
 **【制御構造】**
 - チェックタイミング: CSV取込み完了時（自動）、棚卸し確定時（自動）、設定画面から手動実行
-- 自動上書きはしない。必ず利用者確認を挟む
+- 画面からの補正は必ず利用者確認を挟む（移行の手順 8 だけが migration の TX の中で直し、操作ログと整合性の画面で知らせる。22 §19）
 - チェック中の他の操作は制限しない（読み取り専用クエリのため）
 
 ### BIZ-09: システム設定・操作ログロジック

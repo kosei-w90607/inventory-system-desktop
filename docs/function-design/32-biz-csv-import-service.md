@@ -18,7 +18,7 @@
 
 - 取り消した取込み（rolled_back）は比べる先にしない（誤った版を取り消して正しい版を取り込める。SPEC-STK-CNT-D7）。
 - 同じ精算日の別の精算（settlement_no が違う）は、利用者の追加確認なしに preview から確定へ進める（D-071 の Z004 の側の置換え。`additional_import_confirmed` は Z004 では使わない）。
-- 今の「精算日が未来の日付です」の拒否（`src-tauri/src/biz/csv_import_service/parse.rs:63-77`）は外し、下の知らせ (b) に変える（レジと PC の日付のずれで取り込めなくなるのを避け、知らせて取り込む。ADR D4）。
+- 今の「精算日が未来の日付です」の拒否（`src-tauri/src/biz/csv_import_service/parse.rs` の `parse_and_validate` の `2a. settlement_date 業務妥当性チェック`）は外し、下の知らせ (b) に変える（レジと PC の日付のずれで取り込めなくなるのを避け、知らせて取り込む。ADR D4）。
 - 知らせ（拒否しない。preview と結果に出す）: (a) 欠け: active な取込みと、この file を合わせた settlement_no の最小から最大の間に、取り込まれていない番号があれば、連続した欠けを 1 つの区間にまとめ、「精算 {n}〜{m} が取り込まれていません」（区間が 1 つの番号なら「精算 {n} が取り込まれていません」。区間ごと、昇順。欠けた精算の売上は在庫に入っていない）。知らせの数は区間の数で上限があり、欠けた番号を 1 つずつ並べない（壊れた大きな精算回数を受けても preview が止まらない）。(b) 精算日が PC の今日より後なら「レジと PC の日付がずれている可能性があります」。
 - 理由: 精算回数は 4 年分の資料で減少・重複が無く、欠けは SD の本数の差と一致した（owner TD-261 の Q3 = a）。精算日と番号の食い違いは reset・レジの入替・時計の戻りのどれでも起き、精算の窓（ADR D3）が 1 つに決まらないので取り込まない（レジの日時は検知と窓の日付にだけ使い、PC の時計と比べない）。
 
@@ -37,6 +37,10 @@
 #### 停止との関係
 
 本節の確定と取消は、停止 ADR の 5 つの入口を外すのと同じ配布の単位で入れる（SPEC-STK-CNT-D12、§15.0）。preview の検査（上の表と知らせ）は停止中でも足してよい（売上・在庫を作らない）。
+
+#### SD の一括取込み（D-121、proposed・未実装）
+
+SD の締めの一括取込み（[37 §37.10](37-biz-daily-report-import-service.md)、BIZ-08-D7）は、SD から読んだ Z004 を精算回数の昇順に、本節の preview の検査と確定をそのまま呼んで取り込む（runtime は backlog の「Z004 を SD の一括取込みに入れる runtime（B）」。本節の確定を入れる配布の単位の後）。上の表の拒否は、その file を飛ばして続ける。SD から読んだ file だけ、確定の TX の前に IO-10 の写しを書く（BIZ-08-D5 の引継ぎ。書けなければ確定しない）。ファイルを選ぶ経路（Z004 タブ）は写さず、ほかは変わらない。
 
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
@@ -225,7 +229,9 @@ fn parse_and_validate(
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
       - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
+        - （proposed・未実装、JAN の別名の runtime の lane、D-122）ヒット0件の行だけ、ErrorRow にする前に `product_repo::find_jan_alias(conn, &normalized_jan)` で前の JAN の別名（[master-tables](../db-design/master-tables.md) §1a、[30](30-biz-product-service.md) BIZ-01-D9）を引く。別名があればその商品をヒット1件と同じ形の MatchedRow にする（`pos_stock_sync` はその商品の値。warning は足さない）。無ければ上の ErrorRow のまま。不変条件（どの商品も持たない JAN だけが別名）により、ヒット1件・複数件の行に別名は無いので、引く順で結果は変わらない
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
+      - 引き当ての規則（上の 3 つと別名）は 1 つの関数に置き、preview と、D-118 の確定の TX での JAN の候補の取り直し（上の「確定（commit）」）の両方がそれを使う（preview の後に別名ができた・消えた場合も、確定はその時点の DB で引き当てる）。結果は 0 件 / 1 件（別名を含む）/ 複数（先頭と件数）を区別して返す（preview は複数の行に上の warning を足し、確定は複数の行を上の「確定（commit）」の共有 JAN の行として扱う）。引き当ては取込みの時点の DB を使い、売れた日の商品の JAN の履歴は持たない（取り消して取り込み直すと、その時点の別名と JAN で引き当て直す）
    c. parse_result.parse_errors を ErrorRow にマージ
       - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）
       - Option→String 変換規約: ParseError.raw_name/raw_quantity/raw_amount が None の場合、空文字列に変換する。None は error_type が invalid_format の場合にのみ発生する（フィールド分割前のエラーで値が取得できなかった）。Z004のフィールドは実運用で空文字にならないため、空文字はパース前エラーと判別可能。DB保存（csv_import_errors）は空文字のまま、UI表示時に error_type が invalid_format なら「(不明)」等に置換する
@@ -404,16 +410,12 @@ fn rollback_csv_import(
    - sales_repo::void_sale_records_by_import(&tx, csv_import_id) → voided_sale_count
 4. **inventory_movements の無効化と在庫補正データ取得**
    - sales_repo::void_movements_by_reference(&tx, "csv_import", csv_import_id) → voided_movements: Vec\<VoidedMovement\>
-5. **在庫補正**（product_code でグループ化して集計）
-   a. voided_movements を product_code でグループ化
-   b. 各 product_code について: correction = voided_movements の quantity を合算し符号反転
-      - 例: quantity = -3（販売で3個減）が void → correction = +3（3個戻す）
-      - 例: quantity = +1（返品で1個増）が void → correction = -1（1個引く）
-      - 計算式: correction = -SUM(voided.quantity)  ※同一product_codeの全movementを合算
-   c. product_repo::find_by_product_code(&tx, &product_code) → product
-   d. new_stock = product.stock_quantity + correction
-   e. inventory_repo::update_stock_quantity(&tx, &product_code, new_stock)
-   f. stock_corrections に StockCorrection { product_code, old_stock: product.stock_quantity, new_stock } を追加
+5. **在庫補正**（無効にした movement の商品ごとに求め直す。`csv_import_service/commit.rs` の `apply_void_stock_corrections`）
+   a. voided_movements の product_code を重複なく集める（quantity は使わない）
+   b. 各 product_code について:
+      - product_repo::find_by_product_code(&tx, &product_code) → product（old_stock = product.stock_quantity）
+      - stock_ledger::recompute_stock(&tx, &product_code) → new_stock（[31](31-biz-inventory-service.md)。無効にした記録を除いて記録から求め直し、写しを書く。上限の外は TX 全体を戻す）
+      - stock_corrections に StockCorrection { product_code, old_stock, new_stock } を追加
 6. **csv_imports の status 更新**
    - sales_repo::update_csv_import_status(&tx, csv_import_id, "rolled_back")
    - settlement_dateを条件にせず、指定IDだけを更新する。同日の他importは変更しない
@@ -424,11 +426,10 @@ fn rollback_csv_import(
 9. RollbackResult { success: true, voided_sale_count, voided_movement_count: voided_movements.len(), stock_corrections } を返す
 
 **在庫補正の詳細**:
-- movement.quantity = -3（販売で在庫3個減）→ void 後の在庫補正 = +3（3個戻す）
-- movement.quantity = +1（返品で在庫1個増）→ void 後の在庫補正 = -1（1個引く）
-- 同一 product_code に複数の voided_movement がある場合は合算してから1回の update_stock_quantity で更新する
+- 写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じ（例: quantity = -3〈販売で 3 個減〉の movement を無効にすると 3 個戻り、quantity = +1〈返品で 1 個増〉なら 1 個引かれる）。一致していなければ、記録から求め直した値になる
+- 同一 product_code に複数の voided_movement があっても、求め直しは商品ごとに 1 回
 
-**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない。apply_stock_change は movement を追加する関数のため、ここでは直接 update_stock_quantity を使う。void 対象の movement が取消の記録として残る（is_voided=1）。
+**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない（補償の movement は作らない）。apply_stock_change は movement を追加する関数のため使わず、無効にした記録を除いて recompute_stock で求め直す。void 対象の movement が取消の記録として残る（is_voided=1）。
 
 **入力例**:
 ```
@@ -521,7 +522,7 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-1: quantity 符号変換 | commit_csv_import のステップ7b で inventory_quantity = -row.quantity。売上帳票視点→在庫視点の符号反転を BIZ 層で実施 |
-| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は直接 update_stock_quantity |
+| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は movement を足さず、無効にした movement の商品を recompute_stock で求め直す |
 | INV-3: 負在庫ポリシー | commit 時に apply_stock_change が negative_stock_warning を返す。警告をstock_warningsに蓄積するが処理は続行 |
 | INV-4: is_voided 使用範囲 | rollback_csv_import で void_sale_records_by_import, void_movements_by_reference を呼び出し。is_voided=1 を設定するのはロールバック時のみ |
 | INV-6: file_hash 自然冪等性 | parse_and_validate のステップ5a で find_blocking_import_by_file_hash。commit_csv_import のステップ5で TX 内再チェック（TOCTOU 防止） |
@@ -588,3 +589,4 @@ enum BizError {
 | 2026-08-03 | CSV取込み詳細 Design Phase | §15.6a get_csv_import_record を追加（CSV取込み詳細画面用 wire DTO、31 §12.6a read-only パターン、ErrorRow 再利用、resolve_movement_source 共有） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別hashを追加取込みとし、全件summary、追加確認flag、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体 `legacy_*` の記述と明記 |
+| 2026-10-17 | JAN の別名の design lane（D-122） | §15.3 手順 4 b に、ヒット0件の行で前の JAN の別名を引く段と、引き当ての規則を preview と確定の取り直しで共有する文を足した（proposed・未実装） |

@@ -47,7 +47,7 @@ pub const RNG_SEED: u64 = 42;
 /// 他 4 部門は schema_v1 初期投入の `code_prefix` と揃えた。
 pub const DEPARTMENT_SEED_PLAN: &[(i64, u32, &str, &str, &str)] = &[
     (3, 17, "KE", "pcs", "毛糸"),
-    (8, 17, "NU", "cm", "無地生地"),
+    (8, 17, "NU", "m", "無地生地"),
     (4, 17, "SY", "pcs", "手芸材料"),
     (18, 17, "BT", "pcs", "ボタン"),
     (19, 16, "FS", "pcs", "ファスナー"),
@@ -157,8 +157,26 @@ pub fn run_seed(conn: &mut Connection, reset: bool) -> Result<SeedSummary, SeedE
     let specs = seed_products(&tx, &mut summary)?;
     seed_initial_receiving(&tx, &specs, &mut summary)?;
     seed_sales(&tx, &specs, &mut summary)?;
+    recompute_all_stocks(&tx)?;
     tx.commit()?;
     Ok(summary)
+}
+
+/// 写しを記録へ揃える（seed は写しを `seed_products` の初期値で置き、sale_auto の movement で和だけを
+/// 減らすので、揃えないと最初の書込みで写しが和へ跳ぶ。D-118 (a)、Matrix T2）
+fn recompute_all_stocks(tx: &rusqlite::Transaction<'_>) -> Result<(), SeedError> {
+    let codes: Vec<String> = {
+        let mut stmt = tx.prepare("SELECT product_code FROM products ORDER BY product_code")?;
+        let rows = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        rows
+    };
+    for code in codes {
+        crate::biz::stock_ledger::recompute_stock(tx, &code)
+            .map_err(|e| SeedError::Db(DbError::QueryFailed(e.to_string())))?;
+    }
+    Ok(())
 }
 
 // -------- Phase 1: suppliers --------
@@ -215,7 +233,7 @@ fn seed_products(
     let mut stmt = conn.prepare(
         "INSERT INTO products (
             product_code, jan_code, name, department_id, supplier_id,
-            selling_price, cost_price, tax_rate, stock_quantity, stock_unit,
+            selling_price, cost_price_centi, tax_rate, stock_quantity, stock_unit,
             is_discontinued, plu_dirty, plu_exported_at, plu_target, pos_stock_sync,
             created_at, updated_at
         ) VALUES (
@@ -241,7 +259,8 @@ fn seed_products(
             let supplier_idx = rng.gen_range(0..supplier_ids.len());
             let supplier_id = supplier_ids[supplier_idx];
             let selling_price: i64 = rng.gen_range(100..=5000);
-            let cost_price: i64 = (selling_price as f64 * 0.6) as i64;
+            // 原価は売価 × 0.6 円を 1/100 円で正確に持つ（浮動小数を通さない。SPEC-UNIT-D5）
+            let cost_price_centi: i64 = selling_price * 60;
             // 在庫数は normal 値を draw した上で index i bucket で上書きする (PR-3 (e))。
             // drawn_stock は normal 件 (i>=3) で実際に使うことで rng カーソルを保持し、
             // 後続の jan_code/selling_price の rng 列を不変に保つ
@@ -271,7 +290,7 @@ fn seed_products(
                 dept_id,
                 supplier_id,
                 selling_price,
-                cost_price,
+                cost_price_centi,
                 stock_quantity,
                 stock_unit,
                 true,
@@ -397,8 +416,8 @@ fn seed_initial_receiving(
     let mut insert_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'receiving', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for spec in specs {
@@ -415,6 +434,7 @@ fn seed_initial_receiving(
             spec.stock_quantity,
             spec.stock_quantity,
             BASE_TIMESTAMP,
+            BASE_DATE,
         ])?;
         summary.receiving_movements_inserted += 1;
     }
@@ -461,8 +481,8 @@ fn seed_sales(
     let mut movement_stmt = conn.prepare(
         "INSERT INTO inventory_movements (
             product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, note, is_voided, created_at
-        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4)",
+            reference_type, reference_id, note, is_voided, created_at, business_date, phase
+        ) VALUES (?1, 'sale_auto', ?2, ?3, NULL, NULL, NULL, 0, ?4, ?5, 0)",
     )?;
 
     for _ in 0..SALES_RECORDS {
@@ -511,6 +531,7 @@ fn seed_sales(
             -quantity,
             new_stock,
             &created_at,
+            &sale_date,
         ])?;
         summary.sale_movements_inserted += 1;
     }

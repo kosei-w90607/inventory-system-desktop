@@ -94,7 +94,7 @@ interface CompareLabel {
 
 /// 月間総額同士で前月比を計算する。
 /// `prevComparison === null` は specta `Option<Vec<T>>` 境界の defensive guard（通常 BIZ-05 は
-/// 前月データなしも `Some(空Vec)` を返す常時セット = `sales_service.rs:196-197`）、「比較不可」灰。
+/// 前月データなしも `Some(空Vec)` を返す常時セット = `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales`）、「比較不可」灰。
 /// `prevComparison === []` の通常 path は下の for ループで prevTotal=0 になり、Q-7 ガード
 /// (`prev <= 0`) で「比較不可」灰に同じく落ちる。
 /// Q-7 ガード: 前月合計 <= 0 → 「比較不可」（除算 + 色分け逆転回避）。

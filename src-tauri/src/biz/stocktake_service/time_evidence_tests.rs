@@ -45,7 +45,7 @@ fn product_full(
     cost: i64,
 ) {
     conn.execute(
-        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price,
+        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price_centi,
             tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty, pos_stock_sync,
             created_at, updated_at)
          VALUES (?1, NULL, '合成 ' || ?1, 1, 100, ?5, '10', ?2, ?4, ?3, 1, 1,
@@ -56,7 +56,7 @@ fn product_full(
 }
 
 fn product(conn: &DbConnection, code: &str, stock: i64) {
-    product_full(conn, code, stock, false, "pcs", 100);
+    product_full(conn, code, stock, false, "pcs", 10_000); // 原価 100 円（1/100 円）
 }
 
 /// (在庫, 版)
@@ -83,6 +83,8 @@ fn move_stock(conn: &DbConnection, code: &str, delta: i64, movement_type: Moveme
             reference_type: None,
             reference_id: None,
             note: None,
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap()
@@ -962,7 +964,10 @@ fn test_save_stocktake_count_req205_c11_independent_recount() {
         (
             header_state(conn, id),
             item_row(conn, item),
-            int(conn, "SELECT valuation_cost_price FROM stocktake_items"),
+            int(
+                conn,
+                "SELECT valuation_cost_price_centi FROM stocktake_items",
+            ),
         )
     };
     let record = completed(&conn);
@@ -1097,9 +1102,9 @@ fn test_complete_stocktake_req205_c12_stk1_four_moves() {
 fn test_complete_stocktake_req205_c13_force_fill_and_valuation() {
     // REQ-205 / SPEC-STK-TIME-D8 / SPEC-STK-VAL / C13: force_fill は N=L=max(在庫,0)、評価数量は max(補正後の在庫,0)
     let (_dir, mut conn) = setup_time_evidence_db();
-    product_full(&conn, "TE-CM", 200, false, "cm", 1000);
-    product_full(&conn, "TE-NEG", -2, false, "pcs", 300);
-    product_full(&conn, "TE-DISC", 0, true, "pcs", 50);
+    product_full(&conn, "TE-CM", 200, false, "m", 100_000);
+    product_full(&conn, "TE-NEG", -2, false, "pcs", 30_000);
+    product_full(&conn, "TE-DISC", 0, true, "pcs", 5_000);
     let id = start(&mut conn);
     let cm = item_of(&conn, id, "TE-CM");
     count(&mut conn, cm, 250);
@@ -1114,7 +1119,7 @@ fn test_complete_stocktake_req205_c13_force_fill_and_valuation() {
     assert_eq!(snapshot(&conn), before);
 
     let result = complete(&mut conn, id, true).unwrap();
-    // cm: 1000 円/100cm × 270cm = 2,700 円。負の在庫は評価数量 0。廃番 50 円 × 3 = 150 円（§20.5a）
+    // m: 1000 円/100cm × 270cm = 2,700 円。負の在庫は評価数量 0。廃番 50 円 × 3 = 150 円（§20.5a）
     assert_eq!(result.total_cost, 2_850);
     assert_eq!(
         header_state(&conn, id),
@@ -1130,7 +1135,7 @@ fn test_complete_stocktake_req205_c13_force_fill_and_valuation() {
     );
     let valuations: Vec<(String, Option<i64>, i64)> = conn
         .prepare(
-            "SELECT si.product_code, si.valuation_cost_price, p.cost_price FROM stocktake_items si
+            "SELECT si.product_code, si.valuation_cost_price_centi, p.cost_price_centi FROM stocktake_items si
              JOIN products p ON p.product_code = si.product_code ORDER BY si.id",
         )
         .unwrap()

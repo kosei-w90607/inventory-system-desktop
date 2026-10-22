@@ -69,7 +69,7 @@ CREATE TABLE stocktake_items_new (
     product_code TEXT NOT NULL REFERENCES products(product_code),
     system_stock INTEGER NOT NULL,
     actual_count INTEGER,
-    valuation_cost_price INTEGER,
+    valuation_cost_price_centi INTEGER,
     counted_at TEXT,
     observation_kind TEXT NOT NULL
         CHECK(observation_kind IN ('uncounted','measured','auto_filled','legacy')),
@@ -102,9 +102,9 @@ CREATE TABLE stocktake_items_new (
 );
 -- 旧明細の分類（tracking「移行と保存TX」）。現在の廃番フラグから逆算しない
 INSERT INTO stocktake_items_new
-    (id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at,
+    (id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at,
      observation_kind)
-SELECT id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at,
+SELECT id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at,
     CASE
         WHEN actual_count IS NULL AND counted_at IS NULL THEN 'uncounted'
         WHEN actual_count = 0 AND system_stock = 0 AND counted_at IS NULL THEN 'auto_filled'
@@ -313,7 +313,7 @@ mod tests {
             "SELECT id, filename, settlement_date, file_hash, total_items, total_amount, skipped_count,
                     status, imported_at FROM csv_imports ORDER BY id",
             "SELECT id, started_at, completed_at, status, total_cost FROM stocktakes ORDER BY id",
-            "SELECT id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price,
+            "SELECT id, stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi,
                     counted_at FROM stocktake_items ORDER BY id",
         ]
         .iter()
@@ -627,8 +627,8 @@ mod tests {
         for kind in ["completion", "rollback_compensation", "recount"] {
             conn.execute(
                 "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-                    created_at, stocktake_adjustment_kind)
-                 VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', ?1)",
+                    created_at, stocktake_adjustment_kind, business_date, phase)
+                 VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', ?1, '2026-04-01', 0)",
                 [kind],
             )
             .unwrap();
@@ -636,8 +636,8 @@ mod tests {
         assert!(fails(
             &conn,
             "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-                created_at, stocktake_adjustment_kind)
-             VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', 'other')"
+                created_at, stocktake_adjustment_kind, business_date, phase)
+             VALUES ('LG-A33', 'stocktake', 0, 3, '2026-03-03T09:00:00', 'other', '2026-04-01', 0)"
         )
         .contains("CHECK constraint failed"));
         // pos_sync_disabled_revision は stock_revision 以下

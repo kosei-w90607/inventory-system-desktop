@@ -12,8 +12,8 @@ export const MAX_ITEM_QUANTITY = 9_999_999;
 export const MAX_STOCK_QUANTITY = 999_999_999;
 /** 売価（円）の上限 */
 export const MAX_SELLING_PRICE = 999_999;
-/** 原価（円）の上限 */
-export const MAX_COST_PRICE = 999_999;
+/** 原価（1/100 円）の上限（`999999.99` 円。SPEC-UNIT-D5） */
+export const MAX_COST_PRICE_CENTI = 99_999_999;
 
 /** 価格の基準数量（個数は 1、長さは 100 = 1 m あたり。SPEC-UNIT-D4） */
 export function priceBasisQuantity(unit: ProductStockUnit): 1 | 100 {
@@ -23,19 +23,17 @@ export function priceBasisQuantity(unit: ProductStockUnit): 1 | 100 {
     case "hon":
     case "bag":
     case "box":
-    case "roll":
     case "kumi":
     case "set":
     case "ball":
     case "cho":
       return 1;
     case "m":
-    case "cm":
       return 100;
   }
 }
 
-/** 数量の種類が長さ（`m`・`cm`）か */
+/** 数量の種類が長さ（`m`）か */
 export function isLengthUnit(unit: ProductStockUnit): boolean {
   return priceBasisQuantity(unit) === 100;
 }
@@ -51,7 +49,7 @@ export interface QuantityField {
   min: 0 | 1;
   max: number;
   tooLarge: string;
-  /** 個数と `cm` の欄の形式の error の文（今の文） */
+  /** 個数の欄の形式の error の文 */
   integerError: string;
 }
 
@@ -65,20 +63,26 @@ export const ITEM_QUANTITY_FIELD: QuantityField = {
 
 export type QuantityInputResult = { value: number; error: null } | { value: null; error: string };
 
-// 入力の文字列を在庫の数量の整数にする（`m` は cm）。形式に合わなければ null。
-// 小数の number の掛け算を通さない（`0.29` → 29）。桁の多い整数部は上限より大きい数になる。
-function readQuantity(text: string, unit: ProductStockUnit): number | null {
-  const normalized = text.trim();
-  if (unit !== "m") return /^\d+$/.test(normalized) ? Number(normalized) : null;
-  const match = /^([0-9]+)(?:\.([0-9]{1,2}))?$/.exec(normalized);
+// 小数 2 桁までの数の文字列（前後の空白を除く）を 100 倍の整数にする（`m` の数 → cm、原価の円 → 1/100 円。
+// SPEC-UNIT-D3・D5）。形式に合わなければ null。小数の number の掛け算を通さない（`0.29` → 29）。
+// 桁の多い整数部は上限より大きい数になる。
+function parseHundredths(text: string): number | null {
+  const match = /^([0-9]+)(?:\.([0-9]{1,2}))?$/.exec(text.trim());
   if (match === null) return null;
   const [, whole, fraction = ""] = match;
   return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
 
+// 入力の文字列を在庫の数量の整数にする（`m` は cm）。形式に合わなければ null。
+function readQuantity(text: string, unit: ProductStockUnit): number | null {
+  if (unit === "m") return parseHundredths(text);
+  const normalized = text.trim();
+  return /^\d+$/.test(normalized) ? Number(normalized) : null;
+}
+
 /**
  * 数量欄の文字列を検証して在庫の数量の整数にする（SPEC-UNIT-D3 の入力）。
- * `m` の商品は m の小数 2 桁まで、個数と `cm` は整数。0 と上限は欄ごと。
+ * `m` の商品は m の小数 2 桁まで、個数は整数。0 と上限は欄ごと。
  */
 export function parseQuantityInput(
   text: string,
@@ -131,12 +135,53 @@ export function sumQuantityInputs(
   return addToQuantityInput(left, unit, addend);
 }
 
-/** 価格の欄（売価・原価の円の整数）を検証する。形式の error は null、上限超えは "too_large" */
+/** 売価の欄（円の整数）を検証する。形式の error は null、上限超えは "too_large" */
 export function parsePriceInput(text: string, max: number): number | "too_large" | null {
   const normalized = text.trim();
   if (!/^\d+$/.test(normalized)) return null;
   const value = Number(normalized);
   return value > max ? "too_large" : value;
+}
+
+/** 原価の欄の形式の error の文（SPEC-UNIT-D5。補助の袋の値段の欄も同じ文） */
+const COST_FORMAT_ERROR = "原価は0以上で、小数は2桁までで入力してください";
+
+/**
+ * 原価の欄（小数 2 桁までの円）を 1/100 円の整数にする（SPEC-UNIT-D5、Y2）。
+ * 形式の error は null、上限（`999999.99` 円）超えは "too_large"。浮動小数を通さない。
+ */
+export function parseCostInput(text: string): number | "too_large" | null {
+  const value = parseHundredths(text);
+  if (value === null) return null;
+  return value > MAX_COST_PRICE_CENTI ? "too_large" : value;
+}
+
+/**
+ * 原価（1/100 円）を入力の欄の初期値の文字列にする（SPEC-UNIT-D5。割り切れれば円の整数、
+ * そうでなければ小数 2 桁。記号と桁区切りは付けない: 100000 → `1000`、8333 → `83.33`、10 → `0.10`）
+ */
+export function formatCostInput(centi: number): string {
+  const fraction = centi % 100;
+  const whole = (centi - fraction) / 100;
+  return fraction === 0 ? String(whole) : `${String(whole)}.${String(fraction).padStart(2, "0")}`;
+}
+
+/**
+ * 袋の値段 ÷ 入り数の原価（1/100 円未満を四捨五入。UI-01b-D24、Y5）。
+ * 袋の値段は原価の欄と同じ規則、入り数は 1〜9999999 の整数。外れたら補助の欄に出す文を返す。
+ */
+export function unitCostFromPack(
+  packPrice: string,
+  packCount: string,
+): { value: number; error: null } | { value: null; error: string } {
+  const price = parseCostInput(packPrice);
+  if (price === null) return { value: null, error: COST_FORMAT_ERROR };
+  if (price === "too_large") return { value: null, error: "原価が大きすぎます" };
+  const count = packCount.trim();
+  if (!/^\d+$/.test(count) || Number(count) < 1 || Number(count) > MAX_ITEM_QUANTITY) {
+    return { value: null, error: "入り数は1以上の整数で入力してください" };
+  }
+  return { value: divideRoundHalfUp(price, Number(count)), error: null };
 }
 
 /** 非負の整数の割り算を四捨五入する（商 q・余り r で `2r >= d` なら q + 1。SPEC-UNIT-D6・D7） */

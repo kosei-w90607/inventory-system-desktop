@@ -17,7 +17,7 @@ describe("manual sale row utils (UI-04 / REQ-203)", () => {
         department_name: "布",
         selling_price: 120,
         stock_quantity: 3,
-        stock_unit: "cm",
+        stock_unit: "m",
       }),
     );
 
@@ -25,10 +25,10 @@ describe("manual sale row utils (UI-04 / REQ-203)", () => {
       productCode: "MS-001",
       productName: "新商品",
       departmentName: "布",
-      stockUnit: "cm",
+      stockUnit: "m",
       currentStockQuantity: 3,
       unitPrice: 120,
-      quantity: "100",
+      quantity: "1",
       amount: "120",
     });
   });
@@ -63,15 +63,13 @@ describe("manual sale row utils の数量と金額（UI-04-D18 / REQ-203）", ()
   const readd = (rows: ReturnType<typeof added>, stockUnit: ProductStockUnit) =>
     addProductToManualSaleRows(rows, product(stockUnit));
 
-  it("UI-04-D18 (1): 追加したときの数量は個数 1・m 1・cm 100、金額は 700", () => {
+  it("UI-04-D18 (1): 追加したときの数量は個数 1・m 1、金額は 700", () => {
     expect(added("pcs")[0]).toMatchObject({ quantity: "1", amount: "700", amountEdited: false });
     expect(added("m")[0]).toMatchObject({ quantity: "1", amount: "700", amountEdited: false });
-    expect(added("cm")[0]).toMatchObject({ quantity: "100", amount: "700", amountEdited: false });
   });
 
   it("UI-04-D18 (2): 未編集の長さの商品は数量に合わせて金額を求め直し、個数の商品は変えない", () => {
     expect(setQuantity(added("m"), "1.3")[0]).toMatchObject({ quantity: "1.3", amount: "910" });
-    expect(setQuantity(added("cm"), "130")[0]).toMatchObject({ quantity: "130", amount: "910" });
     expect(setQuantity(added("pcs"), "3")[0]).toMatchObject({ quantity: "3", amount: "700" });
   });
 
@@ -96,10 +94,6 @@ describe("manual sale row utils の数量と金額（UI-04-D18 / REQ-203）", ()
       quantity: "2.3",
       amount: "1610",
     });
-    expect(readd(setQuantity(added("cm"), "130"), "cm")[0]).toMatchObject({
-      quantity: "230",
-      amount: "1610",
-    });
   });
 
   it("UI-04-D18 (5): 個数の商品の再追加は今どおり +1 と売価の加算", () => {
@@ -121,9 +115,9 @@ describe("manual sale row utils の数量と金額（UI-04-D18 / REQ-203）", ()
     expect(setQuantity(setAmount(added("m"), "800"), "")[0]?.amount).toBe("800");
   });
 
-  it("UI-04-D18: 規則に合わない数量の再追加はその画面の初期値（cm は 100）", () => {
-    expect(readd(setQuantity(added("cm"), "abc"), "cm")[0]).toMatchObject({
-      quantity: "100",
+  it("UI-04-D18: 規則に合わない数量の再追加はその画面の初期値（m は 1）", () => {
+    expect(readd(setQuantity(added("m"), "abc"), "m")[0]).toMatchObject({
+      quantity: "1",
       amount: "700",
     });
     expect(readd(setQuantity(added("pcs"), "abc"), "pcs")[0]).toMatchObject({ quantity: "1" });

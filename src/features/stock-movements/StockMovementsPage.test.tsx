@@ -42,7 +42,7 @@ function makeStockDetail(overrides: Partial<StockDetail> = {}): StockDetail {
       department_id: 1,
       supplier_id: null,
       selling_price: 120,
-      cost_price: 80,
+      cost_price_centi: 80,
       tax_rate: "10",
       maker_code: null,
       stock_quantity: 3,
@@ -259,7 +259,7 @@ describe("StockMovementsPage Lane 4 S1d/S3d: frame color + top summary", () => {
     await waitFor(() => {
       expect(mockListMovements).toHaveBeenCalled();
     });
-    // 商品情報 card（:98、既存 bg-card、Non-scope）も同じ組合せ class を持つため
+    // 商品情報 card（src/features/stock-movements/StockMovementsPage.tsx の section、既存 bg-card、Non-scope）も同じ組合せ class を持つため
     // querySelector 単独では最初の一致（商品情報 card）を拾ってしまう
     // （filter frame を戻しても検知できない）。開始日 label の祖先を frame として
     // 特定し、frame class の出現数（商品情報 card + filter frame の 2 個）を検査する。

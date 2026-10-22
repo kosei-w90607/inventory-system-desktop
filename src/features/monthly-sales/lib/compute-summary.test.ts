@@ -66,7 +66,7 @@ describe("computeMonthlySummary の数量の種類ごとの合計（SPEC-UNIT-D3
       makeMockMonthlyItem({ key: "A", count_points: 3, length_cm: 0, stock_unit: "pcs" }),
       makeMockMonthlyItem({ key: "B", count_points: 2, length_cm: 0, stock_unit: "sheet" }),
       makeMockMonthlyItem({ key: "C", count_points: 0, length_cm: 130, stock_unit: "m" }),
-      makeMockMonthlyItem({ key: "D", count_points: 0, length_cm: 50, stock_unit: "cm" }),
+      makeMockMonthlyItem({ key: "D", count_points: 0, length_cm: 50, stock_unit: "m" }),
     ];
     expect(computeMonthlySummary(items)).toMatchObject({ totalCountPoints: 5, totalLengthCm: 180 });
   });

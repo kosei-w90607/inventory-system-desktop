@@ -28,7 +28,7 @@
 - **失敗 4 状態**（Q-5）:
   1. API fail → 画面全体 Alert（Skeleton 撤去）
   2. items 空配列 → 「当月データなし」EmptyState
-  3. `prev_month_comparison === null` または `[]` 空配列 → サマリ「比較不可」+ 各行「—」。**BIZ contract**: 通常 BIZ-05 は前月データなしも `Some(空Vec)` を返す（[`34-biz-sales-service.md` §1](34-biz-sales-service.md) + `sales_service.rs:196-197` 実装、`prev_month_comparison = Some(prev_items)` 常時セット）、`null` は specta `Option<Vec<T>>` 境界の defensive guard。UI 側 (`compute-comparison.ts`) は `null` / `[]` 両ケースを safely 扱う
+  3. `prev_month_comparison === null` または `[]` 空配列 → サマリ「比較不可」+ 各行「—」。**BIZ contract**: 通常 BIZ-05 は前月データなしも `Some(空Vec)` を返す（[`34-biz-sales-service.md` §1](34-biz-sales-service.md) + `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales` 実装、`prev_month_comparison = Some(prev_items)` 常時セット）、`null` は specta `Option<Vec<T>>` 境界の defensive guard。UI 側 (`compute-comparison.ts`) は `null` / `[]` 両ケースを safely 扱う
   4. 前月だけ fail → 構造的不可能（1 useQuery 設計、Q-5）
 
 **REQ-401再設計後の表示領域**:
@@ -161,7 +161,7 @@ SummaryCardsBar + ModeTabs + DepartmentTable | ProductRankingTable + ExportBar
 3. `compute-comparison` → `Map<key, { prevAmount, diff, ratio | null, isComparable: boolean }>`（key 突合 + `prev_amount <= 0` 比較不可ガード）
 4. `compute-composition` → `{ key, label, count_points, length_cm, amount, ratio }[]`（部門別構成比、`grand_total === 0` ガード）
 5. `pick-top-ranking` → `MonthlySaleItem[]` 上位 10（BIZ-05 row_number 順、同順位なし前提）
-6. `sort-items` → 列ソート + null 末尾配置（4 列 + `item.ranking === 1` バッジ追従）。**sort 適用先: `ranking` + `composition` 双方** (raw `items` 非適用)。理由は (a) `ranking` 順位列の `ranking` field 保持で badge 追従 (G-3、sort-items.test.ts:79-90 で検証済)、(b) `composition` 部門別 sort 軸は ranking と独立 (利用者は順位 sort と部門集計 sort を別操作)。UI-09a (フラット → グルーピング) vs UI-09b (multi-derived) の派生木差異に対応する非対称設計
+6. `sort-items` → 列ソート + null 末尾配置（4 列 + `item.ranking === 1` バッジ追従）。**sort 適用先: `ranking` + `composition` 双方** (raw `items` 非適用)。理由は (a) `ranking` 順位列の `ranking` field 保持で badge 追従 (G-3、`src/features/monthly-sales/lib/sort-items.test.ts` の「G-3: ranking field 残存確認」で検証済)、(b) `composition` 部門別 sort 軸は ranking と独立 (利用者は順位 sort と部門集計 sort を別操作)。UI-09a (フラット → グルーピング) vs UI-09b (multi-derived) の派生木差異に対応する非対称設計
 
 ### 57.4 URL state 設計（zod 4 直接渡し）
 
@@ -295,7 +295,7 @@ export function useExportFile() {
 
 #### compute-summary（[items] → { totalAmount, totalCountPoints, totalLengthCm }）
 
-- 単位と数量（D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem` の数量は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つ。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（`N 点` の `N` は 3 桁区切りで `1,234 点`。owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、表示は行の `stock_unit` で決める（長さの商品〈`m`・`cm` とも〉は `1.3 m`、相殺して 0 なら `0 m`。個数の商品は `3 点`）。`compute-summary` の和が `Number.isSafeInteger` を外れたら `—`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
+- 単位と数量（D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem` の数量は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つ。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（`N 点` の `N` は 3 桁区切りで `1,234 点`。owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、表示は行の `stock_unit` で決める（長さの商品〈`m`〉は `1.3 m`、相殺して 0 なら `0 m`。個数の商品は `3 点`）。`compute-summary` の和が `Number.isSafeInteger` を外れたら `—`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
 
 - 空配列 → `{ totalAmount: 0, totalCountPoints: 0, totalLengthCm: 0 }`
 - 負数 amount（返品超過月）→ そのまま合計（純関数、業務判断は呼出側）
@@ -419,7 +419,7 @@ function MonthlySalesPage() {
 |---|---|---|
 | **#1 API fail**（`query.isError`） | 画面全体 `<Alert variant="destructive">` + 「再試行」button（`query.refetch()`） | 再試行 button or ページ再読込 |
 | **#2 items 空配列** | `<EmptyState message="当月データなし" />` + 「月を変える」案内 | MonthNavigator で別月選択 |
-| **#3 prev_month_comparison === null または `[]`** | サマリ前月比カード「比較不可」灰、テーブル前月比列「—」 | 業務上正常（BIZ-05 は前月データなしも `Some(空Vec)` を返す = `sales_service.rs:196-197` 常時セット、`null` は specta `Option<Vec<T>>` 境界の defensive guard）、復旧不要 |
+| **#3 prev_month_comparison === null または `[]`** | サマリ前月比カード「比較不可」灰、テーブル前月比列「—」 | 業務上正常（BIZ-05 は前月データなしも `Some(空Vec)` を返す = `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales` で常時セット、`null` は specta `Option<Vec<T>>` 境界の defensive guard）、復旧不要 |
 | **#4 前月だけ fail** | 構造的不可能（1 useQuery 設計、BIZ-05 が 1 call で両方返す、Q-5） | N/A |
 
 - CSV 出力 fail（`useExportFile` `onError`）: Sonner toast.error、画面状態は維持

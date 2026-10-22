@@ -83,7 +83,7 @@ struct ReceivingCreateRequest {
 struct ReceivingItemInput {
     product_code: String,
     quantity: i64,
-    cost_price: i64,
+    cost_price_centi: i64,
 }
 ```
 
@@ -99,8 +99,8 @@ struct ReceivingCreateResult {
 struct CostDiff {
     product_code: String,
     product_name: String,
-    master_cost_price: i64,
-    received_cost_price: i64,
+    master_cost_price_centi: i64,
+    received_cost_price_centi: i64,
 }
 ```
 
@@ -121,8 +121,8 @@ struct CostDiff {
     "receiving_date": "2026-03-21",
     "note": "定期入荷",
     "items": [
-      { "product_code": "4976383262108", "quantity": 12, "cost_price": 111 },
-      { "product_code": "4976383262207", "quantity": 8, "cost_price": 111 }
+      { "product_code": "4976383262108", "quantity": 12, "cost_price_centi": 11100 },
+      { "product_code": "4976383262207", "quantity": 8, "cost_price_centi": 11100 }
     ]
   }
 }
@@ -409,7 +409,7 @@ struct DisposalItemInput {
     product_code: String,
     disposal_type: DisposalType,  // "disposal" | "damage" | "other"
     quantity: i64,
-    cost_price: i64,
+    cost_price_centi: i64,
     reason: String,
 }
 ```
@@ -540,7 +540,7 @@ struct ReceivingRecordDetail {
 }
 ```
 
-明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、合計の `total_cost` は円の整数（D-113）。原価を `cost_price_centi` にするのは proposed・未実装（原価の lane、D-113）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、合計の `total_cost` は円の整数（D-113）。明細の原価は `cost_price_centi`（1/100 円。原価の lane、D-128）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
@@ -649,13 +649,13 @@ struct DisposalRecordDetailItem {
     stock_unit: ProductStockUnit,
     disposal_type: DisposalType,
     quantity: i64,
-    cost_price: i64,
+    cost_price_centi: i64,
     reason: String,
     line_loss_cost_centi: String, // 1/100 円の整数の十進の文字列
 }
 ```
 
-`line_loss_cost_centi` は BIZ が求め、`total_loss_cost` は円の整数（D-113）。`cost_price` を `cost_price_centi` にするのは proposed・未実装（原価の lane、D-113）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+`line_loss_cost_centi` は BIZ が求め、`total_loss_cost` は円の整数（D-113）。明細の原価は `cost_price_centi`（1/100 円。原価の lane、D-128）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
@@ -713,7 +713,7 @@ struct StockDetail {
     "name": "ハマナカ アミアミ極太 col.42",
     "department_id": 3,
     "selling_price": 648,
-    "cost_price": 111,
+    "cost_price_centi": 11100,
     "stock_quantity": 14,
     "stock_unit": "pcs",
     "is_discontinued": false,
@@ -776,7 +776,7 @@ include_discontinued: bool   // true=廃番含む、false=廃番除外
     "product_code": "NU-0015",
     "name": "リバティ柄 タナローン",
     "stock_quantity": 300,
-    "stock_unit": "cm",
+    "stock_unit": "m",
     "department_name": "布"
   }
 ]
@@ -963,7 +963,7 @@ WHERE ((p.stock_unit IN (…count_units) AND p.stock_quantity <= ?)   -- 個数�
 ORDER BY p.stock_quantity ASC, p.name ASC
 ```
 
-2 つの `IN (…)` の code は bind で渡す。並びは BIZ が `ProductStockUnit::ALL` を数量の種類で分けて作って渡し（個数の 10 個の code と、`m`・`cm`）、repo は受けた並びで SQL を組むだけ（db の層は数量の種類を知らない）。どちらにも入らない単位が在庫少から漏れないことを test で止める（D-113、[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
+2 つの `IN (…)` の code は bind で渡す。並びは BIZ が `ProductStockUnit::ALL` を数量の種類で分けて作って渡し（個数の 9 個の code と、`m`）、repo は受けた並びで SQL を組むだけ（db の層は数量の種類を知らない）。どちらにも入らない単位が在庫少から漏れないことを test で止める（D-113、[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
 
 **ページング不要の理由**: 閾値以下の商品は通常少数（数十件程度）。4000商品中、在庫少は一覧で全件表示する（architecture/ui-task-specs.md UI-06b仕様）。
 
@@ -1096,7 +1096,7 @@ list_low_stock の処理:
 | やらないこと | 理由 | 責務を持つモジュール |
 |------------|------|-----------------|
 | 入力バリデーション（空items、不正日付等） | BIZ層の責務 | BIZ-02 inventory_service |
-| 在庫変動処理（stock_quantity更新+movements記録） | BIZ層の責務 | BIZ-02 inventory_service |
+| 在庫変動処理（movements記録と、記録からの写しの求め直し） | BIZ層の責務 | BIZ-02 inventory_service |
 | 冪等性チェック（同一キーの重複リクエスト検知） | BIZ層の責務 | BIZ-02 inventory_service |
 | PLU登録済み警告の判定 | BIZ層の責務 | BIZ-02 inventory_service |
 | 閾値の取得と適用 | BIZ層の責務 | BIZ-01 product_service |
@@ -1109,7 +1109,7 @@ list_low_stock の処理:
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-1: quantity符号変換 | BIZ層に委譲。CMD層は符号変換に関与しない |
-| INV-2: stock_quantity更新とmovements記録の同時性 | BIZ層のトランザクション内で保証 |
+| INV-2: movements記録と写しの求め直しの同時性 | BIZ層のトランザクション内で保証 |
 | INV-3: 冪等性（idempotency_key） | BIZ層に委譲。CMD層はキーをそのまま中継 |
 | INV-5: 在庫マイナス警告（エラーではなく警告） | BIZ層が stock_warnings に含めて返す |
 | INV-8: products物理DELETE禁止 | CMD層はproductsのDELETE操作を持たない |

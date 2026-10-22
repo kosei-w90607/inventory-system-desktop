@@ -26,7 +26,7 @@ mod tests {
         ReceivingItemInput {
             product_code: code.to_string(),
             quantity: qty,
-            cost_price: cost,
+            cost_price_centi: cost,
         }
     }
 
@@ -86,7 +86,7 @@ mod tests {
             product_code: code.to_string(),
             disposal_type: DisposalType::Disposal,
             quantity: qty,
-            cost_price: cost,
+            cost_price_centi: cost,
             reason: reason.to_string(),
         }
     }
@@ -211,7 +211,7 @@ mod tests {
 
         // 関数シンボルの存在確認
         // 31 §12.2: 第 1 引数は借りた transaction に限る（通常の接続に戻すとここでコンパイルが止まる）
-        let _ = apply_stock_change as fn(&rusqlite::Transaction<'_>, _, _, _, _, _, _) -> _;
+        let _ = apply_stock_change as fn(&rusqlite::Transaction<'_>, _, _, _, _, _, _, _, _) -> _;
         let _ = create_receiving as fn(_, _) -> _;
         let _ = create_return as fn(_, _) -> _;
         let _ = create_manual_sale as fn(_, _) -> _;

@@ -47,6 +47,19 @@ describe("StockDetailContent (REQ-301 -> REQ-303)", () => {
     );
   });
 
+  it("Matrix C19 / SPEC-UNIT-D5: 原価 8333 の商品の詳細の原価は ¥83.33（8,333 を含まない）", async () => {
+    const data = makeMockStockDetail({
+      product: makeMockProductWithRelations({ product_code: "C19-A", cost_price_centi: 8333 }),
+    });
+    const { container } = renderWithRouter(
+      <StockDetailContent
+        query={{ isLoading: false, isError: false, data } as UseQueryResult<StockDetail>}
+      />,
+    );
+    expect(await screen.findByText("¥83.33")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("8,333");
+  });
+
   it("REQ-301: StockDetailContent shows active product edit link", async () => {
     const data = makeMockStockDetail({
       product: makeMockProductWithRelations({ product_code: "BT0002", name: "ボタン #02" }),

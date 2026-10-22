@@ -145,8 +145,8 @@ fn test_get_csv_import_record_req207_movement_source() {
     let import_id = seed_detail_import(&conn, "completed");
     conn.execute(
         "INSERT INTO inventory_movements
-         (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-         VALUES ('CSV-DETAIL-P1', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, 0, '2026-08-03T12:00:00')",
+         (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+         VALUES ('CSV-DETAIL-P1', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, 0, '2026-08-03T12:00:00', '2026-04-01', 0)",
         rusqlite::params![import_id],
     )
     .unwrap();

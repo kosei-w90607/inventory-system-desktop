@@ -24,6 +24,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 // 数量の桁区切りと単位名は共通formatterに揃える。
 import {
   formatCentiYen,
+  formatCostYen,
   formatStockDisplay,
 } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
@@ -167,7 +168,7 @@ export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordD
                   {formatStockDisplay(item.quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatYen(item.cost_price)}
+                  {formatCostYen(item.cost_price_centi)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatCentiYen(item.line_loss_cost_centi)}

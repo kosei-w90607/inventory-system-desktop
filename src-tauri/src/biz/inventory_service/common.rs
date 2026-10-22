@@ -1,5 +1,6 @@
 //! 共通ヘルパー: apply_stock_change + fingerprint 計算
 
+use crate::biz::stock_ledger::recompute_stock;
 use crate::biz::unit_amount::{format_length_m, stock_unit_kind, StockUnitKind};
 use crate::biz::BizError;
 use crate::constants::MAX_STOCK_QUANTITY;
@@ -59,15 +60,42 @@ pub(crate) fn check_stock_range(stock: i64) -> Result<i64, BizError> {
     }
 }
 
-/// 商品の在庫数を変動させ、inventory_movements に履歴を記録する
+/// 業務日の形と暦の検査（31「業務日の形と暦の検査」。業務日を書く側の唯一の置き場）
+///
+/// (1) 形: 長さ 10 バイトの ASCII の `YYYY-MM-DD`。(2) 暦: chrono で読めること。
+/// 形を先に見る（chrono の `%Y-%m-%d` は `2026-4-7`・`+2026-04-07` を読み、
+/// `-0001-04-07`・`+10000-04-07` は同じ文字列に書き戻すので、読めることでは形を保証しない。Contract Probe P6）
+pub(crate) fn validate_business_date(date: &str) -> Result<(), BizError> {
+    let bytes = date.as_bytes();
+    let shaped = bytes.len() == 10
+        && bytes.iter().enumerate().all(|(i, b)| match i {
+            4 | 7 => *b == b'-',
+            _ => b.is_ascii_digit(),
+        });
+    if !shaped {
+        return Err(BizError::ValidationFailed(
+            "日付の形式が不正です（YYYY-MM-DD）".to_string(),
+        ));
+    }
+    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .map(|_| ())
+        .map_err(|_| BizError::ValidationFailed("存在しない日付です".to_string()))
+}
+
+/// 商品の在庫を変動させる: movement を並びの鍵付きで INSERT し、その商品を記録から求め直す
 ///
 /// 引数の型（借りた transaction）で TX の内側に限る。TX は呼び出し元の create_* が管理する。
-/// BIZ-03（CSV取込み）からも直接呼び出し可（pub(crate) は意図的）。
+/// BIZ-03（CSV取込み）からも直接呼び出し可（pub(crate) は意図的）。`stock_after` は、この呼出しが
+/// INSERT した movement だけに、直後の求め直しの写しの値を書く（同じ要求の同じ商品の明細は途中の値）。
 ///
-/// 31-biz-inventory-service.md §12.2
+/// 31-biz-inventory-service.md §12.2 と「計数の置き場と在庫の求め直しの契約」
+// 並びの鍵（業務日・精算回数）を足して 9 引数。(b) で Z004 の確定が settlement_no を渡す（31）
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_stock_change(
     conn: &rusqlite::Transaction<'_>,
     product_code: &str,
+    business_date: &str,
+    settlement_no: Option<i64>,
     quantity: i64,
     movement_type: MovementType,
     reference_type: ReferenceType,
@@ -78,43 +106,30 @@ pub(crate) fn apply_stock_change(
     let product = product_repo::find_by_product_code(conn, product_code)?
         .ok_or_else(|| BizError::NotFound(format!("商品が見つかりません: {}", product_code)))?;
 
-    // 2. 在庫計算
-    let stock_after = product
-        .product
-        .stock_quantity
-        .checked_add(quantity)
-        .ok_or_else(|| BizError::ValidationFailed("在庫数計算オーバーフロー".to_string()))?;
-    let stock_after = check_stock_range(stock_after)?;
-
-    // 3. 負在庫警告（INV-3: 処理は止めない）
-    let negative_stock_warning = stock_after < 0;
-
-    // 4. 在庫数更新
-    let updated = inventory_repo::update_stock_quantity(conn, product_code, stock_after)?;
-    if !updated {
-        return Err(BizError::NotFound(format!(
-            "商品が見つかりません: {}",
-            product_code
-        )));
-    }
-
-    // 5. 変動履歴記録
-    inventory_repo::insert_movement(
+    // 2. movement を仮の stock_after（今の写し）で INSERT
+    let movement_id = inventory_repo::insert_movement(
         conn,
         &NewMovement {
             product_code: product_code.to_string(),
             movement_type,
             quantity,
-            stock_after,
+            stock_after: product.product.stock_quantity,
             reference_type: Some(reference_type),
             reference_id: Some(reference_id),
             note: note.map(|s| s.to_string()),
+            business_date: business_date.to_string(),
+            settlement_no,
         },
     )?;
 
+    // 3. 記録から求め直して写しを書き（上限の検査はここ）、その movement の stock_after を写しの値にする
+    let stock_after = recompute_stock(conn, product_code)?.stock;
+    inventory_repo::update_movement_stock_after(conn, movement_id, stock_after)?;
+
+    // 4. 負在庫警告（INV-3: 処理は止めない）
     Ok(StockChangeOutcome {
         stock_after,
-        negative_stock_warning,
+        negative_stock_warning: stock_after < 0,
         stock_unit: product.product.stock_unit,
     })
 }
@@ -176,6 +191,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-001",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -206,6 +223,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-002",
+            "2026-04-01",
+            None,
             -3,
             MovementType::SaleManual,
             ReferenceType::ManualSale,
@@ -230,6 +249,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "ASC-003",
+            "2026-04-01",
+            None,
             -5,
             MovementType::Disposal,
             ReferenceType::DisposalRecord,
@@ -259,6 +280,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "NONEXISTENT",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -281,6 +304,8 @@ mod tests {
         apply_stock_change(
             &tx,
             "ASC-005",
+            "2026-04-01",
+            None,
             5,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -293,7 +318,8 @@ mod tests {
         let (qty, stock_after, mt, rt, ri, note): (i64, i64, String, String, i64, String) = tx
             .query_row(
                 "SELECT quantity, stock_after, movement_type, reference_type, reference_id, note
-                 FROM inventory_movements WHERE product_code = 'ASC-005'",
+                 FROM inventory_movements WHERE product_code = 'ASC-005'
+                   AND reference_type = 'receiving_record'",
                 [],
                 |row| {
                     Ok((
@@ -328,6 +354,8 @@ mod tests {
         let result = apply_stock_change(
             &tx,
             "NO-SUCH-PRODUCT",
+            "2026-04-01",
+            None,
             1,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -335,5 +363,140 @@ mod tests {
             None,
         );
         assert!(matches!(result, Err(BizError::NotFound(_))));
+    }
+
+    #[test]
+    fn test_validate_business_date_req301_shape_then_calendar() {
+        // REQ-301 / 31「業務日の形と暦の検査」（形 → 暦の順）/ Contract Probe P6 / Matrix W5
+        for date in ["2026-04-07", "0000-01-01", "2024-02-29", "9999-12-31"] {
+            assert!(validate_business_date(date).is_ok(), "{date}");
+        }
+        for date in [
+            "2026-4-7",
+            "-0001-04-07",
+            "+10000-04-07",
+            "２０２６-04-07",
+            "2026/04/07",
+            "2026-ab-07",
+            "",
+            " 2026-04-07",
+            "2026-04-07 ",
+            "02026-04-07",
+            "+2026-04-07",
+        ] {
+            assert!(
+                matches!(validate_business_date(date), Err(BizError::ValidationFailed(ref m)) if m == "日付の形式が不正です（YYYY-MM-DD）"),
+                "{date:?}"
+            );
+        }
+        for date in ["2026-02-30", "2026-13-01", "2026-00-10", "2026-04-31"] {
+            assert!(
+                matches!(validate_business_date(date), Err(BizError::ValidationFailed(ref m)) if m == "存在しない日付です"),
+                "{date}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_inventory_req201_req204_recompute_matches_previous_stock_and_stock_after() {
+        // REQ-201〜REQ-204 / SPEC-STK-CNT-D2・Y4（計数の無い DB では写しと stock_after が「写し + 差分」の列と同じ）/ Matrix E1
+        use super::super::disposal::{create_disposal, DisposalCreateRequest, DisposalItemInput};
+        use super::super::manual_sale::{
+            create_manual_sale, ManualSaleCreateRequest, ManualSaleItemInput,
+        };
+        use super::super::receiving::{
+            create_receiving, ReceivingCreateRequest, ReceivingItemInput,
+        };
+        use super::super::returns::{create_return, ReturnCreateRequest, ReturnItemInput};
+        use crate::db::disposal_repo::DisposalType;
+        use crate::db::manual_sale_repo::ManualSaleReason;
+        use crate::db::return_repo::{ReturnDirection, ReturnExchangeType};
+
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "E1", 5);
+        let date = "2026-04-07".to_string();
+        create_receiving(
+            &mut conn,
+            ReceivingCreateRequest {
+                idempotency_key: "e1-rcv".into(),
+                supplier_id: None,
+                receiving_date: date.clone(),
+                note: None,
+                items: [2, 3]
+                    .map(|quantity| ReceivingItemInput {
+                        product_code: "E1".into(),
+                        quantity,
+                        cost_price_centi: 100,
+                    })
+                    .into(),
+            },
+        )
+        .unwrap();
+        create_manual_sale(
+            &mut conn,
+            ManualSaleCreateRequest {
+                idempotency_key: "e1-ms".into(),
+                sale_date: date.clone(),
+                reason: ManualSaleReason::PluUnregistered,
+                note: None,
+                items: vec![ManualSaleItemInput {
+                    product_code: "E1".into(),
+                    quantity: 1,
+                    amount: 500,
+                }],
+                confirmation_token: None,
+            },
+        )
+        .unwrap();
+        create_disposal(
+            &mut conn,
+            DisposalCreateRequest {
+                idempotency_key: "e1-dsp".into(),
+                disposal_date: date.clone(),
+                items: vec![DisposalItemInput {
+                    product_code: "E1".into(),
+                    disposal_type: DisposalType::Disposal,
+                    quantity: 1,
+                    cost_price_centi: 100,
+                    reason: "破損".into(),
+                }],
+            },
+        )
+        .unwrap();
+        for (key, register_processed) in [("e1-rt", false), ("e1-rt-processed", true)] {
+            create_return(
+                &mut conn,
+                ReturnCreateRequest {
+                    idempotency_key: key.into(),
+                    return_type: ReturnExchangeType::Return,
+                    return_date: date.clone(),
+                    register_processed,
+                    receipt_image_path: None,
+                    note: None,
+                    items: vec![ReturnItemInput {
+                        product_code: "E1".into(),
+                        direction: ReturnDirection::In,
+                        quantity: 1,
+                    }],
+                },
+            )
+            .unwrap();
+        }
+        let stock_afters: Vec<i64> = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT stock_after FROM inventory_movements
+                     WHERE product_code = 'E1' AND reference_type IS NOT NULL ORDER BY id",
+                )
+                .unwrap();
+            let rows = stmt
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            rows
+        };
+        assert_eq!(stock_afters, vec![7, 10, 9, 8, 9]);
+        assert_eq!(stock_of(&conn, "E1"), 9);
     }
 }

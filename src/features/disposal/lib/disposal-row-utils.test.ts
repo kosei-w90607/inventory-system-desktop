@@ -12,12 +12,11 @@ import {
 } from "./disposal-row-utils";
 
 const meter = makeMockProductWithRelations({ product_code: "DSP-M", stock_unit: "m" });
-const centi = makeMockProductWithRelations({ product_code: "DSP-CM", stock_unit: "cm" });
 const piece = makeMockProductWithRelations({ product_code: "DSP-PCS", stock_unit: "pcs" });
 
 describe("disposal row utils (REQ-204 / UI-05-D8)", () => {
-  it("REQ-204: 追加したときの数量の初期値はどの単位も 1（m は 1 m、cm は 1 cm）", () => {
-    for (const product of [meter, centi, piece]) {
+  it("REQ-204: 追加したときの数量の初期値はどの単位も 1（m は 1 m）", () => {
+    for (const product of [meter, piece]) {
       expect(productToDisposalRow(product)).toMatchObject({
         stockUnit: product.stock_unit,
         quantity: "1",
@@ -25,14 +24,13 @@ describe("disposal row utils (REQ-204 / UI-05-D8)", () => {
     }
   });
 
-  it("REQ-204: 再追加は m が +1 m（1.3 → 2.3、1.27 → 2.27）、cm と個数は +1", () => {
+  it("REQ-204: 再追加は m が +1 m（1.3 → 2.3、1.27 → 2.27）、個数は +1", () => {
     const readd = (product: typeof meter, quantity: string) => {
       const [row] = addProductToDisposalRows([], product);
       return addProductToDisposalRows([{ ...row, quantity }], product)[0]?.quantity;
     };
     expect(readd(meter, "1.3")).toBe("2.3");
     expect(readd(meter, "1.27")).toBe("2.27");
-    expect(readd(centi, "130")).toBe("131");
     expect(readd(piece, "3")).toBe("4");
     // 規則に合わない文字列は初期値に戻す
     expect(readd(meter, "abc")).toBe("1");

@@ -73,7 +73,7 @@ export function useMonthlySalesReport(
     // ranking / composition 双方に sort 適用 (Plan §2 commit 3 非対称根拠)。
     // raw items には適用しない: UI-09a (フラット → グルーピング) vs UI-09b (multi-derived)
     // の派生木差異に対応し、(a) ranking 順位列 ranking field 保持で badge 追従 (G-3、
-    // sort-items.test.ts:79-90 検証済)、(b) composition 部門 sort 軸は ranking と独立。
+    // src/features/monthly-sales/lib/sort-items.test.ts の「G-3: ranking field 残存確認」で検証済)、(b) composition 部門 sort 軸は ranking と独立。
     const rankingRaw = pickTopRanking(items, comparisonMap);
     const compositionRaw = computeDeptComposition(items, comparisonMap);
     return {

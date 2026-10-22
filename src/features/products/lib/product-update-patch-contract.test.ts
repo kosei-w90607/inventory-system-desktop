@@ -25,10 +25,11 @@ const ORDINARY_FIELDS = [
   "name",
   "department_id",
   "selling_price",
-  "cost_price",
+  "cost_price_centi",
   "tax_rate",
   "pos_stock_sync",
   "plu_target",
+  "stock_unit",
 ] as const;
 const CLEARABLE_FIELDS = ["supplier_id", "maker_code"] as const;
 const GENERATED_PRODUCT_COMMANDS = [
@@ -84,7 +85,7 @@ function expectGeneratedCommandStatusCurrent(source: string): void {
 }
 
 describe("UI-01b PRODUCT-PATCH-D1 generated contract", () => {
-  it("generates all nine deserialize properties as optional", () => {
+  it("generates all ten deserialize properties as optional", () => {
     const block = typeBlock("ProductUpdateRequest_Deserialize");
 
     for (const field of [...ORDINARY_FIELDS, ...CLEARABLE_FIELDS]) {
@@ -92,7 +93,7 @@ describe("UI-01b PRODUCT-PATCH-D1 generated contract", () => {
     }
   });
 
-  it("keeps all nine serialize properties required", () => {
+  it("keeps all ten serialize properties required", () => {
     const block = typeBlock("ProductUpdateRequest_Serialize");
 
     for (const field of [...ORDINARY_FIELDS, ...CLEARABLE_FIELDS]) {

@@ -1,12 +1,12 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。以下の既存 API は現行の契約で、新しい保存の形へ切り替え済みではない。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）で、商品の読取りが写しの 3 列を返すこと・stocktake_repo の明細の読取り・計数の保存は (b)（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
 | repo 操作 | 処理・返却の契約 |
 |---|---|
-| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
+| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。（(b)）商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
 | stocktake_repo の明細の読取り | `get_stocktake_items`・`find_stocktake_item` は、明細を参照する計数（`stock_counts.stocktake_item_id`）の効く値と置き場の日付、写しの在庫・範囲を返す。差異と要再確認の理由は BIZ が求める |
 | 計数の読取り・保存 | [21](21-io-inventory-repo.md) の新契約（`insert_stock_count` と、商品の計数の鍵の順の一覧） |
 
@@ -20,7 +20,7 @@ SQL の失敗・整数の範囲外・FK 違反は DbError として返し、IO �
 src-tauri/src/
   db/
     mod.rs          -- DB接続管理、初期化
-    product_repo.rs -- products, departments, suppliers, price_history
+    product_repo.rs -- products, product_jan_aliases（proposed、D-122）, departments, suppliers, price_history
     inventory_repo.rs -- inventory_movements, receiving_*, return_*, manual_sale_*, disposal_*
     sales_repo.rs   -- sale_records, csv_imports, csv_import_errors
     stocktake_repo.rs -- stocktakes, stocktake_items
@@ -141,7 +141,7 @@ fn insert_product(conn: &DbConnection, product: &NewProduct) -> Result<(), DbErr
 ```
 
 **NewProduct構造体**:
-- product_code, jan_code, name, department_id, supplier_id, selling_price, cost_price, tax_rate, maker_code, stock_quantity, stock_unit, is_discontinued, plu_dirty, plu_exported_at, pos_stock_sync, plu_target（D-028: スキャニングPLU書出し対象フラグ。値の決定は BIZ-01 の責務）
+- product_code, jan_code, name, department_id, supplier_id, selling_price, cost_price_centi, tax_rate, maker_code, stock_quantity, stock_unit, is_discontinued, plu_dirty, plu_exported_at, pos_stock_sync, plu_target（D-028: スキャニングPLU書出し対象フラグ。値の決定は BIZ-01 の責務）
 
 **処理ステップ**:
 1. INSERT INTO products (...) VALUES (...)を実行
@@ -166,11 +166,10 @@ fn update_product(conn: &DbConnection, product_code: &str, updates: &ProductUpda
 - department_id: Option\<i64\>
 - supplier_id: Option\<Option\<i64\>\>
 - selling_price: Option\<i64\>
-- cost_price: Option\<i64\>
+- cost_price_centi: Option\<i64\>
 - tax_rate: Option\<String\>
 - maker_code: Option\<Option\<String\>\>
-- stock_quantity: Option\<i64\>
-- stock_unit: Option\<String\>
+- stock_unit: Option\<ProductStockUnit\>（D-119。値の検査〈個数の単位どうし〉は BIZ-01-D8、repo は code の文字列で SET するだけ）
 - is_discontinued: Option\<bool\>
 - plu_dirty: Option\<bool\>
 - plu_exported_at: Option\<Option\<String\>\>
@@ -184,7 +183,7 @@ fn update_product(conn: &DbConnection, product_code: &str, updates: &ProductUpda
 4. affected_rows == 1 → Ok(true)
 5. affected_rows == 0 → Ok(false)（該当商品なし）
 
-`revise_product_price` はこの部分更新契約を使い、`ProductUpdates` には `selling_price` / `cost_price` / 売価変更時だけの `plu_dirty` / 商品の `supplier_id` が NULL の場合だけの `supplier_id` だけを設定する（SPEC-PRV-D5 / SPEC-PRV-D6）。BIZ-01 が旧値との比較と transaction を所有し、IO は全項目更新や業務判断を行わない。
+`revise_product_price` はこの部分更新契約を使い、`ProductUpdates` には `selling_price` / `cost_price_centi` / 売価変更時だけの `plu_dirty` / 商品の `supplier_id` が NULL の場合だけの `supplier_id` だけを設定する（SPEC-PRV-D5 / SPEC-PRV-D6）。BIZ-01 が旧値との比較と transaction を所有し、IO は全項目更新や業務判断を行わない。
 
 **エラーハンドリング**:
 - SQL実行失敗 → DbError::QueryFailed(詳細)
@@ -204,6 +203,25 @@ fn find_by_jan_code(conn: &DbConnection, jan_code: &str) -> Result<Vec<Product>,
 
 **エラーハンドリング**:
 - SQL実行失敗 → DbError::QueryFailed(詳細)
+
+#### 前の JAN の別名（IO-01-D5、proposed・未実装、D-122）
+
+`product_jan_aliases`（[master-tables](../db-design/master-tables.md) §1a）の読取りと追加。transaction は呼出側（BIZ-01 の商品 CSV の上書き、BIZ-03 の引き当て）が所有する。
+
+```rust
+fn find_jan_alias(conn: &DbConnection, jan_code: &str) -> Result<Option<String>, DbError>
+fn insert_jan_alias(conn: &DbConnection, old_jan: &str, product_code: &str) -> Result<(), DbError>
+```
+
+- `find_jan_alias`: `SELECT product_code FROM product_jan_aliases WHERE old_jan = ?1`。比べ方は `find_by_jan_code` と同じ文字列の一致（JAN を数に変えない）。無ければ `None`。
+- `insert_jan_alias`: `created_at` に現在日時を入れて 1 行 INSERT する。更新・削除の関数は置かない（消すのは `products` の trigger だけ）。
+- `insert_product`・`update_product` は別名を扱わない。`products.jan_code` を書くと、DB の trigger が同じ JAN の別名を同じ transaction の中で消す（master-tables §1a。IO の関数は何もしない）。
+
+**エラーハンドリング**:
+既存の `From<rusqlite::Error>`（`src-tauri/src/db/mod.rs` の DbError の変換）のまま、新しい変換を足さない:
+- 別名の表の trigger の拒否（`RAISE(ABORT)`、その JAN を持つ商品がある）・SQL 実行失敗 → DbError::QueryFailed(詳細)（BIZ-01 が先に条件を確かめるので、trigger の拒否は通常は起きない）
+- 外部キー違反（787、商品が無い）→ DbError::ForeignKeyViolation(SQLite の message)
+- PRIMARY KEY 重複（1555）→ DbError::DuplicateKey(SQLite の message)（不変条件により、その JAN を持つ商品が直前まであった別名は無いので、通常は起きない）
 
 #### find_plu_dirty_products
 
@@ -451,7 +469,7 @@ fn insert_price_history(conn: &DbConnection, history: &NewPriceHistory) -> Resul
 ```
 
 **NewPriceHistory構造体**:
-- product_code, old_selling, new_selling, old_cost, new_cost
+- product_code, old_selling, new_selling, old_cost_centi, new_cost_centi
 
 **処理ステップ**:
 1. INSERT INTO price_history (..., changed_at) VALUES (..., 現在日時)
@@ -470,7 +488,7 @@ fn list_price_history(
 ```
 
 **PriceHistoryEntry構造体**:
-- id, old_selling_price, new_selling_price, old_cost_price, new_cost_price, changed_at
+- id, old_selling_price, new_selling_price, old_cost_price_centi, new_cost_price_centi, changed_at
 
 **処理ステップ**:
 1. `limit` は呼出し既定 10、上限 100 とし、100 超は 100 に丸める
@@ -811,7 +829,7 @@ fn update_stocktake_item_count(conn: &DbConnection, item_id: i64, actual_count: 
 
 **シグネチャ**:
 ```
-fn update_stocktake_item_valuation(conn: &DbConnection, item_id: i64, valuation_cost_price: i64) -> Result<(), DbError>
+fn update_stocktake_item_valuation(conn: &DbConnection, item_id: i64, valuation_cost_price_centi: i64) -> Result<(), DbError>
 ```
 
 #### count_uncounted_items
@@ -868,24 +886,27 @@ fn find_stocktake_eligible_products(conn: &DbConnection) -> Result<Vec<ProductFo
 ```
 
 **ProductForStocktake構造体**:
-- product_code: String, stock_quantity: i64, cost_price: i64, is_discontinued: bool
+- product_code: String, stock_quantity: i64, cost_price_centi: i64, is_discontinued: bool
 
 **処理ステップ**:
-1. SELECT product_code, stock_quantity, cost_price, is_discontinued FROM products ORDER BY product_code ASC
+1. SELECT product_code, stock_quantity, cost_price_centi, is_discontinued FROM products ORDER BY product_code ASC
 
 **設計ノート**: BIZ層（start_stocktake）が is_discontinued と stock_quantity に基づいて auto-fill 分岐を制御する。IO層ではフィルタしない。
 
 #### find_all_stock_quantities
 
-**関数要求**: 全商品の product_code, name, stock_quantity を取得する（BIZ-07 整合性チェック用）
+**関数要求**: 全商品の写しの 4 項目（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と product_code, name, stock_unit を取得する（BIZ-07 整合性チェック用。[36](36-biz-integrity-check.md)。D-118 の (a)）
 
 **シグネチャ**:
 ```
-fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String, i64)>, DbError>
+fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<StockCopyRow>, DbError>
 ```
 
+**StockCopyRow構造体**:
+- product_code: String, name: String, stock_unit: ProductStockUnit, stock_quantity: i64, stock_recheck: bool, stock_range_low: Option\<i64\>, stock_range_high: Option\<i64\>
+
 **処理ステップ**:
-1. SELECT product_code, name, stock_quantity FROM products ORDER BY product_code ASC
+1. SELECT product_code, name, stock_unit, stock_quantity, stock_recheck, stock_range_low, stock_range_high FROM products ORDER BY product_code ASC
 
 ---
 
@@ -910,9 +931,9 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 
 **StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
 - product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
-- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。D-118 の新方式でも同じ参考値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
+- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。D-118 の新方式でも同じ参考値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price_centi: Option\<i64\>
 - adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
-- `stock_unit` は repo が `parse_stock_unit` で読む `ProductStockUnit`（D-113）。`valuation_cost_price` を `valuation_cost_price_centi`（1/100 円）にするのは proposed・未実装（原価の lane、D-113）。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」。
+- `stock_unit` は repo が `parse_stock_unit` で読む `ProductStockUnit`（D-113）。確定時評価原価は `valuation_cost_price_centi`（1/100 円。原価の lane、D-113・D-128）。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」。
 
 **処理ステップ**:
 1. stocktakes のヘッダを stocktake_id で取得する。存在しない場合は DbError::NotFound

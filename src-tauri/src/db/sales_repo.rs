@@ -1650,7 +1650,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,
@@ -2026,16 +2026,16 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3)",
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 0)",
                 rusqlite::params![reference_id, is_voided, created_at],
             )
             .unwrap();
         }
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('DETAIL-MOVE', 'receiving', 1, 10, 'receiving_record', ?1, NULL, 0, '2026-08-03T10:03:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('DETAIL-MOVE', 'receiving', 1, 10, 'receiving_record', ?1, NULL, 0, '2026-08-03T10:03:00', '2026-04-01', 0)",
             rusqlite::params![import_id],
         )
         .unwrap();
@@ -2137,8 +2137,8 @@ mod tests {
 
         // inventory_movements に直接INSERT（テスト用）
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00')",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
             rusqlite::params![import_id],
         ).unwrap();
 
@@ -2166,8 +2166,8 @@ mod tests {
         seed_product(&conn, "INV7-P1");
 
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00')",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
             [],
         ).unwrap();
 
@@ -2928,7 +2928,7 @@ mod tests {
             department_id,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,

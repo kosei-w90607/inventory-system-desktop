@@ -1,10 +1,10 @@
 ## 4. BIZ-01: 商品管理ロジック
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の BIZ-01 の側。旧 ADR（時点証拠）の版・非連動化の記録・`ej_unverified` による有効化の拒否と既定値 false・本番前 preflight は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の BIZ-01 の側。旧 ADR（時点証拠）の版・非連動化の記録・`ej_unverified` による有効化の拒否と既定値 false・本番前 preflight は持たない（置き換えた）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1 つ目の項目（`ProductUpdates.stock_quantity` を外し、初期在庫の movement〈業務日は登録した TX の PC の今日〉と `recompute_stock`）。共有 JAN と在庫連動を始める検査の項目は (b)（proposed・未実装）。
 
-- 汎用 `ProductUpdates` の `stock_quantity` 欄は使わない（今も production で `Some` を渡す呼出しは無い）。create と商品一括 import の新規行は、初期数量を初期在庫の movement（`business_date` = 登録日、`phase=0`）として同じ TX で INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書く。商品一括 import の既存商品の上書きは在庫を変えない（今のまま）。
+- 汎用 `ProductUpdates` の `stock_quantity` 欄は外した（[20](20-io-product-repo.md)。production で `Some` を渡す呼出しは無かった）。create と商品一括 import の新規行は、初期数量を初期在庫の movement（`business_date` = 登録日、`phase=0`）として同じ TX で INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書く。商品一括 import の既存商品の上書きは在庫を変えない（今のまま）。
 - 共有 JAN（SPEC-STK-CNT-D4）: 不変条件は 1 つ。変更の後に、在庫連動の商品と同じ JAN を持つ別の商品があってはならない。create・update（JAN・在庫連動の変更）・商品一括 import の TX の中で、変更の後の状態でこれを検査し、どの経路でも、どちらの商品を変える場合でも（例: 在庫連動の商品 A が自分の JAN を非連動の C と同じ値に変える、非連動の C が A と同じ JAN に変える、C を在庫連動にする）拒否する（既存の `validation` kind、field `pos_stock_sync` か `jan_code`、message「同じ JAN の商品（{同じ JAN を持つほかの商品コード}）があるため、在庫連動にできません」。`ValidationFailedAt`。回復型〈`stocktake_guard`〉には載せない）。商品一括 import では当該行だけを error 行にし、他の正常行は続ける。preview だけの検証で確定を通さない。
 - 在庫連動を始める（SPEC-STK-CNT-D8）: 既存の商品の false → true は、連動なしで取り込んだ Z004 の売上（`sale_records`、`is_voided=0`、`stock_linked=0`、個数 ≠ 0 か金額 ≠ 0）が全て効く計数に確実に入っている（ADR D3 の判定表で「入る」）ときだけ許す。「入っていない」か「決まらない」売上があるとき、効く計数が衝突しているとき、効く計数が無く連動なしの売上が 1 件でもあるときは `recount_required` で拒否し、message「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と回復先（[40](40-cmd-product.md) の回復型。進行中の棚卸しにその商品の明細があれば action `active_count`、なければ `count_now`）を返す。効く計数が無い商品は、連動なしの売上が 1 件でもあれば拒否する。true → false は記録も確認も要らない。`pos_stock_sync` の既定値（新規の商品・商品一括 import の省略時の true、DB の `DEFAULT 1`）は変えない。
 
@@ -12,18 +12,17 @@
 
 ### 単位と原価の精度の契約（D-113、BIZ-01-D8）
 
-[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。単位・上限・商品 CSV の単位と初期在庫は現行の契約で、原価の 1/100 円の分だけ注記のとおり未実装。
+[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。単位・原価の 1/100 円・上限・商品 CSV の単位と初期在庫と原価は現行の契約。
 
-- `stock_unit` は 12 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。今は update で単位を変えない（`ProductUpdateRequest` は単位を持たない）。`roll`・`cm` を一覧から外すのは開発・試験 DB の作り直しの起点（proposed・未実装、原価の lane、D-119。共通規則 SPEC-UNIT-D1）。
-- （proposed・未実装、単位の語の直しの lane、D-119。owner の決定 U2 = b）update と商品 CSV の上書きで、個数の種類の単位どうしの変更だけを許す（共通規則 SPEC-UNIT-D2）。`ProductUpdateRequest` に通常 field の `stock_unit: Option<ProductStockUnit>`（omitted / null は更新しない）を足し、`ProductUpdates.stock_unit` で UPDATE する。検査は §4.4 の手順 2 で、値を持ち今の単位と違うとき、今の単位と新しい単位がどちらも `stock_unit_kind` = `Count` でなければ `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")`。在庫・明細・価格は変えない（個数の単位の価格の基準数量はどれも 1）。単位の変更は `plu_dirty` の理由にならない（PLU の file は単位を持たない。§4.4 の手順 4 の売価の変更・手順 4b の対象化だけが立てる）。操作ログは BIZ-01-D7 の規則で key `stock_unit` に `{"old": code, "new": code}` を書く（商品 CSV の上書きの経路も同じ形、下の上書きの段）。
-- （proposed・未実装、原価の lane、D-113）原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く。今は `format!` で `"cost_price":{"old":…,"new":…}` を書く）。どちらも detail_json の原価の key を `cost_price_centi`、値を 1/100 円の整数にする（同じ key に円と 1/100 円が混ざると、後から区別できない。ログは書き換えない契約）。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、22 §16 の vB）ので、key `cost_price`（円）の記録はその DB に無く、読む側（[74](74-ui-operation-logs.md) §74.8）は `cost_price_centi` だけを知ればよい。
-- 売価・原価・初期在庫の上限（共通規則の同じ節）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は円の整数で 0 以上 `999999`（越えれば `原価が大きすぎます`。原価の lane が上の `99999999`〈1/100 円〉へ書き換える）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。初期在庫の負は、create が `初期在庫は0以上で入力してください`、商品 CSV（preview の行の error と commit）が `初期在庫の値が不正です: '{値}'`。
-- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（commit も新規の行の単位を 12 個の code と確かめる）。
-- 上書き（§4.9 の `overwrite_codes`）の今の規則: 単位を変えない（SPEC-UNIT-D2）。preview は、既存の商品の行（duplicate_rows）で正規化した `在庫単位` が既存の商品の単位と違えば行の error `在庫単位は登録の後に変えられません（登録: {登録の語}、CSV: {値}）` にする。空は今の単位のまま（今どおり）。commit は wire の行を信頼せず（BIZ-01-D5 と同じ）、TX の中で上書きの行ごとに既存の商品の単位と比べ、`Some` で違えば `ValidationFailed` で TX 全体を戻す。`ProductUpdates` は単位の field を持たない（単位の列を UPDATE しない）。単位を上書きできると、`m` の商品を `ball` で上書きしたときに在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
-- （proposed・未実装、単位の語の直しの lane、D-119）上書きの、単位の語の直しの lane の後の規則（上の今の規則を置き換える）: 正規化した `在庫単位` が既存の商品の単位と違う行は、今の単位と CSV の単位がどちらも個数の種類なら単位を `ProductUpdates.stock_unit` で上書きする。種類をまたぐか、どちらかが長さの単位なら行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: {登録の語}、CSV: {値}）`。commit は wire の行を信頼せず、TX の中で同じ規則で再検証し、外れれば `ValidationFailed` で TX 全体を戻す。空は今の単位のまま。
-  - `plu_dirty`: 上書きの行が、上書きで書く列のうち `在庫単位` の他は全て既存の商品と同じ（単位だけの変更）なら `plu_dirty` を変えない（単位の変更は `plu_dirty` の理由にならない、上の update の段と同じ）。それ以外の上書きの行は §4.9 の手順 2 d. のとおり `plu_dirty=1`。
-  - 操作ログ: 単位を変えた商品ごとに、同じ TX の中で `product_update` のログを 1 行書き、detail_json は BIZ-01-D7 の形で key `stock_unit` だけを持つ（`{"stock_unit":{"old":code,"new":code}}`）。§4.9 の手順 4 の件数の要約のログ（TX の外）は今のまま。理由: 商品修正の経路と同じ種類・同じ形なので操作ログ画面の読み方が 1 つで済み、TX の中なので単位を変えた commit にだけ必ず残り、商品ごとに元の単位を追える（件数の要約に前後の一覧を入れる案は TX の外で、書けなかったときに元の単位を失う）。
-- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は整数（小数 2 桁までを 1/100 円にするのは proposed・未実装、原価の lane、D-113。SPEC-UNIT-D5 の入力の規則）。`売価` は整数のまま。
+- `stock_unit` は 10 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。update と商品 CSV の上書きは個数の単位どうしの変更だけを許す（下の 2 つの段）。`roll`・`cm` は開発・試験 DB の作り直しの起点（vB）で一覧から外した（D-119・D-128。共通規則 SPEC-UNIT-D1）。
+- （D-119。owner の決定 U2 = b）update と商品 CSV の上書きで、個数の種類の単位どうしの変更だけを許す（共通規則 SPEC-UNIT-D2）。`ProductUpdateRequest` に通常 field の `stock_unit: Option<ProductStockUnit>`（omitted / null は更新しない）を足し、`ProductUpdates.stock_unit` で UPDATE する。検査は §4.4 の手順 2 で（手順 2 の今の検査〈商品名・売価・原価・部門・取引先〉の後）、値を持ち今の単位と違うとき、今の単位と新しい単位がどちらも `stock_unit_kind` = `Count` でなければ `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")`。値が今の単位と同じなら、省くのは `stock_unit` の SET と detail_json の key `stock_unit` だけ（通常の UPDATE とログ行は §4.4 の手順 5・6 の今の契約のまま。BIZ-01-D7 の「変更した」の規則）。在庫・明細・価格は変えない（個数の単位の価格の基準数量はどれも 1）。単位の変更は `plu_dirty` の理由にならない（PLU の file は単位を持たない。§4.4 の手順 4 の売価の変更・手順 4b の対象化だけが立てる）。操作ログは BIZ-01-D7 の規則で key `stock_unit` に `{"old": code, "new": code}` を書く（商品 CSV の上書きの経路も同じ形、下の上書きの段）。
+- 原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`。原価の lane、D-128）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く）。どちらも detail_json の原価の key は `cost_price_centi`、値は 1/100 円の整数（同じ key に円と 1/100 円が混ざると、後から区別できない。ログは書き換えない契約）。原価の 1/100 円は開発・試験 DB を作り直した起点で入れる（D-119、22 §16 の vB）ので、key `cost_price`（円）の記録はその DB に無く、読む側（[74](74-ui-operation-logs.md) §74.8）は `cost_price_centi` だけを知ればよい。
+- 売価・原価・初期在庫の上限（共通規則の同じ節）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は 1/100 円で 0 以上 `99999999`（`MAX_COST_PRICE_CENTI`。越えれば `原価が大きすぎます`）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。初期在庫の負は、create が `初期在庫は0以上で入力してください`、商品 CSV（preview の行の error と commit）が `初期在庫の値が不正です: '{値}'`。
+- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 10 個の code か表示の語（`個` `枚` `本` `袋` `箱` `組` `セット` `玉` `丁` `m`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（commit も新規の行の単位を 10 個の code と確かめる）。vB で外した `cm`・`巻`・`roll` の行の error には、preview と commit の両方で `retired_stock_unit_hint` の直し方を添える（共通規則 SPEC-UNIT-D10）。
+- 上書き（§4.9 の `overwrite_codes`）の単位（D-119）: 正規化した `在庫単位` が既存の商品の単位と違う行は、今の単位と CSV の単位がどちらも個数の種類なら単位を `ProductUpdates.stock_unit` で上書きする。種類をまたぐか、どちらかが長さの単位なら行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: {登録の語}、CSV: {値}）`。commit は wire の行を信頼せず、TX の中で同じ規則で再検証し、外れれば `ValidationFailed` で TX 全体を戻す（文の `{値}` は wire の行の code）。wire の行の単位が 10 個の code に無ければ、新規の行と同じ `在庫単位が正しくありません: {code}` で TX 全体を戻す（preview は code に正規化した行だけを返すので、preview を通らない wire にだけ当たる）。空は今の単位のまま。種類をまたいで上書きできると、`m` の商品を `ball` で上書きしたときに在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
+  - `plu_dirty`: 上書きの行が、上書きで書く列（§4.9 の手順 2 a. の UPDATE が書く JAN・商品名・部門・売価・原価・税率と、CSV が値を持つときだけ書く取引先・メーカー品番・在庫連動・PLU対象）のうち `在庫単位` の他は全て既存の商品と同じ（単位だけの変更）なら `plu_dirty` を変えない（単位の変更は `plu_dirty` の理由にならない、上の update の段と同じ）。それ以外の上書きの行は §4.9 の手順 2 d. のとおり `plu_dirty=1`。
+  - 操作ログ: 単位を変えた商品ごとに、同じ TX の中で `product_update` のログを 1 行書き、summary は商品修正と同じ `商品を更新しました: {商品コード}`、detail_json は BIZ-01-D7 の形で key `stock_unit` だけを持つ（`{"stock_unit":{"old":code,"new":code}}`。同じ行で他の列が変わっても、上書きの経路は単位の key だけを書く。他の列の前後は今どおり記録しない）。§4.9 の手順 4 の件数の要約のログ（TX の外）は今のまま。理由: 商品修正の経路と同じ種類・同じ形なので操作ログ画面の読み方が 1 つで済み、TX の中なので単位を変えた commit にだけ必ず残り、商品ごとに元の単位を追える（件数の要約に前後の一覧を入れる案は TX の外で、書けなかったときに元の単位を失う）。
+- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は小数 2 桁までの円を `parse_hundredths`（`初期在庫` の m と同じ関数）で 1/100 円にする（SPEC-UNIT-D5・D10。行の error の分け方は D10）。`売価` は整数のまま。
 - 在庫計数 Excel の売価・原価は税抜で、アプリの売価は税込（台帳 TD-166）。Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む。
 
 ### 4.1 モジュール構成
@@ -49,9 +48,9 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 - name: String
 - department_id: i64
 - selling_price: i64
-- cost_price: i64
+- cost_price_centi: i64
 - tax_rate: ProductTaxRate（"10" / "8" / "0"）
-- stock_unit: ProductStockUnit（12 個の code。共通規則 SPEC-UNIT-D1）
+- stock_unit: ProductStockUnit（10 個の code。共通規則 SPEC-UNIT-D1）
 - initial_stock: i64（0なら在庫なし）
 - maker_code: Option<String>
 - supplier_id: Option<i64>
@@ -66,7 +65,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 1. **バリデーション**
    a. name が空文字 → BizError::ValidationFailed("商品名は必須です")
    b. selling_price < 0 → BizError::ValidationFailed("売価は0以上で入力してください")
-   c. cost_price < 0 → BizError::ValidationFailed("原価は0以上で入力してください")
+   c. cost_price_centi < 0 → BizError::ValidationFailed("原価は0以上で入力してください")
    d. tax_rate / stock_unit は wire 境界で `ProductTaxRate` / `ProductStockUnit` として型検査済み
    e. department_idの存在チェック → product_repo::find_department_by_id()。None → BizError::ValidationFailed("指定された部門が存在しません")
    f. supplier_idがSomeの場合 → 存在チェック。None → BizError::ValidationFailed("指定された取引先が存在しません")
@@ -174,14 +173,14 @@ fn update_product(conn: &mut DbConnection, product_code: &str, req: &ProductUpda
 ```
 
 **ProductUpdateRequest構造体**: 全フィールドがOption型
-- name, department_id, selling_price, cost_price, tax_rate, maker_code, supplier_id, pos_stock_sync, plu_target
-- （proposed・未実装、単位の語の直しの lane、D-119）stock_unit（通常 field。BIZ-01-D8 の個数の単位どうしの検査）
+- name, department_id, selling_price, cost_price_centi, tax_rate, maker_code, supplier_id, pos_stock_sync, plu_target
+- stock_unit（通常 field。BIZ-01-D8 の個数の単位どうしの検査）
 
 **部分更新wire契約（PRODUCT-PATCH-D1 / REQ-102）**:
 
 | field群 | JSON omitted | JSON null | JSON value |
 |---|---|---|---|
-| 通常field: `name`, `department_id`, `selling_price`, `cost_price`, `tax_rate`, `pos_stock_sync`, `plu_target`、`stock_unit`（proposed・未実装、単位の語の直しの lane、D-119） | 更新しない | 更新しない | 値を設定する |
+| 通常field: `name`, `department_id`, `selling_price`, `cost_price_centi`, `tax_rate`, `pos_stock_sync`, `plu_target`, `stock_unit` | 更新しない | 更新しない | 値を設定する |
 | clear可能field: `supplier_id`, `maker_code` | 更新しない | 値をclearする | 値を設定する |
 
 Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` とし、後者はmissingとnullを区別するcustom deserializerを維持する。`ProductUpdateRequest` 全体にserde defaultを明示して、tauri-spectaがcommand入力用のgenerated `ProductUpdateRequest_Deserialize`を全property optionalとして生成できるようにする。`ProductUpdateRequest_Serialize` はcommand入力契約ではなく、frontendは `_Deserialize` を直接使う。
@@ -190,12 +189,13 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
 1. product_repo::find_by_product_code(product_code) → existing
    - None → BizError::NotFound("商品が見つかりません")
 2. バリデーション（Someのフィールドのみ。create_productと同じルール）
+   - stock_unit は上の検査の後に、今の単位との個数の単位どうしの変更だけを許す（BIZ-01-D8）
 3. **トランザクション開始（BEGIN）**
 4. **価格変更チェック**
-   - selling_priceまたはcost_priceがSomeで、既存値と異なる場合:
+   - selling_priceまたはcost_price_centiがSomeで、既存値と異なる場合:
      - product_repo::insert_price_history() を呼ぶ
      - old_selling = existing.selling_price, new_selling = req.selling_price.unwrap_or(existing.selling_price)
-     - old_cost, new_costも同様
+     - old_cost_centi, new_cost_centiも同様
    - selling_priceが変わった場合 → updatesにplu_dirty=trueを追加
 4b. **plu_target / JAN 遷移チェック**（BIZ-01-D3 / SPEC-PLS-D4、D-117 (1)）
    - plu_target が Some で既存値 0 → 1 に変わる場合 → updatesにplu_dirty=trueを追加（レジ登録が新たに必要になったため）
@@ -213,7 +213,7 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
 - バリデーション失敗 → BizError::ValidationFailed
 - DB操作失敗 → ROLLBACK → BizError::DatabaseError
 
-**設計判断（BIZ-01-D7、商品修正の操作ログの detail_json、2026-10-06）**: detail_json は JSON object で、変更した field ごとに key を 1 つ持ち、値は `{"old": 変更前, "new": 変更後}` とする。key は ProductUpdateRequest の field 名（`name` / `department_id` / `supplier_id` / `selling_price` / `cost_price` / `tax_rate` / `maker_code` / `pos_stock_sync` / `plu_target`。proposed・未実装〈単位の語の直しの lane、D-119〉で `stock_unit`）。「変更した」は、request の field が値を持ち（clear 可能 field の JSON null を含む。PRODUCT-PATCH-D1）、更新前の商品の値と違うこと。値を持っても更新前と同じ field は書かない。値の型: `name` は文字列、`maker_code` は文字列か null（clear）、`department_id`・`selling_price`・`cost_price` は整数、`supplier_id` は整数か null（clear）、`tax_rate` は DB と同じ文字列（`"10"` / `"8"` / `"0"`）、`pos_stock_sync`・`plu_target` は真偽値、`stock_unit`（proposed・未実装、D-119）は code の文字列（`"pcs"` 等）。部門・取引先は products 表が持つ ID のまま書き、名前を引かない。JSON は serde_json で組み立て、文字列を手で連結しない（商品名の `"` や `\` で壊れた JSON を作らない）。key の順序は契約にしない。読む側は操作ログ画面（74 §74.8 の既知 key 要約と技術情報の raw JSON）。この形より前に書かれた記録（売価・原価の片方だけが変わっても両方を持つ）は書き換えない。
+**設計判断（BIZ-01-D7、商品修正の操作ログの detail_json、2026-10-06）**: detail_json は JSON object で、変更した field ごとに key を 1 つ持ち、値は `{"old": 変更前, "new": 変更後}` とする。key は ProductUpdateRequest の field 名（`name` / `department_id` / `supplier_id` / `selling_price` / `cost_price_centi` / `tax_rate` / `maker_code` / `pos_stock_sync` / `plu_target` / `stock_unit`）。「変更した」は、request の field が値を持ち（clear 可能 field の JSON null を含む。PRODUCT-PATCH-D1）、更新前の商品の値と違うこと。値を持っても更新前と同じ field は書かない。値の型: `name` は文字列、`maker_code` は文字列か null（clear）、`department_id`・`selling_price`・`cost_price_centi` は整数、`supplier_id` は整数か null（clear）、`tax_rate` は DB と同じ文字列（`"10"` / `"8"` / `"0"`）、`pos_stock_sync`・`plu_target` は真偽値、`stock_unit` は code の文字列（`"pcs"` 等）。部門・取引先は products 表が持つ ID のまま書き、名前を引かない。JSON は serde_json で組み立て、文字列を手で連結しない（商品名の `"` や `\` で壊れた JSON を作らない）。key の順序は契約にしない。読む側は操作ログ画面（74 §74.8 の既知 key 要約と技術情報の raw JSON）。この形より前に書かれた記録（売価・原価の片方だけが変わっても両方を持つ）は書き換えない。
 - 却下 (a) 売価・原価のどちらかが変わったら両方を書く今の形を残し、他の field だけを足す: field ごとに規則が違い、読む側が key の有無で「変えた field」を判断できない。
 - 却下 (b) request が値を持つ field を、変更の有無に関わらず全部書く: 変えていない値が並び、何を変えたかが読み取りにくい（owner の L3 所感 2026-09-10「更新したのに詳細情報なし」の起点は、何を変えたかが残らないこと）。
 - 却下 (c) 変更後の値だけを書く: step 6 の「変更前後」と `db-design/tracking-system-tables.md` §18 の「商品修正なら変更前後のフィールド名・値」に反する。
@@ -232,14 +232,14 @@ fn revise_product_price(
 ) -> Result<PriceRevisionResult, BizError>
 ```
 
-- `PriceRevisionInput { product_code, new_selling_price: i64, new_cost_price: i64, assign_supplier_id: Option<i64> }`
+- `PriceRevisionInput { product_code, new_selling_price: i64, new_cost_price_centi: i64, assign_supplier_id: Option<i64> }`
 - `PriceRevisionResult { product_code, changed: bool, plu_dirty_set: bool, supplier_assigned: bool }`
 
 **処理ステップ**:
 
-1. 商品を取得し、不存在は `BizError::NotFound` とする。`new_selling_price` / `new_cost_price` は 0 以上の整数だけを受け付ける
+1. 商品を取得し、不存在は `BizError::NotFound` とする。`new_selling_price`（円）/ `new_cost_price_centi`（1/100 円）は 0 以上の整数だけを受け付ける
 2. 売価・原価とも現値と同じなら価格改定は no-op（`changed=false`）。price_history と `product_price_revise` operation log は書かない
-3. 変更がある場合は 1 transaction で、価格改定用の部分更新、price_history の old/new 4 値（`old_selling` / `new_selling` / `old_cost` / `new_cost`）、`system_repo::insert_operation_log(operation_type = "product_price_revise")` を書く
+3. 変更がある場合は 1 transaction で、価格改定用の部分更新、price_history の old/new 4 値（`old_selling` / `new_selling` / `old_cost_centi` / `new_cost_centi`）、`system_repo::insert_operation_log(operation_type = "product_price_revise")` を書く
 4. `plu_dirty` は売価変更時のみ 1 にする。**原価のみの変更では plu_dirty を立てない**（PLU TSV に原価列はない）
 5. `assign_supplier_id` が Some の場合も、**supplier_id が NULL のときだけ**設定する。既存の非 NULL 値は上書きしない（SPEC-PRV-D6）。結果の `supplier_assigned` はこの成否を表す
 6. 途中失敗は products / price_history / operation_logs の変更をまとめて rollback する
@@ -433,7 +433,7 @@ struct ImportRow {
     name: String,
     department_id: i64,
     selling_price: i64,
-    cost_price: i64,
+    cost_price_centi: i64,
     tax_rate: String,
     stock_unit: Option<String>,     // 省略時 "pcs"
     initial_stock: Option<i64>,     // 省略時 0
@@ -443,6 +443,24 @@ struct ImportRow {
     pos_stock_sync: Option<bool>,   // 省略時 true
     plu_target: Option<bool>,       // 任意列「PLU対象」。空欄は None。`1` + JAN 不備は Some(false) へ正規化
     warnings: Vec<String>,          // preview warning（`1` + JAN 不備 等）。通常は空。wire では #[serde(default)]（PR #86 gated amendment 1）
+}
+```
+
+**ImportDuplicateRow構造体**:
+```
+struct ImportDuplicateRow {
+    line_no: usize,
+    import_row: ImportRow,
+    existing_product_code: String,
+    old_jan_question: Option<String>, // proposed・未実装（JAN の別名の runtime の lane、D-122）。前の JAN の問いを出す行だけ Some(前の JAN)。§4.9.2
+}
+```
+
+**OldJanAliasAnswer構造体**（proposed・未実装、D-122。`commit_import` の入力。Deserialize）:
+```
+struct OldJanAliasAnswer {
+    product_code: String, // 問いに「ある」と答えた上書きの行の商品コード
+    old_jan: String,      // その行の `old_jan_question` の値（問いで見せた前の JAN）をそのまま返す
 }
 ```
 
@@ -465,7 +483,7 @@ struct ImportRow {
    - 商品コード: 空でないこと。空でなければ 100 文字（UTF-16 code unit）以内であること。超過は「商品コードは100文字以内で入力してください」（BIZ-01-D5）
    - 商品名: 空でないこと
    - 部門ID: 整数変換可能、departments に存在すること
-   - 売価・原価: 0以上の整数
+   - 売価: 0以上の整数。原価: 小数 2 桁までの円（SPEC-UNIT-D10 の `原価` の行の error の分け方）
    - 税率: '10', '8', '0' のいずれか
    - `PLU対象=1` かつ JAN が 13 桁数字でない、または check digit 不正の場合は preview warning を付けて `plu_target=0` に正規化する
    - バリデーション失敗 → error_rows に追加
@@ -474,6 +492,7 @@ struct ImportRow {
    - product_code で product_repo::find_by_product_code(conn, code) を検索
    - 既存あり → duplicate_rows に追加
    - 既存なし → valid_rows に追加
+   - （proposed・未実装、JAN の別名の runtime の lane、D-122）全行の分類の後に、duplicate_rows の各行の `old_jan_question` を §4.9.2 の preview の判定で決め、JAN が別の商品の別名に当たる行（valid_rows と duplicate_rows）に §4.9.2 の warning を足す
 
 5. **結果返却**
    - ImportPreview { valid_rows, error_rows, duplicate_rows }
@@ -495,6 +514,7 @@ fn commit_import(
     conn: &mut DbConnection,
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
+    old_jan_aliases: Vec<OldJanAliasAnswer>, // proposed・未実装（JAN の別名の runtime の lane、D-122）。前の JAN の問いに「ある」と答えた上書きの行の商品コードと、問いで見せた前の JAN の組。空 = 全て「ない」。§4.9.2
 ) -> Result<ImportResult, BizError>
 ```
 
@@ -513,6 +533,8 @@ struct ImportResult {
    - TX を開く前に valid_rows の全行を §4.8 step 4 と同じ判定で調べる（wire から来る行を信頼しない）
    - 1 行でも 100 文字（UTF-16 code unit）を超えれば BizError::ValidationFailed("商品コードは100文字以内で入力してください") を返し、DB を変えない（正常な行も登録しない）
 
+0b. （proposed・未実装、D-122）**前の JAN の答えの形の検査**: TX を開く前に §4.9.2 の判定表の「TX を開く前」の行（J1・J2）を確かめ、満たさなければその行の error を返し、DB を変えない
+
 1. **TX開始**（conn.transaction()）
 
 2. **各行を処理**（TX内で直接 repo 関数を呼ぶ。create_product / update_product の BIZ 関数は内部でTXを開始するため、ネストTX回避のために呼ばない）
@@ -525,7 +547,8 @@ struct ImportResult {
       - `PLU対象` が `1` / `0` ならその値を適用する。ただし `1` で JAN 不備なら preview warning 済みの `0` を使う。列なし / 空欄は `is_discontinued=0 かつ jan_code が 13 桁数字なら 1、それ以外 0` の既存導出規則を使う
       - initial_stock > 0 → inventory_repo::insert_movement に receiving として記録
       - 進行中の棚卸し → stocktake_repo::insert_stocktake_item に自動追加
-   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（上書きは今どおり plu_target の値によらず plu_dirty=1。JAN の変更もこれで未反映になる。単位の語の直しの lane の後は、単位だけを変える行は plu_dirty を変えず、単位を変えた商品ごとに TX の中で `product_update` のログを書く。BIZ-01-D8 の上書きの段、D-119）
+   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（上書きは今どおり plu_target の値によらず plu_dirty=1。JAN の変更もこれで未反映になる。ただし単位だけを変える行は plu_dirty を変えず、単位を変えた商品ごとに TX の中で `product_update` のログを書く。BIZ-01-D8 の上書きの段、D-119）
+   e. （proposed・未実装、D-122）前の JAN の別名: 手順 1 の直後（行を処理する前）に §4.9.2 の判定表の「行を処理する前」の行（J3〜J5）を、全行を処理した後（COMMIT の前）に「全行を処理した後」の行（J6・J7）を、表の順に確かめる。全て満たせば組ごとに `product_repo::insert_jan_alias(old_jan, product_code)` で別名を書く。満たさない行があれば、その行の error（型・field・message は判定表）を返し、TX 全体を戻す。JAN を持った商品の別名は、DB の trigger が手順 a〜c の INSERT / UPDATE の中で消す（BIZ は消さない）
 
 3. **COMMIT**（tx.commit()）
 
@@ -539,6 +562,7 @@ struct ImportResult {
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
 - 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
+- （proposed・未実装、D-122）前の JAN の答えの形・別名の判定を満たさない → §4.9.2 の判定表の行の error（step 0b の行は DB を変えず、step 2 e. の行は TX 全体を戻す）
 
 **設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。
 
@@ -555,6 +579,48 @@ fn bulk_set_plu_target(
     plu_target: bool,
 ) -> Result<BulkPluTargetResult, BizError>
 ```
+
+### 4.9.2 前の JAN の別名（BIZ-01-D9、proposed・未実装、D-122）
+
+**関数要求**: 商品の JAN を直すときに「前の番号のバーコードが付いた現物は店にありますか」を 1 回聞き、「ある」と答えた商品だけ、前の JAN をその商品の別名として残す（owner の決定、repo 外の回答台帳 TD-284・TD-286）。「ない」（既定）なら別名を作らず、前の JAN で売れた分は売上の取込みの `unmatched_product` の行エラーで知らせる（[32](32-biz-csv-import-service.md) §15.3 手順 4 b。黙って誤った商品へ付けない）。別名の表と不変条件は [master-tables](../db-design/master-tables.md) §1a。
+
+**別名を作る条件**（3 つ全てを満たす商品だけ、前の JAN を別名にする）:
+
+1. 直す前の JAN（`A`）が空でない。
+2. 直す前に `A` を持つ商品がその商品 1 つだけ（`find_by_jan_code(A)` が 1 件）。共有 JAN（同じ JAN を複数の商品が持つ）の商品は、たどる先が 1 つに決まらないので聞かない（共有 JAN は店内コードまで在庫連動の外。owner の決定 TD-296 の 6b、[32](32-biz-csv-import-service.md) の D-118 の確定の段）。
+3. 直した後に `A` を持つ商品が無い（同じ取込みの他の行が `A` を持つなら別名を作らない。その行の商品が `A` で引き当たる）。
+
+問いを出すかと別名が成り立つかは分けて決める: 問いは下の「preview の判定」が上書きの選択に依らない部分だけで出し（広めに出る）、別名が成り立つかは下の「commit の判定」が実際の選択で決める。JAN を空にする変更（`A` → なし）も「直す」に入る。PLU の枠の有無・状態（`reserved` / `active` / `external` / 無し）は条件にしない（D-122 (2)。レジがアプリの JAN を別の枠にも持つ観測〈`external`〉があり、アプリはレジの枠を全部は知らない）。
+
+**経路**: 今 JAN を変える経路は商品 CSV の上書き（§4.9）だけ（商品フォームの edit は JAN を読取専用にする。UI-01b-D11）。JAN を変える経路を新しく作るときは、同じ問いの条件・答えの運び方・commit の判定をその経路に入れ、入れるまでは別名を作らない（答えの無い経路の既定は「ない」）。商品が JAN を持つ全ての経路（商品フォームの新規〈§4.2〉、商品 CSV の新規と上書き、将来の経路）で、その JAN の別名は DB の trigger が消す（BIZ は消さない。master-tables §1a）。
+
+**preview の判定**（§4.8 手順 5）: duplicate_rows の行 `r`（既存の商品 `P`）について、`P.jan_code = Some(A)`、`r.import_row.jan_code ≠ Some(A)`、DB で `A` を持つ商品が `P` だけ、新規の行（valid_rows）が `A` を持たない、の全てを満たせば `old_jan_question = Some(A)`、それ以外は `None`。上書きの選択に依らない条件だけで決める（ほかの重複行は、上書きするかが preview の時点で分からないので数えない。問いは広めに出る。ほかの重複行 `Q` の新しい JAN が `A` でも問いは出し、`Q` も上書きにして「ある」と答えた場合は commit の判定表の J6 が扱う）。**ほかの**重複行の上書きの選択から UI が問いの出し入れを判定し直す形は、判定の規則を UI に写すので採らない（判定は BIZ の 1 か所。その行自身の上書きの選択で問いを見せるかは [60](60-ui-product-import.md) UI-01c-D17）。
+
+**preview の warning**（§4.8 手順 5）: 行の JAN が別名の表にあり、その別名の商品が行の商品と違うとき、`ImportRow.warnings` に「JAN {A} は商品 {別名の商品コード} の前の番号として売上をたどっています。取り込むと、この番号の売上はこの行の商品へ入ります」を足す（取込みは拒まない。DB の trigger が別名を消す）。行の商品が別名の商品と同じ（前の JAN へ戻した）ときは出さない。下の J5 はこの warning を利用者に見せた証拠として扱い、画面が 50 行の表示の制限と別に全件を見せる（[60](60-ui-product-import.md) UI-01c-D17）。
+
+**答えの運び方**: UI-01c は `old_jan_question` が `Some` の重複行に問いを出し（既定「ない」）、送る集合を次の 1 式で作って `commit_import` の `old_jan_aliases` に載せる（[60](60-ui-product-import.md) UI-01c-D17 も同じ式、[42](42-cmd-sales-stocktake.md) §22.6）: `{ (r.import_row.product_code, r.old_jan_question) | r ∈ duplicate_rows, r.old_jan_question が Some, r に「上書き」を選んだ, r の答えが「ある」 }`。`old_jan` は問いで見せた値をそのまま返す（UI は書き換えない）。空の一覧は全て「ない」。
+
+**commit の判定**（§4.9 手順 0b・2 e.。判定・error・回復の置き場はこの表だけで、§4.9・[42](42-cmd-sales-stocktake.md) §22.6・[60](60-ui-product-import.md) UI-01c-D17 はこの表を引く）: 下の行を上から順に確かめ、最初に満たさない行の error を返す。組 `(P, A)` は `old_jan_aliases` の 1 つの組（`P` = `product_code`、`A` = `old_jan`）で、組と行は送られた順に見る。J1・J2 は TX を開く前で DB を変えない。J3〜J7 は TX の中で、満たさなければ TX 全体を戻す（preview の後に DB が変わった場合。答えを黙って捨てず、問いで見せていない番号を別名にせず、別名の warning を見せずに別名を消さない〈TD-310 の原則〉）。名指す `{Q}`・`{商品コード}` が複数あるときは valid_rows の順で最初の行の商品。全ての行を満たせば組ごとに `insert_jan_alias(A, P)`。
+
+| # | 時点 | 条件 | 満たさないときの error（型・field・message） | 回復（[60](60-ui-product-import.md) UI-01c-D17） |
+|---|---|---|---|---|
+| J1 | TX を開く前（手順 0b） | 各組の `product_code` が `overwrite_codes` にあり、`old_jan` が空でない | `BizError::ValidationFailed`（field なし）「前の番号の答えは、上書きする行にだけ付けられます」 | UI が上の「答えの運び方」の 1 式で送る限り起きない。起きたら preview し直す |
+| J2 | TX を開く前（手順 0b） | 同じ `product_code` に違う `old_jan` の組が無い（同じ組の重複は 1 つとして扱う） | `BizError::ValidationFailed`（field なし）「前の番号の答えが同じ商品に 2 つあります」 | J1 と同じ |
+| J3 | 行を処理する前（手順 2 e.） | 組ごとに、商品 `P` があり、`P.jan_code = A`（問いで見せた前の JAN と DB の今の JAN が同じ） | `BizError::ValidationFailed`（field なし）「商品 {P} の JAN が確認の後に変わりました。もう一度プレビューしてください」 | ファイルを選び直して preview し直す（preview が今の DB で問いを出し直す） |
+| J4 | 行を処理する前（手順 2 e.） | 組ごとに、`A` を持つ商品が `P` だけ | `BizError::ValidationFailed`（field なし）「前の番号 {A} を商品 {P} のほかにも持つ商品があります（共有になりました）。もう一度プレビューしてください」 | J3 と同じ（共有になった `A` には問いは出なくなり、`A` の売上は [32](32-biz-csv-import-service.md) §15.3 手順 4 b の既存の共有 / 1 件ヒットの規則に従う） |
+| J5 | 行を処理する前（手順 2 e.） | 答えの有無に依らず、取込みの行（valid_rows の新規の行と上書きを選んだ重複行）ごとに、行の JAN `A` が別名の表にあり、その別名の商品 `X` が行の商品と違うなら、行の `warnings` に、`A` と今の `X` で上の「preview の warning」の文を作った文字列と一致する要素がある（preview の後に別の取込みで別名ができた、または別名の商品が変わった行を見つける） | `BizError::ValidationFailed`（field なし）「前の番号 {A} が確認の後に商品 {X} の別名になりました。もう一度プレビューしてください」 | J3 と同じ（preview し直すと warning が出て、その画面で取り込むかを決められる） |
+| J6 | 全行を処理した後（手順 2 e.、COMMIT の前） | 組ごとに、上書きを選んだ別の重複行 `Q` が `A` を持たない（実際の `overwrite_codes` で判定する条件 3） | `BizError::ValidationFailedAt { field: "old_jan_aliases", message }`、message「商品 {Q} の行が前の番号 {A} を使うので、商品 {P} の問いは『ない』にしてください」 | UI が preview・答え・上書きの選択を保ったまま message を出し、`P` の答えを「ない」に直すか `Q` をスキップすれば、preview をやり直さずにもう一度確定できる（field `old_jan_aliases` はこの行だけで、増える wire はこの field の値だけ） |
+| J7 | 全行を処理した後（手順 2 e.、COMMIT の前） | 組ごとに、J6 のほかに `A` を持つ商品が無い（`P` の行が `A` を直していない、新規の行が `A` を持つ。preview の後に変わった場合だけ起きる） | `BizError::ValidationFailed`（field なし）「前の番号 {A} を取込みの後も持つ商品があります（{商品コード}）。もう一度プレビューしてください」 | J3 と同じ |
+
+UI は回復を field の値で分ける（field `old_jan_aliases` = J6、field なし = ほかの行）。CMD は既存の変換で型と field をそのまま写す（[42](42-cmd-sales-stocktake.md) §22.3・§22.6）。
+
+**そのほかの限界**（受け入れ済み。D-122 の Guarantee range）: 先に別の経路（別の CSV の取込み）で前の JAN を直して「ない」と答えた後に、「ある」にする手段は無い（問いは JAN を直すときの 1 回だけ。別名を消す画面を持たないことと対）。
+
+**共有 JAN との関係**: 別名は D-118 の共有 JAN の不変条件（変更の後に在庫連動の商品と同じ JAN を持つ別の商品があってはならない）の「同じ JAN を持つ別の商品」に数えない。不変条件（どの商品も持たない JAN だけが別名）により、別名で引き当てる JAN を商品が持つことは無いので、引き当てで別名と商品が競らない。
+
+**理由と却下**（詳細は decision-log D-122）: 問いを JAN を変える経路の 1 か所に置き、消すのは DB の trigger に任せる。却下: 前の JAN の枠（`plu_slots`）の列に別名を持たせる（D-117 の round 1 の形。枠の状態の CHECK と照合の遷移に継ぎ目ができる）、JAN を書く経路ごとに別名を消す（経路の挙げ漏れで古い別名が生き返る）、`product_repo` の INSERT / UPDATE の関数の中で消す（`products.jan_code` を別の SQL で書く将来の経路・migration が漏れる）、答えの合わない commit で別名を書かずに続ける（「ある」の答えが黙って消え、その番号の売上が行エラーになる理由が分からない）。
+
+**Revisit**: 商品フォームの edit で JAN を変えられるようにするとき（同じ問いを足す）。別名の一覧・削除の画面が要る事情が出たとき（誤って「ある」と答えた別名を消すには、今はその JAN を持つ商品を登録するか開発者が消す）。売上の引き当て以外（商品検索・棚卸し・入庫のバーコードの読取り）でも前の JAN を引きたい事情が出たとき。
 
 ### 4.10 BizError列挙型（Phase 5 拡張）
 

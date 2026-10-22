@@ -15,7 +15,7 @@ describe("return exchange row utils (UI-03 / REQ-202)", () => {
         name: "交換商品",
         department_name: "布",
         stock_quantity: 12,
-        stock_unit: "cm",
+        stock_unit: "m",
       }),
       "out",
     );
@@ -24,7 +24,7 @@ describe("return exchange row utils (UI-03 / REQ-202)", () => {
       productCode: "RT-001",
       productName: "交換商品",
       departmentName: "布",
-      stockUnit: "cm",
+      stockUnit: "m",
       currentStockQuantity: 12,
       direction: "out",
       quantity: "1",
@@ -63,15 +63,15 @@ describe("return exchange row utils (UI-03 / REQ-202)", () => {
 
 describe("return exchange row utils の単位ごとの数量（REQ-202 / UI-03-D12 / SPEC-UNIT-D3）", () => {
   const meter = makeMockProductWithRelations({ product_code: "RT-M", stock_unit: "m" });
-  const centi = makeMockProductWithRelations({ product_code: "RT-CM", stock_unit: "cm" });
+  const pieces = makeMockProductWithRelations({ product_code: "RT-PCS", stock_unit: "pcs" });
 
-  it("REQ-202: 再追加は m が +1 m（1.3 → 2.3）、cm は今どおり +1（130 → 131）", () => {
+  it("REQ-202: 再追加は m が +1 m（1.3 → 2.3）、個数は +1（3 → 4）", () => {
     const readd = (product: typeof meter, quantity: string) =>
       addProductToReturnRows([{ ...productToReturnRow(product, "in"), quantity }], product, "in")[0]
         ?.quantity;
     expect(productToReturnRow(meter, "in").quantity).toBe("1");
     expect(readd(meter, "1.3")).toBe("2.3");
-    expect(readd(centi, "130")).toBe("131");
+    expect(readd(pieces, "3")).toBe("4");
     expect(readd(meter, "abc")).toBe("1");
   });
 

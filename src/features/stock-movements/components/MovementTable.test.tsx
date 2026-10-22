@@ -135,7 +135,7 @@ describe("MovementTable の単位（REQ-303 / UI-06c-D5）", () => {
         stockUnitByProductCode={
           new Map([
             ["M-1", "m"],
-            ["CM-1", "cm"],
+            ["CM-1", "m"],
             ["PCS-1", "pcs"],
           ])
         }
