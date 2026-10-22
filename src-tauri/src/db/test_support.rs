@@ -31,7 +31,7 @@ pub fn seed_product(conn: &DbConnection, product_code: &str) {
         department_id: 1,
         supplier_id: None,
         selling_price: 500,
-        cost_price: 300,
+        cost_price_centi: 300,
         tax_rate: "10".to_string(),
         maker_code: None,
         stock_quantity: 0,
@@ -43,6 +43,25 @@ pub fn seed_product(conn: &DbConnection, product_code: &str) {
         pos_stock_sync: true,
     };
     product_repo::insert_product(conn, &product).unwrap();
+}
+
+/// 在庫つきの商品の fixture が、写しと同じ値の初期在庫の movement を入れるヘルパー（Matrix T3・T4）
+///
+/// `movement_type` は `receiving`、`reference_type` は NULL、業務日は固定の `2026-04-01`。
+/// 写しを記録から求め直す経路（D-118 (a)）を通す test が、写しと記録を揃えるのに使う
+pub fn insert_initial_stock_movement(
+    conn: &DbConnection,
+    product_code: &str,
+    quantity: i64,
+    stock_after: i64,
+) {
+    conn.execute(
+        "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
+             note, created_at, business_date, phase)
+         VALUES (?1, 'receiving', ?2, ?3, '初期在庫投入', '2026-04-01T09:00:00', '2026-04-01', 0)",
+        rusqlite::params![product_code, quantity, stock_after],
+    )
+    .unwrap();
 }
 
 /// テスト用に取引先を作成するヘルパー
@@ -89,7 +108,7 @@ pub const LEGACY_ITEM_KINDS: [(&str, i64, &str); 8] = [
 /// （`legacy_stop_tests` の F3 と同じ形。旧 BIZ の `legacy_*` は呼ばない）。合成値だけ
 pub fn seed_legacy_fixture(conn: &DbConnection) {
     conn.execute_batch(
-        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price,
+        "INSERT INTO products (product_code, jan_code, name, department_id, selling_price, cost_price_centi,
             tax_rate, stock_quantity, stock_unit, is_discontinued, plu_dirty, pos_stock_sync,
             created_at, updated_at) VALUES
          ('LG-MEAS','2900000010001','合成旧A',1,100,50,'10',3,'pcs',0,1,1,'2026-03-01T09:00:00','2026-03-01T09:00:00'),
@@ -103,7 +122,7 @@ pub fn seed_legacy_fixture(conn: &DbConnection) {
          (1,'2026-03-01T09:00:00','2026-03-01T18:00:00','completed',150),
          (2,'2026-03-02T09:00:00',NULL,'in_progress',NULL);
          INSERT INTO stocktake_items
-            (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at) VALUES
+            (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at) VALUES
          (1,'LG-MEAS',3,3,50,'2026-03-01T10:00:00'),
          (2,'LG-UNC',4,NULL,NULL,NULL),
          (2,'LG-AUTO',0,0,NULL,NULL),
@@ -120,9 +139,34 @@ pub fn seed_legacy_fixture(conn: &DbConnection) {
             source_line_no, created_at) VALUES
          (1,'LG-MEAS','2026-03-20',1,100,'auto',3,'2026-03-20T20:00:00');
          INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
-            reference_type, reference_id, created_at) VALUES
-         ('LG-MEAS','stocktake',0,4,'stocktake',1,'2026-03-01T18:00:00'),
-         ('LG-MEAS','sale_auto',-1,3,'csv_import',1,'2026-03-20T20:00:00');",
+            reference_type, reference_id, created_at, business_date, phase) VALUES
+         ('LG-MEAS','stocktake',0,4,'stocktake',1,'2026-03-01T18:00:00', '2026-04-01', 0),
+         ('LG-MEAS','sale_auto',-1,3,'csv_import',1,'2026-03-20T20:00:00', '2026-04-01', 0);",
     )
     .unwrap();
+}
+
+/// SQL の結果の全行（test の比較用）
+pub(crate) fn dump(conn: &DbConnection, sql: &str) -> Vec<Vec<rusqlite::types::Value>> {
+    let mut statement = conn.prepare(sql).unwrap();
+    let columns = statement.column_count();
+    statement
+        .query_map([], |row| (0..columns).map(|i| row.get(i)).collect())
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap()
+}
+
+/// `products` の定義（列の名前・順・型・notnull・既定値・pk、自身の FK、index）。
+/// 作り直しの migration（v8 の vU・v10 の vB）の前後比較に使う
+pub(crate) fn products_definition(conn: &DbConnection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+    vec![
+        dump(conn, "SELECT * FROM pragma_table_info('products')"),
+        dump(conn, "SELECT * FROM pragma_foreign_key_list('products')"),
+        dump(
+            conn,
+            "SELECT name, sql FROM sqlite_master
+             WHERE type = 'index' AND tbl_name = 'products' ORDER BY name",
+        ),
+    ]
 }

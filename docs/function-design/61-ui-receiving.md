@@ -1,5 +1,7 @@
 # 61. UI-02: 入庫記録
 
+> **計数の置き場と在庫の求め直し（D-118。(a) は実装済み、(b) は proposed・未実装）**: この画面の日付の欄の意味は「品が動いた日」（入庫は品が店に届いた日で、納品書の日付ではない）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。(a) で入ったのは、この日付を業務日として movement に書くこと（`biz/inventory_service/common.rs` の `validate_business_date`）と、計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`）。計数を保存する公開の経路・精算の窓・この画面への反映は (b)。欄の見出し・説明の文言の細部は runtime の lane。
+
 > 対応仕様: REQ-201 / REQ-209 / UI-02
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-02、`docs/architecture/cmd-task-specs.md` CMD-02、`docs/architecture/biz-task-specs.md` BIZ-02、`docs/function-design/31-biz-inventory-service.md`、`docs/function-design/44-cmd-inventory.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md` §5.3
@@ -24,7 +26,7 @@
 | REQ-201 / product add | UI-02-D4 | 商品追加欄は商品コード / JAN / 商品名を同じ入力で扱い、Enter で `commands.searchProducts` を実行する。1件なら明細へ追加、複数件なら候補リストから選ぶ、0件なら商品登録への導線を出す。 | 未登録商品の作成を入庫画面内に持ち込むと UI-01b の validation と重複する。REQ-201 の「未登録商品」は `/products/new` へ逃がす。 |
 | REQ-201 / scanner | UI-02-D5 | バーコードスキャナは HID キーボードとして商品追加欄へ入力される前提にする。初回実装はグローバルスキャン検知を置かず、フォーカス中の入力欄 + Enter で追加し、追加後は商品追加欄へフォーカスを戻す。 | 20ms 間隔などのグローバル検知は入力中の誤検知やフォーカス奪取リスクがある。実店舗確認前に全画面へ広げない。 |
 | REQ-201 / rows | UI-02-D6 | 同じ `product_code` を再追加した場合は既存行の数量を +1 し、重複行を増やさない。原価は既存行の値を維持し、必要なら利用者が編集する。 | 連続スキャンでは同一商品の数量増加が自然。重複明細を許すと確認負荷が上がる。原価差のある入庫は手入力で調整できる。 |
-| REQ-201 / quantities | UI-02-D7 | 数量は整数 `> 0`、原価は整数 `>= 0` として保存前に frontend で止める。生地は `stock_unit='cm'` を表示し、cm 整数で入力する。 | BIZ-02 も同じ validation を持つが、operator-facing form では保存前に日本語 field error を出す。m 表示切替は横断表示方針で扱うため非 scope。 |
+| REQ-201 / quantities | UI-02-D7 | 数量は `> 0`（個数の商品は整数、`m` の商品は m で小数 2 桁まで受けて cm に直す。上限は `9999999`）、原価は小数 2 桁までの円 `>= 0`（上限は `999999.99`。送る値は 1/100 円の `cost_price_centi`。`決定（owner、D-113 J2）`、SPEC-UNIT-D5。error の文は `原価は0以上で、小数は2桁までで入力してください`、欄は `inputMode="decimal"`・`step="0.01"`）として保存前に frontend で止める。行の原価の初期値は商品の原価の入力の欄の初期値の文字列（8333 → `83.33`）。原価小計・合計は BIZ が返す値（丸めは TD-023 と同じ、`決定（owner、D-113 J3）`）。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D5・D6。 | BIZ-02 も同じ validation を持つが、operator-facing form では保存前に日本語 field error を出す。m 表示切替は横断表示方針で扱うため非 scope。 |
 | REQ-201 / idempotency | UI-02-D8 | `idempotency_key` は画面で1保存試行単位に生成し、保存失敗後の同内容再試行では同じ key を再利用する。保存成功、フォームリセット、別伝票開始、または保存失敗後に伝票内容を編集して再送する場合は新しい key にする。 | 通信・内部エラー後の同内容再送で二重入庫を避ける。BIZ fingerprint は `note` を除外するため、同じ key のまま note だけ変えても保存済み伝票へ反映されない。fingerprint 対象項目を変えると conflict になるため、編集再送は新規伝票試行として扱う。 |
 | REQ-201 / submit | UI-02-D9 | 保存中はヘッダ、明細、商品追加、戻る/リセット導線を disabled にし、中断可能に見せない。 | backend は単一 TX。UI だけで cancel 可能に見せると在庫反映状態を誤認させる。 |
 | REQ-201 / result | UI-02-D10 | 保存成功後は record_id、登録明細数、stock_warnings、`idempotent_replay` の有無を表示し、「続けて入庫」「在庫照会へ戻る」の導線を出す。 | 店頭作業では連続入庫があり得る。保存済みの証跡は record_id と件数で確認できるようにする。 |
@@ -73,7 +75,7 @@ src/
 | `result` | 保存完了 | result panel、続けて入庫、在庫照会へ戻る | `reset_for_next` / navigation |
 | `submit_error` | 保存失敗 | Alert + 入力保持 + 再実行 | `submit_same_request` / `edit_as_new_attempt` |
 
-フォーム state は `receivingDate`, `supplierId`, `note`, `rows`, `idempotencyKey` を持つ。`rows` は `productCode`, `productName`, `stockUnit`, `currentStockQuantity`, `quantity`, `costPrice` を持つ UI 内部型とし、command payload には `product_code`, `quantity`, `cost_price` だけを送る。`submit_error` 後に同内容を再送する場合は `idempotencyKey` を保持し、入力を編集して再送する場合は新しい `idempotencyKey` を採番する。
+フォーム state は `receivingDate`, `supplierId`, `note`, `rows`, `idempotencyKey` を持つ。`rows` は `productCode`, `productName`, `stockUnit`, `currentStockQuantity`, `quantity`, `costPrice` を持つ UI 内部型とし、command payload には `product_code`, `quantity`, `cost_price_centi` だけを送る。`submit_error` 後に同内容を再送する場合は `idempotencyKey` を保持し、入力を編集して再送する場合は新しい `idempotencyKey` を採番する。
 
 ## 61.4 Command / DTO Contract
 
@@ -98,7 +100,7 @@ UI-02 実装 PR では以下を generated binding に出す。
   supplier_id: number | null,
   receiving_date: "YYYY-MM-DD",
   note: string | null,
-  items: [{ product_code: string, quantity: number, cost_price: number }]
+  items: [{ product_code: string, quantity: number, cost_price_centi: number }]
 }
 ```
 
@@ -113,7 +115,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 - 商品追加欄は `商品コード・JAN・商品名で追加` とし、Enter で検索する。候補が複数ある場合は小さな候補リストで商品名、商品コード、部門、現在庫を見せる。
 - 商品追加欄は入力中に live 候補プレビュー（商品コード・商品名・部門、最大 5 件 + 超過 footer）を表示する（UI-02-D14、挙動契約は catalog ⑮ SPEC-SUGGEST-D1〜D11）。候補は ↓/↑ または click で選択でき、候補未選択の Enter は従来どおり検索を実行する。入力値が変わると候補は即座に閉じる。
 - 商品が見つからない場合は `商品登録へ` 導線を出す。入庫フォームは自動保存しないため、明細・入力がある状態での離脱（`商品登録へ` 導線を含む）は未保存編集の離脱ガード（UI_TECH_STACK §6.11 `useUnsavedChangesWarning`）が破棄確認を出す。
-- 明細表は商品名、商品コード、現在庫、入庫数量、原価、単位、行削除を表示する。生地は `cm` 単位を主表示にする。
+- 明細表は商品名、商品コード、現在庫、入庫数量、原価、単位、行削除を表示する。長さの商品の現在庫は m で出し、`m` の商品の数量は m で入力する（[共通規則](10-common-rules.md) SPEC-UNIT-D3）。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
 - 保存ボタンは `入庫を記録`。保存成功後は result panel へ移り、フォーム本文は操作不可にする。保存結果の「詳細を見る」は UI-02-D16 に従って現在の入庫画面 URL を `returnTo` として送る。保存結果や保存系エラーの Alert はページ先頭側に出るため、保存成功または command 失敗時はページ先頭へスクロールする。
 - 保存成功時に `cost_diffs` が 1 件以上なら原価差分ダイアログを表示する。説明文は、入庫の記録は保存済みであること、「マスタ原価をこの実原価に更新する」を選ぶと商品マスタの原価が今回の実原価に変わること、「見送って閉じる」を選ぶと入庫記録はそのまま残り商品マスタの原価は変わらないこと、の 3 点を明記する。各カードは商品名を一意見出しとして、商品コード・マスタ原価・今回の実原価を日本語ラベルで示し、状態を色だけに依存させない。「マスタ原価をこの実原価に更新する」は商品単位で実行し、成功 / 失敗を同じカードで判別できるようにする（UI-02-D15 / DSR-16）。更新成功後はカードのマスタ原価表示を更新後の値へ反映する。全行の更新が完了した場合、ダイアログ下部の閉じるボタンの文言を状態対応（「閉じる」）に変える。原価差分ダイアログは明示ボタンのみで閉じる（外側クリック・Escape・× では閉じない）。
@@ -155,7 +157,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 - UI-02-D3: `listSuppliers` 失敗時も取引先未指定保存が可能。取引先欄は picker dialog 経由で選択・追加できる（検索 / 追加 / 自動選択で閉じる）。
 - UI-02-D4/D5: 商品追加欄 Enter で検索し、1件なら行追加、複数件なら候補選択、0件なら商品登録導線を出す。
 - UI-02-D6: 同一 `product_code` の再追加で数量が +1 され、重複行を増やさない。
-- UI-02-D7: 数量/原価 validation と `cm` 単位表示。
+- UI-02-D7: 数量/原価（小数 2 桁の円・1/100 円の送信）validation と長さの商品の m の入力と表示。原価差分の dialog の原価は SPEC-UNIT-D5 の formatter（`¥83.33`）で出し、更新は `new_cost_price_centi`（UI-02-D15）。
 - UI-02-D8: 同内容 retry 時に `idempotency_key` を再利用し、成功/リセット/編集再送後は新規 key になる。
 - UI-02-D9: submitting 中は戻る/リセット/入力/商品追加が disabled になる。
 - UI-02-D10: result で record_id、明細数、warning、idempotent replay が読め、保存成功時にページ先頭へスクロールする。

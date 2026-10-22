@@ -397,7 +397,7 @@ describe("DailyReportImportPage_req401", () => {
 
     const dailySalesLink = await screen.findByRole("link", { name: "日次売上を見る" });
     const rollbackButton = screen.getByRole("button", { name: "取り消す" });
-    // Z004 側 ResultStep.tsx L67 と同型の `flex flex-wrap gap-2` container 配下に
+    // Z004 側 src/features/csv-import/components/ResultStep.tsx の action の container と同型の `flex flex-wrap gap-2` container 配下に
     // 両方の action が並ぶことを確認する（間隔調整ではなく構造化、Plan Review round 1 P3-3）。
     const buttonRow = dailySalesLink.closest("div");
     expect(buttonRow).not.toBeNull();

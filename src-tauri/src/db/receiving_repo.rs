@@ -4,6 +4,7 @@
 
 use super::inventory_common::{validate_and_offset, ListQuery};
 use super::inventory_repo::MovementRecord;
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError, PaginatedResult};
 
 // ---------------------------------------------------------------------------
@@ -28,7 +29,7 @@ pub struct NewReceivingItem {
     pub receiving_record_id: i64,
     pub product_code: String,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
 }
 
 /// 入庫記録一覧表示用（supplier_name JOIN済み）
@@ -49,10 +50,12 @@ pub struct ReceivingRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
-    pub cost_price: i64,
-    pub line_cost: i64,
+    pub cost_price_centi: i64,
+    /// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+    // repo は空で返し、BIZ が必ず埋める
+    pub line_cost_centi: String,
 }
 
 /// 入庫記録詳細
@@ -66,6 +69,8 @@ pub struct ReceivingRecordDetail {
     pub status: String,
     pub created_at: String,
     pub items: Vec<ReceivingRecordDetailItem>,
+    /// 原価合計（円。行の金額の和を円未満で四捨五入した値。SPEC-UNIT-D6）
+    // repo は 0 で返し、BIZ が必ず埋める
     pub total_cost: i64,
     pub movements: Vec<MovementRecord>,
 }
@@ -100,13 +105,13 @@ pub fn insert_receiving_record(
 /// receiving_items に1行INSERT
 pub fn insert_receiving_item(conn: &DbConnection, item: &NewReceivingItem) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+        "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi)
          VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![
             item.receiving_record_id,
             item.product_code,
             item.quantity,
-            item.cost_price,
+            item.cost_price_centi,
         ],
     )?;
     Ok(())
@@ -225,8 +230,7 @@ pub fn get_receiving_record_detail(
             d.name,
             p.stock_unit,
             ri.quantity,
-            ri.cost_price,
-            ri.quantity * ri.cost_price AS line_cost
+            ri.cost_price_centi
          FROM receiving_items ri
          JOIN products p ON p.product_code = ri.product_code
          JOIN departments d ON d.id = p.department_id
@@ -240,14 +244,13 @@ pub fn get_receiving_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
-                cost_price: row.get(6)?,
-                line_cost: row.get(7)?,
+                cost_price_centi: row.get(6)?,
+                line_cost_centi: String::new(),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    let total_cost = items.iter().map(|item| item.line_cost).sum();
 
     let mut movement_stmt = conn.prepare(
         "SELECT id, product_code, movement_type, quantity, stock_after,
@@ -284,7 +287,7 @@ pub fn get_receiving_record_detail(
         status: "active".to_string(),
         created_at,
         items,
-        total_cost,
+        total_cost: 0,
         movements,
     })
 }
@@ -340,7 +343,7 @@ mod tests {
             receiving_record_id: record_id,
             product_code: "TEST-RCV".to_string(),
             quantity: 10,
-            cost_price: 300,
+            cost_price_centi: 300,
         };
         insert_receiving_item(&conn, &item).unwrap();
 
@@ -393,7 +396,7 @@ mod tests {
             receiving_record_id: record_id,
             product_code: "NONEXISTENT".to_string(),
             quantity: 1,
-            cost_price: 100,
+            cost_price_centi: 100,
         };
         let result = insert_receiving_item(&conn, &item);
         assert!(
@@ -413,7 +416,7 @@ mod tests {
             receiving_record_id: 9999,
             product_code: "TEST-FKR".to_string(),
             quantity: 1,
-            cost_price: 100,
+            cost_price_centi: 100,
         };
         let result = insert_receiving_item(&conn, &item);
         assert!(
@@ -579,14 +582,14 @@ mod tests {
                 receiving_record_id: record_id,
                 product_code: "RCV-DET".to_string(),
                 quantity: 4,
-                cost_price: 250,
+                cost_price_centi: 250,
             },
         )
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at) \
-             VALUES ('RCV-DET', 'receiving', 4, 14, 'receiving_record', ?1, '入庫', 0, '2026-06-27T09:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase) \
+             VALUES ('RCV-DET', 'receiving', 4, 14, 'receiving_record', ?1, '入庫', 0, '2026-06-27T09:00:00', '2026-04-01', 0)",
             rusqlite::params![record_id],
         )
         .unwrap();
@@ -600,8 +603,10 @@ mod tests {
         assert_eq!(detail.status, "active");
         assert_eq!(detail.items.len(), 1);
         assert_eq!(detail.items[0].product_code, "RCV-DET");
-        assert_eq!(detail.items[0].line_cost, 1000);
-        assert_eq!(detail.total_cost, 1000);
+        // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
+        assert_eq!(detail.items[0].quantity, 4);
+        assert_eq!(detail.items[0].cost_price_centi, 250);
+        assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
         assert_eq!(detail.movements.len(), 1);
         assert_eq!(
             detail.movements[0].reference_type,

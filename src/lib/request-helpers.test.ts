@@ -30,22 +30,25 @@ import {
 
 // Traceability: REQ-201 REQ-202 REQ-203 REQ-204
 
+// 数量の欄の parse は `@/lib/unit-quantity` の `parseQuantityInput` へ移った（SPEC-UNIT-D3、X1）。
+// ここで数えるのは、数量の欄以外（販売金額）に残る `parseRequiredSafeInteger` の呼出し。
+// 原価の欄は `parseCostInput`（小数 2 桁までの円 → 1/100 円。SPEC-UNIT-D5）に移った。
 const REQUEST_MODULES = [
   {
     repoPath: "src/features/receiving/lib/receiving-request.ts",
-    integerCallCount: 2,
+    integerCallCount: 0,
   },
   {
     repoPath: "src/features/manual-sale/lib/manual-sale-request.ts",
-    integerCallCount: 2,
+    integerCallCount: 1,
   },
   {
     repoPath: "src/features/disposal/lib/disposal-request.ts",
-    integerCallCount: 4,
+    integerCallCount: 0,
   },
   {
     repoPath: "src/features/return-exchange/lib/return-exchange-request.ts",
-    integerCallCount: 1,
+    integerCallCount: 0,
   },
 ] as const;
 
@@ -134,7 +137,7 @@ describe("request builder shared primitives", () => {
       "receiving-key",
     );
     expect(receiving.request?.items).toEqual([
-      { product_code: "RC-001", quantity: 1, cost_price: 0 },
+      { product_code: "RC-001", quantity: 1, cost_price_centi: 0 },
     ]);
 
     const manualSale = buildManualSaleRequest(
@@ -152,6 +155,7 @@ describe("request builder shared primitives", () => {
             unitPrice: 0,
             quantity: "1",
             amount: "0",
+            amountEdited: false,
           },
         ],
       },
@@ -186,7 +190,7 @@ describe("request builder shared primitives", () => {
         product_code: "DP-001",
         disposal_type: "damage",
         quantity: 1,
-        cost_price: 0,
+        cost_price_centi: 0,
         reason: "破損",
       },
     ]);
@@ -234,7 +238,7 @@ describe("request builder shared primitives", () => {
       "receiving-key",
     );
     expect(receivingBelowMin.errors.rows?.["RC-001"]).toBe(
-      "数量は1以上の整数で入力してください / 原価は0以上の整数で入力してください",
+      "数量は1以上の整数で入力してください / 原価は0以上で、小数は2桁までで入力してください",
     );
 
     const manualSaleBelowMin = buildManualSaleRequest(
@@ -252,6 +256,7 @@ describe("request builder shared primitives", () => {
             unitPrice: 0,
             quantity: "0",
             amount: "-1",
+            amountEdited: false,
           },
         ],
       },
@@ -284,7 +289,7 @@ describe("request builder shared primitives", () => {
       "disposal-key",
     );
     expect(disposalBelowMin.errors.rows?.["row-1"]).toBe(
-      "数量は1以上の整数で入力してください / 原価は0以上の整数で入力してください",
+      "数量は1以上の整数で入力してください / 原価は0以上で、小数は2桁までで入力してください",
     );
 
     const returnBelowMin = buildReturnExchangeRequest(
@@ -317,7 +322,8 @@ describe("request builder shared primitives", () => {
 
       expect(source, repoPath).toContain('from "@/lib/request-helpers"');
       expect(source.match(/\bcreatePrefixedIdempotencyKey\(/g), repoPath).toHaveLength(1);
-      expect(source.match(/\bparseRequiredSafeInteger\(/g), repoPath).toHaveLength(
+      // 0 件の module では match が null を返すので、0 件も数えられる形にして完全一致を保つ
+      expect(source.match(/\bparseRequiredSafeInteger\(/g) ?? [], repoPath).toHaveLength(
         integerCallCount,
       );
       expect(source, repoPath).not.toMatch(

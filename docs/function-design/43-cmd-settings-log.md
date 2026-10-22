@@ -1,12 +1,8 @@
 ## CMD-11残り: 設定・ログ・バックアップ・画像コマンド群
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-TIME-D1 / D8。§43.9でDB接続を交換する前に、計数contextのDB世代を進めて全未保存contextを失効させる。既にlookupされたcontextもBIZの世代検査で拒否する。context保管lockとDB lockの同時保持は避け、失効→既存の復元orchestration→業務再開の順を守る。
-
-成功・復旧再接続・復旧不能のどの場合にも古いtokenを新しい接続へ持ち越さない。復元前の保存済み要求が復元後DBにも存在する場合の副作用なし照会と、未保存tokenでの新規書込みを区別する。復元自体のbackup・no-create再接続・error kind・dummy接続の扱いは71の既存契約へ委譲し、ここでは変更しない。
-
-内部のmigration上限を汎用update_settingから書き換えられる設定キーへ追加しない。準備照会の `ej_unverified` を外す設定キーも置かない。fix_integrityのcommand本体は42にあり、数量/版の不可分更新は36→21の責務である。
+(a) で入ったのは、写しを記録から求め直す形と、整合性の補正が求め直しの結果を写しへ書く形（`biz/integrity_service.rs` の `recompute_stock` の呼出し、`biz/stock_ledger.rs`）。本節の残りは (a) でも (b) でも同じ。[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md) は計数の context（token・DB 世代）を持たないので、§43.9 の DB 接続の交換で失効させるものは無い（旧 ADR〈時点証拠〉の context の失効の契約は置き換えた）。写しは DB の中で記録から求め直すので、復元した DB では復元した記録の写しがそのまま正しい。fix_integrity の command 本体は 42 にあり、写しの書込みは 36 → 31 の求め直しの責務である。
 
 > CMD-11の整合性チェック部分（run_integrity_check, fix_integrity）は `42-cmd-sales-stocktake.md` に記載済み。
 > 本セクションは設定CRUD・操作ログ閲覧・バックアップ・画像保存コマンドを扱う。

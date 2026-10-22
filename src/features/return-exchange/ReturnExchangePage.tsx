@@ -41,6 +41,7 @@ import {
   formatStockDisplay,
   formatStockUnitLabel,
 } from "@/features/stock-inquiry/lib/format-stock-display";
+import { quantityInputAttributes } from "@/lib/unit-quantity";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReturnCreateResult } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
@@ -863,8 +864,7 @@ export function ReturnExchangePage() {
                       <div className="flex items-center gap-1">
                         <Input
                           type="number"
-                          inputMode="numeric"
-                          min="1"
+                          {...quantityInputAttributes(row.stockUnit)}
                           value={row.quantity}
                           disabled={isFormLocked}
                           aria-label={`${row.productCode} の数量`}

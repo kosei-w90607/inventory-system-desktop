@@ -141,3 +141,37 @@ describe("ProductRankingTable (REQ-502 sort 結線)", () => {
     expect(nameHeader).not.toHaveClass("text-right");
   });
 });
+
+// REQ-502 / SPEC-UNIT-D3 の表の 4: 商品別の行は単位で種類を決め、相殺して 0 でも種類を失わない
+describe("ProductRankingTable の数量（REQ-502 / SPEC-UNIT-D3）", () => {
+  it("REQ-502: m の商品は 1.3 m、個数の商品は N 点（3 桁区切り）、相殺した m の行は 0 m", () => {
+    const row = (
+      key: string,
+      count_points: number,
+      length_cm: number,
+      stock_unit: "m" | "pcs",
+      ranking: number,
+    ) =>
+      makeMockProductRankingRow({ key, label: key, count_points, length_cm, stock_unit, ranking });
+    render(
+      <ProductRankingTable
+        rows={[
+          row("M-130", 0, 130, "m", 1),
+          row("PCS-3", 3, 0, "pcs", 2),
+          row("PCS-1234", 1234, 0, "pcs", 3),
+          row("M-ZERO", 0, 0, "m", 4),
+          row("PCS-ZERO", 0, 0, "pcs", 5),
+        ]}
+        comparisonMap={new Map()}
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+      />,
+    );
+    const quantities = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((tableRow) => tableRow.querySelectorAll("td")[2].textContent);
+    expect(quantities).toEqual(["1.3 m", "3 点", "1,234 点", "0 m", "0 点"]);
+  });
+});

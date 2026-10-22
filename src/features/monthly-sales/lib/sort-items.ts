@@ -3,9 +3,11 @@
 // 列ソート + null 末尾配置（4 列、ranking バッジ追従 G-3）。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.6 sort-items
 
+import { compareQuantityPair } from "@/lib/unit-quantity";
 import type { SortColumn, SortDirection } from "../types";
 
 /// 4 列 (name / quantity / amount / prev_month_diff) のいずれかでソートする汎用 sort。
+/// 数量は `(count_points, length_cm)` の辞書順（商品別・部門別とも。SPEC-UNIT-D3 の集計の規則）。
 /// `by === null` の場合は入力順を維持（BIZ-05 row_number/department_id 由来の順序を尊重）。
 /// `prev_month_diff: null` は asc/desc 共通で末尾配置。
 /// 同値タイブレークは入力順保持（安定ソート）。
@@ -13,7 +15,8 @@ export function sortMonthlyItems<
   T extends {
     name?: string;
     label: string;
-    quantity?: number;
+    count_points: number;
+    length_cm: number;
     amount: number;
     prev_month_diff?: number | null;
   },
@@ -24,6 +27,10 @@ export function sortMonthlyItems<
   const indexed = items.map((item, idx) => ({ item, idx }));
 
   indexed.sort((a, b) => {
+    if (by === "quantity") {
+      const diff = compareQuantityPair(a.item, b.item);
+      return diff !== 0 ? diff * factor : a.idx - b.idx;
+    }
     const av = extractValue(a.item, by);
     const bv = extractValue(b.item, by);
 
@@ -48,18 +55,15 @@ function extractValue(
   item: {
     name?: string;
     label: string;
-    quantity?: number;
     amount: number;
     prev_month_diff?: number | null;
   },
-  by: SortColumn,
+  by: Exclude<SortColumn, "quantity">,
 ): string | number | null {
   switch (by) {
     case "name":
       // ProductRankingRow/DeptCompositionRow とも label を表示名として使用する。
       return item.name ?? item.label;
-    case "quantity":
-      return item.quantity ?? null;
     case "amount":
       return item.amount;
     case "prev_month_diff":

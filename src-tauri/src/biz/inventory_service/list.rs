@@ -3,6 +3,7 @@
 //! 44-cmd-inventory.md §23.10 に基づく実装。
 //! BIZ層でper_page上限バリデーションを行い、IO層のリポジトリに委譲する。
 
+use crate::biz::unit_amount::{cost_line_centi, cost_total_yen, price_basis_quantity};
 use crate::biz::BizError;
 use crate::db::disposal_repo::{
     self, DisposalRecordDetail, DisposalRecordSummary, InventoryRecordQuery, InventoryRecordSummary,
@@ -111,6 +112,19 @@ pub fn get_receiving_record(
 ) -> Result<ReceivingRecordDetail, BizError> {
     match receiving_repo::get_receiving_record_detail(conn, record_id) {
         Ok(mut detail) => {
+            // 行の金額と合計は BIZ が共通関数で求める（SPEC-UNIT-D6、X7）
+            let mut line_centis = Vec::with_capacity(detail.items.len());
+            for item in &mut detail.items {
+                let centi = cost_line_centi(
+                    i128::from(item.cost_price_centi),
+                    item.quantity,
+                    price_basis_quantity(item.stock_unit),
+                    &item.product_code,
+                )?;
+                item.line_cost_centi = centi.to_string();
+                line_centis.push(centi);
+            }
+            detail.total_cost = cost_total_yen(&line_centis)?;
             for movement in &mut detail.movements {
                 movement.source =
                     resolve_movement_source(&movement.reference_type, &movement.reference_id);
@@ -180,6 +194,19 @@ pub fn get_disposal_record(
 ) -> Result<DisposalRecordDetail, BizError> {
     match disposal_repo::get_disposal_record_detail(conn, record_id) {
         Ok(mut detail) => {
+            // 行のロス原価と合計は BIZ が共通関数で求める（SPEC-UNIT-D6、X7）
+            let mut line_centis = Vec::with_capacity(detail.items.len());
+            for item in &mut detail.items {
+                let centi = cost_line_centi(
+                    i128::from(item.cost_price_centi),
+                    item.quantity,
+                    price_basis_quantity(item.stock_unit),
+                    &item.product_code,
+                )?;
+                item.line_loss_cost_centi = centi.to_string();
+                line_centis.push(centi);
+            }
+            detail.total_loss_cost = cost_total_yen(&line_centis)?;
             for movement in &mut detail.movements {
                 movement.source =
                     resolve_movement_source(&movement.reference_type, &movement.reference_id);
@@ -256,7 +283,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: stock,
@@ -468,8 +495,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-SRC", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at) \
-             VALUES ('MV-SRC', 'receiving', 5, 15, 'receiving_record', 42, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-SRC', 'receiving', 5, 15, 'receiving_record', 42, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();
@@ -496,8 +523,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-NULL", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, is_voided, created_at) \
-             VALUES ('MV-NULL', 'receiving', 5, 15, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-NULL', 'receiving', 5, 15, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();
@@ -634,5 +661,303 @@ mod tests {
         let err = get_disposal_record(&conn, 404).unwrap_err();
 
         assert!(matches!(err, BizError::NotFound(msg) if msg.contains("廃棄・破損")));
+    }
+
+    // -----------------------------------------------------------------------
+    // 記録詳細の行の金額と合計（SPEC-UNIT-D6、X7）と wire の単位（SPEC-UNIT-D11）
+    // -----------------------------------------------------------------------
+
+    use crate::biz::inventory_service::{
+        create_disposal, create_receiving, DisposalCreateRequest, ReceivingCreateRequest,
+    };
+    use crate::db::product_repo::ProductStockUnit;
+
+    /// (商品コード, 数量, 原価) の明細で入庫して記録詳細を返す
+    fn receive(
+        conn: &mut DbConnection,
+        key: &str,
+        lines: &[(&str, i64, i64)],
+    ) -> ReceivingRecordDetail {
+        let items = serde_json::json!(lines
+            .iter()
+            .map(|(code, quantity, cost)| {
+                serde_json::json!({"product_code": code, "quantity": quantity, "cost_price_centi": cost})
+            })
+            .collect::<Vec<_>>());
+        let req: ReceivingCreateRequest = serde_json::from_value(serde_json::json!({
+            "idempotency_key": key,
+            "supplier_id": null,
+            "receiving_date": "2026-10-01",
+            "note": null,
+            "items": items,
+        }))
+        .unwrap();
+        let result = create_receiving(conn, req).unwrap();
+        get_receiving_record(conn, result.record_id).unwrap()
+    }
+
+    fn dispose(
+        conn: &mut DbConnection,
+        key: &str,
+        lines: &[(&str, i64, i64)],
+    ) -> DisposalRecordDetail {
+        let items = serde_json::json!(lines
+            .iter()
+            .map(|(code, quantity, cost)| {
+                serde_json::json!({
+                    "product_code": code, "disposal_type": "damage", "quantity": quantity,
+                    "cost_price_centi": cost, "reason": "合成の理由",
+                })
+            })
+            .collect::<Vec<_>>());
+        let req: DisposalCreateRequest = serde_json::from_value(serde_json::json!({
+            "idempotency_key": key,
+            "disposal_date": "2026-10-01",
+            "items": items,
+        }))
+        .unwrap();
+        let result = create_disposal(conn, req).unwrap();
+        get_disposal_record(conn, result.record_id).unwrap()
+    }
+
+    fn seed_amount_products(conn: &DbConnection) {
+        seed_product_with_stock(conn, "AM-M", 100_000, "m");
+        seed_product_with_stock(conn, "AM-CM", 100_000, "m");
+        seed_product_with_stock(conn, "AM-PCS", 0, "pcs");
+        seed_product_with_stock(conn, "AM-PCS2", 100, "pcs");
+    }
+
+    #[test]
+    fn test_get_receiving_record_req201_line_cost_centi_from_biz() {
+        // REQ-201 / REQ-206 / SPEC-UNIT-D6（X7）: 行の金額は BIZ が基準数量で割って求め、1/100 円の文字列で返す
+        let mut conn = setup_db();
+        seed_amount_products(&conn);
+
+        // 単位の混ざった伝票: 行ごとに基準数量で割り、合計は 1/100 円で足してから丸める（174 ではない）
+        let mixed = receive(
+            &mut conn,
+            "am-mixed",
+            &[("AM-M", 50, 33_300), ("AM-CM", 50, 100), ("AM-PCS", 3, 200)],
+        );
+        let lines: Vec<&str> = mixed
+            .items
+            .iter()
+            .map(|item| item.line_cost_centi.as_str())
+            .collect();
+        assert_eq!(lines, vec!["16650", "50", "600"]);
+        assert_eq!(mixed.total_cost, 173);
+        assert_eq!(mixed.items[0].stock_unit, ProductStockUnit::M);
+
+        // 長さの商品 2.5 m・原価 333 円（33300）
+        let length = receive(&mut conn, "am-length", &[("AM-M", 250, 33_300)]);
+        assert_eq!(length.items[0].line_cost_centi, "83250");
+        assert_eq!(length.total_cost, 833);
+
+        // 個数の商品（数量 4・原価 250 円〈25000〉）は今と同じ額
+        let count = receive(&mut conn, "am-count", &[("AM-PCS", 4, 25_000)]);
+        assert_eq!(count.items[0].line_cost_centi, "100000");
+        assert_eq!(count.total_cost, 1000);
+
+        // 上限の明細
+        let limit = receive(&mut conn, "am-limit", &[("AM-PCS", 9_999_999, 99_999_900)]);
+        assert_eq!(limit.items[0].line_cost_centi, "999998900000100");
+        assert_eq!(limit.total_cost, 9_999_989_000_001);
+    }
+
+    #[test]
+    fn test_get_disposal_record_req204_line_loss_cost_centi_from_biz() {
+        // REQ-204 / REQ-206 / SPEC-UNIT-D6（X7）: 廃棄のロス原価も同じ関数で求める
+        let mut conn = setup_db();
+        seed_amount_products(&conn);
+
+        let mixed = dispose(
+            &mut conn,
+            "am-mixed",
+            &[
+                ("AM-M", 50, 33_300),
+                ("AM-CM", 50, 100),
+                ("AM-PCS2", 3, 200),
+            ],
+        );
+        let lines: Vec<&str> = mixed
+            .items
+            .iter()
+            .map(|item| item.line_loss_cost_centi.as_str())
+            .collect();
+        assert_eq!(lines, vec!["16650", "50", "600"]);
+        assert_eq!(mixed.total_loss_cost, 173);
+
+        // 長さの商品 0.5 m・原価 333 円（33300）
+        let length = dispose(&mut conn, "am-length", &[("AM-M", 50, 33_300)]);
+        assert_eq!(length.items[0].line_loss_cost_centi, "16650");
+        assert_eq!(length.total_loss_cost, 167);
+
+        // 個数の商品（数量 2・原価 120 円 と数量 3・原価 80 円）は今と同じ額
+        let count = dispose(
+            &mut conn,
+            "am-count",
+            &[("AM-PCS2", 2, 12_000), ("AM-PCS2", 3, 8_000)],
+        );
+        let lines: Vec<&str> = count
+            .items
+            .iter()
+            .map(|item| item.line_loss_cost_centi.as_str())
+            .collect();
+        assert_eq!(lines, vec!["24000", "24000"]);
+        assert_eq!(count.total_loss_cost, 480);
+
+        let limit = dispose(&mut conn, "am-limit", &[("AM-PCS", 9_999_999, 99_999_900)]);
+        assert_eq!(limit.items[0].line_loss_cost_centi, "999998900000100");
+    }
+
+    #[test]
+    fn test_receiving_req201_line_cost_uses_centi_directly() {
+        // REQ-201 / SPEC-UNIT-D5・D6 / Matrix C4: 1/100 円の原価をそのまま行の金額に使う（* 100 が残れば 100 倍）
+        let mut conn = setup_db();
+        seed_amount_products(&conn);
+        let count = receive(&mut conn, "c4-count", &[("AM-PCS", 3, 8333)]);
+        assert_eq!(count.items[0].cost_price_centi, 8333);
+        assert_eq!(count.items[0].line_cost_centi, "24999");
+        assert_eq!(count.total_cost, 250);
+        // 1 m あたり 83.33 円の m の商品 1.3 m
+        let length = receive(&mut conn, "c4-length", &[("AM-M", 130, 8333)]);
+        assert_eq!(length.items[0].line_cost_centi, "10833");
+        assert_eq!(length.total_cost, 108);
+    }
+
+    #[test]
+    fn test_record_detail_req206_line_amounts_from_centi() {
+        // REQ-204 / REQ-206 / SPEC-UNIT-D6 / Matrix C5: 廃棄の記録詳細も 1/100 円の原価から C4 と同じ値
+        let mut conn = setup_db();
+        seed_amount_products(&conn);
+        let count = dispose(&mut conn, "c5-count", &[("AM-PCS2", 3, 8333)]);
+        assert_eq!(count.items[0].cost_price_centi, 8333);
+        assert_eq!(count.items[0].line_loss_cost_centi, "24999");
+        assert_eq!(count.total_loss_cost, 250);
+        let length = dispose(&mut conn, "c5-length", &[("AM-M", 130, 8333)]);
+        assert_eq!(length.items[0].line_loss_cost_centi, "10833");
+        assert_eq!(length.total_loss_cost, 108);
+    }
+
+    /// (商品コード, 数量, 原価) の明細の入庫・廃棄の要求（結果をそのまま返す）
+    fn receiving_req(key: &str, lines: &[(String, i64, i64)]) -> ReceivingCreateRequest {
+        serde_json::from_value(serde_json::json!({
+            "idempotency_key": key,
+            "supplier_id": null,
+            "receiving_date": "2026-10-01",
+            "note": null,
+            "items": lines.iter().map(|(code, quantity, cost)| serde_json::json!({
+                "product_code": code, "quantity": quantity, "cost_price_centi": cost,
+            })).collect::<Vec<_>>(),
+        }))
+        .unwrap()
+    }
+
+    fn disposal_req(key: &str, lines: &[(String, i64, i64)]) -> DisposalCreateRequest {
+        serde_json::from_value(serde_json::json!({
+            "idempotency_key": key,
+            "disposal_date": "2026-10-01",
+            "items": lines.iter().map(|(code, quantity, cost)| serde_json::json!({
+                "product_code": code, "disposal_type": "damage", "quantity": quantity,
+                "cost_price_centi": cost, "reason": "合成の理由",
+            })).collect::<Vec<_>>(),
+        }))
+        .unwrap()
+    }
+
+    fn table_counts(conn: &DbConnection) -> Vec<i64> {
+        [
+            "receiving_records",
+            "receiving_items",
+            "disposal_records",
+            "disposal_items",
+            "inventory_movements",
+            "operation_logs",
+        ]
+        .iter()
+        .map(|table| {
+            conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })
+            .unwrap()
+        })
+        .collect()
+    }
+
+    #[test]
+    fn test_receiving_disposal_req903_total_safe_integer_with_centi_limits() {
+        // REQ-201 / REQ-204 / REQ-903 / 共通規則 (c) / Matrix C6: 上限の明細（数量 9999999・原価 99999999）
+        // 900 行は通り（合計 8999999010000009 円）、901 行（9009999008900009 円）は合計金額が大きすぎます
+        let limit_lines = |rows: usize| -> Vec<(String, i64, i64)> {
+            (0..rows)
+                .map(|i| (format!("C6-A{}", i / 100 + 1), 9_999_999, 99_999_999))
+                .collect()
+        };
+        let mut conn = setup_db();
+        for product in 1..=10 {
+            seed_product_with_stock(&conn, &format!("C6-A{product}"), 0, "pcs");
+        }
+        let created =
+            create_receiving(&mut conn, receiving_req("c6-r-900", &limit_lines(900))).unwrap();
+        let detail = get_receiving_record(&conn, created.record_id).unwrap();
+        assert_eq!(detail.total_cost, 8_999_999_010_000_009);
+        let created =
+            create_disposal(&mut conn, disposal_req("c6-d-900", &limit_lines(900))).unwrap();
+        let detail = get_disposal_record(&conn, created.record_id).unwrap();
+        assert_eq!(detail.total_loss_cost, 8_999_999_010_000_009);
+
+        let before = table_counts(&conn);
+        let receiving = create_receiving(&mut conn, receiving_req("c6-r-901", &limit_lines(901)));
+        let disposal = create_disposal(&mut conn, disposal_req("c6-d-901", &limit_lines(901)));
+        for result in [receiving.map(|_| ()), disposal.map(|_| ())] {
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == "合計金額が大きすぎます"),
+                "{result:?}"
+            );
+        }
+        assert_eq!(table_counts(&conn), before);
+    }
+
+    #[test]
+    fn test_receiving_disposal_req201_req204_idempotency_precedes_cost_limit() {
+        // REQ-201 / REQ-204 / 31 の処理ステップ 0・1 / Matrix C22: 保存済みの冪等キーで原価だけ上限の外に変えた要求は
+        // 原価の検査より先に IdempotencyConflict で止まり、何も書かない
+        let mut conn = setup_db();
+        seed_product_with_stock(&conn, "C22-A", 10, "pcs");
+        let line = |cost: i64| vec![("C22-A".to_string(), 1, cost)];
+        create_receiving(&mut conn, receiving_req("c22-r", &line(8333))).unwrap();
+        create_disposal(&mut conn, disposal_req("c22-d", &line(8333))).unwrap();
+        let before = table_counts(&conn);
+        let receiving = create_receiving(&mut conn, receiving_req("c22-r", &line(100_000_000)));
+        assert!(
+            matches!(receiving, Err(BizError::IdempotencyConflict(_))),
+            "{receiving:?}"
+        );
+        let disposal = create_disposal(&mut conn, disposal_req("c22-d", &line(100_000_000)));
+        assert!(
+            matches!(disposal, Err(BizError::IdempotencyConflict(_))),
+            "{disposal:?}"
+        );
+        assert_eq!(table_counts(&conn), before);
+    }
+
+    #[test]
+    fn test_get_record_req206_unknown_stock_unit_is_read_error() {
+        // REQ-206 / SPEC-UNIT-D11: DB に一覧に無い単位がある記録の詳細の読取りは error
+        let mut conn = setup_db();
+        seed_amount_products(&conn);
+        let detail = receive(&mut conn, "am-unknown", &[("AM-PCS", 1, 100)]);
+        conn.execute_batch(
+            "PRAGMA ignore_check_constraints = ON;
+             UPDATE products SET stock_unit = 'kg' WHERE product_code = 'AM-PCS';
+             PRAGMA ignore_check_constraints = OFF;",
+        )
+        .unwrap();
+
+        let result = get_receiving_record(&conn, detail.id);
+        assert!(
+            matches!(result, Err(BizError::DatabaseError(_))),
+            "{result:?}"
+        );
     }
 }

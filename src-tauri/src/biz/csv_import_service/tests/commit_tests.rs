@@ -560,3 +560,119 @@ fn test_commit_req401_additional_confirmation_without_duplicate() {
     }
     assert_eq!(write_surface(&conn), before);
 }
+
+// --- 入力の上限（共通規則 SPEC-UNIT-D11 の続き、X2・X3） ---
+
+#[test]
+fn test_preview_req401_pos_quantity_limit_is_row_error() {
+    // REQ-401 / X2: POS 由来の数量は絶対値 9999999 まで。越える行は invalid_number の行の error で、
+    // 在庫を動かさない行（pos_stock_sync=false）も同じ検査を通る。ほかの行は取り込む
+    let (_dir, mut conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "X2-NOSYNC", "4912345678901", 10, false);
+    create_test_product_with_jan(&conn, "X2-SYNC", "4912345678902", 10, true);
+    create_test_product_with_jan(&conn, "X2-EDGE", "4912345678903", 10, false);
+    create_test_product_with_jan(&conn, "X2-RETURN", "4912345678904", 10, false);
+    let bytes = make_z004_bytes(
+        "2026-03-21",
+        &[
+            ("4912345678901", "連動しない商品", 10_000_000, 100),
+            ("4912345678902", "連動する商品", -10_000_000, -100),
+            ("4912345678903", "上限の端", 9_999_999, 100),
+            ("4912345678904", "上限の端の返品", -9_999_999, -100),
+        ],
+    );
+    let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
+    let errors: Vec<(usize, CsvImportErrorType, &str)> = pv
+        .error_rows
+        .iter()
+        .map(|row| (row.line_no, row.error_type, row.error_message.as_str()))
+        .collect();
+    assert_eq!(errors.len(), 2, "{errors:?}");
+    for (_, error_type, message) in &errors {
+        assert_eq!(*error_type, CsvImportErrorType::InvalidNumber);
+        assert_eq!(*message, "数量が大きすぎます");
+    }
+    assert_eq!(pv.matched_rows.len(), 2);
+
+    commit::legacy_commit_csv_import(
+        &mut conn,
+        CommitRequest {
+            additional_import_confirmed: false,
+            cached_data: build_cached(pv),
+        },
+    )
+    .unwrap();
+
+    let mut statement = conn
+        .prepare("SELECT product_code, quantity FROM sale_records ORDER BY product_code")
+        .unwrap();
+    let saved: Vec<(String, i64)> = statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(
+        saved,
+        vec![
+            ("X2-EDGE".to_string(), 9_999_999),
+            ("X2-RETURN".to_string(), -9_999_999)
+        ]
+    );
+    for code in ["X2-NOSYNC", "X2-SYNC", "X2-EDGE", "X2-RETURN"] {
+        let product = product_repo::find_by_product_code(&conn, code)
+            .unwrap()
+            .unwrap();
+        assert_eq!(product.product.stock_quantity, 10, "{code}");
+    }
+}
+
+#[test]
+fn test_commit_req401_stock_limit_rolls_back_whole_tx() {
+    // REQ-401 / X3: 販売の取込みで計算の後の在庫が -999999999 を下回ったら TX 全体を戻す
+    let (_dir, mut conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "X3-FULL", "4912345678901", -999_999_999, true);
+    create_test_product_with_jan(&conn, "X3-OTHER", "4912345678902", 10, true);
+    let bytes = make_z004_bytes(
+        "2026-03-21",
+        &[
+            ("4912345678902", "ほかの商品", 2, 200),
+            ("4912345678901", "下限の商品", 1, 100),
+        ],
+    );
+    let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
+    let before = write_surface(&conn);
+    let result = commit::legacy_commit_csv_import(
+        &mut conn,
+        CommitRequest {
+            additional_import_confirmed: false,
+            cached_data: build_cached(pv),
+        },
+    );
+    assert!(
+        matches!(result, Err(BizError::ValidationFailed(ref m)) if m == "在庫数が大きすぎます"),
+        "{result:?}"
+    );
+    assert_eq!(write_surface(&conn), before);
+
+    // 写しを記録から求め直すので、新しい値との差 +1 の movement を入れて写しと記録を揃える（Matrix T4）
+    crate::db::test_support::insert_initial_stock_movement(&conn, "X3-FULL", 1, -999_999_998);
+    conn.execute(
+        "UPDATE products SET stock_quantity = -999999998 WHERE product_code = 'X3-FULL'",
+        [],
+    )
+    .unwrap();
+    let bytes = make_z004_bytes("2026-03-22", &[("4912345678901", "下限の商品", 1, 100)]);
+    let pv = parse_and_build_cache(&conn, bytes, "Z004_260322");
+    commit::legacy_commit_csv_import(
+        &mut conn,
+        CommitRequest {
+            additional_import_confirmed: false,
+            cached_data: build_cached(pv),
+        },
+    )
+    .unwrap();
+    let product = product_repo::find_by_product_code(&conn, "X3-FULL")
+        .unwrap()
+        .unwrap();
+    assert_eq!(product.product.stock_quantity, -999_999_999);
+}

@@ -4,6 +4,7 @@
 
 use super::inventory_common::{validate_and_offset, ListQuery};
 use super::inventory_repo::MovementRecord;
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError, PaginatedResult};
 
 // ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ pub struct NewDisposalItem {
     pub product_code: String,
     pub disposal_type: String,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub reason: String,
 }
 
@@ -108,12 +109,14 @@ pub struct DisposalRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub disposal_type: DisposalType,
     pub quantity: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
     pub reason: String,
-    pub line_loss_cost: i64,
+    /// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+    // repo は空で返し、BIZ が必ず埋める
+    pub line_loss_cost_centi: String,
 }
 
 /// 廃棄・破損詳細
@@ -124,6 +127,8 @@ pub struct DisposalRecordDetail {
     pub status: String,
     pub created_at: String,
     pub items: Vec<DisposalRecordDetailItem>,
+    /// ロス原価合計（円。行のロス原価の和を円未満で四捨五入した値。SPEC-UNIT-D6）
+    // repo は 0 で返し、BIZ が必ず埋める
     pub total_loss_cost: i64,
     pub movements: Vec<MovementRecord>,
 }
@@ -156,14 +161,14 @@ pub fn insert_disposal_record(
 /// disposal_items に1行INSERT
 pub fn insert_disposal_item(conn: &DbConnection, item: &NewDisposalItem) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
+        "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price_centi, reason)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             item.disposal_record_id,
             item.product_code,
             item.disposal_type,
             item.quantity,
-            item.cost_price,
+            item.cost_price_centi,
             item.reason,
         ],
     )?;
@@ -642,9 +647,8 @@ pub fn get_disposal_record_detail(
             p.stock_unit,
             di.disposal_type,
             di.quantity,
-            di.cost_price,
-            di.reason,
-            di.quantity * di.cost_price AS line_loss_cost
+            di.cost_price_centi,
+            di.reason
          FROM disposal_items di
          JOIN products p ON p.product_code = di.product_code
          JOIN departments d ON d.id = p.department_id
@@ -658,16 +662,15 @@ pub fn get_disposal_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 disposal_type: parse_disposal_type(row.get(5)?)?,
                 quantity: row.get(6)?,
-                cost_price: row.get(7)?,
+                cost_price_centi: row.get(7)?,
                 reason: row.get(8)?,
-                line_loss_cost: row.get(9)?,
+                line_loss_cost_centi: String::new(),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    let total_loss_cost = items.iter().map(|item| item.line_loss_cost).sum();
 
     let mut movement_stmt = conn.prepare(
         "SELECT id, product_code, movement_type, quantity, stock_after,
@@ -701,7 +704,7 @@ pub fn get_disposal_record_detail(
         status: "active".to_string(),
         created_at,
         items,
-        total_loss_cost,
+        total_loss_cost: 0,
         movements,
     })
 }
@@ -804,8 +807,8 @@ mod tests {
     ) {
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES (?1, 'stocktake', 1, 1, 'stocktake', ?2, '差異', ?3, ?4)",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES (?1, 'stocktake', 1, 1, 'stocktake', ?2, '差異', ?3, ?4, '2026-04-01', 0)",
             rusqlite::params![product_code, stocktake_id, is_voided, created_at],
         )
         .unwrap();
@@ -824,7 +827,7 @@ mod tests {
         .unwrap();
         let id = conn.last_insert_rowid();
         conn.execute(
-            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi)
              VALUES (?1, 'IR-RCV-X', 1, 100)",
             rusqlite::params![id],
         )
@@ -876,7 +879,7 @@ mod tests {
                 product_code: "IR-DSP-X".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 1,
-                cost_price: 100,
+                cost_price_centi: 100,
                 reason: "破損".to_string(),
             },
         )
@@ -903,7 +906,7 @@ mod tests {
             product_code: "TEST-DSP".to_string(),
             disposal_type: "damage".to_string(),
             quantity: 2,
-            cost_price: 300,
+            cost_price_centi: 300,
             reason: "袋破れ".to_string(),
         };
         insert_disposal_item(&conn, &item).unwrap();
@@ -922,12 +925,22 @@ mod tests {
         };
         let id = insert_disposal_record(&conn, &dr).unwrap();
 
-        let result = conn.execute(
-            "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
-             VALUES (?1, 'TEST-DCHK', 'invalid', 1, 100, 'test')",
-            rusqlite::params![id],
+        let insert = |disposal_type: &str| {
+            conn.execute(
+                "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price_centi, reason)
+                 VALUES (?1, 'TEST-DCHK', ?2, 1, 100, 'test')",
+                rusqlite::params![id, disposal_type],
+            )
+        };
+        // 列名の誤りで常に失敗して緑にならないよう、CHECK の文と正の対照を見る（Matrix T2a (i)）
+        let result = insert("invalid");
+        assert!(
+            result
+                .as_ref()
+                .is_err_and(|e| e.to_string().contains("CHECK constraint failed")),
+            "不正 disposal_type は CHECK で拒否: {result:?}"
         );
-        assert!(result.is_err(), "不正 disposal_type は CHECK で拒否");
+        assert!(insert("damage").is_ok(), "正しい disposal_type は通る");
     }
 
     #[test]
@@ -948,7 +961,7 @@ mod tests {
             product_code: "TEST-DRSN".to_string(),
             disposal_type: "other".to_string(),
             quantity: 1,
-            cost_price: 50,
+            cost_price_centi: 50,
             reason: "任意の理由テキスト — 自由記述OK".to_string(),
         };
         insert_disposal_item(&conn, &item).unwrap(); // CHECK なしなのでOK
@@ -1058,7 +1071,7 @@ mod tests {
                 product_code: "DSP-DET-1".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 2,
-                cost_price: 120,
+                cost_price_centi: 120,
                 reason: "袋破れ".to_string(),
             },
         )
@@ -1070,17 +1083,17 @@ mod tests {
                 product_code: "DSP-DET-2".to_string(),
                 disposal_type: "disposal".to_string(),
                 quantity: 3,
-                cost_price: 80,
+                cost_price_centi: 80,
                 reason: "期限切れ".to_string(),
             },
         )
         .unwrap();
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at) \
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase) \
              VALUES \
-             ('DSP-DET-1', 'disposal', -2, 8, 'disposal_record', ?1, '袋破れ', 0, '2026-06-27T10:00:00'), \
-             ('DSP-DET-2', 'disposal', -3, 4, 'disposal_record', ?1, '期限切れ', 0, '2026-06-27T10:01:00')",
+             ('DSP-DET-1', 'disposal', -2, 8, 'disposal_record', ?1, '袋破れ', 0, '2026-06-27T10:00:00', '2026-04-01', 0), \
+             ('DSP-DET-2', 'disposal', -3, 4, 'disposal_record', ?1, '期限切れ', 0, '2026-06-27T10:01:00', '2026-04-01', 0)",
             rusqlite::params![record_id],
         )
         .unwrap();
@@ -1091,11 +1104,15 @@ mod tests {
         assert_eq!(detail.disposal_date, "2026-06-27");
         assert_eq!(detail.status, "active");
         assert_eq!(detail.items.len(), 2);
-        assert_eq!(detail.total_loss_cost, 480);
         assert_eq!(detail.movements.len(), 2);
         assert_eq!(detail.items[0].product_code, "DSP-DET-1");
         assert_eq!(detail.items[0].product_name, "テスト商品");
-        assert_eq!(detail.items[0].line_loss_cost, 240);
+        // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
+        assert_eq!(detail.items[0].quantity, 2);
+        assert_eq!(detail.items[0].cost_price_centi, 120);
+        assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
+        assert_eq!(detail.items[1].quantity, 3);
+        assert_eq!(detail.items[1].cost_price_centi, 80);
     }
 
     #[test]
@@ -1132,7 +1149,7 @@ mod tests {
                     product_code: product_code.to_string(),
                     disposal_type: "damage".to_string(),
                     quantity: 1,
-                    cost_price: 100,
+                    cost_price_centi: 100,
                     reason: "破損".to_string(),
                 },
             )
@@ -1183,7 +1200,7 @@ mod tests {
         .unwrap();
         let receiving_id = conn.last_insert_rowid();
         conn.execute(
-            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price) \
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi) \
              VALUES (?1, 'IR-RCV', 1, 100)",
             rusqlite::params![receiving_id],
         )
@@ -1235,7 +1252,7 @@ mod tests {
                 product_code: "IR-DSP".to_string(),
                 disposal_type: "damage".to_string(),
                 quantity: 1,
-                cost_price: 100,
+                cost_price_centi: 100,
                 reason: "破損".to_string(),
             },
         )
@@ -1545,7 +1562,7 @@ mod tests {
             seed_product(&conn, &code);
             conn.execute(
                 "INSERT INTO stocktake_items
-                 (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+                 (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at)
                  VALUES (?1, ?2, 10, 9, 100, '2026-08-06T12:00:00')",
                 rusqlite::params![stocktake_id, code],
             )
@@ -1600,8 +1617,8 @@ mod tests {
         );
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
-             VALUES ('ZZ-COLLISION-GHOST', 'disposal', -1, 0, 'disposal_record', ?1, '別種別', 0, '2026-08-06T17:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
+             VALUES ('ZZ-COLLISION-GHOST', 'disposal', -1, 0, 'disposal_record', ?1, '別種別', 0, '2026-08-06T17:00:00', '2026-04-01', 0)",
             rusqlite::params![disposal_id],
         )
         .unwrap();
@@ -1740,7 +1757,7 @@ mod tests {
         let stocktake_id = seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
         conn.execute(
             "INSERT INTO stocktake_items
-             (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+             (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price_centi, counted_at)
              VALUES (?1, 'INPROGRESS-TARGET', 10, 10, 100, '2026-08-06T12:00:00')",
             rusqlite::params![stocktake_id],
         )

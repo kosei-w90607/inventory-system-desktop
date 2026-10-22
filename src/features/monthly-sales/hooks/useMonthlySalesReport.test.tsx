@@ -39,9 +39,33 @@ function buildByProductReport(): MonthlySalesReport {
     mode: "by_product",
     items: [
       // BIZ row_number 順 = ranking 1, 2, 3
-      { key: "P001", label: "商品A", quantity: 1, amount: 5000, ranking: 1 },
-      { key: "P002", label: "商品B", quantity: 10, amount: 1000, ranking: 2 },
-      { key: "P003", label: "商品C", quantity: 5, amount: 3000, ranking: 3 },
+      {
+        key: "P001",
+        label: "商品A",
+        count_points: 1,
+        length_cm: 0,
+        stock_unit: "pcs",
+        amount: 5000,
+        ranking: 1,
+      },
+      {
+        key: "P002",
+        label: "商品B",
+        count_points: 10,
+        length_cm: 0,
+        stock_unit: "pcs",
+        amount: 1000,
+        ranking: 2,
+      },
+      {
+        key: "P003",
+        label: "商品C",
+        count_points: 5,
+        length_cm: 0,
+        stock_unit: "pcs",
+        amount: 3000,
+        ranking: 3,
+      },
     ],
     prev_month_comparison: null,
     official_department_totals: null,
@@ -54,9 +78,33 @@ function buildByDepartmentReport(): MonthlySalesReport {
     mode: "by_department",
     items: [
       // BIZ 側で部門単位で集計済 (key = department_id)
-      { key: "1", label: "毛糸", quantity: 11, amount: 8000, ranking: 1 },
-      { key: "2", label: "布", quantity: 5, amount: 1000, ranking: 2 },
-      { key: "3", label: "手芸用品", quantity: 3, amount: 3000, ranking: 3 },
+      {
+        key: "1",
+        label: "毛糸",
+        count_points: 11,
+        length_cm: 0,
+        stock_unit: null,
+        amount: 8000,
+        ranking: 1,
+      },
+      {
+        key: "2",
+        label: "布",
+        count_points: 5,
+        length_cm: 0,
+        stock_unit: null,
+        amount: 1000,
+        ranking: 2,
+      },
+      {
+        key: "3",
+        label: "手芸用品",
+        count_points: 3,
+        length_cm: 0,
+        stock_unit: null,
+        amount: 3000,
+        ranking: 3,
+      },
     ],
     prev_month_comparison: null,
     official_department_totals: null,
@@ -105,7 +153,7 @@ describe("useMonthlySalesReport (REQ-502 sort 結線)", () => {
   });
 
   it("REQ-502: prev_month_comparison: [] (BIZ contract Some(空Vec)) で全行 prev_month_diff が null になる", async () => {
-    // BIZ contract: sales_service.rs:196-197 で前月データなしも Some(空Vec) を返す常時セット。
+    // BIZ contract: src-tauri/src/biz/sales_service.rs の get_monthly_sales で前月データなしも Some(空Vec) を返す常時セット。
     // `null` は specta `Option<Vec<T>>` 境界の defensive guard で UI 側 compute-comparison が
     // 両ケースを safely 扱うが、本 test は通常 path の空配列ケース (Some(空Vec)) を test で固定。
     // compute-comparison.ts は prev === [] のとき各 cur item で prevMap.get() === undefined →

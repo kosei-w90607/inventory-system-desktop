@@ -1,12 +1,10 @@
 # タスク仕様（UI層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-TIME-D1 / D7〜D9。新方式の操作契約は[73](../function-design/73-ui-stocktake.md)（検索→明示begin→計数→即保存）、[55](../function-design/55-ui-csv-import.md)（要再確認→商品単位の数え直し、共有JAN行の保留→商品単位再確認→再preview）、[65](../function-design/65-inventory-record-traceability.md)（記録詳細→現在の現物で訂正）を正とする。
+SPEC-STK-CNT-D3〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、整合性検証（[75](../function-design/75-ui-integrity-check.md)）と操作ログ（[74](../function-design/74-ui-operation-logs.md) UI-11c-D14）の表示だけで、以下の棚卸しの操作は (b)（proposed・未実装）。新方式の操作の契約は [73](../function-design/73-ui-stocktake.md)（検索 → 数を入れて即保存、日付の表示と前の日の分、要再確認の一覧と入れ直し、完了の拒否の一覧と「0 にする」）、[55](../function-design/55-ui-csv-import.md)（Z004 の preview の拒否と知らせ、取込みの結果の要再確認の一覧）、[65](../function-design/65-inventory-record-traceability.md) / [66](../function-design/66-ui-stock-movements.md)（計数の行を履歴に混ぜる、今の数を入れ直す）を正とする。[51](../function-design/51-ui-product-form.md) / [58](../function-design/58-ui-stock-inquiry.md) は要再確認の在庫を範囲で出し、51 / [60](../function-design/60-ui-product-import.md) は共有 JAN と在庫連動を始めるときの拒否を示す。
 
-[51](../function-design/51-ui-product-form.md) / [60](../function-design/60-ui-product-import.md)は非連動化時に在庫が直らないことを示し、55の準備照会とともに未調整の回復先を維持する。準備照会が `ej_unverified` を返す間は在庫連動を有効にできないことを示す。51/73は商品単位の準備issueからBIZが版で分けた確定/数え直し案内を表示する。拒否された未取込み資料の表示はsource単位のsettlement_missingの日付と理由を組にして使い、再実測や再起動で消さない。
-
-未保存token・入力だけを画面状態に置き、保存済みの実測はDB/queryから再取得する。共有JANや要再確認の理由をUIで推測せず、BIZが返す型付き理由と次操作を示す。kind・要再確認・補正区分は日本語と非色シグナルで表示する。既存のroute/returnTo、IME、focusとページの器を維持し、追加の汎用取消画面は作らない。実装・Windows L3は未実施。
+未保存の入力だけを画面の状態に置き、保存済みの計数と写しは DB / query から取り直す。要再確認の理由を UI で推測せず、BIZ が返す型付きの理由と次の操作を示す。日本語と非色シグナルで表示する。既存の route / returnTo、IME、focus とページの器を保つ。実装・Windows L3 は未実施。旧 ADR（時点証拠）の begin・保留・準備照会・非連動化の未調整の案内は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
@@ -92,25 +90,23 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 ### UI-01a: 商品検索・一覧
 
-**タスク要求**: 商品の検索・絞込み・並替え・一覧表示、PLU 段階移行状態の可視化と filter 全件一括更新
+**タスク要求**: 商品の検索・絞込み・並替え・一覧表示（PLU の移行状態の列・絞り込み・一括更新は D-117 で撤去）
 
 **【状態管理】**
-- 検索条件（keyword, department_id, is_discontinued, plu, sort_key, sort_order）
+- 検索条件（keyword, department_id, is_discontinued, sort_key, sort_order）
 - ページング状態（current_page, per_page, total_count）
 - 商品一覧データ
 
 **【CMD呼び出し】**
 - 画面表示時 / 検索実行時 / ページ遷移時 → CMD-01 search_products
 - 商品行クリック → CMD-01 get_product → UI-01bへ遷移
-- PLU 対象一括操作 → CMD-01 bulk_set_plu_target
 
 **【利用者操作フロー】**
 1. 検索バーにキーワード入力（商品名/商品コード/JANコード/メーカー品番、SPEC-PRV-D2）
 2. 部門フィルタ、廃番表示ON/OFF
-3. 一覧表示（商品コード/商品名/売価/原価/在庫数/部門/廃番状態/PLU移行状態）。原価は売価の右隣（UI-01a-D13）。`対象外` / `未反映` / `反映済み` を色以外の text / icon でも示す
+3. 一覧表示（商品コード/商品名/売価/原価/在庫数/部門/廃番状態）。原価は売価の右隣（UI-01a-D13）
 4. 行クリックで商品編集画面へ遷移
 5. 「新規登録」ボタンでUI-01bへ遷移（新規モード）
-6. 現在 filter に一致する全件を対象に、件数確認後「PLU 対象にする / 対象から外す」を実行し結果件数を確認する
 
 ### UI-01b: 商品登録・修正
 
@@ -135,9 +131,9 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 1. 新規: JANコード入力、またはJANなしで独自コード発番対象部門を選択。JANなし + code_prefixなし部門は保存前に止める
 2. 必須項目入力（名前、売価、原価、税率、部門）
 3. 任意項目入力（取引先、メーカー品番、初期在庫、pos_stock_sync）
-4. pos_stock_sync: stock_unit='cm'なら初期値OFFを提案、利用者が変更可能
+4. pos_stock_sync: 長さの単位（stock_unit='m'）なら初期値OFFを提案、利用者が変更可能
 5. 保存 → バリデーション → 成功トースト → 一覧に戻る
-6. edit は `plu_memory_no` を読取り専用表示する。廃番解除で plu_target を自動復帰しない
+6. edit は memory No. を表示しない（D-117）。廃番解除で plu_target を自動復帰しない
 7. edit は第 5 セクション「価格履歴」で直近 10 件を表示し、「すべて表示」で 100 件を取得する。create では表示しない
 
 ### UI-14: 一括価格改定
@@ -261,20 +257,20 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 **【状態管理】**
 - 書出しモード（'diff' / 'full'）。既定は 'diff'
-- レジ登録状況 snapshot（未読込み / 最終読込み日時 / free・external・app managed・conflict 要約）
+- レジ登録状況（未照合 / 最終照合日時。照合は売上データ取込みの SD の読取りで自動、D-117）
 - 差分対象商品（CMD-08 list_plu_dirty）
 - 書出し準備結果（bytes_base64, suggested_filename, target_product_codes, prepared_rows[memory_no], count, excluded）
 - 保存状態（'idle' / 'preparing' / 'save_dialog' / 'saved' / 'confirming_exported' / 'confirmed' / 'error'）
 
 **【CMD呼び出し】**
 - 画面表示時 → CMD-08 list_plu_dirty（差分対象の一覧）
-- 画面表示時 → CMD-08 get_plu_slot_summary。Z004 選択後 → import_plu_register_snapshot
+- 画面表示時 → CMD-08 get_plu_slot_summary
 - 「差分を書き出す」/「全件を書き出す」→ CMD-08 prepare_plu_export
 - TSV保存後、利用者が「この書出しを未反映から外す」を明示実行 → CMD-08 confirm_plu_export_saved
 
 **【利用者操作フロー】**
-1. snapshot 未読込みなら共通 FilePicker（D-054）で Z004 を選ぶ step を先に出す。最終読込み日時と占有要約は above the fold に表示する
-2. Diff / Full を選び、対象 / clear 件数、Full バックアップ注意、保存後に必要なPCツール/SDカード/レジ操作を確認する
+1. 未照合なら売上データ取込みで SD を一度読む導線を先に出す。最終照合日時は above the fold に 1 行で表示する
+2. Diff / Full を選び、対象件数、レジの設定を SD に書いてから CV17 で読む案内（Diff / Full とも、UI-08-D5）、保存後に必要なPCツール/SDカード/レジ操作を確認する
 3. `prepare_plu_export` でTSVを生成し、Tauri native save dialog で保存先を選ぶ
 4. 保存失敗またはキャンセル時は `plu_dirty` を変更せず、再保存・再生成できる
 5. 保存成功後、画面上に「PCツールへ投入できない場合はこのまま再書出しできます」と表示する
@@ -284,8 +280,8 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 **【制御構造】**
 - TSV生成と未反映解除は分離する。生成成功だけでは `plu_dirty` を落とさない
 - `target_product_codes` は prepare 結果から保持し、confirm ではその exact set だけを送る
-- prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active / release_pending→free を exact memory No. で確定する
-- Diff / Full とも CV17 へ投入できる。失敗時は保存済みTSVを再投入するか、どちらかを再生成する。memory No. 永続化前の旧 Full file は再投入しない
+- prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active を exact memory No. で確定する
+- Diff / Full とも CV17 へ投入できる。失敗時はどちらかを書き出し直す（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる）
 
 ### UI-09a/09b: 売上レポート画面群
 
@@ -297,7 +293,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - URL state: `?date=YYYY-MM-DD&dept=N&sortBy=...&sortDir=...`（TanStack Router validateSearch + zod 4 直接渡し、不正値は `.optional().catch(undefined)` で undefined fallback）
 - 部門フィルタ Select（単一選択、`items` から派生）+ 列ヘッダ click でソート（5 列: product_code / name / quantity / unit_price / amount、部門列は BIZ-05 順固定）
 - CSV出力ボタン → CMD-09 export_sales_csv（base64 → Blob ダウンロード + `setTimeout(100)` で `revokeObjectURL` + Sonner 成功/失敗トースト id-based dedup）
-- 印刷ボタン: 仕様未定のため Phase 2 では disabled（aria-disabled + Tooltip + cursor-not-allowed）
+- 印刷ボタン: 仕様未定のため Phase 2 では disabled（aria-disabled + Tooltip + cursor-not-allowed）。日次は 2026-10-17 に日報の紙として設計した（proposed・未実装、[56](../function-design/56-ui-daily-sales.md) の UI-09a-D17〜D19、D-120）
 - TabsHeader: UI-09b PR #66 で `src/components/sales/TabsHeader.tsx` に共通化、router-driven `<Link>` で日次 (`/reports/daily`) / 月次 (`/reports/monthly`) 切替（disabled 状態廃止）
 - 主動線: UI-07 ResultStep「売上レポートを見る」CTA → `navigate({ to: "/reports/daily", search: { date: settlementDate } })`（settlementDate を URL state で渡し、当日 fallback されず取込み済日付のデータを直接表示）、UI-07 commitMutation / rollbackMutation success で `["daily-sales"]` prefix invalidate（UI-09a + UI-00 ホーム両方 refetch）
 
@@ -310,6 +306,10 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - CSV 出力ボタン → CMD-09 export_sales_csv（`useExportFile({ reportType: "monthly_by_product" | "monthly_by_department" })`、Sonner id `export-monthly_by_product-success` / `export-monthly_by_department-success` 等 reportType ラベル付き）
 - 印刷ボタン: 仕様未定のため Phase 2 では disabled（aria-disabled + Tooltip + cursor-not-allowed）
 - 失敗 4 状態: API fail = 画面全体 Alert / items 空 = 「当月データなし」/ prev_month_comparison 空 = サマリ「比較不可」+ 各行「—」/ 前月だけ fail = 構造的不可能（1 useQuery 設計、Q-5）
+
+**UI-09c レシートの控え（proposed・未実装、D-121）:**
+- 決定は [SCREEN_DESIGN](../SCREEN_DESIGN.md) の「レシートの控え画面」（UI-09c-D1〜D5）。BIZ は BIZ-08 §37.11、CMD は CMD-12 §45.6c。function-design の文書は runtime の lane が作る
+- 日付と番号で EJ の記録を探し、控えの文を等幅で見せる。読むだけ。欠けを知らせ、EJ のファイルを手で選んで埋められる
 
 ### UI-10: 棚卸し画面
 
@@ -400,16 +400,16 @@ REQ-403 / SP-403 の POS 部門別売上照合は別の deferred 要求であり
 
 **【CMD呼び出し】**
 - 「整合性チェック実行」ボタン → CMD-11 run_integrity_check
-- 差異検出時、選択行で「補正確定」→ CMD-11 fix_integrity（stock_quantity を movements_sum へ直接更新。inventory_movements への行追加なし、同一TX内 integrity_fix 操作ログ必須 — BIZ-07-D2/D3）
+- 差異検出時、選択行で「補正確定」→ CMD-11 fix_integrity（写しを記録から求め直した値へ直接更新。inventory_movements への行追加なし、同一TX内 integrity_fix 操作ログ必須 — BIZ-07-D2/D3）
 
 **【利用者操作フロー】**
 1. 画面表示時は idle 状態。「整合性チェック実行」ボタンのみ表示
 2. 実行中はプログレスバーと処理中メッセージ
 3. 差異なし → 緑色の成功メッセージ、「直近の確認日時」を記録
-4. 差異あり → 差異商品一覧（商品コード/名前/DBのstock_quantity/SUM(movements)/差異数）
+4. 差異あり → 差異商品一覧（商品コード/商品名/違う項目/保存している値/記録から求め直した値）
 5. 利用者が補正する商品を選択し「補正を確定」ボタン（文言正本は 75-ui-integrity-check.md 文言表）
-6. 確認ダイアログ（在庫数を入出庫の合計に合わせて補正し、操作ログに記録する旨。文言正本は 75-ui-integrity-check.md 文言表）
-7. 確定 → products.stock_quantity を movements_sum へ直接更新（inventory_movements への行追加なし）+ 同一TX内 integrity_fix 操作ログ必須記録（BIZ-07-D2/D3、D-051）
+6. 確認ダイアログ（在庫数を記録から求め直した値に合わせて補正し、操作ログに記録する旨。文言正本は 75-ui-integrity-check.md 文言表）
+7. 確定 → 写しを記録から求め直した値へ直接更新（inventory_movements への行追加なし）+ 同一TX内 integrity_fix 操作ログ必須記録（BIZ-07-D2/D3、D-051）
 
 **【制御構造】**
 - チェック実行は重い処理のため、UIは running 状態で他操作を受け付けない（画面内オーバーレイ）

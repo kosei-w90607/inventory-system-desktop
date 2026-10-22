@@ -104,7 +104,7 @@ export function MonthlySalesPage({ search, onSearchChange }: MonthlySalesPagePro
       ) : (
         <>
           <SummaryCardsBar
-            summary={derived?.summary ?? { totalAmount: 0, totalQuantity: 0 }}
+            summary={derived?.summary ?? { totalAmount: 0, totalCountPoints: 0, totalLengthCm: 0 }}
             periodLabel={derived?.periodLabel ?? "—"}
             prevComparison={query.data?.prev_month_comparison ?? null}
             isLoading={query.isLoading || derived === null}

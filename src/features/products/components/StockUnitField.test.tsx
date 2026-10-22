@@ -2,12 +2,14 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { isLengthUnit } from "@/lib/unit-quantity";
 import { StockUnitField } from "./StockUnitField";
 
 describe("StockUnitField (UI-01b-D6)", () => {
-  it("proposes POS sync off for cm but preserves user override", async () => {
+  it("proposes POS sync off for m but preserves user override", async () => {
     const user = userEvent.setup();
     const onStockUnitChange = vi.fn();
     const onPosStockSyncChange = vi.fn();
@@ -25,9 +27,9 @@ describe("StockUnitField (UI-01b-D6)", () => {
     );
 
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
 
-    expect(onStockUnitChange).toHaveBeenCalledWith("cm");
+    expect(onStockUnitChange).toHaveBeenCalledWith("m");
     // checkbox onChange (touched 経路) は呼ばれない — suggest 経路を使う
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
 
@@ -45,13 +47,13 @@ describe("StockUnitField (UI-01b-D6)", () => {
     onPosStockSyncChange.mockClear();
 
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
 
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
   });
 
-  // REQ-101 / UI-01b-D6: pcs→cm 自動提案が suggest 経路（touched を立てない）で発火する
-  it("suggest: pcs→cm calls onPosStockSyncSuggest(false) without touching posSyncTouched", async () => {
+  // REQ-101 / UI-01b-D6: pcs→m 自動提案が suggest 経路（touched を立てない）で発火する
+  it("suggest: pcs→m calls onPosStockSyncSuggest(false) without touching posSyncTouched", async () => {
     const user = userEvent.setup();
     const onPosStockSyncSuggest = vi.fn();
     const onPosStockSyncChange = vi.fn();
@@ -69,7 +71,7 @@ describe("StockUnitField (UI-01b-D6)", () => {
     );
 
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
 
     // suggest 経路が false を提案する（= touched を立てない）
     expect(onPosStockSyncSuggest).toHaveBeenCalledWith(false);
@@ -77,8 +79,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
   });
 
-  // REQ-101 / UI-01b-D6: pcs→cm→pcs（checkbox 未操作）で suggest が true を復元する
-  it("suggest: pcs→cm→pcs without checkbox restores posStockSync to true via suggest", async () => {
+  // REQ-101 / UI-01b-D6: pcs→m→pcs（checkbox 未操作）で suggest が true を復元する
+  it("suggest: pcs→m→pcs without checkbox restores posStockSync to true via suggest", async () => {
     const user = userEvent.setup();
     const onPosStockSyncSuggest = vi.fn();
     const onPosStockSyncChange = vi.fn();
@@ -95,18 +97,18 @@ describe("StockUnitField (UI-01b-D6)", () => {
       />,
     );
 
-    // pcs→cm: suggest(false) が呼ばれる
+    // pcs→m: suggest(false) が呼ばれる
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
     expect(onPosStockSyncSuggest).toHaveBeenLastCalledWith(false);
 
     onPosStockSyncSuggest.mockClear();
 
-    // cm→pcs（checkbox 未操作、posSyncTouched=false のまま）: suggest(true) が呼ばれる
+    // m→pcs（checkbox 未操作、posSyncTouched=false のまま）: suggest(true) が呼ばれる
     rerender(
       <StockUnitField
         mode="create"
-        stockUnit="cm"
+        stockUnit="m"
         posStockSync={false}
         posSyncTouched={false}
         onStockUnitChange={vi.fn()}
@@ -123,14 +125,14 @@ describe("StockUnitField (UI-01b-D6)", () => {
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
   });
 
-  it("Codex round3 P2-class: 数量単位selectで「個」を選ぶとonStockUnitChangeがpcsで呼ばれる（cmとの内部値独立検査）", async () => {
+  it("Codex round3 P2-class: 数量単位selectで「個」を選ぶとonStockUnitChangeがpcsで呼ばれる（mとの内部値独立検査）", async () => {
     const user = userEvent.setup();
     const onStockUnitChange = vi.fn();
 
     render(
       <StockUnitField
         mode="edit"
-        stockUnit="cm"
+        stockUnit="m"
         posStockSync
         posSyncTouched
         onStockUnitChange={onStockUnitChange}
@@ -163,7 +165,7 @@ describe("StockUnitField (UI-01b-D6)", () => {
     );
 
     await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+    await user.click(await screen.findByRole("option", { name: "m" }));
 
     // touched=true の場合 suggest は発火しない（利用者 override を尊重）
     expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
@@ -232,5 +234,128 @@ describe("StockUnitField (UI-01b-D6)", () => {
 
     const posSyncCheckbox = screen.getByLabelText("POS販売で在庫を減らす");
     expect(posSyncCheckbox).not.toHaveClass("bg-control-surface");
+  });
+});
+
+// UI-01b-D22 / REQ-101: 単位は 10 個の表示の語、在庫連動の提案は長さの単位で false・個数の単位で true
+describe("StockUnitField (UI-01b-D22)", () => {
+  function renderField(props: Partial<React.ComponentProps<typeof StockUnitField>> = {}) {
+    const onStockUnitChange = vi.fn();
+    const onPosStockSyncSuggest = vi.fn();
+    const onPosStockSyncChange = vi.fn();
+    render(
+      <StockUnitField
+        mode="create"
+        stockUnit="pcs"
+        posStockSync
+        posSyncTouched={false}
+        onStockUnitChange={onStockUnitChange}
+        onPosStockSyncChange={onPosStockSyncChange}
+        onPosStockSyncSuggest={onPosStockSyncSuggest}
+        {...props}
+      />,
+    );
+    return { onStockUnitChange, onPosStockSyncSuggest, onPosStockSyncChange };
+  }
+
+  it("UI-01b-D22: select に 10 個の表示の語が正本の表の順で出る", async () => {
+    const user = userEvent.setup();
+    renderField();
+    await user.click(screen.getByLabelText("数量単位"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "個",
+      "枚",
+      "本",
+      "袋",
+      "箱",
+      "組",
+      "セット",
+      "玉",
+      "丁",
+      "m",
+    ]);
+  });
+
+  it.each([
+    ["pcs", "m", "m", false],
+    ["pcs", "玉", "ball", true],
+    ["m", "玉", "ball", true],
+    ["ball", "m", "m", false],
+    ["m", "枚", "sheet", true],
+  ] as const)(
+    "UI-01b-D22: 未操作で %s から「%s」へ替えると %s を選び、在庫連動は %s を提案する",
+    async (from, label, code, suggested) => {
+      const user = userEvent.setup();
+      const { onStockUnitChange, onPosStockSyncSuggest, onPosStockSyncChange } = renderField({
+        stockUnit: from,
+      });
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: label }));
+      expect(onStockUnitChange).toHaveBeenCalledWith(code);
+      expect(onPosStockSyncSuggest).toHaveBeenCalledWith(suggested);
+      expect(onPosStockSyncChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it("UI-01b-D22: checkbox を触った後と edit では、単位を替えても提案しない", async () => {
+    const user = userEvent.setup();
+    const touched = renderField({ posSyncTouched: true });
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "m" }));
+    expect(touched.onStockUnitChange).toHaveBeenCalledWith("m");
+    expect(touched.onPosStockSyncSuggest).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["m", "create", true],
+    ["ball", "create", false],
+    ["pcs", "create", false],
+    ["m", "edit", false],
+  ] as const)(
+    "UI-01b-D22: 提案の案内は create の %s（%s）で出るか = %s",
+    (stockUnit, mode, shown) => {
+      renderField({ stockUnit, mode, readOnly: mode === "edit" && isLengthUnit(stockUnit) });
+      const note = screen.queryByText(/在庫同期しない設定を提案します/);
+      if (shown) expect(note).toBeInTheDocument();
+      else expect(note).toBeNull();
+    },
+  );
+
+  const RELABEL_NOTE =
+    "単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。";
+
+  it("UI-01b-D23: edit の個数の単位の商品は個数の単位だけを選べる", async () => {
+    const user = userEvent.setup();
+    const { onStockUnitChange, onPosStockSyncSuggest } = renderField({
+      mode: "edit",
+      stockUnit: "pcs",
+    });
+    expect(screen.getByLabelText("数量単位")).toBeEnabled();
+    expect(screen.getByText(RELABEL_NOTE)).toBeInTheDocument();
+    await user.click(screen.getByLabelText("数量単位"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "個",
+      "枚",
+      "本",
+      "袋",
+      "箱",
+      "組",
+      "セット",
+      "玉",
+      "丁",
+    ]);
+    await user.click(screen.getByRole("option", { name: "玉" }));
+    expect(onStockUnitChange).toHaveBeenCalledWith("ball");
+    // 在庫連動の自動提案は create だけ
+    expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
+  });
+
+  it("UI-01b-D23: edit の長さの単位の商品は選べない", () => {
+    renderField({ mode: "edit", stockUnit: "m", readOnly: true });
+    expect(screen.getByLabelText("数量単位")).toBeDisabled();
+    expect(screen.getByLabelText("数量単位")).toHaveTextContent("m");
+    expect(screen.queryByText(RELABEL_NOTE)).toBeNull();
   });
 });

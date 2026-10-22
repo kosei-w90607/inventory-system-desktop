@@ -1,6 +1,5 @@
 # 開発環境構築チェックリスト
 
-> **最終更新**: 2026-07-30 / Node 24 LTS exact pin 方針
 > **方針**: WSL2 直接開発を現運用とする。Docker 完結（旧案 C）は §A.1 退役記録に履歴保存
 
 ---
@@ -20,7 +19,7 @@
 - §11 第6段階完了 — 保守 + 仕上げ + CMD-02〜06 補完（v0.6.0）
 - §12 第7段階 — Phase 1 UI 基盤構築（進行中）
 - §13 第8段階 — Phase 2 毎日使う 5 画面（完了 / `v0.8.0-ui-daily` tag 済み）
-- §14 Phase 3 / Phase 4（参考、未着手）
+- §14 Phase 3 / Phase 4（画面は実装済み。計画の記録）
 - §A.1 退役記録: Docker 完結方針（2026-03-31 採用 → 2026-04-03 退役）
 
 ---
@@ -508,11 +507,11 @@ ARCHITECTURE.md の 5 層分割（UI / CMD / BIZ / IO / MNT）に従い、`src-t
 
 ---
 
-## 14. Phase 3 / Phase 4（参考、未着手）
+## 14. Phase 3 / Phase 4（画面は実装済み。計画の記録）
 
-> **状態**: 着手予定。Phase 2（毎日使う 5 画面）完了 + 利用者デモ合意後にスコープ確定する。
+> **状態**: Phase 3・4 の画面は実装済み（[SCREEN_DESIGN](SCREEN_DESIGN.md) の画面一覧、`src/routes/`）。下の check の表は着手前の計画の記録で、印は更新していない。v1.0 の release は自動在庫連動の完成まで待つ（D-070）ので、完了と書かない。tag は public repo に無い（[履歴境界](PROJECT_HANDOFF.md#履歴境界public-snapshot)）。
 
-### 14.1 第9段階 — Phase 3 商品管理 + 入出庫画面（v0.9.0-ui-product-inventory 予定）
+### 14.1 第9段階 — Phase 3 商品管理 + 入出庫画面
 
 **着手前判定**: Phase 2 8-9 では E2E / 視覚回帰を tag gate にしない判断で通過済み（[UI_TECH_STACK §7.2](UI_TECH_STACK.md)）。display-scale option は PR #77 で導入済み。Phase 3 / Phase 4 着手時は、画面横断 regression の状況を踏まえて smoke E2E / visual regression を再評価する。
 
@@ -525,7 +524,7 @@ ARCHITECTURE.md の 5 層分割（UI / CMD / BIZ / IO / MNT）に従い、`src-t
 - [ ] 9-7 UI-05 廃棄・破損（REQ-204）
 - [ ] git tag: `v0.9.0-ui-product-inventory`
 
-### 14.2 第10段階 — Phase 4 在庫特殊 + システム管理（v1.0.0 予定）
+### 14.2 第10段階 — Phase 4 在庫特殊 + システム管理
 
 **着手前判定**: Q40（障害時の対応）の具体化を UI-13 整合性検証画面とエラーバウンダリ実装と合わせて確定（[Plans.md](../Plans.md) Backlog 参照）。
 

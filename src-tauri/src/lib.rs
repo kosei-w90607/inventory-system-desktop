@@ -241,7 +241,7 @@ fn show_pre_window_fatal(message: &str) {
 ///
 /// - debug build: `run()` の先頭から呼ばれて毎起動時に最新化
 /// - release build: 呼ばれない（bindings.ts は開発時のみ必要）
-/// - `.gitignore:38` で vendor-in に切替済（旧: gitignore 対象 / 現: PR に含めて push）
+/// - `.gitignore` の `# src/lib/bindings.ts` の行で vendor-in に切替済（旧: gitignore 対象 / 現: PR に含めて push）
 ///
 /// 現時点で specta 適用済み:
 /// - CMD-01: create_product / update_product / toggle_discontinue / search_products / list_departments / list_suppliers / get_product / preview_import / commit_import
@@ -1137,6 +1137,226 @@ mod bindings_generation_tests {
             .unwrap();
         assert_eq!(count, 1);
         assert!(!manifest_path.exists());
+    }
+
+    // -----------------------------------------------------------------------
+    // 22 §16 の作り直しの手順（vB、MNT-03-D14）の起動の test（Matrix R1〜R4）
+    // -----------------------------------------------------------------------
+
+    const VB_STOP: &str = "商品か原価の記録がある DB はこの版へ移せません。原価を 1/100 円で持つ版は空の DB から始めます。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）: products";
+
+    /// `path` に版 `version`（vB の前）まで当てた DB を作り、商品を 1 行入れる
+    fn write_db_with_product(path: &std::path::Path, version: i64) {
+        let conn = rusqlite::Connection::open(path).unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        crate::db::migration::migrate_up_to(&conn, version).unwrap();
+        crate::db::insert_pre_vb_product(&conn, "R-OLD");
+    }
+
+    /// 作り直しの手順 3: folder を消さずに移し、元の場所に空の folder を作り直す（起動の create_dir_all と同じ）
+    fn move_away(from: &std::path::Path, to: &std::path::Path) {
+        std::fs::rename(from, to).unwrap();
+        assert!(!from.exists());
+    }
+
+    fn version_and_products(conn: &crate::db::DbConnection) -> (i64, i64) {
+        conn.query_row(
+            "SELECT (SELECT MAX(version) FROM schema_versions), (SELECT COUNT(*) FROM products)",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
+    }
+
+    fn file_hashes(dir: &std::path::Path) -> Vec<(String, String)> {
+        use sha2::{Digest, Sha256};
+        let mut out: Vec<(String, String)> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                let name = path.file_name().unwrap().to_string_lossy().into_owned();
+                let hash = format!("{:x}", Sha256::digest(std::fs::read(&path).unwrap()));
+                (name, hash)
+            })
+            .collect();
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn test_startup_req903_rebuild_moves_app_data_and_legacy_db_then_empty_vb() {
+        // REQ-903 / 22 §16 作り直しの手順 (i) / Matrix R1: {app_data} を丸ごとと作業フォルダの旧 DB を移すと、
+        // 取込みは起きず空の DB で vB まで当たる
+        let root = tempfile::tempdir().unwrap();
+        let app_data = root.path().join("app_data");
+        let cwd = root.path().join("cwd");
+        let moved = root.path().join("moved");
+        for dir in [&app_data, &cwd, &moved] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        write_db_with_product(&app_data.join("inventory.db"), crate::db::VB_VERSION - 1);
+        write_db_with_product(&cwd.join("inventory.db"), crate::db::VB_VERSION - 1);
+
+        move_away(&app_data, &moved.join("app_data"));
+        std::fs::create_dir_all(moved.join("cwd")).unwrap();
+        move_away(
+            &cwd.join("inventory.db"),
+            &moved.join("cwd").join("inventory.db"),
+        );
+        std::fs::create_dir_all(&app_data).unwrap();
+        let moved_before = file_hashes(&moved.join("cwd"));
+
+        let conn = super::prepare_database_with(
+            &app_data,
+            || Ok(cwd.clone()),
+            crate::db::migrate_legacy_db,
+        )
+        .unwrap();
+        assert_eq!(version_and_products(&conn), (crate::db::VB_VERSION, 0));
+        assert_eq!(
+            file_hashes(&moved.join("cwd")),
+            moved_before,
+            "移した旧 DB は読まない"
+        );
+    }
+
+    #[test]
+    fn test_startup_req903_rebuild_with_committed_manifest_writes_no_restore_log() {
+        // REQ-903 / 22 §16 作り直しの手順 (ii) / Matrix R2: 確定済みの manifest ごと {app_data} を移すと、
+        // 新しい DB の操作ログに旧 DB の復元の記録は書かれない
+        let root = tempfile::tempdir().unwrap();
+        let app_data = root.path().join("app_data");
+        let cwd = root.path().join("cwd");
+        std::fs::create_dir_all(&app_data).unwrap();
+        std::fs::create_dir_all(&cwd).unwrap();
+        let db_path = app_data.join("inventory.db");
+        write_db_with_product(&db_path, crate::db::VB_VERSION - 1);
+        std::fs::write(
+            format!("{}.restore_manifest", db_path.display()),
+            br#"{"attempt_id":"r2-old","original_files":["main"],"phase":"committed"}"#,
+        )
+        .unwrap();
+
+        move_away(&app_data, &root.path().join("moved-app_data"));
+        std::fs::create_dir_all(&app_data).unwrap();
+
+        let conn = super::prepare_database_with(
+            &app_data,
+            || Ok(cwd.clone()),
+            crate::db::migrate_legacy_db,
+        )
+        .unwrap();
+        assert_eq!(version_and_products(&conn), (crate::db::VB_VERSION, 0));
+        let restore_logs: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'backup_restore'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(restore_logs, 0);
+        assert!(root
+            .path()
+            .join("moved-app_data")
+            .join("inventory.db.restore_manifest")
+            .exists());
+    }
+
+    #[test]
+    fn test_startup_req903_vb_stop_after_earlier_commit_backup_path_readable_from_copy() {
+        // REQ-903 / 22 §16 作り直しの手順 (iii)・手順 1 (b) / Matrix R3: v8・v9 が COMMIT した後に vB で止まった DB は、
+        // 写しを読み取りだけで開けば backup_path が取れ、元の file は変わらない
+        let root = tempfile::tempdir().unwrap();
+        let app_data = root.path().join("app_data");
+        std::fs::create_dir_all(&app_data).unwrap();
+        let db_path = app_data.join("inventory.db");
+        write_db_with_product(&db_path, 7);
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute(
+                "UPDATE app_settings SET value = 'D:\\合成の保存先' WHERE key = 'backup_path'",
+                [],
+            )
+            .unwrap();
+        }
+
+        let error = super::prepare_database_with(
+            &app_data,
+            || panic!("新 DB があるので作業フォルダは見ない"),
+            |_old, _new| panic!("新 DB があるので取込みはしない"),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            super::StartupDatabaseError::DatabaseInit(_)
+        ));
+        let message = error.operator_message().unwrap();
+        assert!(message.contains(VB_STOP), "{message}");
+
+        let original = file_hashes(&app_data);
+        let copy_dir = root.path().join("copy");
+        std::fs::create_dir_all(&copy_dir).unwrap();
+        for (name, _) in &original {
+            std::fs::copy(app_data.join(name), copy_dir.join(name)).unwrap();
+        }
+        let copy = rusqlite::Connection::open_with_flags(
+            copy_dir.join("inventory.db"),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .unwrap();
+        let backup_path: String = copy
+            .query_row(
+                "SELECT value FROM app_settings WHERE key='backup_path'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(backup_path, "D:\\合成の保存先");
+        let version: i64 = copy
+            .query_row("SELECT MAX(version) FROM schema_versions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, crate::db::VB_VERSION - 1, "v8・v9 は COMMIT 済み");
+        drop(copy);
+        assert_eq!(
+            file_hashes(&app_data),
+            original,
+            "元の DB の file は変わらない"
+        );
+    }
+
+    #[test]
+    fn test_startup_req903_unmoved_legacy_db_is_imported_and_vb_stops() {
+        // REQ-903 / 22 §16 作り直しの手順の対照 / Matrix R4: 作業フォルダの旧 DB を移し忘れると取り込まれて vB で止まる
+        let root = tempfile::tempdir().unwrap();
+        let app_data = root.path().join("app_data");
+        let cwd = root.path().join("cwd");
+        std::fs::create_dir_all(&app_data).unwrap();
+        std::fs::create_dir_all(&cwd).unwrap();
+        write_db_with_product(&cwd.join("inventory.db"), crate::db::VB_VERSION - 1);
+
+        let error = super::prepare_database_with(
+            &app_data,
+            || Ok(cwd.clone()),
+            crate::db::migrate_legacy_db,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            super::StartupDatabaseError::DatabaseInit(_)
+        ));
+        assert!(error.operator_message().unwrap().contains(VB_STOP));
+        let imported = rusqlite::Connection::open_with_flags(
+            app_data.join("inventory.db"),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .unwrap();
+        assert_eq!(
+            version_and_products(&imported),
+            (crate::db::VB_VERSION - 1, 1),
+            "旧 DB が取り込まれている"
+        );
     }
 
     #[test]

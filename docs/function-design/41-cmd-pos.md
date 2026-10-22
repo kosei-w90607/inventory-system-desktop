@@ -1,22 +1,14 @@
 ## 17. CMD-07: Z004商品別CSV取込みコマンド群 / CMD-08: PLU書出しコマンド群
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7）の CMD-07 の側。公開の parse_and_validate_csv の bytes / filename、commit_csv_import の previewToken、rollback_csv_import の import ID は変えない。旧 ADR（時点証拠）の準備照会（`get_pos_stock_readiness`）・stock_review・保留と取消の保留の回復型・source の cache は持たない（置き換えた）。
 
-read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、DB lock→BIZ-03の同名照会（conn）→error変換を行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
-
-32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled / recount_after_import / ej_unverified、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。settlement_missingはsource単位、sync_disabled_unreconciledは商品単位のissueをその説明と組にして保持する。CMDで集約し直さない。前者のsource_ids/settlement_datesは各1要素、後者のtargetsも1要素である。recount_after_importも商品単位でtargetsは1要素、source_ids/settlement_datesはその商品の未解消flagの資料と精算日である。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
-
-parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
-
-commitはUI申告のskip集合・現物数・時刻・cursorを受け取らない。BIZがheld/preview_changedを返した場合は[共通回復型](40-cmd-product.md)へ写し、売上commit成功としてcacheを消す処理をしない。再preview時は同hashのsourceを再利用する。再起動ではfile再選択が必要で、source metadataからbytesを再構成しない。
-
-preview/commitのsource_identity_conflictもstocktake_guardの同名codeで透過する。同一精算別hashだけでなく、同日activeがあり取込み対象側または比較先側のmachine_no / settlement_noが片方でも欠ける場合の拒否を含む。additionalImportConfirmed=trueで解除せず、同日追加確認は精算同一性guardを通過した別精算に限る。CMDは受領済みsourceを削除したり精算番号を書き換えたりしない。
-
-rollbackのlegacy保留もstocktake_guardのrollback_recheck_requiredで対象を渡す。UIはCMD-10の通常の用途（active明細の計数と確定、なければ独立再実測）で新しい適用済み実測を作った後に、同import IDのrollbackを再送する。CSV取消が再実測を運んだり、CMDでpendingを適用済みへ昇格させたりしない。
-
-ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。recount_targetsの要素は[40](40-cmd-product.md)の回復対象型で、要再確認flagの理由をrecount_reasonsの型で持つ。これらはcommitが実際に作ったflagと、その時点の非連動化の未調整対象からBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
+- `additionalImportConfirmed` は Z004 では使わない（同じ精算日の別の精算は確認なしに入る。[32](32-biz-csv-import-service.md) の新契約）。runtime で入力から外し、bindings と UI-07 を同じ変更で直す。
+- preview の拒否（精算回数の無い file・別の machine_no・同じ精算の別版・精算の順の食い違い）は既存の `import_error` kind と BIZ の message で返す（回復型に載せない）。
+- preview と ImportResult に知らせ（`notices`: 欠けた精算回数の区間〈`{ from: i64, to: i64 }`。1 つなら from = to〉の一覧と、精算日が PC の今日より後の知らせ。32 の新契約）を足す。ImportResult と RollbackResult に、求め直しの後に要再確認になった商品の一覧（`recheck_targets: Vec<CountRecoveryTarget>`、[40](40-cmd-product.md)）を足す。売上 0 の正常な完了を失敗に変えない。
+- CMD は PC の今日（ローカルの日付）を BIZ へ渡す（精算日が今日より後の知らせのため）。
+- commit と rollback は停止 ADR の 5 つの入口を外すのと同じ runtime の配布の単位で新しい経路に繋ぐ（SPEC-STK-CNT-D12）。bindings の生成と UI-07 の分岐・preview の mock の更新は runtime で同時に行う。
 
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。
 
@@ -469,16 +461,19 @@ struct PluExportPrepareResponse {
     encoding: String,                // PluFileOutput.encoding
     count: usize,                    // 書出し行数（dedup 後）
     target_product_codes: Vec<String>,  // confirm対象。dedup 群の全メンバーを含むため count と長さが一致しないことがある（D-028）
-    prepared_rows: Vec<PluPreparedRowResponse>, // memory_no、row_kind、exact product set
+    prepared_rows: Vec<PluPreparedRow>, // memory_no、exact product set（BIZ の型をそのまま wire に出す）
     excluded: Vec<PluExcludedProductResponse>,  // 要修正一覧（D-028）
-    over_limit_warning: bool,        // PLU上限超過警告（互換維持フィールド。BIZ-04側は常に false を返し、実際の上限超過は excluded 経由で表現する）
 }
 
-struct PluPreparedRowResponse {
+struct PluPreparedRow {
     memory_no: i64,
-    row_kind: PluPreparedRowKind, // product | clear（generated enum）
     target_product_codes: Vec<String>,
 }
+```
+
+D-117 (1)・(5) で `over_limit_warning`（常に false の互換 field）と `row_kind`（`PluPreparedRowKind` の product | clear）を外した。runtime の lane が code・bindings・UI・test と一緒に外す（wire の変更）。
+
+```
 
 // 要修正一覧の1件（BIZ-04のPluExcludedProductをフロントエンド向けに変換）
 struct PluExcludedProductResponse {
@@ -499,7 +494,7 @@ struct PluExcludedProductResponse {
 2. state.db.lock() でDB接続を取得
 3. PluExportPrepareRequest { mode: export_mode } を構築
 4. biz::plu_export_service::prepare_plu_export(&mut conn, req) を呼ぶ（slot 予約 TX を BIZ-04 が所有）
-   - snapshot 未読込みは `register_snapshot_required`。JAN不備、同一JAN価格不一致、空きなしは BizError にならず `excluded`（要修正リスト）として Ok で返る。固定件数との比較は行わない
+   - 一度も照合していなければ `register_snapshot_required`。JAN不備、同一JAN価格不一致、空きなしは BizError にならず `excluded`（要修正リスト）として Ok で返る。固定件数との比較は行わない
 5. Ok → PluExportPreparedResult を PluExportPrepareResponse に変換（bytes → base64エンコード）して返す
 6. Err(BizError) → CmdError に変換して返す
 
@@ -541,14 +536,14 @@ struct PluExcludedProductResponse {
 fn confirm_plu_export_saved(
     state: State<AppState>,
     product_codes: Vec<String>,
-    prepared_rows: Vec<PluPreparedRowResponse>,
+    prepared_rows: Vec<PluPreparedRow>,
 ) -> Result<PluExportConfirmResponse, CmdError>
 ```
 
 **入力型**:
 ```
 product_codes: Vec<String>   // prepare_plu_exportが返したtarget_product_codes
-prepared_rows: Vec<PluPreparedRowResponse> // prepare が返した exact memory_no / row_kind / product set
+prepared_rows: Vec<PluPreparedRow> // prepare が返した exact memory_no / product set
 ```
 
 **出力型**:
@@ -573,7 +568,9 @@ struct PluExportConfirmResponse {
 
 ---
 
-#### import_plu_register_snapshot（CMD-08-D4 / SPEC-PLS-D2）
+#### import_plu_register_snapshot（CMD-08-D4。撤去の対象、D-117 (3)）
+
+占有は毎日の締めの SD の読取り（CMD-12 [§45.6a](45-cmd-daily-report-import.md) `scan_register_sd`）が BIZ-04 `refresh_plu_register_snapshot_from_sd` を呼んで照合する（[33 §16.3](33-biz-plu-export-service.md)）。店主が FilePicker で Z004 を選ぶこの command は撤去する。runtime の lane が code・specta の登録・bindings・UI・test と一緒に消す（SD を直接読む runtime の後。それまで code は今の形のまま）。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 #[tauri::command]
@@ -581,10 +578,8 @@ struct PluExportConfirmResponse {
 fn import_plu_register_snapshot(
     state: State<AppState>,
     file_bytes: Vec<u8>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
-
-共通 FilePicker（D-054）が返す Z004 の bytes（`PickedFile.bytes`、wire は `fileBytes: number[]`）を受け、`CSV_IMPORT_FILE_SIZE_LIMIT` 超過は `parse_and_validate_csv` と同じ Validation error で止め、BIZ-04 の snapshot 取込みを呼ぶ。path は受け取らない（D-054 は path を公開しない。設計時の `path: String` は gated amendment で改訂、2026-08-18）。実コードを response や operation log に複製せず、`snapshot_at`, `free_count`, `external_count`, `app_managed_count`, `conflict_count`, `release_pending_count` の要約だけを返す。`release_pending_count` は app 管理総数の内数で、次回 Diff / Full の clear 行候補件数である。
 
 #### get_plu_slot_summary（CMD-08-D5 / SPEC-PLS-D2、D7）
 
@@ -593,10 +588,10 @@ fn import_plu_register_snapshot(
 #[specta::specta]
 fn get_plu_slot_summary(
     state: State<AppState>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
 
-`app_settings` と `plu_slots` から最後の読込み日時と占有要約を read-only で返す。snapshot 未読込みは null timestamp と全件数 zero の summary で表し、prepare の gate 判定は BIZ-04 が行う。`release_pending_count` は `app_managed_count` と別集計し、UI は解除待ち件数を app 管理総数から推測しない。
+`app_settings` から最後に照合した日時（`snapshot_at`）だけを read-only で返す。未照合は null。BIZ の `PluRegisterSnapshotSummary` をそのまま wire に出し、件数の field（free / external / app managed / conflict / `release_pending_count`）を外す（D-117 (5)。wire の変更は runtime の lane）。prepare の gate 判定は BIZ-04 が行う。
 
 ---
 
@@ -628,7 +623,7 @@ Vec<ProductResponse>
 
 **設計判断 — 戻り値の型**: BIZ層が返す `Vec<Product>` をそのままフロントエンドに返さず、`ProductResponse` に変換する。CMD-01と同じ商品レスポンス型を使うことで、フロントエンドの型定義を統一する。
 
-`import_plu_register_snapshot` / `get_plu_slot_summary`、prepare / confirm の `memory_no` DTO、`no_free_slot`、`plu_memory_no` は後続実装 A/B で specta 登録と bindings 再生成を行う。本 design-first PR は `src/lib/bindings.ts` を変更しない。
+D-117 の撤去（`import_plu_register_snapshot`、summary の件数、`over_limit_warning`、`row_kind`、`plu_memory_no`）は runtime の lane が specta 登録と bindings 再生成を行う。本 design PR（D-117）は `src/lib/bindings.ts` を変更しない。
 
 **入力例**: なし（引数なし）
 
@@ -642,7 +637,7 @@ Vec<ProductResponse>
     "department_id": 3,
     "department_name": "毛糸",
     "selling_price": 648,
-    "cost_price": 111,
+    "cost_price_centi": 11100,
     "stock_quantity": 14,
     "plu_dirty": true,
     "plu_exported_at": null
@@ -654,7 +649,7 @@ Vec<ProductResponse>
     "department_id": 2,
     "department_name": "ヘア雑貨",
     "selling_price": 880,
-    "cost_price": 440,
+    "cost_price_centi": 44000,
     "stock_quantity": 5,
     "plu_dirty": true,
     "plu_exported_at": "2026-03-15T15:00:00"

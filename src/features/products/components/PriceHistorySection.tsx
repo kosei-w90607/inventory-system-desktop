@@ -10,6 +10,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { formatCostYen } from "@/features/stock-inquiry/lib/format-stock-display";
 import { commands, type PriceHistoryEntry } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
@@ -94,8 +95,8 @@ export function PriceHistorySection({ productCode }: { productCode: string }) {
                   {yenFormatter.format(entry.new_selling_price)}
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {yenFormatter.format(entry.old_cost_price)} →{" "}
-                  {yenFormatter.format(entry.new_cost_price)}
+                  {formatCostYen(entry.old_cost_price_centi)} →{" "}
+                  {formatCostYen(entry.new_cost_price_centi)}
                 </TableCell>
               </TableRow>
             ))}

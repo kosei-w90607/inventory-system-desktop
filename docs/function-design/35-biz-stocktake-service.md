@@ -1,51 +1,44 @@
 ## 20. BIZ-06: 棚卸しロジック
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定に加え、§20.6aの差異定義、§20.7の動的差異、§20.8のINV-2/INV-3、§20.9の旧保存型/引数はruntime切替時に本節で置き換える。現行codeおよび完了済みreconciliation_version=0の旧表示は保存し、新方式を実装済みとはしない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の BIZ-06 の側。以下の §20.2〜§20.5 の現行の update_count と在庫への上書きの確定、§20.6a の差異の定義、§20.7 の動的差異、§20.8 の INV-2 / INV-3、§20.9 の旧保存型は、runtime の切替で本節に置き換える。旧 ADR（時点証拠）の計数 context（begin・token・版・DB 世代・source_cursor・再送の照会・abandon）・独立再実測の表・明細の kind（uncounted / measured / auto_filled / legacy）・force_fill・legacy の取消の保留・非連動化の回復・拒否の回復型の表（SPEC-STK-TIME-D1-R1）は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた `stocktake_service/time_evidence.rs` は runtime の lane が外す）。
 
-#### 入出力と所有
+#### 計数の保存（SPEC-STK-CNT-D5）
 
-公開API・DTOは[CMD-10の新契約](42-cmd-sales-stocktake.md)、保存列は[tracking](../db-design/tracking-system-tables.md)を正とする。BIZは計数contextの生成・意味・検証を所有し、AppState/cacheを直接操作しない。CMDがopaque tokenの保管・lookupを行い、復元した内部contextを渡す。
+`save_stock_count(tx, SaveStockCountRequest) -> Result<StockCountSaveResult, BizError>`。
 
-| BIZ操作 | 内部の入出力 |
+- 入力: `product_code`、`count_value`（0 以上の整数。長さの商品は cm。上限は [共通規則](10-common-rules.md) の在庫の上限 `999999999`）、`fresh: bool`（「入れ直す」なら true、「数を保存」なら false）、`business_date`（YYYY-MM-DD。`fresh=false` のとき使う。UI の既定は PC の今日、「前の日の分を入れる」で選んだ日。`fresh=true` では today を使い、入力の値と違えば `ValidationFailed`）、`stocktake_item_id: Option<i64>`（棚卸しの画面から保存したとき）、`today`（CMD が渡す PC の今日。BIZ は時計を読まない）。
+- 保存の形（[tracking](../db-design/tracking-system-tables.md) の `stock_counts`）: `fresh=false` は `count_kind='default'`。`fresh=true` は `count_kind='fresh'`、`business_date=today`、`settlement_no` = 同じ TX で読んだ active な Z004 の取込みの最大の精算回数（取込みが無ければ NULL。0 は実在しうる精算回数なので使わない）、`seen_movement_id` = 同じ TX で読んだ `MAX(inventory_movements.id)`（無ければ 0）。`business_date` が today より後なら `ValidationFailed`（「未来の日付には保存できません」）。
+- 1 商品 1 TX で `stock_counts` へ INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書き、`stocktake_item_id` があれば明細の `actual_count`・`counted_at`（表示用の写し）を効く計数に合わせる。明細が進行中の棚卸しのものでないとき、明細の商品が `product_code` と違うとき（同じ TX で確かめる）は、書く前に `ValidationFailed`（「この明細は別の商品です」）。
+- 結果: 保存した計数の id・種類、求め直しの後の在庫（写しの値と範囲）、要再確認の理由（[40](40-cmd-product.md) の `recount_reasons` と同じ enum）、`later_count_exists: bool`。
+- 後入力の確認（ADR D5）: 既定の計数の保存の前に UI が `preview_stock_count_placement(conn, product_code, business_date, today) -> CountPlacementPreview`（読取りだけ）を呼び、ADR D3 の「計数どうし」でその計数より後の計数が既にあるか（`later_count_exists`）を受ける（「後の数が既にあり、そちらが効きます」。保存は拒まない）。
+- 計数は消さない・書き換えない（誤った数は「入れ直す」で直す。fresh な計数は、それより先に保存された計数を全て置き換える。ADR D3）。再送の照会・冪等の key は持たない（同じ値の既定の計数がもう 1 行入っても、重なる計数で値が同じなら 1 つとみなす）。
+
+#### 開始と明細
+
+- `start_stocktake` は今のまま進行中の棚卸しが無ければ header と明細（全ての商品。`system_stock` は作成時の帳簿、`actual_count` は NULL）を作る。棚卸し中の商品登録・商品一括 import は明細を足す（今のまま）。進行中があれば `StocktakeInProgress`、対象 0 件は `ValidationFailed`（今の文言）。
+- 明細の「計数済み」は、その明細を参照する計数（`stock_counts.stocktake_item_id`）があること。
+
+#### 完了（SPEC-STK-CNT-D6）
+
+`complete_stocktake(tx, CompleteStocktakeRequest { stocktake_id, today })` は、TX の中で次を検査し、1 つでも当たれば何も書かずに `StocktakeGuard`（[40](40-cmd-product.md) の code `completion_blocked`、明細ごとの target と `block_reason`）を返す。
+
+| block_reason | 条件 |
 |---|---|
-| begin_stocktake_count | (conn, BeginStocktakeCountRequest, 現在のDB世代) → publicな開始応答 + private CountContext |
-| save_stocktake_count | (mutable conn, token, actual_count, Option<CountContext>, 現在のDB世代) → StocktakeCountSaveResult |
-| abandon_stocktake_count | (未保存context) → 失効。保存済み数量や補正を戻す操作ではない |
+| `settlement_pending` | 明細の効く計数（日付 X。fresh なら保存の時点の精算回数 n）について、(i) 精算日が X 以上の取り込み済みの精算が無い、または (ii) 取り込まれていない精算回数 k（fresh で n が NULL でなければ k > n）で、隣の取り込み済みの精算 a < k < b の精算日が d_a ≤ X ≤ d_b のものがある、または (iii) 既定の計数（と n が NULL の fresh な計数）で、精算日が X より前の取り込み済みの精算が無い |
+| `recheck` | 明細の商品の写しが要再確認（`stock_recheck=1`） |
+| `uncounted` | 明細を参照する計数が無い。ただし、その時点で廃番かつ在庫（写し）が 0 の商品は対象外 |
 
-CountContextはサーバー生成UUID、用途（in_progress / independent_recount）、product_code、参照item/親header、開始S、商品revision、開始時source_cursor、DB世代を持つ。token以外をUIへ送って再提出させない。DB世代はCMDがDB接続の交換時に進める値で、client値ではない。contextの失効は商品切替・画面離脱・abandon・アプリの終了・DB接続の交換と、保存TXでの商品revision・所有者・親状態の不一致に限る。PCの蓋閉じ・sleep・時刻変更では失効させない（ADR D1）。S/Eは記録するが前後判定・失効に使わない。
+- message: 「棚卸しを完了できません。数え直し・未計数・取り込んでいない精算のある商品があります」。UI は `block_reason` ごとに一覧を出す。その日の最後の精算を取り込んでいないことは判定できない（ADR D6 の H2）ので、UI の完了の確認の文で確かめる（[73](73-ui-stocktake.md)）。
+- 未計数を片付ける操作: 「数を入れる」は通常の計数の保存。「0 にする」は `count_value=0`・`fresh=false` の計数の保存で、`business_date` は UI が選んだ日（既定は今日、今日より後は `ValidationFailed`。ADR D6）（`zero_uncounted_items(tx, stocktake_id, product_codes, business_date, today)` でまとめて保存できる。1 TX、商品ごとに求め直す）。帳簿の数とみなす操作（force_fill）は持たない。
+- 通れば、各明細の `valuation_cost_price_centi` にその時点の原価を、`valuation_quantity` に評価数量 `max(写しの在庫, 0)` を固定し、[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め) の関数（SPEC-STK-VAL-D1〜D6）で `total_cost` を求め、stocktakes の完了の時点のカーソル（`cutoff_settlement_no`〈取込みが無ければ NULL〉・`cutoff_count_id`）を保存し、header を completed にする。完了は在庫を動かさず、movement を作らない。数量と積和は checked 演算。
+- 完了した評価額は、後から入った記録（棚卸しの期間の日付を選んだ入出庫・後入力の計数・遅れて取り込んだ Z004）で変えない（非遡及）。差は示す（ADR SPEC-STK-CNT-D6、owner の決定 TD-296）: `get_stocktake_record` が、明細ごとに「完了の時点の在庫」を [31](31-biz-inventory-service.md) の `derive_stock` と同じ規則で今の記録から求め直す（計数は id ≤ `cutoff_count_id`、入出庫の movement は業務日 ≤ 完了日の全て〈カーソルで切らない。完了の前に保存した完了日の記録は `valuation_quantity` にも入っているので差に効かず、完了の後に入れた完了日以前の日付の記録が差になる〉、精算は精算日 < 完了日のものと、精算日 = 完了日で精算回数 ≤ `cutoff_settlement_no` のもの。完了日より後の日付の記録は入れない）。その `max(…, 0)` と `valuation_quantity` を、凍結した `valuation_cost_price_centi` でそれぞれ §20.5a の関数で評価し、丸めた後の総額を差し引いて参考の差とする（負の数量を関数に渡さない。読取りで求め、保存しない）。求め直した完了の時点の在庫が要再確認（範囲 lo〜hi）の明細は、差を確定の差と分け、「要再確認」の印と差の範囲（`max(lo,0)` と `max(hi,0)` をそれぞれ `valuation_quantity` と比べた幅、評価額も同じ 2 端で評価した幅）で示し、確定の差の合計に入れない（決まらない記録による差を確定の数として出さない）。差のある明細の一覧（確定の差と要再確認の差を分ける）と確定の差の合計を返す。完了した `total_cost`・`valuation_cost_price_centi`・`valuation_quantity` は書き換えない。
 
-#### beginとsaveの処理
+#### 読取り
 
-1. beginで商品・参照明細・現在の所有者を同一DB snapshotから取得する。active明細があれば未計数/auto_filledでも通常の独立再実測を拒否してその明細へ案内する。
-2. 開始時source上限とDB世代をcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
-3. save入口で保存済みrequest IDをDB照会する。同ID/同Nは書込みなしのreplayed、異なるNはidempotency_conflict。保存先が複数一致する異常は拒否する。未保存の場合だけcontextの存在・用途・世代・所有者・revisionを要求する。
-4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・所有者・商品revision・DB世代を再確認する。不一致は書込み0で拒否し、[40の回復型](40-cmd-product.md)で返す。S/Eの前後や経過時間では拒否しない。
-5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。
-6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
-7. 保存で解消できるflagは、その商品の未解消flagのうち、資料を開始前に受領していた（`source_id <= source_cursor`）ものだけ。active明細へのmeasured保存も独立再実測も同じTXで解消する。条件を満たさないflagを消さない（ほかの解消は当該importの取消と、[32](32-biz-csv-import-service.md)の業務TXによる相殺の確認待ちの再評価である。EJ待ちと直前資料待ちの印を持つ登録の変化を対象とし、中止・失敗・再起動の後も再試行する。previewと受領TXではflagを解消しない）。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
-8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
-
-#### 確定・legacyの取消の保留
-
-以下のlegacy処理は旧履歴があるDBの互換契約であり、開発・試験DBや将来の更新でも維持する。[初導入の前提](../project-memory.md)では本番の旧棚卸し履歴は存在せず、本番開始のために存在しない旧実測を数え直す作業は要求しない。実際にlegacyがあれば初導入の申告で検査を省略しない。
-
-complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。確定対象の棚卸しに明細がある商品に、未解消の要再確認flag（計数と前後不明の販売・相殺の行あり・相殺の確認待ち・旧記録の実測のどれでも）か旧実測の再確認が残る間は、明細のkind（未計数・auto_filled〈廃番の開始時の自動入力を含む〉・measured）と最新の実測の所属によらず、force_fillでも確定を拒否し、その明細の計数へ案内する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
-
-新方式のtotal_costは、各明細の評価数量 `max(補正後現在庫,0)` と確定時評価原価から[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め)の関数（SPEC-STK-VAL-D1〜D5）で求める。数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
-
-legacyの取消の保留（[32](32-biz-csv-import-service.md)。legacy上限 `stocktake_legacy_movement_ceiling` 以下で適用済み吸収先が分からない商品）は、通常のbegin/saveで解除する。active明細があればその計数と棚卸しの確定、なければ完了済み明細を参照する独立再実測で新しい適用済み実測を作り、その後に取消を再試行する。取消のための用途・理由・付け替えは設けない。旧activeを新方式で確定する場合は、必要な再確認が解消した同じTXでreconciliation_version=1にする。通常の独立再実測からactiveを迂回する権限は与えない。
-
-非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消しない。案内は32と同じ版の条件で分け、切替後のmeasured pendingなら確定、切替前/同版/版なしなら切替後の数え直しを指す。切替前のpendingを確定しても観測の版を更新せず、未調整は残る。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
-
-#### 読取り・失敗・検証
-
-一覧はN/Lに基づく保存差異と現在庫を別の情報として返し、未計数・自動補完・旧入力・要再確認をkind/flagで区別する。record detailは補正kind、再実測のN/L・差・時刻・参照元を返す。差0商品の訂正対象も既存のitem一覧/検索から選べるようにし、差異movementがある商品だけに入口を限定しない。
-
-context失効・保存先変更・再確認残存は[機械判別できる回復型](40-cmd-product.md)で返す。入力範囲はvalidation、同要求の値競合はidempotency_conflict、不在/DB失敗は既存分類を維持する。生のDB内容・ファイルパスをmessageへ混ぜない。確認する試験はABA、同秒、応答喪失、差0、force_fill負在庫、保存と取消/確定の競合、legacyの取消の保留と通常の実測による解除、未計数activeの復旧、保存各段のTX故障である。
-
-計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D9（proposed）。計数context、snapshot補正、独立再実測、取消、legacy移行を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+- 明細の一覧は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（効く計数の値 − その計数に入っている記録だけから求めた帳簿。計数が無ければ NULL）を返す。差異は表示用で、在庫を動かさない。
+- 要再確認の一覧 `list_recheck_products(conn) -> Vec<CountRecoveryTarget>`（`stock_recheck=1` の商品。進行中の棚卸しに明細があれば action `active_count` と `stocktake_item_id`、なければ `count_now`）。棚卸しが無いときも読める（取込みの結果と同じ一覧を棚卸しの画面に出す。[73](73-ui-stocktake.md)）。一覧からの保存は fresh な計数で、`stocktake_item_id` があれば渡す（明細の `actual_count`・`counted_at` を置き換わった計数に揃える）。
 
 ### 20.0 現行buildの一時停止
 
@@ -98,7 +91,7 @@ src-tauri/src/
 
 #### StocktakeResult構造体
 
-- total_cost: i64（仕入原価総額、円。商品別の金額〈valuation_cost_price・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で求める〉の合計を円未満で四捨五入した値。§20.5a。税理士報告用）
+- total_cost: i64（仕入原価総額、円。商品別の金額〈valuation_cost_price_centi・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で求める〉の合計を円未満で四捨五入した値。§20.5a。税理士報告用）
 - adjusted_items: Vec\<AdjustedItem\>（差異があった商品のリスト）
 - total_items: usize（棚卸し対象の総商品数）
 - integrity_result: Option\<IntegrityResult\>（D-2: 確定後の整合性チェック結果。失敗時はNone）
@@ -126,7 +119,7 @@ src-tauri/src/
 - product_code: String
 - product_name: String
 - department_name: String
-- system_stock: i64（棚卸し開始時のシステム在庫。stocktake_items.system_stock）
+- system_stock: i64（stocktake_items.system_stock。明細を作った時点〈棚卸しの開始時〉の参考値。D-118 の新方式でも同じ。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）
 - current_stock: i64（現在のシステム在庫。products.stock_quantity。CSV取込み等で変動している可能性あり）
 - actual_count: Option\<i64\>（NULLなら未入力）
 - counted_at: Option\<String\>（YYYY-MM-DDTHH:MM:SS）
@@ -152,7 +145,7 @@ fn start_stocktake(
 2. **対象商品の取得**（TX外）
    - stocktake_repo::find_stocktake_eligible_products(conn) を呼び出し（全商品を返す。IO層ではフィルタなし）
    - 0件 → BizError::ValidationFailed("棚卸し対象の商品がありません")
-   - 戻り値: Vec\<ProductForStocktake\> { product_code, stock_quantity, cost_price, is_discontinued }
+   - 戻り値: Vec\<ProductForStocktake\> { product_code, stock_quantity, cost_price_centi, is_discontinued }
 3. **TX開始**（conn.transaction()。RAII Drop で自動 ROLLBACK）
 4. **棚卸しヘッダINSERT**
    - stocktake_repo::insert_stocktake(&tx, now) → stocktake_id
@@ -272,7 +265,7 @@ fn update_count(
 
 **設計判断 — 差異の動的計算**:
 - architecture/biz-task-specs.md BIZ-06「棚卸し中もCSV取込みで在庫が動くため」（SP-205-09修正）に基づき、差異は stocktake_items.system_stock ではなく現在の products.stock_quantity を使って動的に計算する
-- system_stock は「開始時点の参考値」として記録するのみ。差異表示に使うのは常に最新の stock_quantity
+- 旧本体の system_stock は明細を作った時点の参考値として記録するのみで、カウント時に更新しない。差異表示に使うのは常に最新の stock_quantity。D-118 の新方式でも system_stock は更新せず、差異は本書冒頭の新契約の「読取り」で求める（時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）
 
 **設計判断 — 操作ログなし**:
 - カウント入力は1件ずつ頻繁に行われる操作（4000件の商品を順次カウント）。毎回 operation_log を記録すると大量のログが生成され、有用な操作ログが埋もれる。棚卸しの開始と確定のみ記録する
@@ -319,8 +312,8 @@ fn complete_stocktake(
    - stocktake_repo::list_uncounted_items(&tx, req.stocktake_id) → Vec\<UncountedItem\> { stocktake_item_id, product_code }
    - 各未入力明細について:
      - product_repo::find_by_product_code(&tx, &product_code) → product
-     - stocktake_repo::update_stocktake_item_count(&tx, stocktake_item_id, product.stock_quantity, now)
-     - ※ 現在のシステム在庫をそのまま actual_count にセット（差異なし扱い）
+     - stocktake_repo::update_stocktake_item_count(&tx, stocktake_item_id, product.stock_quantity.max(0), now)
+     - ※ 現在のシステム在庫を actual_count にセットする。負の在庫は 0 を入れる（INV-3）ので、その商品には差異が出る
 4. **全棚卸し明細の取得**
    - stocktake_repo::get_stocktake_items_for_complete(&tx, req.stocktake_id) → Vec\<StocktakeItemForComplete\>
    - StocktakeItemForComplete: { id, product_code, actual_count }
@@ -332,15 +325,16 @@ fn complete_stocktake(
      a. product_repo::find_by_product_code(&tx, &item.product_code) → product
         - None → BizError::NotFound（FK制約で通常起きないが安全策。INV-8: products物理DELETE禁止により理論上不到達）
      b. let actual_count = item.actual_count（ステップ2/3aで NULL なしを保証済み）
-     c. let valuation_cost_price = product.cost_price
-     d. stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price)
-     e. line_centis.push(valuation_line_centi(valuation_cost_price, actual_count, price_basis_quantity(product.stock_unit), &item.product_code)?)（§20.5a）
-        - ※ 負の原価・数量、中間（× 100）の i128 の桁あふれ → BizError::ValidationFailed（検査と文言は関数の中、§20.5a SPEC-STK-VAL-D5）
+     c. let valuation_cost_price_centi = product.cost_price_centi
+     d. stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price_centi)
+     e. line_centis.push(valuation_line_centi(valuation_cost_price_centi, actual_count, price_basis_quantity(product.stock_unit), &item.product_code)?)（§20.5a）
+        - ※ 負の原価・数量、中間（原価 × 数量）の i128 の桁あふれ → BizError::ValidationFailed（検査と文言は関数の中、§20.5a SPEC-STK-VAL-D5）
      f. let difference = product.stock_quantity - actual_count
      g. difference != 0 の場合:
         - let adjustment_quantity = actual_count - product.stock_quantity（在庫視点: 正=増加、負=減少）
-        - inventory_repo::update_stock_quantity(&tx, &item.product_code, actual_count)
-        - inventory_repo::insert_movement(&tx, &NewMovement { product_code: item.product_code, movement_type: MovementType::Stocktake, quantity: adjustment_quantity, stock_after: actual_count, reference_type: Some(ReferenceType::Stocktake), reference_id: Some(req.stocktake_id), note: Some(format!("棚卸し補正: システム在庫{} → 実カウント{}", product.stock_quantity, actual_count)) })
+        - inventory_repo::insert_movement(&tx, &NewMovement { product_code: item.product_code, movement_type: MovementType::Stocktake, quantity: adjustment_quantity, stock_after: actual_count, reference_type: Some(ReferenceType::Stocktake), reference_id: Some(req.stocktake_id), note: Some(format!("棚卸し補正: システム在庫{} → 実カウント{}", product.stock_quantity, actual_count)), business_date: 確定した日（Local の今日）, settlement_no: None })
+        - stock_ledger::recompute_stock(&tx, &item.product_code)（[31](31-biz-inventory-service.md)。写しは補正の movement を入れた後に記録から求め直す）
+        - ※ 記録の `stock_after` は `actual_count`。写しが記録と一致していれば求め直しの値も `actual_count` になる。一致していなければ写しは求め直しの値になる（記録の `stock_after` は `actual_count` のまま）
         - adjusted_items.push(AdjustedItem { product_code: item.product_code, product_name: product.name, system_stock: product.stock_quantity, actual_count, difference, stock_after: actual_count })
 6. **棚卸しヘッダの確定**
    - let total_cost = valuation_total_yen(&line_centis)?（§20.5a。i128 で合計し、円未満を四捨五入して i64 へ検査付きで変換する。合計の桁あふれ・i64 を越える円額 → BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")）
@@ -371,22 +365,22 @@ fn complete_stocktake(
 - DB操作失敗 → RAII自動ROLLBACK → BizError::DatabaseError(DbError)
 
 **設計判断 — apply_stock_change を使わない理由**:
-- 棚卸し確定は「差異補正」であり、通常の在庫変動（入庫/出庫/販売）とは性質が異なる。apply_stock_change は find_by_product_code → stock計算 → update_stock_quantity → insert_movement の4ステップを内部で実行するが、complete_stocktake では既に product を取得済み（ステップ5a）であり、stock_after も actual_count として確定済み。apply_stock_change を使うと同じ商品を2回 find_by_product_code する無駄が生じる
-- また、棚卸し補正の stock_after は「actual_count そのもの」であり、「現在在庫 + 変動量」の計算ではない。apply_stock_change の stock_after 算出ロジック（INV-2）とは意味が異なる
-- よって、inventory_repo::update_stock_quantity + inventory_repo::insert_movement を直接呼び出す
+- 棚卸し確定は「差異補正」であり、通常の在庫変動（入庫/出庫/販売）とは性質が異なる。apply_stock_change は find_by_product_code → movement の INSERT → recompute_stock → update_movement_stock_after を内部で実行するが（[31](31-biz-inventory-service.md)、`biz/inventory_service/common.rs`）、complete_stocktake では既に product を取得済み（ステップ5a）。apply_stock_change を使うと同じ商品を2回 find_by_product_code する無駄が生じる
+- また、棚卸し補正の記録の stock_after は actual_count で、apply_stock_change のように求め直しの値を後から書き直さない。写しが記録と一致しているときは求め直しの値も actual_count と同じになる
+- よって、inventory_repo::insert_movement で補正の記録を足し、写しは stock_ledger::recompute_stock で記録から求め直す（inventory_repo::update_stock_quantity を直に呼ばない）
 
 **設計判断 — total_cost のオーバーフロー対策**:
-- worst case: 4000商品 × 原価999,999円 × 在庫9,999個 = 約40兆円。中間（原価 × 数量 × 100）と1/100円の合計は i128 で checked に計算し、最後の円額だけを i64 へ検査付きで変換する（§20.5a SPEC-STK-VAL-D2 / D5）。worst case は i64 の上限（約9.2 × 10^18）に収まるが、万一の不正データに備えて検査する
+- worst case: 4000商品 × 原価999,999円 × 在庫9,999個 = 約40兆円。中間（原価〈1/100 円〉 × 数量）と1/100円の合計は i128 で checked に計算し、最後の円額だけを i64 へ検査付きで変換する（§20.5a SPEC-STK-VAL-D2 / D5）。worst case は i64 の上限（約9.2 × 10^18）に収まるが、万一の不正データに備えて検査する
 - 実運用では原価平均500円 × 在庫平均20個 × 4000商品 = 4,000万円程度（i64で余裕）
 
 **設計判断 — force_fill パラメータ**:
 - 年末棚卸しは10月〜大晦日の長期作業。全4000商品のカウントが現実的に完了しない場合がある（特に端切れ布やボタンの小物）
-- force_fill=true で「未入力の商品は現在のシステム在庫をそのまま確定」を許可する。差異なしとして処理されるため、カウント漏れがあっても棚卸しを完了できる
+- force_fill=true で「未入力の商品は現在のシステム在庫をそのまま確定」を許可する。未入力の商品は差異なしとして処理されるため、カウント漏れがあっても棚卸しを完了できる。ただし負の在庫の商品は 0 を入れるので、その商品だけは差異が出て補正の movement が作られる（手順 3a、INV-3）
 - force_fill=false がデフォルト（CMD層が渡す）。UI-10の確定ボタンで未入力がある場合に確認ダイアログを表示し、利用者が「未入力をシステム在庫と同じとみなす」を選択した場合のみ force_fill=true で再呼出し
 
-**設計判断 — valuation_cost_price のタイミング**:
-- 確定時の products.cost_price を使用する。棚卸し開始時ではない。理由: 棚卸しは数ヶ月に及ぶ長期作業であり、その間に原価が変わることがある。税理士報告用の仕入原価総額は「確定時点の原価」が正しい
-- DB_DESIGN.md に「確定時にproducts.cost_priceの値をコピーしてくる」と明記済み
+**設計判断 — valuation_cost_price_centi のタイミング**:
+- 確定時の products.cost_price_centi を使用する。棚卸し開始時ではない。理由: 棚卸しは数ヶ月に及ぶ長期作業であり、その間に原価が変わることがある。税理士報告用の仕入原価総額は「確定時点の原価」が正しい
+- DB_DESIGN.md に「確定時にproducts.cost_price_centiの値をコピーしてくる」と明記済み
 
 **入力例**:
 ```
@@ -428,27 +422,29 @@ Ok(StocktakeResult {
 **シグネチャ**:
 ```
 fn price_basis_quantity(unit: ProductStockUnit) -> i64
-fn valuation_line_centi(cost_price: i64, quantity: i64, basis: i64, product_code: &str) -> Result<i128, BizError>
+fn valuation_line_centi(cost_price_centi: i64, quantity: i64, basis: i64, product_code: &str) -> Result<i128, BizError>
 fn valuation_total_yen(lines: &[i128]) -> Result<i64, BizError>
 ```
 
 **処理ステップ**:
 
-1. 各明細で、確定時評価原価（valuation_cost_price）・評価数量・商品の在庫単位の基準数量から、商品別の金額（1/100 円、i128）を `valuation_line_centi` で求める
+1. 各明細で、確定時評価原価（valuation_cost_price_centi）・評価数量・商品の在庫単位の基準数量から、商品別の金額（1/100 円、i128）を `valuation_line_centi` で求める
 2. `valuation_total_yen` が商品別の金額を i128 の checked_add で合計する
 3. 同じ関数が合計を円未満で四捨五入し、円額を i64 へ検査付きで変換して total_cost（円）とする
 
-- **SPEC-STK-VAL-D1 価格の基準数量**: 商品の selling_price / cost_price は、在庫数量で「価格の基準数量」ぶんに対する円の価格である。基準数量は在庫単位で決まる: `pcs` = 1（1 個あたり）、`cm` = 100（1 m あたり）。商品ごとの列は持たない。`price_basis_quantity` は `ProductStockUnit` の全 variant を網羅する match とし、wildcard arm を置かない（単位を足すと compile error になり、基準数量を決めずに単位を足せない）。
+- **SPEC-STK-VAL-D1 価格の基準数量**: 商品の selling_price（円）/ cost_price_centi（1/100 円）は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は在庫単位で決まる: 個数の単位 = 1（1 個あたり）、`m` = 100（1 m あたり。在庫は cm の整数）。商品ごとの列は持たない。`price_basis_quantity` は `ProductStockUnit` の全 variant を網羅する match とし、wildcard arm を置かない（単位を足すと compile error になり、基準数量を決めずに単位を足せない）。
   - 理由: 店は長さ商品の残り・仕入れ伝票・値札をすべて m で扱い、値札は 1 m あたりである。レジでも数量 1 = 1 m で打てる（未運用）。出典は [project-memory](../project-memory.md) の Store Premises Facts（2026-09-14 / 2026-09-15）。在庫は cm の整数で持つ（[31](31-biz-inventory-service.md) の整数契約）。基準数量が単位で決まるため、利用者が商品ごとに基準数量を入力して誤る入口を作らない。
   - 不採用: 商品ごとの基準数量の列（migration・DTO・商品フォーム・商品 CSV の追加が要り、長さ商品ごとに 100 を入れる操作を利用者に任せる。今ある単位では単位と基準数量が一対一）。原価を 1 cm あたりの小数で持つ（伝票・値札の m 単価と食い違い、原価の列に小数の型が要る）。
   - 見直す条件: 単位の拡張で、単位だけでは基準数量が決まらない商品（箱で仕入れて 1 個ずつ売る商品の原価を箱あたりで記録する等）が店の回答で確かめられたとき。
-- **SPEC-STK-VAL-D2 金額の表現**: 中間（原価 × 数量 × 100、商、余り）・商品別の金額（1/100 円）・その合計は i128 で計算し、最後の円額だけを i64 へ検査付きで変換する。原価と数量は i64 のため、その積は i128 に必ず収まる（第 1 段の乗算は plain の `*` とし、その旨の comment を 1 行置く）。× 100 と合計の加算は checked とする。負の値を含まない入力で旧式（原価 × 数量の i64 の積和）が確定できたものは、新式でも確定できる。`pcs` だけなら総額は旧式と一致する（商品別の金額が `原価 × 数量 × 100` で、合計が旧式の総額 × 100 になるため）。`cm` を含めば総額は旧式より小さい。中間を i64 に限る案は、旧式が確定できた値（`pcs` の原価 92,233,720,368,547,759 円・数量 1 等）を × 100 で桁あふれさせるため採らない。浮動小数（f32 / f64）を使わない。理由: 2 進の浮動小数は 0.005 の境界を正確に表せず、四捨五入を誤る（例: 1.005 は 1.00499… として保持され、小数第 2 位への四捨五入が 1.00 になる）。10 進小数の crate は追加しない（整数の分子と分母で正確に計算できる）。
-- **SPEC-STK-VAL-D3 商品別の金額**: `valuation_line_centi` は `cost_price × quantity × 100 ÷ basis` を 1/100 円未満で四捨五入した値を返す。四捨五入は割り算の正確な値に対して行う（商 q・余り r で `2r >= basis` なら q + 1）。これは店の「商品別の金額を小数第 3 位で四捨五入して小数第 2 位まで持つ」と同じ値になる。quantity は旧本体では actual_count、新方式では `max(補正後現在庫, 0)`。今ある単位（基準数量 1 と 100）では割り切れるため実際の丸めは起きないが、段として持つ。
+- **SPEC-STK-VAL-D2 金額の表現**: 中間（原価〈1/100 円〉 × 数量、商、余り）・商品別の金額（1/100 円）・その合計は i128 で計算し、最後の円額だけを i64 へ検査付きで変換する。積と合計の加算は checked とする。原価が円の整数だった間（原価の lane の前）は円の原価を × 100 してから掛けた。`biz::unit_amount` の test の helper はこの形で 35 の円の golden を確かめる（共通規則 SPEC-UNIT-D6）。浮動小数（f32 / f64）を使わない。理由: 2 進の浮動小数は 0.005 の境界を正確に表せず、四捨五入を誤る（例: 1.005 は 1.00499… として保持され、小数第 2 位への四捨五入が 1.00 になる）。10 進小数の crate は追加しない（整数の分子と分母で正確に計算できる）。
+- **SPEC-STK-VAL-D3 商品別の金額**: `valuation_line_centi`（実装は `biz::unit_amount::cost_line_centi`）は `cost_price_centi × quantity ÷ basis`（原価は 1/100 円）を 1/100 円未満で四捨五入した値を返す。四捨五入は割り算の正確な値に対して行う（商 q・余り r で `2r >= basis` なら q + 1）。これは店の「商品別の金額を小数第 3 位で四捨五入して小数第 2 位まで持つ」と同じ値になる。quantity は旧本体では actual_count、新方式では `max(補正後現在庫, 0)`。原価が 1/100 円なので、長さの商品（基準数量 100）では割り切れないことがあり、この四捨五入（SPEC-UNIT-D6 の行の金額の規則と同じ）が実際に効く（例: `8333 × 130 ÷ 100 = 10832.9` → `10833`）。個数の商品（基準数量 1）は割り切れる。
 - **SPEC-STK-VAL-D4 総額**: `valuation_total_yen` は商品別の金額の合計（1/100 円）を円未満で四捨五入した円の整数を返す。`stocktakes.total_cost`（INTEGER、円）・StocktakeResult.total_cost（i64）・操作ログの「仕入原価総額: ¥{total_cost}」の型と表示は変えない。
-- **SPEC-STK-VAL-D5 入力の検査**: cost_price か quantity が負なら、`valuation_line_centi` が評価額を求めず `BizError::ValidationFailed("評価額を計算できません。原価か数量が負の値です（商品 {product_code}）")` を返す（検査と文言は関数の中の 1 か所。呼出し側は商品コードを渡すだけ）。中間の × 100 か合計の加算が i128 を越える場合、または四捨五入した円額が i64 を越える場合は、既存の `BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")` を返す（i64 への変換の失敗もこの文言に固定する。既存の overflow test〈原価 `i64::MAX / 2 + 1`・数量 2〉は新式では変換で初めて error になる）。どちらも確定の TX を ROLLBACK し、header・明細・在庫を変えない。呼出し元は `price_basis_quantity` の値（1 以上）を basis に渡す。
-- **SPEC-STK-VAL-D6 非遡及**: 確定済みの total_cost と valuation_cost_price は再計算しない（[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D7 と同じ）。本契約より前に確定した記録の total_cost は旧式（原価 × 数量の整数積和）のまま残る。本契約は本番開始前に入るため、本番の記録に旧式は現れない（[初導入の前提](../project-memory.md)）。
+- **SPEC-STK-VAL-D5 入力の検査**: cost_price_centi か quantity が負なら、`valuation_line_centi` が評価額を求めず `BizError::ValidationFailed("評価額を計算できません。原価か数量が負の値です（商品 {product_code}）")` を返す（検査と文言は関数の中の 1 か所。呼出し側は商品コードを渡すだけ）。中間の積か合計の加算が i128 を越える場合、または四捨五入した円額が i64 を越える場合は、既存の `BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")` を返す（i64 への変換の失敗もこの文言に固定する。既存の overflow test〈原価 `i64::MAX / 2 + 1`〈1/100 円として読む〉・数量 200〉は変換で初めて error になる）。どちらも確定の TX を ROLLBACK し、header・明細・在庫を変えない。呼出し元は `price_basis_quantity` の値（1 以上）を basis に渡す。
+- **SPEC-STK-VAL-D6 非遡及**: 確定済みの total_cost と valuation_cost_price_centi は再計算しない（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md) SPEC-STK-CNT-D6 と同じ）。本契約より前に確定した記録の total_cost は旧式（原価 × 数量の整数積和）のまま残る。本契約は本番開始前に入るため、本番の記録に旧式は現れない（[初導入の前提](../project-memory.md)）。
 
-**範囲の外（既知の不整合、Backlog）**: 入庫の原価小計・原価合計（[21](21-io-inventory-repo.md) の `quantity * cost_price`）、廃棄のロス原価（入力画面の合計の表示を含む）、棚卸し記録詳細のロス原価（画面が補正差異の絶対値に評価原価を掛ける）、手動販売の金額の初期値（[62](62-ui-manual-sale.md) UI-04-D6。追加 1 回ごとに売価を足す）は基準数量をまだ入れていない。長さ商品ではこれらが 100 倍になる。入庫・廃棄は店の端数の規則が未確認のため本契約を流用しない。確定後に商品の在庫単位を変えると、記録詳細の数量表示とロス原価は現在の単位で計算される。
+**範囲の外（既知の不整合、Backlog）**: 棚卸し記録詳細のロス原価（画面が補正差異の絶対値に評価原価を掛ける）は基準数量をまだ入れていない。長さ商品では 100 倍になる（BIZ へ移すのは棚卸しの再開〈⑤〉）。画面はロス原価を `BigInt(|差異|) × BigInt(評価原価〈1/100 円〉)` の 1/100 円の十進の文字列にし、入庫の記録詳細と同じ `formatCentiYen` で出す（ロスの無い行は `0.00 円`。number の積は `99999999 × 999999999` で安全な整数の範囲を越えうる。原価の lane。基準数量で割ることと BIZ へ移すことは D-118 の (b)）。入庫の原価小計・原価合計、廃棄のロス原価、手動販売の金額の初期値は [共通規則](10-common-rules.md) SPEC-UNIT-D6・D7 が基準数量で割る。確定後に商品の在庫単位を変えると、記録詳細の数量表示とロス原価は現在の単位で計算される。
+
+**単位の拡張（D-113）**: 単位は 10 個で、基準数量は単位から決まる（個数の 9 種 = 1、`m` = 100。[共通規則](10-common-rules.md) SPEC-UNIT-D1・D4）。本節の `price_basis_quantity`・`valuation_line_centi`・`valuation_total_yen` の計算は、`biz::unit_amount` の `price_basis_quantity`・`cost_line_centi`・`cost_total_yen` が同じ値で持つ（SPEC-UNIT-D6。原価の引数は 1/100 円で、呼ぶ側は確定時評価原価 `valuation_cost_price_centi` を `i128::from` でそのまま渡す。原価の lane、D-128。`決定（owner、D-113 J2）`）。商品別の金額は `原価(1/100 円) × 数量 ÷ 基準数量` を 1/100 円未満で四捨五入する。棚卸し記録詳細のロス原価は同じ関数を使う（BIZ へ移すのは棚卸しの再開〈⑤〉）。棚卸しの実数の入力は、m の商品では m で受けて cm に直す（SPEC-UNIT-D3。棚卸しの再開〈⑤〉）。今の評価額の呼出しと確定の結果（`AdjustedItem`）の構築は旧本体 `legacy_complete_stocktake`（test だけが呼ぶ）の中にあり、棚卸しは停止中（§20.0 SPEC-STOP-D1）なので、新方式の確定は棚卸しの再開（⑤、SPEC-STOP-D6）が `biz::unit_amount` の関数と商品の `stock_unit` で作る（確定の結果の数量を m で出す〈SPEC-UNIT-D3 の表示する所の表の 7〉、補正の note を D3 の形で書く）。
 
 ---
 
@@ -481,9 +477,9 @@ fn get_stocktake_progress(
 
 ### 20.6a get_stocktake_record
 
-以下のlive在庫基準・開始時snapshotの説明は、現行実装/完了済みreconciliation_version=0の旧表示用。新方式のcompletion補正量はN-L、表示差異はL-Nであり、取消補償/再実測は別区分として返す。新しいactiveの実測は親の移行versionだけで旧算式へ戻さない。
+以下のlive在庫基準・開始時snapshotの説明は、現行実装の表示用。D-118 の新方式では完了が補正の movement を作らず、差異は本書冒頭の新契約の「読取り」の定義（効く計数の値 − その計数に入っている記録だけから求めた帳簿）で返す。
 
-新しいStocktakeRecordDetail.headerはreconciliation_versionを明示的に含め、IOの値をCMD/UIへ返す。旧headerの表示と新補正の区分を同時に扱えるようにし、過去評価額を新式で再算出しない。
+D-118 の新方式は旧 header を持たない（棚卸しのある DB は作り直す。ADR SPEC-STK-CNT-D10）ので、header に移行の版を足さない。過去評価額を再算出しない。
 
 **関数要求**: 棚卸し記録詳細を wire DTO として返す。[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a 業務記録詳細 read 関数と同じ read-only パターンで、movements への source link 補完と NotFound 変換を BIZ が担う。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
 
@@ -542,8 +538,8 @@ fn get_stocktake_record(
 
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
-| INV-2: stock_after算出責任 | 現行はステップ5gでstock_after=actual_count。新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す。後続移動なしの場合だけstock_after=Nになる |
-| INV-3: 負在庫ポリシー | 現行はactual_count非負へ上書きする。新方式はactual_count>=0でもstock_after<0になり得る。負在庫を許して表示し、評価数量だけmax(stock_after,0)とする。force_fillも負在庫を0へ書き換えない |
+| INV-2: stock_after算出責任 | 旧本体（停止中、§20.0）はステップ5gで補正の記録の stock_after=actual_count とし、写しは recompute_stock で記録から求め直す（写しが記録と一致していれば求め直しの値も actual_count）。D-118 の (b) の確定の形は本章の冒頭の「計数の置き場と在庫の求め直しの契約」の「完了（SPEC-STK-CNT-D6）」が持つ |
+| INV-3: 負在庫ポリシー | 旧本体（停止中、§20.0）は actual_count を 0 以上に限り（update_count の検証）、force_fill は負の在庫の商品に 0 を入れる（手順 3a）。写しは actual_count へ上書きせず、recompute_stock で記録から求め直す（INV-2。写しが記録と一致していれば求め直しの値も actual_count）。D-118 の新方式は計数（0 以上）の後の記録で在庫が負になり得る。負在庫を許して表示し、評価数量だけ `max(在庫, 0)` とする |
 | INV-8: products物理DELETE禁止 | 本モジュールは products を UPDATE のみ（stock_quantity）。DELETE 操作なし。find_stocktake_eligible_products は is_discontinued フラグで絞り込む |
 | INV-1a: 入力値は常に正数 | update_count で actual_count >= 0 を検証。complete_stocktake の adjustment_quantity は正負どちらもあり得る（棚卸し補正は INV-1a の対象外。INV-1a は Request 構造体の quantity フィールドに適用され、棚卸し補正の adjustment_quantity はBIZ層内部で算出される値） |
 
@@ -566,10 +562,10 @@ BIZ-06 が使用するIO関数のうち、既存の find_active_stocktake / inse
 | get_stocktake_progress | 進捗集計 | `fn get_stocktake_progress(conn: &DbConnection, stocktake_id: i64) -> Result<StocktakeProgress, DbError>` |
 | list_uncounted_items | 未入力明細の一覧 | `fn list_uncounted_items(conn: &DbConnection, stocktake_id: i64) -> Result<Vec<UncountedItem>, DbError>` |
 | get_stocktake_items_for_complete | 全明細取得（確定用） | `fn get_stocktake_items_for_complete(conn: &DbConnection, stocktake_id: i64) -> Result<Vec<StocktakeItemForComplete>, DbError>` |
-| update_stocktake_item_valuation | 評価原価記録 | `fn update_stocktake_item_valuation(conn: &DbConnection, item_id: i64, valuation_cost_price: i64) -> Result<(), DbError>` |
+| update_stocktake_item_valuation | 評価原価記録 | `fn update_stocktake_item_valuation(conn: &DbConnection, item_id: i64, valuation_cost_price_centi: i64) -> Result<(), DbError>` |
 | complete_stocktake | ヘッダ確定更新 | `fn complete_stocktake(conn: &DbConnection, stocktake_id: i64, total_cost: i64, completed_at: &str) -> Result<(), DbError>` |
 
-**ProductForStocktake構造体**: product_code: String, stock_quantity: i64, cost_price: i64, is_discontinued: bool
+**ProductForStocktake構造体**: product_code: String, stock_quantity: i64, cost_price_centi: i64, is_discontinued: bool
 
 **StocktakeItem構造体**: id: i64, stocktake_id: i64, product_code: String, system_stock: i64, actual_count: Option\<i64\>, counted_at: Option\<String\>
 

@@ -87,19 +87,7 @@ impl World {
         let (dir, conn) = db::test_support::setup_test_db();
         for sku in 0..CODES.len() {
             create_test_product_with_jan(&conn, CODES[sku], JANS[sku], INITIAL[sku], sku == 0);
-            inventory_repo::insert_movement(
-                &conn,
-                &NewMovement {
-                    product_code: CODES[sku].into(),
-                    movement_type: MovementType::Receiving,
-                    quantity: INITIAL[sku],
-                    stock_after: INITIAL[sku],
-                    reference_type: None,
-                    reference_id: None,
-                    note: Some("合成初期在庫".into()),
-                },
-            )
-            .unwrap();
+            // 初期在庫の movement は create_test_product_with_jan が入れる（Matrix T3・T5）
         }
         Self {
             dir,
@@ -128,7 +116,7 @@ impl World {
             Operation::Receive => {
                 let request = serde_json::from_value::<inventory_service::ReceivingCreateRequest>(json!({
                     "idempotency_key":key, "supplier_id":null, "receiving_date":DATE, "note":null,
-                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price":50}]
+                    "items":[{"product_code":CODES[0],"quantity":3,"cost_price_centi":50}]
                 })).unwrap();
                 let result =
                     inventory_service::create_receiving(self.conn_mut(), request.clone()).unwrap();
@@ -153,7 +141,7 @@ impl World {
                 let request = serde_json::from_value(json!({
                     "idempotency_key":key, "disposal_date":DATE,
                     "items":[{"product_code":CODES[0],"disposal_type":"disposal",
-                        "quantity":1,"cost_price":50,"reason":"合成検証"}]
+                        "quantity":1,"cost_price_centi":50,"reason":"合成検証"}]
                 }))
                 .unwrap();
                 assert!(
@@ -324,7 +312,14 @@ impl World {
             .iter()
             .flatten()
             .fold((0, 0), |sum, value| (sum.0 + value.0, sum.1 + value.1));
-        let total = (report.grand_total.quantity, report.grand_total.amount);
+        // fixture は個数の商品だけなので、数量は count_points に入り length_cm は 0（SPEC-UNIT-D11）
+        let total = (report.grand_total.count_points, report.grand_total.amount);
+        if report.grand_total.length_cm != 0 {
+            return Some(format!(
+                "length_cm should be 0: {}",
+                report.grand_total.length_cm
+            ));
+        }
         if stocks != self.model.stock
             || sums != self.model.stock
             || sales != self.model.sales
@@ -541,6 +536,8 @@ fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
             reference_type: None,
             reference_id: None,
             note: Some("合成mutation".into()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap();
@@ -568,8 +565,12 @@ fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
         .unwrap();
     let after = sales_service::get_daily_sales(world.conn(), DATE).unwrap();
     assert_eq!(
-        (before.grand_total.quantity, before.grand_total.amount),
-        (after.grand_total.quantity, after.grand_total.amount)
+        (before.grand_total.count_points, before.grand_total.amount),
+        (after.grand_total.count_points, after.grand_total.amount)
+    );
+    assert_eq!(
+        (before.grand_total.length_cm, after.grand_total.length_cm),
+        (0, 0)
     );
     assert!(
         world.mismatch().is_some(),

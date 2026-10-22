@@ -19,7 +19,11 @@ vi.mock("@/features/stock-movements/StockMovementsPage", async () => {
   const { MovementTable } = await vi.importActual<
     typeof import("@/features/stock-movements/components/MovementTable")
   >("@/features/stock-movements/components/MovementTable");
-  return { StockMovementsPage: () => <MovementTable movements={[makeMovement()]} /> };
+  return {
+    StockMovementsPage: () => (
+      <MovementTable movements={[makeMovement()]} stockUnitByProductCode={new Map()} />
+    ),
+  };
 });
 
 vi.mock("@/lib/bindings", () => ({
@@ -61,7 +65,7 @@ function makeDetail(overrides: Partial<StocktakeRecordDetail> = {}): StocktakeRe
         system_stock: 10,
         actual_count: 8,
         counted_at: "2026-08-27T17:30:00",
-        valuation_cost_price: 300,
+        valuation_cost_price_centi: 30000,
         adjustment_quantity: -2,
         stock_after: 8,
       },
@@ -104,13 +108,56 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
     expect(within(row).getByText("8 個")).toBeInTheDocument();
     expect(within(row).getByText("-2 個")).toBeInTheDocument();
     expect(within(row).getByText("¥300")).toBeInTheDocument();
-    expect(within(row).getByText("¥600")).toBeInTheDocument();
+    expect(within(row).getByText("600.00 円")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "SRD-001 の在庫変動履歴" })).toHaveAttribute(
       "href",
       "/stock/SRD-001/movements",
     );
     expect(screen.queryByRole("button", { name: /取消|訂正/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "棚卸し #51" })).toBeInTheDocument();
+  });
+
+  it("Matrix C18: 評価原価 8333 は ¥83.33、上限の評価原価と差異のロス原価は BigInt の 1/100 円、ロスの無い行は 0.00 円", async () => {
+    const base = makeDetail().items[0];
+    mockGetStocktakeRecord.mockResolvedValue({
+      status: "ok",
+      data: makeDetail({
+        items: [
+          {
+            ...base,
+            product_code: "C18-A",
+            product_name: "小数の原価",
+            valuation_cost_price_centi: 8333,
+          },
+          {
+            ...base,
+            product_code: "C18-B",
+            product_name: "上限の原価",
+            system_stock: 999999999,
+            actual_count: 0,
+            valuation_cost_price_centi: 99999999,
+            adjustment_quantity: -999999999,
+            stock_after: 0,
+          },
+          {
+            ...base,
+            product_code: "C18-C",
+            product_name: "ロスなし",
+            actual_count: 10,
+            adjustment_quantity: 0,
+            stock_after: 10,
+          },
+        ],
+      }),
+    });
+    renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
+    const rowA = await screen.findByRole("row", { name: /C18-A 小数の原価/ });
+    expect(within(rowA).getByText("¥83.33")).toBeInTheDocument();
+    expect(within(rowA).getByText("166.66 円")).toBeInTheDocument();
+    const rowB = screen.getByRole("row", { name: /C18-B 上限の原価/ });
+    expect(within(rowB).getByText("999,999,989,000,000.01 円")).toBeInTheDocument();
+    const rowC = screen.getByRole("row", { name: /C18-C ロスなし/ });
+    expect(within(rowC).getByText("0.00 円")).toBeInTheDocument();
   });
 
   it("REQ-206: 正の補正差異を符号付きで表示する", async () => {
@@ -213,23 +260,40 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
 
 it.each([
   ["pcs", "1,234 個", "0 個"],
-  ["cm", "1,234 cm", "0 cm"],
-])("⑮ SC19: 棚卸し詳細の %s と未入力・補正ゼロを表示する", async (unit, expected, zero) => {
+  ["m", "12.34 m", "0 m"],
+] as const)(
+  "⑮ SC19: 棚卸し詳細の %s と未入力・補正ゼロを表示する",
+  async (unit, expected, zero) => {
+    const detail = makeDetail();
+    detail.items = [
+      {
+        ...detail.items[0],
+        stock_unit: unit,
+        system_stock: 1234,
+        actual_count: null,
+        adjustment_quantity: 0,
+      },
+    ];
+    mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: detail });
+    renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
+    const row = (await screen.findByText(expected)).closest("tr");
+    if (row === null) throw new Error("expected table structure");
+    expect(within(row).getByText("—")).toBeInTheDocument();
+    expect(within(row).getByText(zero)).toBeInTheDocument();
+    expect(within(row).queryByText("+" + zero)).not.toBeInTheDocument();
+  },
+);
+
+// REQ-205 / UI-06c-D5 / SPEC-UNIT-D3 の表の 6: 棚卸しの記録詳細の関連する在庫変動も明細の単位で出す
+it("REQ-205: m の商品の棚卸しの関連する在庫変動は -0.02 m・0.08 m", async () => {
   const detail = makeDetail();
-  detail.items = [
-    {
-      ...detail.items[0],
-      stock_unit: unit,
-      system_stock: 1234,
-      actual_count: null,
-      adjustment_quantity: 0,
-    },
-  ];
+  const [item] = detail.items;
+  detail.items = [{ ...item, stock_unit: "m" }];
   mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: detail });
   renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
-  const row = (await screen.findByText(expected)).closest("tr");
-  if (row === null) throw new Error("expected table structure");
-  expect(within(row).getByText("—")).toBeInTheDocument();
-  expect(within(row).getByText(zero)).toBeInTheDocument();
-  expect(within(row).queryByText("+" + zero)).not.toBeInTheDocument();
+
+  const heading = await screen.findByRole("heading", { name: "関連する在庫変動" });
+  const section = within(heading.closest("section") ?? document.body);
+  expect(section.getByText("-0.02 m")).toBeInTheDocument();
+  expect(section.getByText("0.08 m")).toBeInTheDocument();
 });

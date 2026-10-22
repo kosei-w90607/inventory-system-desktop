@@ -42,7 +42,7 @@ function makeDailySales(): DailySalesReport {
     date: "2026-07-28",
     items: [],
     department_subtotals: [],
-    grand_total: { quantity: 4, amount: 12000 },
+    grand_total: { count_points: 4, length_cm: 0, amount: 12000 },
     official_daily_report: null,
   };
 }
@@ -55,7 +55,7 @@ function makeProduct(productCode: string, stockQuantity: number): ProductWithRel
     department_id: 1,
     supplier_id: null,
     selling_price: 100,
-    cost_price: 50,
+    cost_price_centi: 50,
     tax_rate: "10",
     maker_code: null,
     stock_quantity: stockQuantity,
@@ -80,7 +80,8 @@ function makePluDirty(productCode: string): ProductResponse {
     name: `synthetic-${productCode}`,
     department_id: 1,
     selling_price: 100,
-    cost_price: 50,
+    cost_price_centi: 50,
+    stock_unit: "pcs",
     stock_quantity: 1,
     plu_dirty: true,
     plu_exported_at: null,

@@ -5,7 +5,9 @@
 //!
 //! docs/function-design/34-biz-sales-service.md に基づく実装。
 
+use crate::biz::unit_amount::{format_length_m, stock_unit_kind, StockUnitKind};
 use crate::biz::BizError;
+use crate::db::product_repo::ProductStockUnit;
 use crate::db::sales_repo;
 use crate::db::DbConnection;
 use crate::io::daily_report_parser::quantity_hundredths_to_units;
@@ -42,6 +44,8 @@ pub struct DailySaleItem {
     pub name: String,
     pub department_name: String,
     pub department_id: i64,
+    /// 商品の単位。`quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
     pub source: DailySaleSource,
@@ -62,14 +66,20 @@ pub struct DailySalesReport {
 pub struct DeptSubtotal {
     pub department_id: i64,
     pub department_name: String,
-    pub quantity: i64,
+    /// 個数の種類の数量の和
+    pub count_points: i64,
+    /// 長さの種類の数量の和（cm）
+    pub length_cm: i64,
     pub amount: i64,
 }
 
 /// 総合計
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct GrandTotal {
-    pub quantity: i64,
+    /// 個数の種類の数量の和
+    pub count_points: i64,
+    /// 長さの種類の数量の和（cm）
+    pub length_cm: i64,
     pub amount: i64,
 }
 
@@ -141,7 +151,12 @@ pub struct MonthlySalesReport {
 pub struct MonthlySaleItem {
     pub key: String,
     pub label: String,
-    pub quantity: i64,
+    /// 個数の種類の数量の和（商品別の行は、長さの商品なら 0）
+    pub count_points: i64,
+    /// 長さの種類の数量の和（cm。商品別の行は、個数の商品なら 0）
+    pub length_cm: i64,
+    /// 商品別の行だけ値を持つ（相殺して 0 になった行も種類を失わない）。部門別は null
+    pub stock_unit: Option<ProductStockUnit>,
     pub amount: i64,
     pub ranking: u32,
 }
@@ -193,7 +208,7 @@ pub struct SalesCsvExportResult {
 /// 34-biz-sales-service.md セクション19.3
 pub fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, BizError> {
     // Step 1: 日付バリデーション
-    validate_date(date)?;
+    crate::biz::inventory_service::validate_business_date(date)?;
 
     // Step 2: 商品別売上取得 + DB型 -> BIZ型マッピング
     let db_rows = sales_repo::get_daily_sales_records(conn, date)?;
@@ -205,6 +220,7 @@ pub fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesRepo
                 name: r.name,
                 department_name: r.department_name,
                 department_id: r.department_id,
+                stock_unit: r.stock_unit,
                 quantity: r.quantity,
                 amount: r.amount,
                 source: match r.source.as_str() {
@@ -221,28 +237,32 @@ pub fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesRepo
         .collect::<Result<Vec<_>, BizError>>()?;
 
     // Step 3: 部門小計の計算（BTreeMap で部門ID昇順を保証）
-    let mut dept_map: BTreeMap<i64, (String, i64, i64)> = BTreeMap::new();
+    // 数量は種類ごとの 2 本に分け、和は checked（SPEC-UNIT-D3 の集計の規則、X9）
+    let mut dept_map: BTreeMap<i64, (String, SalesTotals)> = BTreeMap::new();
+    let mut grand = SalesTotals::default();
     for item in &items {
         let entry = dept_map
             .entry(item.department_id)
-            .or_insert_with(|| (item.department_name.clone(), 0, 0));
-        entry.1 += item.quantity;
-        entry.2 += item.amount;
+            .or_insert_with(|| (item.department_name.clone(), SalesTotals::default()));
+        entry.1.add(item.stock_unit, item.quantity, item.amount)?;
+        grand.add(item.stock_unit, item.quantity, item.amount)?;
     }
     let department_subtotals: Vec<DeptSubtotal> = dept_map
         .into_iter()
-        .map(|(id, (name, qty, amt))| DeptSubtotal {
+        .map(|(id, (name, totals))| DeptSubtotal {
             department_id: id,
             department_name: name,
-            quantity: qty,
-            amount: amt,
+            count_points: totals.count_points,
+            length_cm: totals.length_cm,
+            amount: totals.amount,
         })
         .collect();
 
     // Step 4: 総合計
     let grand_total = GrandTotal {
-        quantity: items.iter().map(|i| i.quantity).sum(),
-        amount: items.iter().map(|i| i.amount).sum(),
+        count_points: grand.count_points,
+        length_cm: grand.length_cm,
+        amount: grand.amount,
     };
 
     let official_daily_report = sales_repo::get_completed_daily_report_aggregate(conn, date)?
@@ -334,7 +354,7 @@ pub fn export_sales_csv(
                         item.product_code.clone(),
                         item.name.clone(),
                         item.department_name.clone(),
-                        item.quantity.to_string(),
+                        csv_item_quantity(item.stock_unit, item.quantity),
                         item.amount.to_string(),
                         translate_source(&item.source).to_string(),
                     ]
@@ -361,7 +381,12 @@ pub fn export_sales_csv(
                         item.ranking.to_string(),
                         item.key.clone(),
                         item.label.clone(),
-                        item.quantity.to_string(),
+                        // 商品別の行は種類のどちらか一方だけが値を持つ
+                        if item.length_cm != 0 {
+                            csv_length_m(item.length_cm)
+                        } else {
+                            item.count_points.to_string()
+                        },
                         item.amount.to_string(),
                     ]
                 })
@@ -385,7 +410,7 @@ pub fn export_sales_csv(
                     vec![
                         item.ranking.to_string(),
                         item.label.clone(),
-                        item.quantity.to_string(),
+                        csv_total_quantity(item.count_points, item.length_cm),
                         item.amount.to_string(),
                     ]
                 })
@@ -409,25 +434,73 @@ pub fn export_sales_csv(
 // 内部関数
 // ---------------------------------------------------------------------------
 
+/// 数量の種類ごとの和と金額の和（SPEC-UNIT-D3 の集計の規則）。長さを点に足さない
+#[derive(Debug, Default, Clone, Copy)]
+struct SalesTotals {
+    count_points: i64,
+    length_cm: i64,
+    amount: i64,
+}
+
+impl SalesTotals {
+    /// 単位の種類で数量を振り分けて足す。i64 の溢れは `ValidationFailed`（wrap した値を返さない）
+    fn add(&mut self, unit: ProductStockUnit, quantity: i64, amount: i64) -> Result<(), BizError> {
+        let overflow = || {
+            BizError::ValidationFailed("売上集計の計算でオーバーフローが発生しました".to_string())
+        };
+        let slot = match stock_unit_kind(unit) {
+            StockUnitKind::Count => &mut self.count_points,
+            StockUnitKind::Length => &mut self.length_cm,
+        };
+        *slot = slot.checked_add(quantity).ok_or_else(overflow)?;
+        self.amount = self.amount.checked_add(amount).ok_or_else(overflow)?;
+        Ok(())
+    }
+}
+
+/// CSV の長さの数量: 単位の語と桁区切りを付けない m の数（130 → "1.3"、123456 → "1234.56"）
+fn csv_length_m(quantity_cm: i64) -> String {
+    format_length_m(quantity_cm)
+        .trim_end_matches(" m")
+        .replace(',', "")
+}
+
+/// CSV の商品の行の `数量`: 長さの商品は m の数、個数の商品は今と同じ整数（34 §19.5）
+fn csv_item_quantity(unit: ProductStockUnit, quantity: i64) -> String {
+    match stock_unit_kind(unit) {
+        StockUnitKind::Count => quantity.to_string(),
+        StockUnitKind::Length => csv_length_m(quantity),
+    }
+}
+
+/// CSV の集計の行（月次の部門別）の `数量`: 長さが 0 なら今と同じ整数、そうでなければ画面と同じ文字列
+fn csv_total_quantity(count_points: i64, length_cm: i64) -> String {
+    match (count_points, length_cm) {
+        (count, 0) => count.to_string(),
+        (0, length) => format_length_m(length),
+        (count, length) => format!("{} 点・{}", group_thousands(count), format_length_m(length)),
+    }
+}
+
+/// 整数に 3 桁区切りを付ける（符号は先頭、区切りは絶対値の桁。X9 の `N 点` の `N`）
+fn group_thousands(value: i64) -> String {
+    let digits = value.unsigned_abs().to_string();
+    let mut out = String::from(if value < 0 { "-" } else { "" });
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
 /// 売上記録元の日本語変換（CSV出力用）
 fn translate_source(source: &DailySaleSource) -> &str {
     match source {
         DailySaleSource::Auto => "POS",
         DailySaleSource::Manual => "手動",
     }
-}
-
-/// YYYY-MM-DD 形式の日付をバリデーションする
-fn validate_date(date: &str) -> Result<(), BizError> {
-    NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
-        if date.len() == 10 && date.chars().nth(4) == Some('-') && date.chars().nth(7) == Some('-')
-        {
-            BizError::ValidationFailed("存在しない日付です".to_string())
-        } else {
-            BizError::ValidationFailed("日付の形式が不正です（YYYY-MM-DD）".to_string())
-        }
-    })?;
-    Ok(())
 }
 
 /// YYYY-MM 形式の月をバリデーションし、(year, month) を返す
@@ -546,23 +619,41 @@ fn fetch_and_rank(
         SalesMode::ByProduct => {
             let rows = sales_repo::get_monthly_sales_by_product(conn, date_from, date_to)?;
             rows.into_iter()
-                .map(|r| MonthlySaleItem {
-                    key: r.product_code,
-                    label: r.name,
-                    quantity: r.quantity,
-                    amount: r.amount,
-                    ranking: 0,
+                .map(|r| {
+                    let mut totals = SalesTotals::default();
+                    totals.add(r.stock_unit, r.quantity, r.amount)?;
+                    Ok(MonthlySaleItem {
+                        key: r.product_code,
+                        label: r.name,
+                        count_points: totals.count_points,
+                        length_cm: totals.length_cm,
+                        stock_unit: Some(r.stock_unit),
+                        amount: totals.amount,
+                        ranking: 0,
+                    })
                 })
-                .collect()
+                .collect::<Result<_, BizError>>()?
         }
         SalesMode::ByDepartment => {
+            // repo は部門と単位ごとの行を返す。部門ごとに種類で分けて足す（金額も）
             let rows = sales_repo::get_monthly_sales_by_department(conn, date_from, date_to)?;
-            rows.into_iter()
-                .map(|r| MonthlySaleItem {
-                    key: r.department_id.to_string(),
-                    label: r.department_name,
-                    quantity: r.quantity,
-                    amount: r.amount,
+            let mut dept_map: BTreeMap<i64, (String, SalesTotals)> = BTreeMap::new();
+            for r in rows {
+                dept_map
+                    .entry(r.department_id)
+                    .or_insert_with(|| (r.department_name.clone(), SalesTotals::default()))
+                    .1
+                    .add(r.stock_unit, r.quantity, r.amount)?;
+            }
+            dept_map
+                .into_iter()
+                .map(|(id, (name, totals))| MonthlySaleItem {
+                    key: id.to_string(),
+                    label: name,
+                    count_points: totals.count_points,
+                    length_cm: totals.length_cm,
+                    stock_unit: None,
+                    amount: totals.amount,
                     ranking: 0,
                 })
                 .collect()
@@ -610,7 +701,7 @@ mod tests {
             department_id: dept_id,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: 0,
@@ -704,7 +795,8 @@ mod tests {
         let report = get_daily_sales(&conn, "2026-03-21").unwrap();
         assert_eq!(report.items.len(), 2);
         assert_eq!(report.department_subtotals.len(), 2);
-        assert_eq!(report.grand_total.quantity, 3);
+        assert_eq!(report.grand_total.count_points, 3);
+        assert_eq!(report.grand_total.length_cm, 0);
         assert_eq!(report.grand_total.amount, 1500);
     }
 
@@ -734,7 +826,8 @@ mod tests {
         let report = get_daily_sales(&conn, "2026-03-21").unwrap();
         assert!(report.items.is_empty());
         assert!(report.department_subtotals.is_empty());
-        assert_eq!(report.grand_total.quantity, 0);
+        assert_eq!(report.grand_total.count_points, 0);
+        assert_eq!(report.grand_total.length_cm, 0);
         assert_eq!(report.grand_total.amount, 0);
         assert!(report.official_daily_report.is_none());
     }
@@ -757,13 +850,15 @@ mod tests {
         // 部門ID=1: P001+P002 = qty5, amt2500
         let dept1 = &report.department_subtotals[0];
         assert_eq!(dept1.department_id, 1);
-        assert_eq!(dept1.quantity, 5);
+        assert_eq!(dept1.count_points, 5);
+        assert_eq!(dept1.length_cm, 0);
         assert_eq!(dept1.amount, 2500);
 
         // 部門ID=3: P003 = qty1, amt800
         let dept3 = &report.department_subtotals[1];
         assert_eq!(dept3.department_id, 3);
-        assert_eq!(dept3.quantity, 1);
+        assert_eq!(dept3.count_points, 1);
+        assert_eq!(dept3.length_cm, 0);
         assert_eq!(dept3.amount, 800);
     }
 
@@ -798,7 +893,8 @@ mod tests {
         assert!(report.official_daily_report.is_some());
         assert!(report.items.is_empty());
         assert!(report.department_subtotals.is_empty());
-        assert_eq!(report.grand_total.quantity, 0);
+        assert_eq!(report.grand_total.count_points, 0);
+        assert_eq!(report.grand_total.length_cm, 0);
         assert_eq!(report.grand_total.amount, 0);
     }
 
@@ -973,7 +1069,9 @@ mod tests {
 
         let report = get_monthly_sales(&conn, "2026-03", SalesMode::ByProduct).unwrap();
         assert_eq!(report.items.len(), 1);
-        assert_eq!(report.items[0].quantity, 4, "5 + (-1) = 4");
+        assert_eq!(report.items[0].count_points, 4, "5 + (-1) = 4");
+        assert_eq!(report.items[0].length_cm, 0);
+        assert_eq!(report.items[0].stock_unit, Some(ProductStockUnit::Pcs));
         assert_eq!(report.items[0].amount, 2000, "2500 + (-500) = 2000");
     }
 
@@ -1437,5 +1535,316 @@ mod tests {
         assert_eq!(find(b1, "部門06"), (None, Some(-1), Some(-1200)));
         assert_eq!(find(b1, "総売").2, Some(7300));
         assert_eq!(find(b2, "総売").2, Some(500));
+    }
+
+    // -------------------------------------------------------------------
+    // 単位の拡張の後の数量（34 冒頭、SPEC-UNIT-D3 の集計の規則、X9）
+    // -------------------------------------------------------------------
+
+    fn seed_product_unit(conn: &DbConnection, code: &str, dept_id: i64, unit: &str) {
+        seed_product(conn, code, dept_id);
+        conn.execute(
+            "UPDATE products SET stock_unit = ?1 WHERE product_code = ?2",
+            rusqlite::params![unit, code],
+        )
+        .unwrap();
+    }
+
+    fn csv_lines(conn: &DbConnection, report_type: SalesReportType, target: &str) -> Vec<String> {
+        let result = export_sales_csv(conn, &report_type, target).unwrap();
+        String::from_utf8(result.csv_bytes[3..].to_vec())
+            .unwrap()
+            .lines()
+            .skip(1)
+            .map(str::to_string)
+            .collect()
+    }
+
+    #[test]
+    fn test_daily_sales_req501_totals_split_by_unit_kind() {
+        // REQ-501 / SPEC-UNIT-D3（TD-206/207）: 個数は点、長さは cm の 2 本に分け、長さを点に足さない
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "K-PCS", 1, "pcs");
+        seed_product_unit(&conn, "K-SHEET", 1, "sheet");
+        seed_product_unit(&conn, "K-M", 1, "m");
+        seed_product_unit(&conn, "K-CM", 1, "m");
+        seed_sale(&conn, "K-PCS", "2026-03-21", 3, 2100, "auto");
+        seed_sale(&conn, "K-SHEET", "2026-03-21", 2, 400, "auto");
+        seed_sale(&conn, "K-M", "2026-03-21", 130, 910, "manual");
+        seed_sale(&conn, "K-CM", "2026-03-21", 50, 350, "manual");
+        // 個数の単位だけの日、長さだけの日
+        seed_product_unit(&conn, "K-BALL", 1, "ball");
+        seed_sale(&conn, "K-PCS", "2026-03-22", 3, 2100, "auto");
+        seed_sale(&conn, "K-BALL", "2026-03-22", 2, 600, "auto");
+        seed_sale(&conn, "K-M", "2026-03-23", 130, 910, "manual");
+
+        let report = get_daily_sales(&conn, "2026-03-21").unwrap();
+        let units: Vec<(&str, ProductStockUnit, i64)> = report
+            .items
+            .iter()
+            .map(|item| (item.product_code.as_str(), item.stock_unit, item.quantity))
+            .collect();
+        assert_eq!(
+            units,
+            vec![
+                ("K-CM", ProductStockUnit::M, 50),
+                ("K-M", ProductStockUnit::M, 130),
+                ("K-PCS", ProductStockUnit::Pcs, 3),
+                ("K-SHEET", ProductStockUnit::Sheet, 2),
+            ]
+        );
+        let subtotal = &report.department_subtotals[0];
+        assert_eq!((subtotal.count_points, subtotal.length_cm), (5, 180));
+        assert_eq!(subtotal.amount, 3760);
+        assert_eq!(
+            (
+                report.grand_total.count_points,
+                report.grand_total.length_cm
+            ),
+            (5, 180)
+        );
+
+        let report = get_daily_sales(&conn, "2026-03-22").unwrap();
+        assert_eq!(
+            (
+                report.grand_total.count_points,
+                report.grand_total.length_cm
+            ),
+            (5, 0)
+        );
+        let report = get_daily_sales(&conn, "2026-03-23").unwrap();
+        assert_eq!(
+            (
+                report.grand_total.count_points,
+                report.grand_total.length_cm
+            ),
+            (0, 130)
+        );
+        let subtotal = &report.department_subtotals[0];
+        assert_eq!((subtotal.count_points, subtotal.length_cm), (0, 130));
+    }
+
+    #[test]
+    fn test_monthly_sales_req502_totals_split_by_unit_kind() {
+        // REQ-502 / SPEC-UNIT-D3・D11: 商品別の行は種類のどちらか一方と stock_unit、部門別は 2 本で stock_unit は null
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "N-M", 1, "m");
+        seed_product_unit(&conn, "N-PCS", 1, "pcs");
+        seed_product_unit(&conn, "N-M-ZERO", 3, "m");
+        seed_product_unit(&conn, "N-PCS-ZERO", 3, "pcs");
+        seed_sale(&conn, "N-M", "2026-03-05", 130, 910, "manual");
+        seed_sale(&conn, "N-M", "2026-03-20", 120, 840, "manual");
+        seed_sale(&conn, "N-PCS", "2026-03-10", 5, 1000, "auto");
+        // 販売と返品が相殺して 0 になった行も種類を失わない
+        seed_sale(&conn, "N-M-ZERO", "2026-03-10", 130, 910, "manual");
+        seed_sale(&conn, "N-M-ZERO", "2026-03-11", -130, -910, "manual");
+        seed_sale(&conn, "N-PCS-ZERO", "2026-03-10", 3, 300, "auto");
+        seed_sale(&conn, "N-PCS-ZERO", "2026-03-11", -3, -300, "auto");
+
+        let by_product = get_monthly_sales(&conn, "2026-03", SalesMode::ByProduct).unwrap();
+        let rows: Vec<(&str, i64, i64, Option<ProductStockUnit>)> = by_product
+            .items
+            .iter()
+            .map(|item| {
+                (
+                    item.key.as_str(),
+                    item.count_points,
+                    item.length_cm,
+                    item.stock_unit,
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                ("N-M", 0, 250, Some(ProductStockUnit::M)),
+                ("N-PCS", 5, 0, Some(ProductStockUnit::Pcs)),
+                ("N-M-ZERO", 0, 0, Some(ProductStockUnit::M)),
+                ("N-PCS-ZERO", 0, 0, Some(ProductStockUnit::Pcs)),
+            ]
+        );
+
+        // 部門別: repo は部門と単位ごとの 2 行、BIZ は部門ごとの 1 行にまとめて金額の降順で ranking を振る
+        let repo_rows =
+            sales_repo::get_monthly_sales_by_department(&conn, "2026-03-01", "2026-03-31").unwrap();
+        assert_eq!(repo_rows.iter().filter(|r| r.department_id == 1).count(), 2);
+        let by_department = get_monthly_sales(&conn, "2026-03", SalesMode::ByDepartment).unwrap();
+        let rows: Vec<_> = by_department
+            .items
+            .iter()
+            .map(|item| {
+                (
+                    item.key.as_str(),
+                    item.count_points,
+                    item.length_cm,
+                    item.amount,
+                    item.stock_unit,
+                    item.ranking,
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            vec![("1", 5, 250, 2750, None, 1), ("3", 0, 0, 0, None, 2)]
+        );
+    }
+
+    #[test]
+    fn test_sales_req501_req502_boundary_quantities_are_not_rejected() {
+        // REQ-501 / REQ-502 / X9: 上限の端の数量の集計は範囲の検査で拒まず、正確に出る
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "B-A", 1, "m");
+        seed_product_unit(&conn, "B-B", 1, "m");
+        seed_sale(&conn, "B-A", "2026-03-21", 9_999_999, 100, "manual");
+        seed_sale(&conn, "B-A", "2026-03-21", 9_999_999, 100, "manual");
+        seed_sale(&conn, "B-B", "2026-03-21", -9_999_999, -100, "manual");
+
+        let report = get_daily_sales(&conn, "2026-03-21").unwrap();
+        let quantities: Vec<i64> = report.items.iter().map(|item| item.quantity).collect();
+        assert_eq!(quantities, vec![19_999_998, -9_999_999]);
+        let subtotal = &report.department_subtotals[0];
+        assert_eq!((subtotal.count_points, subtotal.length_cm), (0, 9_999_999));
+        assert_eq!(
+            (
+                report.grand_total.count_points,
+                report.grand_total.length_cm
+            ),
+            (0, 9_999_999)
+        );
+
+        let by_product = get_monthly_sales(&conn, "2026-03", SalesMode::ByProduct).unwrap();
+        let lengths: Vec<(&str, i64)> = by_product
+            .items
+            .iter()
+            .map(|item| (item.key.as_str(), item.length_cm))
+            .collect();
+        assert_eq!(lengths, vec![("B-A", 19_999_998), ("B-B", -9_999_999)]);
+        let by_department = get_monthly_sales(&conn, "2026-03", SalesMode::ByDepartment).unwrap();
+        assert_eq!(
+            (
+                by_department.items[0].count_points,
+                by_department.items[0].length_cm
+            ),
+            (0, 9_999_999)
+        );
+    }
+
+    #[test]
+    fn test_daily_sales_req501_total_overflow_is_validation_failed() {
+        // REQ-501 / X9: BIZ の和は checked。i64 の溢れは wrap した値を返さず ValidationFailed
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "OV-1", 1);
+        seed_product(&conn, "OV-2", 1);
+        seed_sale(&conn, "OV-1", "2026-03-21", i64::MAX, 100, "auto");
+        seed_sale(&conn, "OV-2", "2026-03-21", 1, 100, "auto");
+
+        let rows = sales_repo::get_daily_sales_records(&conn, "2026-03-21").unwrap();
+        assert_eq!(rows.len(), 2, "repo は商品ごとの 2 行を返す");
+        let result = get_daily_sales(&conn, "2026-03-21");
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref m)) if m.contains("オーバーフロー")),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn test_export_sales_csv_req501_req502_quantity_in_display_unit() {
+        // REQ-501 / REQ-502 / 34 §19.5（X9）: 商品の行の長さは m の数（単位の語・桁区切りなし）、
+        // 月次の部門別は長さが 0 なら今と同じ整数、そうでなければ画面と同じ文字列
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "C1-M", 1, "m");
+        seed_product_unit(&conn, "C2-CM", 1, "m");
+        seed_product_unit(&conn, "C3-M", 1, "m");
+        seed_product_unit(&conn, "C4-M", 1, "m");
+        seed_product_unit(&conn, "C5-M", 1, "m");
+        seed_product_unit(&conn, "C6-PCS", 1, "pcs");
+        seed_sale(&conn, "C1-M", "2026-03-21", 130, 910, "manual");
+        seed_sale(&conn, "C2-CM", "2026-03-21", 50, 350, "manual");
+        seed_sale(&conn, "C3-M", "2026-03-21", 123_456, 800, "manual");
+        seed_sale(&conn, "C4-M", "2026-03-21", 200, 700, "manual");
+        seed_sale(&conn, "C5-M", "2026-03-21", -130, -910, "manual");
+        seed_sale(&conn, "C6-PCS", "2026-03-21", 3, 2100, "auto");
+
+        assert_eq!(
+            csv_lines(&conn, SalesReportType::Daily, "2026-03-21"),
+            vec![
+                "C1-M,商品C1-M,その他小物,1.3,910,手動",
+                "C2-CM,商品C2-CM,その他小物,0.5,350,手動",
+                "C3-M,商品C3-M,その他小物,1234.56,800,手動",
+                "C4-M,商品C4-M,その他小物,2,700,手動",
+                "C5-M,商品C5-M,その他小物,-1.3,-910,手動",
+                "C6-PCS,商品C6-PCS,その他小物,3,2100,POS",
+            ]
+        );
+        let monthly = csv_lines(&conn, SalesReportType::MonthlyByProduct, "2026-03");
+        assert!(
+            monthly.contains(&"1,C6-PCS,商品C6-PCS,3,2100".to_string()),
+            "{monthly:?}"
+        );
+        assert!(
+            monthly.contains(&"2,C1-M,商品C1-M,1.3,910".to_string()),
+            "{monthly:?}"
+        );
+        assert!(
+            monthly.contains(&"6,C5-M,商品C5-M,-1.3,-910".to_string()),
+            "{monthly:?}"
+        );
+
+        // 月次の部門別: 4 つの部門（個数と長さ・個数だけ・長さだけが相殺して 0・長さだけ）
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "D1-PCS", 1, "pcs");
+        seed_product_unit(&conn, "D1-SHEET", 1, "sheet");
+        seed_product_unit(&conn, "D1-M", 1, "m");
+        seed_product_unit(&conn, "D1-CM", 1, "m");
+        seed_product_unit(&conn, "D2-PCS", 2, "pcs");
+        seed_product_unit(&conn, "D3-M", 3, "m");
+        seed_product_unit(&conn, "D4-M", 4, "m");
+        seed_sale(&conn, "D1-PCS", "2026-03-21", 3, 4000, "auto");
+        seed_sale(&conn, "D1-SHEET", "2026-03-21", 2, 0, "auto");
+        seed_sale(&conn, "D1-M", "2026-03-21", 130, 0, "manual");
+        seed_sale(&conn, "D1-CM", "2026-03-21", 50, 0, "manual");
+        seed_sale(&conn, "D2-PCS", "2026-03-21", 5, 3000, "auto");
+        seed_sale(&conn, "D3-M", "2026-03-21", 130, 2000, "manual");
+        seed_sale(&conn, "D3-M", "2026-03-22", -130, 0, "manual");
+        seed_sale(&conn, "D4-M", "2026-03-21", 130, 1000, "manual");
+        let lines = csv_lines(&conn, SalesReportType::MonthlyByDepartment, "2026-03");
+        let quantities: Vec<&str> = lines
+            .iter()
+            .map(|line| line.split(',').nth(2).unwrap())
+            .collect();
+        assert_eq!(quantities, vec!["5 点・1.8 m", "5", "0", "1.3 m"]);
+    }
+
+    #[test]
+    fn test_export_sales_csv_req502_total_quantity_groups_thousands() {
+        // REQ-502 / SPEC-UNIT-D3 の表の 5（X9）: 集計の行の `N 点` の `N` は 3 桁区切り（画面と同じ golden）。
+        // `length_cm` が 0 の部門は区切りも語も付けない整数、`count_points` が 0 の部門は m の形
+        for (count, length, expected) in [
+            (5, 180, "5 点・1.8 m"),
+            (999, 180, "999 点・1.8 m"),
+            (1000, 180, "1,000 点・1.8 m"),
+            (1234, 180, "1,234 点・1.8 m"),
+            (-1234, 180, "-1,234 点・1.8 m"),
+            (1_234_567, 123_456, "1,234,567 点・1,234.56 m"),
+            (1234, 0, "1234"),
+            (-1234, 0, "-1234"),
+            (0, 0, "0"),
+            (0, 123_456, "1,234.56 m"),
+        ] {
+            assert_eq!(csv_total_quantity(count, length), expected);
+        }
+
+        // CSV の行: `,` を含む field は exporter が `"…"` で括る
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "G1-PCS", 1, "pcs");
+        seed_product_unit(&conn, "G1-M", 1, "m");
+        seed_product_unit(&conn, "G2-PCS", 2, "pcs");
+        seed_sale(&conn, "G1-PCS", "2026-03-21", 1234, 5000, "auto");
+        seed_sale(&conn, "G1-M", "2026-03-21", 180, 0, "manual");
+        seed_sale(&conn, "G2-PCS", "2026-03-21", 1234, 3000, "auto");
+        let lines = csv_lines(&conn, SalesReportType::MonthlyByDepartment, "2026-03");
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(lines[0].contains(",\"1,234 点・1.8 m\","), "{lines:?}");
+        assert!(lines[1].contains(",1234,"), "{lines:?}");
     }
 }

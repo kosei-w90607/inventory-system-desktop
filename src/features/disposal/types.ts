@@ -1,4 +1,4 @@
-import type { DisposalType, ProductWithRelations } from "@/lib/bindings";
+import type { DisposalType, ProductStockUnit, ProductWithRelations } from "@/lib/bindings";
 
 export type { DisposalType };
 
@@ -7,8 +7,9 @@ export interface DisposalRow {
   productCode: string;
   productName: string;
   departmentName: string;
-  stockUnit: string;
+  stockUnit: ProductStockUnit;
   currentStockQuantity: number;
+  /** 商品の原価（1/100 円） */
   defaultCostPrice: number;
   disposalType: DisposalType;
   quantity: string;

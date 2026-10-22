@@ -1,20 +1,17 @@
 ## 5. CMD-01: 商品コマンド群
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D8 / D9の回復情報を、message文字列の解析なしで伝える追加案。現行の§5.3のkind集合と構造体は実装済み契約であり、本節の追加はruntimeのgenerated enum/bindings切替と同時に行う。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md) の拒否と回復先を、message の解析なしで伝える追加案。現行の §5.3 の kind の集合と構造体は実装済みの契約で、本節の追加は runtime の generated enum / bindings の切替と同時に行う。旧 ADR（時点証拠）の計数 context の失効・保存先の変更・取込みの保留・取消の保留・準備照会の issue・非連動化の未調整（`sync_disabled_recovery`）の code と型は持たない（置き換えた）。
 
-- CmdErrorKindへ `stocktake_guard` を加え、CmdErrorへ `stocktake_recovery: Option<StocktakeRecovery>` を加える。既存kindではNone、stocktake_guardではSomeを必須とする。既存field/error_id・internalのsanitize・restoreの分類は変えない。
-- 業務payloadのStocktakeRecovery / CountRecoveryTargetはBIZ所有とし、DBからCMD型を参照しない。`BizError::StocktakeGuard { message, recovery }` をCMDがstocktake_guardとSome(recovery)へ変換する。CMDは対象の選別や回復可否を再判定しない。
-- StocktakeRecoveryはcode、csv_import_id（legacyの取消の保留の場合だけSome）、targetsを持つ。codeはcount_context_invalid / count_target_changed / recount_required / import_held / preview_changed / rollback_recheck_required / shared_jan_unresolved / source_identity_conflictのgenerated enum。BIZが理由と対象を確定し、CMDは変換するだけ。
-- targetsの要素CountRecoveryTargetはproduct_code / product_name / stocktake_item_id（Option）/ stocktake_id（Option）/ action / recount_reasonsを持つ。actionはactive_count / independent_recount / no_count_target。要再確認flagによる対象（準備照会のrecount_after_import、取込みのstock_review・recount_targets）では、`recount_reasons` にその商品の未解消flagの理由（sale_order_unknown / offset_lines_present / offset_check_pending / offset_mapping_changed / legacy_basisのgenerated enum。重複なし、この順）を入れ、他の対象では空にする。UIは表示する文言をこの型と[32](32-biz-csv-import-service.md)の説明から選び、message文字列を解析しない。商品数量や時刻の証拠をclient入力へ戻さない。参照なしはnullとno_count_targetで表し、架空のIDを使わない。
-- 失効や保存先変更は新しい計数へ、import_heldは共有JAN行の全候補の計数と同file再previewへ、rollback_recheck_requiredは対象商品の通常の計数（active_countなら計数と確定、independent_recountなら独立再実測）の後の同じ取消の再試行へ案内する。同一精算の別hashは再実測で無条件解除できる種類と混ぜない。
-- source_identity_conflictはBIZ-03の精算同一性guardが生成する。shared_jan_unresolvedはBIZ-01のcreate/update/商品一括importが曖昧な連動設定を拒否する際にも生成する。kind名stocktake_guardをoperatorへ表示せず、商品フォーム/一括importの表示は51/60のproposed節へ接続する。
-- 負数・非整数・範囲外は既存validation、同じ保存要求の値違いは既存idempotency_conflictを使う。保存済み同値はerrorではなくsave結果のreplayed。UIはkind/code/actionを生成型で網羅し、未知コードを「そのまま続行」にしない。
+- CmdErrorKind へ `stocktake_guard` を加え、CmdError へ `stocktake_recovery: Option<StocktakeRecovery>` を加える。既存の kind では None、`stocktake_guard` では Some を必須とする。既存の field / error_id・internal の sanitize・restore の分類は変えない。`BizError::StocktakeGuard { message, recovery }` を CMD が変換するだけで、対象の選別や回復の可否を CMD で判定しない。
+- StocktakeRecovery は `code` と `targets` を持つ。code は generated enum: `recount_required`（在庫連動を始める拒否。[30](30-biz-product-service.md)）/ `completion_blocked`（棚卸しの完了の拒否。[35](35-biz-stocktake-service.md)）。共有 JAN の在庫連動の拒否は商品フォーム・一括 import の入力の検査なので、回復型に載せず既存の `validation` kind（field `pos_stock_sync` か `jan_code`、[30](30-biz-product-service.md)）で返す。Z004 の取込みの拒否（同じ精算の別版・精算回数の無い file・精算の順の食い違い）は対象の商品を持たないので回復型に載せず、既存の `import_error` kind と BIZ の message で返す（[32](32-biz-csv-import-service.md)）。
+- targets の要素 CountRecoveryTarget は `product_code` / `product_name` / `stocktake_item_id`（Option）/ `stocktake_id`（Option）/ `action` / `block_reason`（Option）/ `recount_reasons` を持つ。action は `active_count`（進行中の棚卸しの明細で数える）/ `count_now`（棚卸しの外で今の数を入れる。明細が無い商品、進行中の棚卸しが無いとき）。`block_reason` は `completion_blocked` のときだけ Some で、`recheck`（要再確認）/ `uncounted`（未計数）/ `settlement_pending`（決まらない精算が未取込み）の generated enum。`recount_reasons` は要再確認の対象のとき、その商品の理由（`undetermined_settlement` / `same_date_movement` / `conflicting_counts` の generated enum。重複なし、この順）を入れ、他では空にする。参照なしは null で表し、架空の ID を使わない。
+- 負数・非整数・範囲外は既存の validation を使う。UI は kind / code / action / block_reason を生成型で網羅し、未知の code を「そのまま続行」にしない。
 
-商品get/update結果へ `sync_disabled_recovery: Option<CountRecoveryTarget>` を追加し、BIZ生成の非連動化後の未調整状態を透過する。Someは未調整、Noneはこのissueなし。商品一括importのpreview/結果には同じ対象のVecを追加する。再有効化拒否は既存recount_requiredを使う。準備照会が `ej_unverified` を返す間の在庫連動の有効化の拒否（[30](30-biz-product-service.md)）は、既存の `validation` kindとfield `pos_stock_sync` で返すため、kindとstocktake_guardのcodeは増えない。型の理由を持たない文字列warningだけに落とさず、既存のaction集合を共用し新しい迂回計数commandは追加しない。
+商品の get / search の結果（`ProductWithRelations` と一覧の行）へ、写しの `stock_recheck: bool`・`stock_range_low: Option<i64>`・`stock_range_high: Option<i64>` を足す（在庫数の欄の範囲の表示に使う。[51](51-ui-product-form.md)・[58](58-ui-stock-inquiry.md)）。
 
-runtimeでは共通enum、全CmdError constructor、BizError変換、bindings、CMD_ERROR_KIND、describeErrorとfeatureの回復分岐・mock/testを同じ変更で同期する。数量や対象IDはwireで安全に表現できる範囲をBIZが書込み前に検査する。追加payloadにraw SQL、診断ログ、実file本体を載せない。
+runtime では共通 enum、全 CmdError constructor、BizError の変換、bindings、CMD_ERROR_KIND、describeError と feature の回復の分岐・mock / test を同じ変更で同期する。追加 payload に raw SQL・診断ログ・file 本体を載せない。
 
 ### 5.1 モジュール構成
 
@@ -99,7 +96,7 @@ fn update_product(state: State<AppState>, product_code: String, req: ProductUpda
 
 **部分更新wire契約（PRODUCT-PATCH-D1 / REQ-102）**:
 
-- 通常field（`name`, `department_id`, `selling_price`, `cost_price`, `tax_rate`, `pos_stock_sync`, `plu_target`）は、JSON omitted / nullのどちらも「更新しない」、valueは「設定する」。
+- 通常field（`name`, `department_id`, `selling_price`, `cost_price_centi`, `tax_rate`, `pos_stock_sync`, `plu_target`）は、JSON omitted / nullのどちらも「更新しない」、valueは「設定する」。
 - clear可能field（`supplier_id`, `maker_code`）は、JSON omittedが「更新しない」、nullが「clearする」、valueが「設定する」。
 - generated commandの入力型は `ProductUpdateRequest_Deserialize` とし、全propertyをoptionalにする。frontend側の `Partial` aliasや型assertionでgenerated契約を迂回しない。
 - command名、引数名、response、`CmdError`、BIZ呼出し順は変更しない。
@@ -119,7 +116,7 @@ fn toggle_discontinue(state: State<AppState>, product_code: String) -> Result<bo
 
 #### search_products コマンド
 
-**処理ステップ**: biz::product_service::search_products()を呼ぶ。`ProductSearchQuery.plu` は `all|target|pending|synced|excluded` を受け、商品一覧の PLU 移行 filter として IO-01 の WHERE へ渡す。`supplier_id` / `include_unassigned` は UI-14 の取引先 filter としてそのまま BIZ-01 wrapper を通し、抽出判断は IO-01 が所有する（SPEC-PRVB-D1）。
+**処理ステップ**: biz::product_service::search_products()を呼ぶ。PLU の移行 filter（`ProductSearchQuery.plu`）は D-117 (2) で撤去した（runtime の lane が DTO・bindings・UI と一緒に外す）。`supplier_id` / `include_unassigned` は UI-14 の取引先 filter としてそのまま BIZ-01 wrapper を通し、抽出判断は IO-01 が所有する（SPEC-PRVB-D1）。
 
 #### list_departments コマンド
 
@@ -174,7 +171,7 @@ fn revise_product_price(
 struct PriceRevisionInput {
     product_code: String,
     new_selling_price: i64,
-    new_cost_price: i64,
+    new_cost_price_centi: i64,
     assign_supplier_id: Option<i64>,
 }
 
@@ -185,6 +182,8 @@ struct PriceRevisionResult {
     supplier_assigned: bool,
 }
 ```
+
+上限（D-113・D-128）: `new_selling_price` は 0 以上 `999999`、`new_cost_price_centi` は 1/100 円で 0 以上 `99999999`（`999999.99` 円）（越えれば BIZ が `売価が大きすぎます`・`原価が大きすぎます`）。下の `PriceHistoryEntry` の原価も 1/100 円の `old_cost_price_centi`・`new_cost_price_centi`。[共通規則](10-common-rules.md) SPEC-UNIT-D5、[30](30-biz-product-service.md) BIZ-01-D8。
 
 CMD は DB 接続を取得し、BIZ-01 `revise_product_price` を呼んで結果をそのまま返す。負値は validation、不存在 `product_code` / `assign_supplier_id` は not-found の既存 `CmdErrorKind` へ正規化し、価格更新・履歴・操作ログ・supplier 紐付けの判断を CMD に持たない。
 
@@ -268,8 +267,8 @@ struct PriceHistoryEntry {
     id: i64,
     old_selling_price: i64,
     new_selling_price: i64,
-    old_cost_price: i64,
-    new_cost_price: i64,
+    old_cost_price_centi: i64,
+    new_cost_price_centi: i64,
     changed_at: String,
 }
 ```
@@ -278,9 +277,11 @@ struct PriceHistoryEntry {
 
 #### get_product コマンド
 
-**処理ステップ**: product_repo::find_by_product_code()を呼ぶ。None → CmdError { kind: CmdErrorKind::NotFound }。応答型 `ProductWithRelations`（[20-io](20-io-product-repo.md) の JOIN 結果。`41-cmd` の `ProductResponse` は PLU dirty 一覧用の別型）に JAN 結合した読取り専用 `plu_memory_no: Option<i64>` を含める（**CMD-01-D3 / SPEC-PLS-D7**）。
+**処理ステップ**: product_repo::find_by_product_code()を呼ぶ。None → CmdError { kind: CmdErrorKind::NotFound }。応答型 `ProductWithRelations`（[20-io](20-io-product-repo.md) の JOIN 結果。`41-cmd` の `ProductResponse` は PLU dirty 一覧用の別型）は memory No. を含めない（CMD-01-D3 の `plu_memory_no` は D-117 (5) で撤去。runtime の lane が DTO・bindings・UI と一緒に外す）。
 
-#### bulk_set_plu_target コマンド（CMD-01-D4 / SPEC-PLS-D6）
+#### bulk_set_plu_target コマンド（CMD-01-D4。撤去の対象、D-117 (2)）
+
+商品一覧の絞り込みに一致する全件の PLU 対象化（段階導入の道具）は撤去する（[30 §4.9.1](30-biz-product-service.md)）。runtime の lane が code・specta の登録・bindings・UI・test と一緒に消す。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 #[tauri::command]
@@ -291,7 +292,3 @@ fn bulk_set_plu_target(
     plu_target: bool,
 ) -> Result<BulkPluTargetResult, CmdError>
 ```
-
-`ProductBulkFilter` は商品一覧の `keyword` / `department_id` / `is_discontinued` / `plu` と同じ意味を持ち、ページング引数を持たない。型は db 層所有、BIZ 再 export とし、CMD は BIZ 経由で参照する。戻り値は BIZ-01 の `BulkPluTargetResult` をそのまま返す（`create_product` の `ProductCreateResult` と同じ慣行、別の CMD 層 DTO を作らない。PR #86 gated amendment 1）。response は `matched_count`, `updated_count`, `invalid_jan_skipped_count`, `discontinued_skipped_count` を返す。CMD は generated DTO を BIZ-01 へ渡し、1 transaction の所有権や slot 解放判定を持たない。
-
-`plu_memory_no` を含む response は実装 A で `tauri-specta` 登録と `src/lib/bindings.ts` 再生成を行う。`bulk_set_plu_target` と関連 enum / DTO は後続実装 B の責務とする。

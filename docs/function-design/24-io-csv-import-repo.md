@@ -1,25 +1,17 @@
 ## 14. IO-01 追加: POS取込みリポジトリ（BIZ-03 / BIZ-08 用）
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sales_repoが[pos_import_sources](../db-design/pos-tables.md)の保存を所有する。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7・D9）の IO の側。以下の現行の csv_imports の API に足す。旧 ADR（時点証拠）の受領（`pos_import_sources`）・受領済みの上限・同一性の拒否の記録・取消の事前読取りの操作は持たない（置き換えた）。
 
-| 操作 | 入力→出力 / 処理 |
+| 操作 | 入力 → 出力 / 処理 |
 |---|---|
-| 受領のupsert | (tx, hash, received_at, settlement_date, 任意の識別メタ) → source。hash衝突時は最初のID/時刻を返し、REPLACEや再採番をしない |
-| 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
-| 精算同一性の照合候補取得 | (conn, sourceメタ) → 同じ帳票のmachine_no / settlement_noに対応する全受領source。未取込み/取消済みも除外しない。ID/hash/メタを返し、同一性の業務判定と拒否はBIZが行う |
-| active取込みの識別メタ取得 | (conn, settlement_date: Option) → completed / completed_partial全件のimport ID・精算日・任意sourceメタ。日付指定時は同日guard用、未指定時は全日付のpreflight用。csv_importsを起点にLEFT JOIN等で移行前のsourceなし・片方/両方NULLも行を残す。メタ一致検索の候補0件で代用せず、商品連動設定で絞らない。既存の同日照会に接続し、BIZが日付一覧の導出とpreview/commit TXでの拒否を所有する |
-| 同一性拒否の記録/照会 | (tx, source ID, reason, rejected_at)で初回拒否を冪等保存。照会は拒否記録と当該sourceのactive import有無・精算日を返す。BIZがsettlement_missingを導出し、取消/再実測で証拠を削除しない |
-| import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
-| 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |
-| void_movements_by_reference | VoidedMovementにidを追加し、事前読取りと同じ対象を同一TXでvoidする。返却IDは元のmovement IDで、取消時刻や新しい番号で置換しない |
+| import の保存 | `NewCsvImport` に `machine_no: String`・`settlement_no: i64` を足す（[POS](../db-design/pos-tables.md) の同名の契約）。既存の active hash の重複の判定と取消済みの再取込みは変えない |
+| active な Z004 の精算の一覧 | (conn) → completed / completed_partial の全件の import ID・`machine_no`・`settlement_no`・`settlement_date`（settlement_no の昇順）。BIZ-03 の識別・順の検査・欠けの知らせと、BIZ-02 の求め直し（取り込み済みの精算の並び）が使う。判定は BIZ が行う |
+| 同じ精算の active な取込みの取得 | (conn, machine_no, settlement_no) → active な import の ID と hash（0 件か 1 件。2 件以上は DbError ではなく BIZ が不整合として拒む） |
+| movement の保存 | Z004 の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no` を持つ（[21](21-io-inventory-repo.md) の `NewMovement` の並びの鍵） |
 
-受領表を売上commit前の短いTXで確定する。業務commit/rollbackはsourceを削除せず、日報bundleのtable/APIへこの処理を混入させない。DB失敗はDbErrorでBIZへ返し、受領失敗のまま証拠付きpreviewを返さない。索引・FK・状態はPOSの新契約を正とし、IOで保留集合を永続化しない。
-
-IOがメタの存在・日時の新しさ・ファイル名から信用や前後を付与しない。精算同一性の候補はpreviewと業務commit TXで再取得し、同日追加確認やsourceの削除を衝突の解除手段にしない。
-
-初導入では識別メタの抽出結果がsourceへ保存されることまで検証して本番開始する。旧importのhashから受領行をbackfillしても、DBにない識別メタや精算時刻は復元せずNULLのまま返す。IOは本番開始日より古いという条件で行/取込み対象を除外しない。旧試験履歴の不持込み・整合したDB作り直しはADR D8の配備条件であり、このrepo APIやmigrationが履歴だけを削除する処理ではない。
+IO は精算日・番号・file 名から信用や前後を付与しない。判定は BIZ-03 が preview と確定の TX で取り直す。
 
 ### 14.1 モジュール配置
 
@@ -70,7 +62,7 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 
 **VoidedMovement構造体**:
 - product_code: String
-- quantity: i64（元の quantity。BIZ-03 がこの値を逆方向に変換して在庫補正に使用）
+- quantity: i64（元の quantity。BIZ-03 の在庫補正は使わない。BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す）
 
 **DailyReportImport構造体**:
 - id: i64
@@ -345,7 +337,7 @@ fn void_sale_records_by_import(conn: &DbConnection, csv_import_id: i64) -> Resul
 
 ### 14.12 void_movements_by_reference
 
-**関数要求**: 指定 reference_type / reference_id の inventory_movements を is_voided=1 に更新し、void 対象の product_code と quantity を返す。BIZ-03 がこの戻り値を使って在庫補正を行う
+**関数要求**: 指定 reference_type / reference_id の inventory_movements を is_voided=1 に更新し、void 対象の product_code と quantity を返す。BIZ-03 は戻り値の product_code で、その商品を記録から求め直す（[32](32-biz-csv-import-service.md) §15.5）
 
 **シグネチャ**:
 ```
@@ -375,13 +367,11 @@ fn void_movements_by_reference(conn: &DbConnection, ref_type: &str, ref_id: i64)
 ```
 
 BIZ-03 での在庫補正:
-- quantity = -3 の movement が void → 在庫を +3 補正（逆方向）
-- quantity = 1（返品で在庫が戻った movement）が void → 在庫を -1 補正
-- 補正計算: `products.stock_quantity -= voided.quantity`（元の quantity を引く = 逆方向補正）
+- BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない。[32](32-biz-csv-import-service.md) §15.5、`csv_import_service/commit.rs` の `apply_void_stock_corrections`）。写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じになる
 
 **設計判断**:
 - movement_type 条件を付与しない理由: INV-7 により reference_type='csv_import' の movements は sale_auto 限定であることが保証されている。冗長な条件は可読性を下げるだけ
-- SELECT → UPDATE の2段階にする理由: BIZ-03 が在庫補正に product_code と quantity を必要とするため。UPDATE の RETURNING 句は SQLite 3.35+ で利用可能だが、rusqlite のサポート状況を考慮して SELECT + UPDATE の安全なパターンを採用
+- SELECT → UPDATE の2段階にする理由: BIZ-03 が求め直す商品（無効にした movement の product_code）を BIZ に渡すため。UPDATE の RETURNING 句は SQLite 3.35+ で利用可能だが、rusqlite のサポート状況を考慮して SELECT + UPDATE の安全なパターンを採用
 
 ---
 
@@ -550,6 +540,23 @@ fn find_same_settlement_daily_report_import(
 
 ---
 
+### 14.18b exists_same_date_daily_report_import_without_settlement_no（D-121、BIZ-08-D8、proposed・未実装）
+
+**関数要求**: 同じ対象日の completed の日報取込みに、精算回数の無い（`settlement_no IS NULL`）ものがあるかを返す。BIZ-08-D8（37 §37.10）が同日追加の確認を残すかを決める専用。wire に出さない。後続の runtime（A）が足す。
+
+**シグネチャ**:
+```
+fn exists_same_date_daily_report_import_without_settlement_no(
+    conn: &DbConnection,
+    report_date: &str,
+) -> Result<bool, DbError>
+```
+
+**SQL方針**:
+`SELECT EXISTS (SELECT 1 FROM daily_report_imports WHERE report_date = ? AND status = 'completed' AND settlement_no IS NULL)`。`status` の条件は §14.18 の同日の一覧（`src-tauri/src/db/sales_repo.rs` の `find_daily_report_imports_by_report_date` の `status = 'completed'`）と同じで、取り消した（`rolled_back`）取込みは数えない。
+
+---
+
 ### 14.19 rollback_daily_report_import
 
 **関数要求**: `daily_report_imports` を `rolled_back` に更新する。
@@ -603,13 +610,49 @@ fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) 
 **処理ステップ**:
 1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件、親の `id`・`report_date`・`gross_amount`・`net_amount`・`imported_at` を `imported_at ASC, id ASC` の順で取得する。親がなければ `Ok(None)` を返す。`imported_at` と並びは手順 6 の取込みごとの行（行の無い親を含む）が使う。手順 2 の gross / net の加算は、従来どおり新しい順（`imported_at DESC, id DESC`、手順 1 の並びの逆）で行う。`checked_add` の途中の溢れ（手順 7）と NULL の伝播（どれかが NULL なら NULL）は加算の順に依るため、取得の並びを変えても既存の結果（日次の数字と日次 CSV）を変えない（例: 古い順の gross が `i64::MAX`・`1`・`-i64::MAX` の 3 親は、新しい順で足すと `1`、古い順で足すと途中で溢れて `DbError::QueryFailed`）。
 2. `source_import_count` は対象親件数とする。親 `gross_amount` / `net_amount` はそれぞれ合計するが、いずれかの親で対象値が NULL なら集約値も NULL とする。
-3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
+3. `daily_report_payment_lines` は [34](34-biz-sales-service.md) の SALES-SHEET-D2 の規則で返す（proposed・未実装、[D-120](../decision-log.md)。規則の正本は SALES-SHEET-D2 で、ここに写さない。今の実装は `payment_key` で集約し、並び順から作る `payment_N` が、同日の取込みの間で名称の違う行を 1 行に足しうる。`payment_key` は保存を続けるが集約の鍵に使わない）。`OfficialDailyReportRow` の内部の field `payment_sum_case` に、その日が D2 のどれかを入れる（1 は `Summed`、2 は `LabelChanged`、3 は `Unsummed`。BIZ-05 が 2・3 の日に warning の文を足す。34 §19.3 手順 3。wire の型は変えない）。D2 の 1・2 の日は位置と名称の組で集約する。D2 の 3 の日は足さずに、全取込みの行を親の `imported_at ASC, id ASC`・行の `sort_order ASC, id ASC` の順にそのまま返す（1 行が 1 件。手順 5 の代表は各行自身）。判定のため、支払の行の読取りに親の `id`・`imported_at` を加える。返す `OfficialDailyPaymentLine.payment_key` は group の代表の行（手順 5）の保存値のままで、wire の型と意味は変えない（同じ `payment_key` の group が 2 つ返りうる。画面は行の key を `payment_key` と配列の index から作る、56）。今と同じ行と値になるのは、その日の全取込みで「位置と前後の空白を除いた名称の組」の集合が同じで、1 取込みの中に同じ `payment_key` の行が無く、各組の保存済みの `payment_key` も全取込みで同じ入力に限る（互換の範囲の正本はこの段。D2 の 3 は組の集合が一致しない日だけなので、この範囲の日には起きない）。ただし範囲の中でも、ある組のある値に NULL があり、今の足す順（取込みの id の昇順、D2 の「足す値」）で最初の NULL より前の和が溢れる入力は、今は `DbError::QueryFailed`、新しい規則では NULL になる（D2 の「足す値」の (a)。NULL の無い値は足す順が今と同じなので、溢れも今と同じ）。範囲の外の入力は新しい規則の値になる: 1 取込みの中に同じ `payment_key` の行が 2 つある入力は、今は 1 行に足され、新しい規則では位置ごとの 2 行に分かれる。同じ組の行の保存済みの `payment_key` が取込みで違う入力（IO-07-D4a の前の parser が `credit` とし、後の parser が `payment_N` とした、同じ位置・同じ名称の行が同じ日にある）は、今は `payment_key` ごとの 2 行に分かれ、新しい規則では組で足した 1 行になる（返す `payment_key` は手順 5 の代表の行の保存値）。amount / count の足し方（NULL・足す順・途中の溢れ）は D2 の「足す値」に従う。
 4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、`quantity_hundredths` / count は対象行のいずれかが NULL なら集約値も NULL とする。`quantity_hundredths` は 100 倍の整数のまま足して DB DTO に入れ、単位の数への変換は BIZ-05 が行う（IO-07-D2）。
 5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応の部門は集約後の group として返し、import ごとに重複させない（警告の文は BIZ-05 が作る）。
 6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity_hundredths` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
    取込みと行の型は、BIZ-05 の `OfficialDailySummaryImport` / `OfficialDailySummaryLine`（[34 §19.2](34-biz-sales-service.md#192-型定義)）と同じ形の DB DTO（IO の所有。既存の `OfficialDailyPaymentRow` と同じ命名で `OfficialDailySummaryImportRow` / `OfficialDailySummaryLineRow`。ただし個数は `quantity_hundredths: Option<i64>`〈100 倍の整数〉で、単位の数への変換は BIZ-05）とし、`OfficialDailyReportRow` の field `summary_imports` に入れる。
 7. 手順 2〜4 の加算はすべて（NULL を伝える加算〈親の `gross_amount` / `net_amount`、支払の amount / count、部門の `quantity_hundredths` / count〉と、部門の amount の合計）溢れを検査して足し（`checked_add`）、`i64` を溢れたら黙って wrap せず `DbError::QueryFailed` を返す（月次の §14.22 の `SUM` の溢れと同じく error で止める）。100 倍の整数は範囲内の値（MNT-03-D12 の範囲検査、`i64::MAX / 100`）でも 2 行の和で溢れうる。返した `DbError` の上位の扱いは既存の DB 読み取りの失敗と同じで（[34 §19.3](34-biz-sales-service.md#193-get_daily_sales) のエラーハンドリング、[40 §5.3](40-cmd-product.md#53-cmd層のエラー返却方針) の `internal`、CMD-ERR-D2）、利用者には既存の文「データベースエラーが発生しました。もう一度お試しください」と error_id が出る。新しい文言は足さない。
 8. `OfficialDailyReportRow` を返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（`summary_imports`）だけが親 ID と `imported_at` を持つ。BIZ-05 はこれを公開 DTO へ写し、並びと値を変えない。
+
+---
+
+### 14.21a get_daily_report_sheet_lines
+
+（proposed・未実装、D-120。日報の紙〈[34 §19.3a](34-biz-sales-service.md)〉の読取り）
+
+**関数要求**: 指定日の全 completed 日報取込みの数と、配下の Z001・Z002・Z005 の全行を、足さずに返す。足し方は BIZ-05 の SALES-SHEET-D2 が持つ。
+
+**シグネチャ**:
+```
+fn get_daily_report_sheet_lines(conn: &DbConnection, report_date: &str) -> Result<DailyReportSheetLinesRow, DbError>
+```
+
+返り値は IO が所有する DB DTO（`DailyReportSheetLinesRow { import_ids: Vec<i64>, lines: Vec<DailyReportSheetLineRow> }`、`DailyReportSheetLineRow { source: DailyReportSourceKind, daily_report_import_id: i64, sort_order: i64, label: String, quantity_hundredths: Option<i64>, count: Option<i64>, amount: Option<i64> }`）。`label` は Z001・Z002 の `label`、Z005 の `raw_department_name`（`normalized_department_name` は使わない。紙はレジの名称のまま、34 SALES-SHEET-D2）。Z002 の行は `quantity_hundredths` を持たない（NULL）。`import_ids` はその日の completed の親の `id` を `imported_at ASC, id ASC` で並べたもので、行の無い親も含む。BIZ-05 は、その長さを取込みの数に、行の `daily_report_import_id` がこの並びの何番目か（1 から）を `import_seq` に使う（34 SALES-SHEET-D2 の 3）。
+
+**処理ステップ**:
+1. `daily_report_imports` から `report_date=? AND status='completed'` の親の `id` を `imported_at ASC, id ASC` で読み、`import_ids` にする。空なら `lines` を空にして返す。
+2. 3 つの行の表（`daily_report_summary_lines`・`daily_report_payment_lines`・`daily_report_department_lines`）を、手順 1 と同じ条件の親に join して読み、帳票（Z001 → Z002 → Z005）・親の `imported_at ASC, id ASC`・行の `sort_order ASC, id ASC` で並べる。`rolled_back` の親の行は読まない。読む親は手順 1 の `import_ids` にある親に限る（手順 1 の後に確定した取込みの行を混ぜない。どの行の `daily_report_import_id` も `import_ids` にあり、BIZ-05 が `import_seq` を必ず引ける）。
+3. 値は保存されたまま返す（足さない、名称の空白も除かない）。新しい schema・index は足さない（各行の表の `daily_report_import_id` の index を使う）。
+
+---
+
+### 14.21b get_active_z004_import_totals
+
+（proposed・未実装、D-120。日報の紙の PLU の部分〈34 SALES-SHEET-D4〉の読取り）
+
+**関数要求**: 指定の精算日の active な Z004 の取込みの数と、その `skipped_count` の和を返す。
+
+**シグネチャ**:
+```
+fn get_active_z004_import_totals(conn: &DbConnection, settlement_date: &str) -> Result<(i64, i64), DbError>
+```
+
+**処理ステップ**:
+1. `csv_imports` から `settlement_date=? AND status IN ('completed','completed_partial')` の行の数と `skipped_count` の和を 1 つの query で読む（行が無ければ `(0, 0)`）。和の溢れは SQLite の error のまま `DbError::QueryFailed`（§14.22 の `SUM` と同じ）。
 
 ---
 
@@ -655,6 +698,55 @@ fn get_monthly_official_department_totals(
 - **D-025**: 日報取込みは sale_records / inventory_movements へ擬似展開しない — daily_report_imports のrollbackは親status更新のみで完結する
 - **D-071 / SPEC-SDI-D1〜D8**: business date は group key であり uniqueness key ではない。active content hash 単位の identity、指定 ID 単位の rollback、同日の全 active imports の additive read を維持する（Z001 の行は全 active import を読むが加算せず取込みごとに返す、D-096）
 
+### 14.25 EJ の記録の保存と照会（D-121、BIZ-08-D9、proposed・未実装）
+
+`ej_records`（[pos-tables](../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」）を読み書きする。呼ぶのは BIZ-08 §37.11 だけ。TX は BIZ-08 が持つ。runtime（後続の lane A）は置き場の module を決め、`design_compliance_test.rs` の本書の行に足す。
+
+型の所有: repo が受け返しする型（下の `NewEjRecord` と、37 §37.11 に形を書いた `EjRecordSummary`・`EjRecordDetail`・`EjRecordRef`・`EjNumberGap`・`EjRecordModeCode`・`EjRecordKindCode`）は db の module に定義し、`src-tauri/src/biz/mod.rs` で re-export する（既存の形: `CsvImport`〈`src-tauri/src/biz/mod.rs`〉、`Stocktake` ほか〈同 `stocktake_repo` の re-export〉）。CMD は BIZ の re-export を使い db を直接参照しない。BIZ だけが組み立てる型（`EjImportPlan`・`EjImportResult`・`EjConflict`・`EjRecordDay`・`EjSourceFile`）は BIZ-08 に置く。mode・kind は db の列では TEXT + CHECK のまま、型では enum で持ち、書くときは enum の文字列、読むときは明示の match で変える（外れた値は `DbError`。D-061 (c)、先例 `CsvImportStatus`〈`src-tauri/src/db/sales_repo.rs` の `CsvImportStatus` と `row_to_csv_import` の `match`〉）。
+
+```rust
+struct NewEjRecord {
+    machine_prefix: String,
+    record_no: String,
+    printed_at: String,
+    mode: EjRecordModeCode,
+    kind: EjRecordKindCode,
+    settlement_report: Option<String>,
+    settlement_completed: Option<bool>,
+    total_amount: Option<i64>,
+    body_text: String,
+}
+```
+
+```
+fn find_ej_record_texts(
+    conn: &DbConnection,
+    keys: &[(String, String)], // (machine_prefix, record_no)
+) -> Result<HashMap<(String, String), String>, DbError> // 保存済みの key → body_text
+
+fn insert_ej_record(conn: &DbConnection, record: &NewEjRecord, imported_at: &str) -> Result<i64, DbError>
+
+fn list_ej_records_on_date(conn: &DbConnection, date: &str) -> Result<Vec<EjRecordSummary>, DbError> // 最大 1001 件（BIZ が 1000 件を超えたかを知るため）
+
+fn find_ej_adjacent_dates(conn: &DbConnection, date: &str) -> Result<(Option<String>, Option<String>), DbError>
+
+fn find_latest_ej_date(conn: &DbConnection) -> Result<Option<String>, DbError>
+
+fn find_ej_records_by_no(conn: &DbConnection, record_no: &str) -> Result<Vec<EjRecordRef>, DbError>
+
+fn get_ej_record_detail(conn: &DbConnection, id: i64) -> Result<Option<EjRecordDetail>, DbError>
+
+fn list_ej_number_gaps(conn: &DbConnection) -> Result<Vec<EjNumberGap>, DbError>
+```
+
+**SQL方針**:
+- `find_ej_record_texts`: `SELECT machine_prefix, record_no, body_text FROM ej_records WHERE (machine_prefix, record_no) IN (...)`（UNIQUE の index を使う。key の数が多いときは BIZ が分けて呼ぶ）。
+- `insert_ej_record`: `INSERT INTO ej_records (...) VALUES (...)`。UNIQUE に当たったら `DbError` を返す（BIZ は TX の中で先に比べるので通常は当たらない）。
+- `list_ej_records_on_date`: `WHERE printed_at >= ?1 || ' 00:00' AND printed_at < ?2 || ' 00:00'`（?2 は翌日）、`ORDER BY machine_prefix, record_no LIMIT 1001`。
+- `find_ej_adjacent_dates`: 前は `SELECT substr(printed_at, 1, 10) FROM ej_records WHERE printed_at < ?1 || ' 00:00' ORDER BY printed_at DESC LIMIT 1`、次は翌日 00:00 以上で `ORDER BY printed_at ASC LIMIT 1`。`find_latest_ej_date` は `ORDER BY printed_at DESC LIMIT 1`。
+- `list_ej_number_gaps`: 4 桁の欄ごとに、`record_no` を整数にした値を昇順に並べ、隣との差が 2 以上の所を区間（前 + 1 〜 後 − 1）にする（window 関数 `LAG`。SQLite 3.25 以降、同梱は 3.45.0〈22 §15〉）。区間を 4 桁の欄・番号の昇順で返し、番号は 6 桁の 0 埋めの文字列に戻す。区間の数は保存した記録の数以下。
+- 日付は `printed_at`（記録の日時の文字列）で引き、アプリの時計と比べない。
+
 ### 更新履歴
 
 | 日付 | PR | 内容 |
@@ -664,3 +756,4 @@ fn get_monthly_official_department_totals(
 | 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正、D-111） | `NewDailyReportImport.settlement_no` と §14.14 の INSERT の列、§14.18a `find_same_settlement_daily_report_import`（BIZ-08-D4）。`DailyReportImport` の行の DTO と既存の SELECT は変えない。 |
 | 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §14.25 EJ の記録の保存と照会と、§14.18b 同じ日の精算回数の無い取込みの有無（BIZ-08-D8。Plan Review round 1 の是正）を proposed で足した。Plan Review round 2 の是正で、§14.25 に型の所有（db で定義し biz で re-export）と mode・kind の enum を書いた。 |

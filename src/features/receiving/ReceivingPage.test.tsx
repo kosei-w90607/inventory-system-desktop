@@ -605,8 +605,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -628,9 +628,9 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(within(dialog).getByText("商品コード")).toBeInTheDocument();
     expect(within(dialog).getByText("P-901")).toBeInTheDocument();
     expect(within(dialog).getByText("マスタ原価")).toBeInTheDocument();
-    expect(within(dialog).getByText("500 円")).toBeInTheDocument();
+    expect(within(dialog).getByText("¥500")).toBeInTheDocument();
     expect(within(dialog).getByText("今回の実原価")).toBeInTheDocument();
-    expect(within(dialog).getByText("501 円")).toBeInTheDocument();
+    expect(within(dialog).getByText("¥501")).toBeInTheDocument();
   });
 
   it("REQ-209 / DSR-16 Matrix T6: 複数の原価差分商品を一意の見出しで識別できる", async () => {
@@ -646,14 +646,14 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
           {
             product_code: "P-902",
             product_name: "テスト生地",
-            master_cost_price: 700,
-            received_cost_price: 720,
+            master_cost_price_centi: 70000,
+            received_cost_price_centi: 72000,
           },
         ],
       },
@@ -708,6 +708,80 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("Matrix C16 / UI-02-D7・D15: 原価 83.33 円の商品は欄が 83.33 で 8333 を送り、差分の dialog は ¥83.33・¥85 で 8500 に更新する", async () => {
+    const user = userEvent.setup();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({
+            product_code: "C16-A",
+            name: "原価の小数",
+            cost_price_centi: 8333,
+          }),
+        ],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 916,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "C16-A",
+            product_name: "原価の小数",
+            master_cost_price_centi: 8333,
+            received_cost_price_centi: 8500,
+          },
+        ],
+      },
+    });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "C16-A", selling_price: 100 }),
+    });
+    mockReviseProductPrice.mockResolvedValue({
+      status: "ok",
+      data: {
+        product_code: "C16-A",
+        changed: true,
+        plu_dirty_set: false,
+        supplier_assigned: false,
+      },
+    });
+    renderWithClient(<ReceivingPage />);
+    await user.type(await screen.findByLabelText("入庫商品検索"), "C16-A{enter}");
+    const cost = await screen.findByLabelText("C16-A の原価");
+    expect(cost).toHaveValue(83.33);
+    expect(cost).toHaveAttribute("inputmode", "decimal");
+    expect(cost).toHaveAttribute("step", "0.01");
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReceiving).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateReceiving.mock.calls[0][0].items[0]?.cost_price_centi).toBe(8333);
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+    expect(within(dialog).getByText("¥83.33")).toBeInTheDocument();
+    expect(within(dialog).getByText("¥85")).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    );
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledWith({
+        product_code: "C16-A",
+        new_selling_price: 100,
+        new_cost_price_centi: 8500,
+        assign_supplier_id: null,
+      });
+    });
+  });
+
   it("REQ-209 T7: 現売価を据え置いて入庫実原価へ商品単位で更新する", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({
@@ -721,8 +795,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -752,7 +826,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       expect(mockReviseProductPrice).toHaveBeenCalledWith({
         product_code: "P-901",
         new_selling_price: 1200,
-        new_cost_price: 501,
+        new_cost_price_centi: 50100,
         assign_supplier_id: null,
       });
     });
@@ -773,8 +847,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -825,8 +899,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -858,14 +932,14 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
           {
             product_code: "P-902",
             product_name: "テストボタン",
-            master_cost_price: 100,
-            received_cost_price: 110,
+            master_cost_price_centi: 10000,
+            received_cost_price_centi: 11000,
           },
         ],
       },
@@ -925,8 +999,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -954,7 +1028,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       const label = within(dialog).getByText("マスタ原価");
       return label.parentElement?.querySelector("dd")?.textContent;
     }
-    expect(masterCostValue()).toBe("500 円");
+    expect(masterCostValue()).toBe("¥500");
     // footer は未処理のうちは既存の「見送って閉じる」のまま。
     expect(within(dialog).getByRole("button", { name: "見送って閉じる" })).toBeInTheDocument();
 
@@ -963,7 +1037,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     );
 
     await waitFor(() => {
-      expect(masterCostValue()).toBe("501 円");
+      expect(masterCostValue()).toBe("¥501");
     });
     // 61 §61.5 追記: 全行の更新完了後、footer 文言が状態対応（「閉じる」）に変わる。
     expect(within(dialog).getByRole("button", { name: "閉じる" })).toBeInTheDocument();
@@ -985,8 +1059,8 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
           {
             product_code: "P-901",
             product_name: "テスト毛糸",
-            master_cost_price: 500,
-            received_cost_price: 501,
+            master_cost_price_centi: 50000,
+            received_cost_price_centi: 50100,
           },
         ],
       },
@@ -1106,4 +1180,39 @@ it("UI-02-D3: refetches suppliers after creating one from the picker", async () 
   expect(mockListSuppliers).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(mockCreateReceiving).not.toHaveBeenCalled();
+});
+
+// REQ-201 / UI-02-D7 / SPEC-UNIT-D3: 数量欄の属性は m の商品の行だけ小数 2 桁の入力にする
+it.each([
+  ["m", { inputmode: "decimal", min: "0.01", step: "0.01" }],
+  ["pcs", { inputmode: "numeric", min: "1", step: null }],
+] as const)("UI-02-D7: %s の商品の数量欄の属性", async (unit, expected) => {
+  const user = userEvent.setup();
+  mockSearchProducts.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        makeMockProductWithRelations({
+          product_code: "ATTR-001",
+          name: "属性確認A",
+          stock_unit: unit,
+        }),
+        makeMockProductWithRelations({ product_code: "ATTR-002", name: "属性確認B" }),
+      ],
+      total_count: 2,
+      page: 1,
+      per_page: 10,
+    },
+  });
+  renderWithClient(<ReceivingPage />);
+  await user.type(await screen.findByLabelText("入庫商品検索"), "属性{enter}");
+  const candidate = (await screen.findByText("ATTR-001")).closest("tr");
+  if (candidate === null) throw new Error("expected table structure");
+  await user.click(within(candidate).getByRole("button", { name: "入庫に追加" }));
+  const input = await screen.findByLabelText("ATTR-001 の数量");
+  expect(input).toHaveValue(1);
+  expect(input).toHaveAttribute("type", "number");
+  expect(input.getAttribute("inputmode")).toBe(expected.inputmode);
+  expect(input.getAttribute("min")).toBe(expected.min);
+  expect(input.getAttribute("step")).toBe(expected.step);
 });

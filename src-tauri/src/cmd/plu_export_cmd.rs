@@ -6,6 +6,7 @@ use crate::biz::plu_export_service::{
     self, ExportMode, PluExcludedReason, PluExportConfirmRequest, PluExportPrepareRequest,
     PluPreparedRow, PluRegisterSnapshotSummary,
 };
+use crate::biz::ProductStockUnit;
 use crate::cmd::CmdErrorKind;
 use crate::cmd::{AppState, CmdError};
 use crate::constants::CSV_IMPORT_FILE_SIZE_LIMIT;
@@ -65,7 +66,9 @@ pub struct ProductResponse {
     pub name: String,
     pub department_id: i64,
     pub selling_price: i64,
-    pub cost_price: i64,
+    pub cost_price_centi: i64,
+    /// 商品の単位。`stock_quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3 の表の 9）
+    pub stock_unit: ProductStockUnit,
     pub stock_quantity: i64,
     pub plu_dirty: bool,
     pub plu_exported_at: Option<String>,
@@ -195,7 +198,8 @@ pub fn list_plu_dirty(state: State<AppState>) -> Result<Vec<ProductResponse>, Cm
             name: p.name,
             department_id: p.department_id,
             selling_price: p.selling_price,
-            cost_price: p.cost_price,
+            cost_price_centi: p.cost_price_centi,
+            stock_unit: p.stock_unit,
             stock_quantity: p.stock_quantity,
             plu_dirty: p.plu_dirty,
             plu_exported_at: p.plu_exported_at,

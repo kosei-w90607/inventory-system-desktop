@@ -22,7 +22,7 @@ fn db_error(error: rusqlite::Error) -> BizError {
 
 /// 資料を受領し source ID を返す。構文と種別を検証した後（`ParseResult` がある）の短い独立 TX（ADR D2）。
 /// 同じ hash は最初の ID を返す
-/// caller は行数の上限の検査（`parse.rs:80`）の後に呼ぶ
+/// caller は行数の上限の検査（`src-tauri/src/biz/csv_import_service/parse.rs` の `parse_and_validate` の `CSV_IMPORT_LINE_LIMIT`）の後に呼ぶ
 pub(crate) fn receive_source(
     conn: &mut DbConnection,
     parsed: &ParseResult,

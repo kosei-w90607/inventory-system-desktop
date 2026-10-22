@@ -1,23 +1,20 @@
 # 在庫管理システム 関数設計書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した。現行API本文と新契約案を区別し、以下の既存機能一覧を新方式の実装完了として扱わない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。ほかは (b)（proposed・未実装）で、現行の API の本文と (b) の契約の案を区別し、以下の既存機能の一覧を (b) の実装完了として扱わない。旧 ADR（時点証拠、superseded）の節は置き換えた。
 
-| 境界 | 詳細source |
+| 境界 | 詳細の source |
 |---|---|
-| 保存・数量/版・受領・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
-| 設定・入出庫・取込み・計数・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
-| 共通回復wire・POS・計数・DB交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
-| 商品設定拒否・保留・記録詳細・実測操作 | [51](function-design/51-ui-product-form.md)、[60](function-design/60-ui-product-import.md)、[55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
+| 保存・写し・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
+| 商品の設定・入出庫・求め直し・取込み・計数と完了・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
+| 回復型・POS・計数の wire・DB の交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
+| 画面 | [51](function-design/51-ui-product-form.md)、[55](function-design/55-ui-csv-import.md)、[58](function-design/58-ui-stock-inquiry.md)、[60](function-design/60-ui-product-import.md)、[65](function-design/65-inventory-record-traceability.md)、[66](function-design/66-ui-stock-movements.md)、[73](function-design/73-ui-stocktake.md) |
 
-外部証拠の成立条件と在庫連動の有効化の条件は32、command登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
+永続化は [DB 設計](DB_DESIGN.md) へ集約する。(b) の実装・SQL migration・binding の生成は後続の runtime で行い、本 docs の同期では行わない。
 
-進行中の設計: [棚卸しと後着売上の時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md)（proposed、㉗）。上記の機能文書へ保存・関数・wire・回復導線の詳細を展開した。現行の関数・wireが変更済みであることを意味しない。
-
-> **最終更新**: 2026-07-29 / UI request builder shared primitives 追加
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）
-> **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase。後続段階は実装進行に合わせて追記する
+> **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase
 
 ### 現時点の対象モジュール
 - IO-01: SQLiteデータアクセス層（db::init, product_repo, inventory_repo, system_repo, stocktake_repo, sales_repo）
@@ -65,7 +62,7 @@ SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した�
 - UI-00: ホーム画面（HomePage / useHomeSummary / useYesterdayDate / count-stock-status）+ TanStack Query 4 useQuery 束ね（業務ロジックあり版テンプレ初適用）
 - UI-shortcuts: ショートカット一覧ダイアログ（ShortcutsDialog / useShortcutsDialog / SHORTCUTS 定数）+ global Ctrl+/ keydown listener + IME / input 除外（業務ロジックあり版テンプレ、CMD 呼び出し 0 件 + state 駆動分岐パターン初適用）
 - UI-07: 売上データ取込み画面（SalesImportPage / DailyReportImport flow / existing Z004 CsvImport flow）— current operation は Z001/Z002/Z005 日報取込み、既存Z004商品別CSV取込みはPLU後トラックとして分離
-- UI-08: PLU書出し画面（PluExportPage）— D-072 / REQ-907 Design Phase 更新済み。Z004 占有 snapshot、永続 memory No.、`prepare_plu_export` / `confirm_plu_export_saved` 二段階契約、Diff / Full の CV17 投入、Windows native L3 は [function-design/67-ui-plu-export.md](function-design/67-ui-plu-export.md) を参照
+- UI-08: PLU書出し画面（PluExportPage）— D-072 / D-117 / REQ-907 Design Phase 更新済み。毎日の SD の読取りでの Z004 占有の照合、永続 memory No.、`prepare_plu_export` / `confirm_plu_export_saved` 二段階契約、Diff / Full の CV17 投入、Windows native L3 は [function-design/67-ui-plu-export.md](function-design/67-ui-plu-export.md) を参照
 - UI-11b: バックアップ・復元画面（BackupRestorePage）— Design Phase 追加済み（実装済み）。QR-05 / REQ-901、PR #141 generated `commands.*`、復元前強制バックアップ、break-glass 例外、復元後 query cache clear、Windows native L3 は [function-design/68-ui-backup-restore.md](function-design/68-ui-backup-restore.md) を参照
 - UI-11a: 閾値設定画面（ThresholdSettingsPage、operator 名称「在庫少の基準」）— Design Phase 追加済み（実装済み）。QR系 / D-4、`/settings/thresholds` route、既存 `getSettings` / `updateSetting` 契約（新規 CMD なし）、在庫少基準 2 key 所有、整数 1〜99999 検証、部分失敗表示、Windows native L3 軽量 2 項目は [function-design/69-ui-threshold-settings.md](function-design/69-ui-threshold-settings.md) を参照
 - UI-10: 棚卸し画面（StocktakePage）— Design Phase 追加済み（実装済み）。REQ-205、`/stocktake` route、既存 CMD-10 4 コマンド（specta 化は実装 PR）+ 新規 `find_stocktake_item` / `get_last_completed_stocktake` 設計、検索/スキャン 1 発解決 + counted 済み上書き再入力常時許可、確定は常時確認ダイアログ（force_fill 文言分岐）+ total_cost 主役の結果画面、前回完了棚卸し比較、10-4a IPC channel 不採用確定、Windows native L3 5 項目は [function-design/73-ui-stocktake.md](function-design/73-ui-stocktake.md) を参照
@@ -99,7 +96,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 ### 記述方針
 - 各関数について「関数要求」「引数・戻り値」「処理ステップ」「エラーハンドリング」を記述
 - Rustの型名・モジュール構造を意識するが、Rustの文法そのものは書かない（擬似コードレベル）
-- 第1〜第2段階に必要な関数から着手。後続段階の関数は実装進行に合わせて追記
+- 第1〜第2段階に必要な関数から着手し、後続段階の関数も各サブ文書に置いた
 
 ---
 
@@ -173,13 +170,3 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 
 ### トレーサビリティ
 - [REQ トレーサビリティマトリクス](function-design/90-traceability.md) — AUTO-GENERATED（`cd src-tauri && cargo run --bin generate_traceability` で再生成。REQ ↔ 設計書 ↔ テスト対応表、`-- --check` が CI / pre-push の drift gate）
-
----
-
-## 今後の追記予定
-
-第6段階以降の関数設計は実装進行に合わせて追記する:
-- ~~第4段階残り: IO-04~~ → 25-io-plu-formatter.md 作成済み（2026-04-08）
-- ~~第5段階: BIZ-05, BIZ-06, BIZ-07, IO-03, CMD-09/10, BIZ-01拡張~~ → 全設計書作成済み（2026-04-12）
-- ~~第5.5段階: MNT-04（診断ログ）~~ → 70-mnt-diagnostic-log.md 作成済み（2026-04-13）
-- ~~第6段階: MNT-01, MNT-02, IO-05, IO-06, CMD-11残り~~ → 全設計書作成済み（2026-04-13）

@@ -48,13 +48,13 @@ const DEFAULT_PRODUCTS = [
     name: "価格商品A",
     maker_code: "MK-A",
     selling_price: 1000,
-    cost_price: 700,
+    cost_price_centi: 70000,
   }),
   makeMockProductWithRelations({
     product_code: "P-002",
     name: "価格商品B",
     selling_price: 0,
-    cost_price: 300,
+    cost_price_centi: 30000,
   }),
 ];
 
@@ -84,8 +84,8 @@ function arrangeList(items: ProductWithRelations[] = DEFAULT_PRODUCTS) {
                 id: 1,
                 old_selling_price: 900,
                 new_selling_price: 1000,
-                old_cost_price: 630,
-                new_cost_price: 700,
+                old_cost_price_centi: 63000,
+                new_cost_price_centi: 70000,
                 changed_at: "2026-08-23T09:15:00",
               },
             ]
@@ -95,8 +95,8 @@ function arrangeList(items: ProductWithRelations[] = DEFAULT_PRODUCTS) {
                   id: 2,
                   old_selling_price: 1,
                   new_selling_price: 0,
-                  old_cost_price: 300,
-                  new_cost_price: 300,
+                  old_cost_price_centi: 30000,
+                  new_cost_price_centi: 30000,
                   changed_at: "2026-08-22T23:59:59",
                 },
               ]
@@ -312,7 +312,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(mockReviseProductPrice).toHaveBeenCalledWith({
       product_code: "P-001",
       new_selling_price: 1200,
-      new_cost_price: 840,
+      new_cost_price_centi: 84000,
       assign_supplier_id: null,
     });
     await user.click(
@@ -329,7 +329,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(mockReviseProductPrice).toHaveBeenLastCalledWith({
       product_code: "P-002",
       new_selling_price: 500,
-      new_cost_price: 300,
+      new_cost_price_centi: 30000,
       assign_supplier_id: 7,
     });
   });
@@ -340,7 +340,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       product_code: "P-001",
       name: "価格商品A",
       selling_price: 1200,
-      cost_price: 840,
+      cost_price_centi: 84000,
     });
     mockSearchProducts
       .mockResolvedValueOnce({
@@ -503,6 +503,116 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(within(row).getByRole("button", { name: "P-001 を確定" })).toBeEnabled();
   });
 
+  it("REQ-105 / X5・X6: 新売価は上限 999999、新原価は 999999.99 まで確定でき、1 つ外は欄の error で確定できない", async () => {
+    const user = userEvent.setup();
+    renderStateful();
+    const row = await screen.findByTestId("price-row-P-001");
+    const selling = within(row).getByLabelText("P-001 新売価");
+    const cost = within(row).getByLabelText("P-001 新原価（案）");
+    const confirm = within(row).getByRole("button", { name: "P-001 を確定" });
+
+    await user.type(selling, "1000000");
+    expect(within(row).getByText("売価が大きすぎます")).toBeInTheDocument();
+    expect(selling).toHaveAttribute("aria-invalid", "true");
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(selling);
+    await user.type(selling, "999999");
+    expect(within(row).queryByText("売価が大きすぎます")).toBeNull();
+    await user.clear(cost);
+    await user.type(cost, "1000000");
+    expect(within(row).getByText("原価が大きすぎます")).toBeInTheDocument();
+    expect(confirm).toBeDisabled();
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(cost);
+    await user.type(cost, "999999.99");
+    expect(within(row).queryByText("原価が大きすぎます")).toBeNull();
+    await user.click(confirm);
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledTimes(1);
+    });
+    expect(mockReviseProductPrice).toHaveBeenCalledWith({
+      product_code: "P-001",
+      new_selling_price: 999999,
+      new_cost_price_centi: 99999999,
+      assign_supplier_id: null,
+    });
+  });
+
+  it("REQ-105 / X6: 自動で入る新原価（案）が上限を越えたら、案はそのまま出して欄の error にし、直せば確定できる", async () => {
+    const user = userEvent.setup();
+    arrangeList([
+      makeMockProductWithRelations({
+        product_code: "P-BIG",
+        name: "案が上限を越える商品",
+        selling_price: 1,
+        cost_price_centi: 99999900,
+      }),
+    ]);
+    renderStateful();
+    const row = await screen.findByTestId("price-row-P-BIG");
+    const cost = within(row).getByLabelText("P-BIG 新原価（案）");
+    const confirm = within(row).getByRole("button", { name: "P-BIG を確定" });
+    await user.type(within(row).getByLabelText("P-BIG 新売価"), "2");
+    expect(cost).toHaveValue(1999998);
+    expect(within(row).getByText("原価が大きすぎます")).toBeInTheDocument();
+    expect(confirm).toBeDisabled();
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(cost);
+    await user.type(cost, "999999");
+    expect(within(row).queryByText("原価が大きすぎます")).toBeNull();
+    await user.click(confirm);
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledWith({
+        product_code: "P-BIG",
+        new_selling_price: 2,
+        new_cost_price_centi: 99999900,
+        assign_supplier_id: null,
+      });
+    });
+  });
+
+  it("Matrix C15・C21: 現原価 83.33 円の行は ¥83.33・掛率 83.3、新売価 110 で案は 91（9100 を送る）、現売価 0 の行は 83.33", async () => {
+    const user = userEvent.setup();
+    arrangeList([
+      makeMockProductWithRelations({
+        product_code: "P-C15",
+        name: "原価の小数の商品",
+        selling_price: 100,
+        cost_price_centi: 8333,
+      }),
+      makeMockProductWithRelations({
+        product_code: "P-ZERO",
+        name: "現売価 0 の商品",
+        selling_price: 0,
+        cost_price_centi: 8333,
+      }),
+    ]);
+    renderStateful();
+    const row = await screen.findByTestId("price-row-P-C15");
+    expect(within(row).getByText("¥83.33")).toBeInTheDocument();
+    expect(row).not.toHaveTextContent("8,333");
+    expect(within(row).getByText("83.3")).toBeInTheDocument();
+    await user.type(within(row).getByLabelText("P-C15 新売価"), "110");
+    expect(within(row).getByLabelText("P-C15 新原価（案）")).toHaveValue(91);
+    await user.click(within(row).getByRole("button", { name: "P-C15 を確定" }));
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledWith({
+        product_code: "P-C15",
+        new_selling_price: 110,
+        new_cost_price_centi: 9100,
+        assign_supplier_id: null,
+      });
+    });
+    const zero = screen.getByTestId("price-row-P-ZERO");
+    await user.type(within(zero).getByLabelText("P-ZERO 新売価"), "120");
+    expect(within(zero).getByLabelText("P-ZERO 新原価（案）")).toHaveValue(83.33);
+  });
+
   it("本日の changed_at を持つ行だけ「最近改定」badge を icon + text で表示する", async () => {
     arrangeList([
       ...DEFAULT_PRODUCTS,
@@ -532,8 +642,8 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
                   id: 1,
                   old_selling_price: 1,
                   new_selling_price: 2,
-                  old_cost_price: 1,
-                  new_cost_price: 2,
+                  old_cost_price_centi: 1,
+                  new_cost_price_centi: 2,
                   changed_at: changedAt,
                 },
               ],

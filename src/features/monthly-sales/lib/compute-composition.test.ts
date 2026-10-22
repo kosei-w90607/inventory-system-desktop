@@ -61,3 +61,16 @@ describe("computeDeptComposition", () => {
     expect(rows[0]?.prev_month_diff).toBe(null);
   });
 });
+
+describe("computeDeptComposition の数量（SPEC-UNIT-D3）", () => {
+  it("SPEC-UNIT-D3: 部門の点と長さの 2 本を行へ運ぶ（数量を捨てない）", () => {
+    const rows = computeDeptComposition([
+      makeMockMonthlyItem({ key: "1", count_points: 5, length_cm: 250, stock_unit: null }),
+      makeMockMonthlyItem({ key: "2", count_points: 0, length_cm: 130, stock_unit: null }),
+    ]);
+    expect(rows.map(({ count_points, length_cm }) => ({ count_points, length_cm }))).toEqual([
+      { count_points: 5, length_cm: 250 },
+      { count_points: 0, length_cm: 130 },
+    ]);
+  });
+});

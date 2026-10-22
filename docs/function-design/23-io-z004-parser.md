@@ -1,16 +1,13 @@
 ## 13. IO-02: Z004パーサー
 
-### 時点証拠契約（proposed・未実装）
+### 精算の識別メタ（D-109 で実装、D-118 で用途を改めた）
 
-SPEC-STK-TIME-D2〜D5。parse_z004は純関数・DB非依存を維持し、既存ParseResultへ `settlement_metadata: Option<SettlementMetadata>` を追加する。内部型の内容はmachine_no / report_kind / settlement_no / settled_at（各Option）とする。番号は意味が検証されるまで文字列として保持する。settled_atはPOSが印字した精算日時で、取引発生時刻やアプリ受領時刻ではない。BIZ-03は精算の識別と表示のメタとして保存し、実測との前後判定には使わない。parser自身は精算系列・同一性・時計の信用を認定しない。
+`parse_z004` は純関数・DB 非依存のまま、`ParseResult` に `settlement_metadata: Option<SettlementMetadata>`（machine_no / report_kind / settlement_no / settled_at、各 Option、番号は文字列）を返す（D-109 の ② で実装済み）。settled_at は POS が印字した精算日時で、取引の時刻やアプリの受領の時刻ではない。parser は精算の系列・同一性・時計の信用を認定しない。
 
-処理は既存のサイズ外ガード・strict decode・改行正規化・layout/header検出・日付/JAN/符号の規則を維持し、メタ領域の既知項目だけを抽出する。従来shapeの時刻なしはNone、欠落・解釈不能な任意メタから0時・前日・精算番号の隣接を補わない。ファイル種別/構文の致命的異常は従来どおりエラーで、時刻証拠を付けるために不正fileを成功へ変えない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4、D-118）からの用途: BIZ-03 は machine_no と settlement_no（10 進の整数にした値）と精算日で、Z004 を識別し、並べ、欠けを知らせる。machine_no か settlement_no を読めない file（従来の形）は BIZ-03 が取り込まない（[32](32-biz-csv-import-service.md) の新契約。parser は今どおり受理して None を返し、拒否は BIZ の責務）。精算日時は検知（精算日と精算回数の順の食い違い）と表示にだけ使い、前後の判定に使わない。
 
-正常JANのquantity=0かつamount=0のParsedRowはBIZの再確認判定（売上と返品の相殺の判定、ADR D4）まで保持する。売上の無い枠（コードが全桁0か13桁JANにならず、個数・金額とも0。SPEC-Z4A-D8）とは別である。BIZは売上対象行と証拠対象行を分け、IOへ在庫連動・候補商品の判定を持ち込まない。既存PLU占有読取りmodeも用途を維持する。
-
-IOが返すメタに「時計が正しい」「この精算区間は完全」という信用フラグを立てない。信用と系列はBIZ/外部probeの責務。EJ parserは別laneで、未知行の無視・純日計一致だけでの完全扱いは禁止。[取込みBIZの外部probe表](32-biz-csv-import-service.md)をそのlaneの入力契約とする。
-
-計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5（proposed）。メタ情報の抽出と時刻・区間の信頼性判断を分離する。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+- 数量・金額とも 0 の正常 JAN の行を BIZ の判定まで保持する旧 ADR（時点証拠）の要求は外した（売上と返品の相殺の判定を持たない。SPEC-STK-CNT-D11）。parser の出力の形は変えない。
+- 処理は既存のサイズ外ガード・strict decode・改行の正規化・layout / header の検出・日付 / JAN / 符号の規則を維持する。PLU の占有の読取り mode も用途を維持する（D-117）。
 
 > **2026-06-30 field-check note**: 本書は既存実装の Z004 parser contract を記録する。現場確認では、現在の店舗日報主入力は `Z001`/`Z002`/`Z005` であり、`Z004` は PLU(商品) / 商品別トラックとして再評価する対象になった。REQ-401 の current SALES import を変更する場合は、本書を拡張するのではなく SALES redesign で `Z001`/`Z002`/`Z005` parser contract を別途定義する。
 >
@@ -193,6 +190,8 @@ pub fn parse_plu_register_snapshot(raw_bytes: &[u8]) -> Result<Vec<PluRegisterSl
 
 この mode は occupancy snapshot 専用であり、`ParsedRow`、`sale_records`、`inventory_movements`、日報集計へ入力しない（SPEC-PLS-D8）。
 
+入力は毎日の締めの SD の読取り（BIZ-08 §37.9）が読んだ窓の中の Z004 で、BIZ-04 が精算の識別メタの `settlement_no` が最大の 1 本を選んで渡す（[33 §16.3](33-biz-plu-export-service.md)、D-117 (3)）。店主が FilePicker で選ぶ経路は撤去する（runtime の lane）。mode の形は変えない。
+
 ---
 
 ### 13.4 parse_data_line（内部関数）
@@ -235,13 +234,15 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
 却下案:
 - 日報の `clean_number`（IO-07。カンマ・円記号・空白をすべて除く）と同じ緩い除去: `1,23` のような区切りの崩れた値を黙って別の数として読む。本書の目的（読めない値を黙って誤らない）に反する。日報側の規則は IO-07 が持ち、本書は変えない
 - カンマ付きの値を InvalidNumber のまま残す（従来）: 1,000 円以上の PLU の売上が在庫に反映されない
-- 小数の受理: 単位の拡張（backlog「単位の拡張」）で数量の型ごと決める。本書では InvalidNumber のまま
+- 小数の受理: 単位の拡張（D-113。backlog「単位の拡張の残りの申し送り」の P）で数量の型ごと決める。本書では InvalidNumber のまま
+
+単位の拡張の後（proposed・未実装、Z004・EJ の lane、D-113）: 個数（第 4 欄）は、上の 2 つの形の整数部に任意の `.` + ASCII 数字 1〜2 桁を続けた形を受け、小数 2 桁までの 100 倍の整数（`quantity_hundredths: i64`、`ParsedRow.quantity` を置き換える）にする（[共通規則](10-common-rules.md) SPEC-UNIT-D8。浮動小数を通さない）。金額（第 5 欄）は今の整数の規則のまま。IO は商品を引かず、在庫の数量への換算（個数の商品で 100 で割り切れない値は在庫に効かせない、長さの商品は 100 倍の整数がそのまま cm）は BIZ-03 が行う。型の変更は Z004 の取込みを再開する lane（CASIO 固有）が `csv_import_service` の `quantity: i32`・時点証拠の受領の型と一緒に行い、それまで上の規則が実装の正本である。
 
 #### 13.4.2 売上の有無による行の分類（SPEC-Z4A-D8、D-103）
 
 | コード欄 | 個数・金額とも0 | 個数か金額が0でない |
 |---|---|---|
-| 13桁JAN（13桁 + 右パディング1文字を含む） | Ok(Some)。BIZ-03 が空レコードとして除外し、相殺の判定（ADR D4）の入力に残す | Ok(Some) |
+| 13桁JAN（13桁 + 右パディング1文字を含む） | Ok(Some)。BIZ-03 が空レコード（quantity=0 かつ amount=0）として除外する（D-118 で相殺の判定は持たない。[32](32-biz-csv-import-service.md) の冒頭の D-118 の節） | Ok(Some) |
 | 全桁0（未登録の枠、PLU の登録を消した枠、コードを持たない通常PLU） | Ok(None) | InvalidJan（商品コードの無い枠の売上） |
 | 13桁JANにならない（8桁独自コード + EEEEEE、その他の13桁にならない文字列） | Ok(None) | InvalidJan（normalize_jan の文言） |
 
@@ -310,10 +311,10 @@ fn normalize_jan(raw: &str, line_no: usize) -> Result<Option<String>, String>
 |------|------|------|
 | エンコーディング | CP932 strict（デコード失敗は致命的エラー） | カシオSR-S4000のZ004出力形式 |
 | 区切り文字 | カンマ、ダブルクォート囲み、5フィールド固定 | Z004実機検証結果 |
-| 改行 | \u{0085} (NEL) / \r\n / \n / \r を正規化 | CP932デコード後に正規化。生バイトでの分割は誤判定リスクあり |
+| 改行 | \u{0085} (NEL) / \r\n / \n / \r を正規化 | CP932デコード後に正規化。生バイトでの分割は誤判定リスクあり。持ち帰った Z 帳票と SD の file は CRLF だけで NEL の行終端の実例は無く（2026-10 の見直しの事実の一覧）、正規化は防御として残す |
 | 空行 | スキップ（エラーにもカウントしない） | ファイル末尾等の余白行 |
 | 制御文字 | 改行正規化後は特別な処理なし | |
-| 金額・数量 | i32整数のみ。3桁区切りのカンマは受理（§13.4.1）。浮動小数は不正（InvalidNumber） | 実データの金額欄に3桁区切りの形がある。小数は Z001 / Z005 / EJ に出ており、Z004 の数量の小数は backlog「単位の拡張」で扱う |
+| 金額・数量 | i32整数のみ。3桁区切りのカンマは受理（§13.4.1）。浮動小数は不正（InvalidNumber） | 実データの金額欄に3桁区切りの形がある。小数は Z001 / Z005 / EJ に出ており、Z004 の数量の小数は backlog「単位の拡張の残りの申し送り」の P で扱う |
 | 入力上限 | 10,000行 / 20MB | IO-02では検査しない。BIZ-03でガードチェック |
 | layout A行数 | 全5,000スロット程度を受理 | 既存BIZ-03上限内。parser側に新規サイズガードは設けない（SPEC-Z4A-D6） |
 | 返品値 | quantity < 0, amount < 0 を許容 | Z004のレジ戻しはマイナス値で出力される |
@@ -348,7 +349,7 @@ fn normalize_jan(raw: &str, line_no: usize) -> Result<Option<String>, String>
 | マスタ照合（JAN→product_code紐付け） | 業務ロジック | BIZ-03 Stage 2 Validate |
 | 重複チェック（file_hash照合） | 業務ロジック | BIZ-03 Stage 3 Preview |
 | 符号変換（売上帳票視点→在庫視点） | INV-1の在庫視点変換 | BIZ-03 Stage 4 Commit |
-| 正常JANの空レコード除外（quantity=0 and amount=0） | 業務ルール判定（相殺の判定の入力に残すため） | BIZ-03 Stage 2 Validate |
+| 正常JANの空レコード除外（quantity=0 and amount=0） | 業務ルール判定（売上も movement も作らない行を決めるのは BIZ。D-118 で相殺の判定は持たない） | BIZ-03 Stage 2 Validate |
 | 入力サイズ上限チェック（10,000行/20MB） | 上流のガードチェック | BIZ-03（parse_z004呼び出し前） |
 
 ---

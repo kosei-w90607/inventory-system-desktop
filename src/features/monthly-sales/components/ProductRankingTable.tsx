@@ -8,6 +8,7 @@
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { SortableHeader } from "@/components/sales/SortableHeader";
 import { Badge } from "@/components/ui/badge";
+import { formatUnitQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import {
   Table,
   TableBody,
@@ -86,7 +87,7 @@ export function ProductRankingTable({
                 </TableCell>
                 <TableCell className="font-medium">{row.label}</TableCell>
                 <TableCell className="text-right">
-                  {`${row.quantity.toLocaleString("ja-JP")} 点`}
+                  {formatUnitQuantityTotal(row.count_points, row.length_cm, row.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right">¥{row.amount.toLocaleString("ja-JP")}</TableCell>
                 <TableCell className="text-right">

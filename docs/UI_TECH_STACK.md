@@ -1,16 +1,13 @@
 # UI技術スタック選定書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](function-design/42-cmd-sales-stocktake.md)と[73の計数状態](function-design/73-ui-stocktake.md)へ接続する。未保存token/数量はfeature-local state、保存済み実測/flag/履歴はDBとQueryを正とし、永続化した画面draftから古い数量を復活させない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md) の UI の側。既存のスタックを変えず、[42 の生成 wire](function-design/42-cmd-sales-stocktake.md) と [73 の計数の状態](function-design/73-ui-stocktake.md) へ接続する。未保存の数量は feature-local state、保存済みの計数・写し・履歴は DB と Query を正とし、永続化した画面の draft から古い数量を復活させない。旧 ADR（時点証拠）の token・begin の focus 制御・準備照会の consumer は置き換えた。
 
-保存成功とreplayedでは保存先に応じたconsumerをD-052のSSOTで再取得する。snapshot保存、独立再実測、flag更新、確定/取消、受領・要再確認flagの作成/理由の変更/解消・同一性拒否証拠・非連動化の未調整で変わる列をruntimeで列挙し、現行C16の狭い集合を新saveへ無検証で流用しない。準備照会は55に加え51/73の版別案内もconsumeし、計数保存/確定・商品設定変更・棚卸し開始・再訪で同じqueryを再取得する。集合の複製や新しい手書きinvalidationを画面へ置かない。新commandの登録、generated error union・bindings・unwrapResultが保持する回復payload・mock/testを同時に同期する。
-
-開始前は数量入力を空にし、明示begin成功で入力欄へfocus、save成功で検索欄へ戻す。IME確定Enter、同じスキャンEnterでの二重実行、遅延応答による商品取り違えを防ぐ。save pendingの間は商品切替/離脱を抑止し、未保存contextの破棄と保存済み記録の取消を混同しない。日本語状態・非色表示・Windows受入条件は既存のdesign-systemを維持する。
+計数の保存・0 にする・完了・Z004 の取込みと取消・入出庫の保存は、写し（在庫・要再確認・範囲）を読む consumer（在庫照会・商品一覧と詳細・棚卸しの一覧と要再確認の一覧・在庫変動）を D-052 の SSOT で再取得する（runtime で列挙する）。数量の入力は IME 確定の Enter で送信せず、同じスキャンの Enter で二重に保存しない。保存中は商品の切替と離脱を抑止する。日本語の状態・非色表示・Windows の受入の条件は既存の design-system を保つ。
 
 > **親文書**: [ARCHITECTURE.md](ARCHITECTURE.md)
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、SCREEN_DESIGN.md（画面設計）、FUNCTION_DESIGN.md（関数設計）
-> **最終更新**: 2026-07-01 / UI-08 PLU書出し native save / confirm 方針更新
 > **位置付け**: 第7段階以降のUI実装で守るべき技術選定・デザイン哲学・運用原則を定める唯一の参照源
 
 ---
@@ -595,6 +592,14 @@ CMD層の `CmdError` は `kind: string` / `message: string` / `field?` / `error_
 
 **cross-language validation 定数（D-054）**: file サイズ上限等、frontend と backend が同値を要する validation 定数は `src-tauri/src/constants.rs` を SSOT とし、bindings 生成で `bindings.ts` に export された値を frontend が import する。frontend 側の local 複製は禁止（静的 sweep test で検出）。L1 の bindings clean diff 検査が cross-language 同期の機械検査を兼ねる。
 
+#### 6.5.5 印刷（proposed・未実装、D-120）
+
+- **手段**: WebView の印刷（`window.print()`）と CSS の `@page { size: A4 portrait; margin: 10mm }`・`@media print` で、紙に出す部分だけを印刷する。印刷先・枚数・用紙は OS の印刷の dialog で選び、アプリにプリンタの設定の画面を作らない。最初の利用は日次売上の日報の紙（[56](function-design/56-ui-daily-sales.md) の UI-09a-D17・D18）
+- **未確認の前提**: Windows の WebView2（§6.5.1）で `window.print()` が OS の印刷の dialog を出し、`@page` の用紙の向きと余白の指定が効くこと。日報の紙の runtime の lane が実装の前に、開発の build を Windows で動かして確かめる
+- **効かないときの代わり**: Rust 側の CMD が同じ紙の内容を 1 つの HTML の file にしてアプリの data の folder の固定の file（毎回上書き。どの印刷かは紙の中の印刷の時刻で見分ける）に書き、導入済みの `tauri-plugin-opener`（`Cargo.lock` で 2.5.3）の Rust の API `OpenerExt::opener().open_path`（`with` を渡さない）で、その PC で `.html` に関連付けられた既定のアプリで開き、そこで印刷する。`open_path` はブラウザを指定せず file の関連付けの先のアプリで開く（2.5.3 の source の doc: 「Open a path with a default or specific program」。関連付けがエディタなら HTML のソースが開く）ので、採る条件は店の PC の `.html` の関連付けが印刷できるブラウザであることを Contract Probe で確かめること。Rust の API は IPC の capability を通らないので、capability を足さない（frontend の `opener:default` は URL と file の場所の表示だけで、local の file を開く許可を持たない）。HTML に入れる値は全部 HTML escape する。採るときは command を 42 に足す Gated Amendment を出す（56 UI-09a-D18）。書込みか `open_path` が失敗したら CMD は error を返し、UI は成功と扱わない（`open_path` の成功は OS に開くよう渡せたことだけで、印刷できたかは確かめない）。新しい依存は足さない
+- **採らない**: PDF を作る依存の追加、Excel の file の出力（店が開いて印刷する手順が残る）、OS の印刷の API を Rust から呼ぶこと（OS ごとの code が要る）
+- **文字と色**: 紙の上の文字は 9 pt 以上、色は使わない（意味のある色が無い）。紙ごとの並びは各画面の設計書が持つ
+
 ### 6.6 ダークモード見送り
 
 **決定**: Phase 1〜4 で**ダークモード対応はしない**。
@@ -707,6 +712,13 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 
 <!-- reviewed: 2026-08-30 -->
 
+### 6.12 class の上書きの罠
+
+共通部品の class を呼出し側で足すときに、typecheck・lint・test が全部 green のまま実 render でだけ崩れる 2 つの型。どちらも owner の Windows native L3 で見つかった。
+
+1. **variant 付きの class は同じ variant で上書きする**: 共通 primitive が size・state の variant 付きの class を持つとき（例 `src/components/ui/alert-dialog.tsx` の `data-[size=default]:sm:max-w-lg`）、呼出し側の素の utility class（例 `sm:max-w-3xl`）は属性 selector の分だけ詳細度で負けて効かない。呼出し側も同じ variant 修飾子を付ける（例 `data-[size=default]:sm:max-w-3xl`。PR #15、2026-08-29、[packet](archive/plans/2026-08-29-ui-polish-batch.md) の owner L3-lite round 3 の是正）。一覧の選択行を `data-[state=selected]:` で固定する例は [catalog](design-system/02-component-catalog.md) の ⑫ 行インライン展開の使用トークンが持つ。
+2. **TanStack Router の `Link` は class の衝突を解かない**: `Link` は base の `className` と `activeProps`（と `inactiveProps`）の `className` を空白でつなぐだけで、tailwind-merge を通さない（`@tanstack/react-router` の `dist/esm/link.js` の className の組み立て。1.168.23 での観測で、lockfile の版 1.170.5 の file は手元で確かめていない）。base と `activeProps` に同じ CSS property の class（例 base の `border-l-transparent` と active の `border-l-primary`）を置くと両方が DOM に残り、生成 CSS の出現順で負けた側が見えない。RTL の `toHaveClass` も、`cn()`（tailwind-merge）を通る別の経路の検査も素通りする（PR #28、2026-09-02、[packet](archive/plans/2026-09-02-ui-current-location-accent.md) の L3 FAIL）。衝突する property は片側だけに置き、「active のときに負け側の class が共存しない」負の assert を test に足す。
+
 ---
 
 ## 7. リスクと保留事項 / 更新履歴
@@ -776,7 +788,7 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 - **Playwright スクショ**: E2E 採用時に追加コスト小で導入可
 - **見送り**: Phase 2 デモで「見た目が毎回同じ」が重視されなければ不要
 
-**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は将来の global text-size / display-scale option と合わせて調整する follow-up として分離した。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
+**決定（2026-06-07 / Phase 2 8-9）**: Phase 2 tag gate では見送り。H-6 Windows native 5 画面通し確認では商品コードが小さい点以外の視認性問題はなく、商品コード readability は global text-size / display-scale option と合わせて調整する follow-up として分離し、表示の大きさの option（`src/components/layout/useDisplayScale.ts`）で対応した（[DEV_SETUP_CHECKLIST](DEV_SETUP_CHECKLIST.md) の 8-0、PR #77）。Phase 2 completion gate では、設計書・テスト・実利用者確認で一貫性を担保する。
 
 **評価タイミング**:
 1. global text-size / display-scale option の実装プラン作成時: typography / density / status 表示の横断変更に対して lightweight screenshot diff が必要か確認する（2026-06-07 follow-up では新規 screenshot-diff gate は追加せず、targeted RTL + Windows native L3 で確認する）

@@ -1,4 +1,10 @@
 import type { ProductWithRelations } from "@/lib/bindings";
+import {
+  addToQuantityInput,
+  entryQuantityStep,
+  formatCostInput,
+  sumQuantityInputs,
+} from "@/lib/unit-quantity";
 import type { DisposalRow } from "../types";
 
 function makeDisposalKey(productCode: string, disposalType: string, reason: string): string {
@@ -19,23 +25,10 @@ function makeUniqueRowId(rows: DisposalRow[], baseId: string): string {
   return candidate;
 }
 
-function nextQuantity(value: string): string {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 1 ? String(parsed + 1) : "1";
-}
-
-function mergeQuantity(base: string, addition: string): string {
-  const baseQuantity = Number(base);
-  const additionalQuantity = Number(addition);
-  if (
-    Number.isInteger(baseQuantity) &&
-    baseQuantity >= 1 &&
-    Number.isInteger(additionalQuantity) &&
-    additionalQuantity >= 1
-  ) {
-    return String(baseQuantity + additionalQuantity);
-  }
-  return base;
+// 再追加と統合は在庫の数量の整数で足す（SPEC-UNIT-D3）。規則に合わない文字列は、
+// 再追加が初期値、統合が統合先の元の値
+function nextQuantity(row: DisposalRow): string {
+  return addToQuantityInput(row.quantity, row.stockUnit, entryQuantityStep(row.stockUnit)) ?? "1";
 }
 
 export function productToDisposalRow(product: ProductWithRelations): DisposalRow {
@@ -47,10 +40,10 @@ export function productToDisposalRow(product: ProductWithRelations): DisposalRow
     departmentName: product.department_name,
     stockUnit: product.stock_unit,
     currentStockQuantity: product.stock_quantity,
-    defaultCostPrice: product.cost_price,
+    defaultCostPrice: product.cost_price_centi,
     disposalType: "damage",
     quantity: "1",
-    costPrice: String(product.cost_price),
+    costPrice: formatCostInput(product.cost_price_centi),
     reason,
   };
 }
@@ -66,7 +59,7 @@ export function addProductToDisposalRows(
   }
 
   return rows.map((row, index) =>
-    index === existingIndex ? { ...row, quantity: nextQuantity(row.quantity) } : row,
+    index === existingIndex ? { ...row, quantity: nextQuantity(row) } : row,
   );
 }
 
@@ -91,7 +84,11 @@ export function updateDisposalRow(
     .filter((row) => row.rowId !== rowId)
     .map((row) =>
       getDisposalKey(row) === getDisposalKey(nextRow)
-        ? { ...row, quantity: mergeQuantity(row.quantity, nextRow.quantity) }
+        ? {
+            ...row,
+            quantity:
+              sumQuantityInputs(row.quantity, nextRow.quantity, row.stockUnit) ?? row.quantity,
+          }
         : row,
     );
 }

@@ -33,6 +33,9 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 - 重要な進捗は `Plans.md`、参照先が変われば `docs/PROJECT_HANDOFF.md` を同期する。履歴の全文は dashboard に戻さない。
 - commit / PR 文面は `docs/DEV_WORKFLOW.md` の Commit / PR Messages、review は `docs/code_review.md` に従う。
 - Plan Packet の数値主張は測定コマンドと出力を併記するか `未実測` とする（D-062）。
+- 継ぎ足さない（D-127）: 既存の実装・文書・規則は出発点であって制約ではない。新しい事実や owner の決定と合わなければ、条件や例外を継ぎ足して合わせる前に、置き換え・削除で全体を素直な形に戻せないかを見る。既存を残す理由は「今も正しいから」で、「既にあるから」ではない。旧い環境で作った規則が owner の今の決定と衝突したら、止めずに改訂の対象として扱い、packet・PR に owner の決定の日付を書く。発注と review の問いに「この変更で不要になる記述・条件は無いか」を入れる。安全の境界（Decision and Approval Boundaries・Safety・npm 供給網ガード、[DEV_WORKFLOW](docs/DEV_WORKFLOW.md#workflow-state) の Workflow State が D-098 で挙げる安全の境界〈古い証拠の拒否・独立 review・Plan Commit の固定・不可逆 finding の 4 項目・fail-closed ほか〉、既存テストを不都合だから削除・skip・弱体化しない規則）はこの考え方で緩めず、それらの改訂は通常の packet・PR の経路で行う。
+- 使い手に押しつけない（D-127）: 例外の回避を店・owner の手作業（別の file を作る等）に回さない。問題は黙って通さず、起きたその画面で原因と直し方を名指しし、その場で直せるようにする。
+- owner の所感は原文で扱う（D-127）: L3 の所感・要望は原文を repo の外の回答台帳に残し（公開 repo には ID で引く）、Codex・subagent の要約を「owner の意図」として裁定しない。AI の review から出た要件（製品の要件。Contract Audit が L3 の項目にする検証は除く）は出所を書き、owner の確認の前に Human Gate の必須にしない。
 
 ## Decision and Approval Boundaries
 
@@ -43,6 +46,7 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 - 疲労は説明を短くする材料に限る。容量最適化の明示依頼がない限り、作業の中止・延期・縮小・単線化の理由にしない。
 - GitHub PR レビュー依頼は、その PR への指摘投稿を含む。label、thread 状態、Ready、merge、close、issue comment などは別の明示承認に従う。
 - owner へ送り、中継を省かない問い合わせ: 店の事実と実機でしか確認できない挙動（具体的な質問か短い PASS / FAIL で答えられる形にする）、目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作、Windows L3・R4・Ready・merge、PR の label・thread 状態・close・issue comment といった外部書込み。判断は owner。現行の明示承認と有効な委任（push・Draft PR 作成、owner の承認後の helper `ready` / `merge` と closeout の実行）の範囲では Coordinator が実行を代行できる。委任の範囲の正本はこの項目（`docs/DEV_WORKFLOW.md` Wave Operation の train 委任を除く）。問い合わせが複数に当たり owner 側を含む場合と、裁定権の所在が争点の場合は owner へ送る。
+- 店主への問いは GitHub の Issue に書かず、owner への問い合わせで送り、回答は repo の外の回答台帳に残す。Issue は店の PC の Claude も読む現場の手順書にする（D-127）。`docs/AGENT_OPERATING_MANUAL.md` §5.1 の調査項目の issue は、その手順書の形（場所・操作・合格基準）に限る。
 - agent 側で解く問い合わせ: 発注だけの誤り（正本が一意で発注が食い違う。手順は [MANUAL §5.6](docs/AGENT_OPERATING_MANUAL.md#56-従来型-writer-発注書の共通出力契約)「Writer が編集前に止まったとき」）、環境の不備（許可済みの環境・範囲で解消でき、追加の費用・権限・正本の変更を伴わない場合）、技術的な前提（調査・Contract Probe）、正本の意味や影響の分類の争いの事実確認（独立 reviewer）。事実確認の後の裁定は裁定権者が行い、owner にある場合は中継を省かない。owner に技術的な正しさの承認を求めず、証跡の編集や発注訂正の伝言を頼まない。
 
 ## Workspace Access
@@ -62,7 +66,7 @@ WSL の作業 checkout を使用する。Codex の起動設定は `.codex/README
 - `.env*`、鍵・証明書・secret/credential を示すファイル、`auth.json` を読まない。実 POS / 店舗データ、DB、backup、log、receipt、secret を commit しない。
 - Windows の Codex app/config 領域は app-owned。通常の project 作業は workspace 内で行う。
 - `git reset --hard`、`git clean`、force push、branch/DB/generated-file 削除、migration rollback は正確な対象を示して明示承認を得る。
-- 小さく、確認可能な変更を優先する。
+- 小さく、確認可能な変更を優先する。小ささは差分の行数でなく、確かめやすさで測る（継ぎ足しより置き換え・削除のほうが小さいことがある。Working Rules の「継ぎ足さない」）。
 
 ## npm 供給網ガード（D-030）
 

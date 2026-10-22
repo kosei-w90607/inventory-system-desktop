@@ -22,8 +22,12 @@ import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 // 数量の桁区切りと単位名は共通formatterに揃える。
-import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
+import {
+  formatCentiYen,
+  formatCostYen,
+  formatStockDisplay,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -164,10 +168,10 @@ export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordD
                   {formatStockDisplay(item.quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatYen(item.cost_price)}
+                  {formatCostYen(item.cost_price_centi)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatYen(item.line_loss_cost)}
+                  {formatCentiYen(item.line_loss_cost_centi)}
                 </TableCell>
                 <TableCell className="whitespace-normal">{item.reason}</TableCell>
                 <TableCell className="text-right">
@@ -194,7 +198,10 @@ export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordD
             description="この記録に紐づく在庫変動は見つかりません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>

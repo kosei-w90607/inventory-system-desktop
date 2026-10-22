@@ -37,9 +37,11 @@ import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest
 import { PageShell } from "@/components/patterns/PageShell";
 // 数量と単位の表記は共通formatterに揃え、単位列のある行は数値だけ描く。
 import {
+  formatCostYen,
   formatStockDisplay,
   formatStockUnitLabel,
 } from "@/features/stock-inquiry/lib/format-stock-display";
+import { quantityInputAttributes } from "@/lib/unit-quantity";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
@@ -318,7 +320,7 @@ export function DisposalPage() {
             </div>
             <div>
               <span className="text-muted-foreground">ロス原価合計</span>
-              <div className="font-medium">{formatYen(lossTotal)}</div>
+              <div className="font-medium">{lossTotal === null ? "—" : formatYen(lossTotal)}</div>
             </div>
             <div>
               <span className="text-muted-foreground">在庫警告</span>
@@ -465,7 +467,7 @@ export function DisposalPage() {
                     <TableCell>
                       {formatStockDisplay(candidate.stock_quantity, candidate.stock_unit)}
                     </TableCell>
-                    <TableCell>{formatYen(candidate.cost_price)}</TableCell>
+                    <TableCell>{formatCostYen(candidate.cost_price_centi)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
@@ -548,8 +550,7 @@ export function DisposalPage() {
                       <div className="flex items-center gap-1">
                         <Input
                           type="number"
-                          inputMode="numeric"
-                          min="1"
+                          {...quantityInputAttributes(row.stockUnit)}
                           value={row.quantity}
                           disabled={isFormLocked}
                           aria-label={`${row.productCode} の数量`}
@@ -573,8 +574,9 @@ export function DisposalPage() {
                       <div className="flex items-center gap-1">
                         <Input
                           type="number"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           min="0"
+                          step="0.01"
                           value={row.costPrice}
                           disabled={isFormLocked}
                           aria-label={`${row.productCode} の原価`}

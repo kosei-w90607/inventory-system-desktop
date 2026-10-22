@@ -1,12 +1,8 @@
 # タスク仕様（CMD層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118。(a) は command を足さない）
 
-SPEC-STK-TIME-D1〜D9。CMD-10は[42](../function-design/42-cmd-sales-stocktake.md)のbegin_stocktake_count / save_stocktake_count / abandon_stocktake_countへ切替え、無検査update_countの公開登録を外す。CMD-07は[41](../function-design/41-cmd-pos.md)の準備照会とstock_reviewを追加し、source/全候補はprivate cacheへ保持する。
-
-CMDはDB接続の交換でDB世代を進めて計数のBIZへ渡す。時刻や環境の値を計数・準備照会・分類のBIZへ渡さず、UIからも受けない。CMD-01の未調整商品結果とCMD-07のsettlement_missing/source_ids・sync_disabled_unreconciledを説明と対象の組を保ったまま生成型で透過する。準備照会の `ej_unverified` を外すcommandや設定は公開しない。
-
-共通の回復payloadは[40](../function-design/40-cmd-product.md)、DB接続交換前のcontext失効は[43](../function-design/43-cmd-settings-log.md)。BIZの生成・検査済み内部contextを保管/復元するだけで、CMDに在庫分類・所有者guard・数量補正式を置かない。tauri/specta属性・collect_commands・bindings・全callerの同期はruntimeで行い、このdocs同期では生成しない。
+SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）は command の名前と引数を変えず、CMD-11 の `run_integrity_check`・`fix_integrity` の戻り値の型（[36](../function-design/36-biz-integrity-check.md)）だけが変わった。以下は (b)。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の update_count の公開登録を外す。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は runtime で行い、この docs の同期では生成しない。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
@@ -18,15 +14,14 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
-| create_product | ProductCreateRequest（name, department_id, selling_price, cost_price, tax_rate, stock_unit, initial_stock, jan_code?, maker_code?, supplier_id?, pos_stock_sync） | BIZ-01 商品新規登録 | ProductCreateResult（product_code, success） |
+| create_product | ProductCreateRequest（name, department_id, selling_price, cost_price_centi, tax_rate, stock_unit, initial_stock, jan_code?, maker_code?, supplier_id?, pos_stock_sync） | BIZ-01 商品新規登録 | ProductCreateResult（product_code, success） |
 | update_product | ProductUpdateRequest（product_code, 変更フィールド群） | BIZ-01 商品修正 | Result（success, warnings[]） |
 | toggle_discontinue | product_code | BIZ-01 廃番切替 | Result（success, new_status） |
-| search_products | SearchQuery（keyword, department_id?, is_discontinued?, plu?, sort, page, per_page） | BIZ-01 商品検索 | ProductList（items[], total_count、plu_memory_no） |
-| get_product | product_code | BIZ-01 商品取得 | Product（全フィールド＋部門名＋取引先名＋plu_memory_no） |
+| search_products | SearchQuery（keyword, department_id?, is_discontinued?, sort, page, per_page） | BIZ-01 商品検索 | ProductList（items[], total_count） |
+| get_product | product_code | BIZ-01 商品取得 | Product（全フィールド＋部門名＋取引先名） |
 | preview_import | FileBytes | BIZ-01 一括インポート前半 | ImportPreview（valid_rows[], error_rows[], duplicate_rows[]） |
-| commit_import | ImportCommitRequest（valid_rows[], overwrite_codes[]） | BIZ-01 一括インポート後半 | ImportResult（created, updated, skipped, errors） |
-| bulk_set_plu_target | ProductBulkFilter（keyword, department_id?, is_discontinued?, plu）, plu_target | BIZ-01 filter 全件 PLU 対象更新 | BulkPluTargetResult（matched, updated, invalid_jan_skipped, discontinued_skipped） |
-| revise_product_price | PriceRevisionInput（product_code, new_selling_price, new_cost_price, assign_supplier_id?） | BIZ-01 行単位価格改定 | PriceRevisionResult（product_code, changed, plu_dirty_set, supplier_assigned） |
+| commit_import | ImportCommitRequest（valid_rows[], overwrite_codes[], old_jan_aliases[]〈{product_code, old_jan}、proposed・未実装、D-122〉） | BIZ-01 一括インポート後半 | ImportResult（created, updated, skipped, errors）。D-122: 上書きを選んだ別の行が前の JAN を持つと validation error（field `old_jan_aliases`） |
+| revise_product_price | PriceRevisionInput（product_code, new_selling_price, new_cost_price_centi, assign_supplier_id?） | BIZ-01 行単位価格改定 | PriceRevisionResult（product_code, changed, plu_dirty_set, supplier_assigned） |
 | create_supplier | name | BIZ-01 取引先（メーカー/ブランド）追加 | Supplier（同名は既存行） |
 | list_price_history | product_code, limit | BIZ-01 価格履歴参照 | PriceHistoryEntry[]（DESC、既定10・上限100） |
 
@@ -61,7 +56,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
-| get_stock_detail | product_code | BIZ-01 在庫詳細 | StockDetail（stock_quantity, selling_price, cost_price, last_receiving_date, last_sale_date） |
+| get_stock_detail | product_code | BIZ-01 在庫詳細 | StockDetail（stock_quantity, selling_price, cost_price_centi, last_receiving_date, last_sale_date） |
 | list_low_stock | LowStockQuery（include_discontinued?） | BIZ-01 在庫少一覧 | LowStockList（items[]） |
 | list_movements | MovementQuery（product_code, date_from?, date_to?, movement_type?） | BIZ-02 在庫変動履歴 | MovementList（items[], total_count） |
 
@@ -95,8 +90,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
-| import_plu_register_snapshot | file_bytes（FilePicker D-054 の bytes） | BIZ-04 | PluRegisterSnapshotSummary（snapshot_at, free / external / app managed / conflict counts） |
-| get_plu_slot_summary | なし | BIZ-04 | PluRegisterSnapshotSummary |
+| get_plu_slot_summary | なし | BIZ-04 | PluRegisterSnapshotSummary（snapshot_at。占有の照合は CMD-12 scan_register_sd が BIZ-04 を呼ぶ、D-117） |
 | prepare_plu_export | ExportMode（'full' / 'diff'） | BIZ-04 | PluExportPreparedResult（tsv_output, count, target_product_codes, prepared_rows[memory_no], excluded〈no_free_slot含む〉） |
 | confirm_plu_export_saved | product_codes[], prepared_rows[memory_no] | BIZ-04 | PluExportConfirmResult（updated_count, confirmed_at） |
 | list_plu_dirty | なし | BIZ-04経由 | Vec\<ProductResponse\>（plu_target=1 かつ plu_dirty=1 の商品一覧。D-028） |
@@ -140,7 +134,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 | save_receipt_image | SaveImageRequest | BIZ-02（拡張子validation所有、BIZがIO-06 image_managerを呼ぶ） | Result（relative_path） |
 
 CMD-11 の層経路は D-060 で正本化した（`ARCHITECTURE.md`「レイヤー間の呼び出し原則」参照）: 設定・操作ログ系は BIZ-09（`biz::system_service`）経由の標準経路、backup/restore 系は DB 接続所有権の交換を要する保守 orchestration として CMD → MNT-01 の正規経路（復旧規則の正本は function-design 71 §71.7）、領収書画像は base64 decode（CMD の wire 型変換）+ BIZ-02 の拡張子 validation。CMD から IO 層への直接呼び出しは禁止で、`src-tauri/tests/architecture_test.rs` の layer 依存 test が機械検査する（旧 allowlist の settings_cmd 例外 2 entry は削除済み）。検査対象は `use crate::db` / `use crate::io` の直接 import 行であり、re-export 経由の間接依存は対象外（検出強化は backlog）。
-biz/mnt からの直接 `pub use` / `pub(crate) use crate::db::*` / `crate::io::*` 再公開は D-083 の allow list（`src-tauri/tests/architecture_test.rs`）で新規追加を禁止する。alias / type alias を介した再公開は対象外のまま（検出強化は backlog）。
+biz/mnt からの直接 `pub use` / `pub(crate) use crate::db::*` / `crate::io::*` 再公開は D-083 の allow list（`src-tauri/tests/architecture_test.rs`）で無審査の新規追加を禁止する。alias / type alias を介した再公開は対象外のまま（検出強化は backlog）。
 
 ### 更新履歴
 

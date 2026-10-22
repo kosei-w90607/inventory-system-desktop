@@ -3,7 +3,7 @@
 // UI-09b 月次売上レポート画面の型定義。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.2
 
-import type { MonthlySaleItem, SalesMode } from "@/lib/bindings";
+import type { MonthlySaleItem, ProductStockUnit, SalesMode } from "@/lib/bindings";
 import { z } from "zod";
 
 export const MONTHLY_MODE_DESCRIPTORS = [
@@ -21,9 +21,9 @@ export const MONTHLY_SORT_DESCRIPTORS = [
   {
     value: "quantity",
     productLabel: "数量",
-    departmentLabel: null,
+    departmentLabel: "数量",
     align: "right",
-    modes: ["by_product"],
+    modes: ["by_product", "by_department"],
   },
   {
     value: "amount",
@@ -42,7 +42,7 @@ export const MONTHLY_SORT_DESCRIPTORS = [
 ] as const satisfies readonly {
   value: string;
   productLabel: string;
-  departmentLabel: string | null;
+  departmentLabel: string;
   align: "left" | "right";
   modes: readonly SalesMode[];
 }[];
@@ -81,10 +81,11 @@ export type MonthlySalesSearch = z.output<typeof monthlySalesSearchSchema>;
 export function monthlySortDescriptorsForMode(mode: SalesViewMode) {
   return MONTHLY_SORT_DESCRIPTORS.filter((descriptor) =>
     (descriptor.modes as readonly SalesViewMode[]).includes(mode),
-  ).flatMap((descriptor) => {
-    const label = mode === "by_product" ? descriptor.productLabel : descriptor.departmentLabel;
-    return label === null ? [] : [{ value: descriptor.value, label, align: descriptor.align }];
-  });
+  ).map((descriptor) => ({
+    value: descriptor.value,
+    label: mode === "by_product" ? descriptor.productLabel : descriptor.departmentLabel,
+    align: descriptor.align,
+  }));
 }
 
 /// 商品ランキングテーブル行（UI 派生型）。
@@ -92,17 +93,22 @@ export function monthlySortDescriptorsForMode(mode: SalesViewMode) {
 export interface ProductRankingRow {
   key: string;
   label: string;
-  quantity: number;
+  count_points: number;
+  length_cm: number;
+  /// 数量の種類を決める単位（相殺して 0 の行も `0 m`・`0 点` を出し分ける）
+  stock_unit: ProductStockUnit | null;
   amount: number;
   ranking: number;
   prev_month_diff: number | null;
 }
 
 /// 部門別構成比テーブル行（UI 派生型）。
-/// 構成比 (ratio) と前月比 diff を併せ持つ。
+/// 数量（点と長さの 2 本）・構成比 (ratio)・前月比 diff を併せ持つ。
 export interface DeptCompositionRow {
   key: string;
   label: string;
+  count_points: number;
+  length_cm: number;
   amount: number;
   ratio: number;
   prev_month_diff: number | null;
@@ -120,7 +126,10 @@ export interface ComparisonInfo {
 /// 月次サマリ（4 カード描画用）
 export interface MonthlySummary {
   totalAmount: number;
-  totalQuantity: number;
+  /// 個数の種類の数量の和。安全な整数を外れたら null（表示は「—」）
+  totalCountPoints: number | null;
+  /// 長さの種類の数量の和（cm）。安全な整数を外れたら null
+  totalLengthCm: number | null;
 }
 
 /// MonthlySaleItem を再 export（UI 側 import 簡略化）

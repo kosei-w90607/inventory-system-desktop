@@ -699,7 +699,7 @@ it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
 
 it.each([
   ["pcs", "1,234 個", "個"],
-  ["cm", "1,234 cm", "cm"],
+  ["m", "12.34 m", "m"],
 ] as const)(
   "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
@@ -749,3 +749,79 @@ it.each([
     expect(within(cells[5]).getByText("円")).toBeInTheDocument();
   },
 );
+
+// REQ-203 / UI-04-D18 / SPEC-UNIT-D7（X11）: 数量の初期値は基準数量ぶん、長さの商品は未編集の間だけ金額が数量に追従する
+describe("手動販売の数量と金額（UI-04-D18）", () => {
+  async function addProduct(unit: "m" | "pcs") {
+    const user = userEvent.setup();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({
+            product_code: "AMT-001",
+            name: "金額確認A",
+            selling_price: 700,
+            stock_unit: unit,
+          }),
+          makeMockProductWithRelations({ product_code: "AMT-002", name: "金額確認B" }),
+        ],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    renderWithClient(<ManualSalePage />);
+    await user.type(await screen.findByLabelText("手動販売商品検索"), "金額{enter}");
+    const candidate = (await screen.findByText("AMT-001")).closest("tr");
+    if (candidate === null) throw new Error("expected table structure");
+    await user.click(within(candidate).getByRole("button", { name: "手動販売に追加" }));
+    return {
+      user,
+      quantity: await screen.findByLabelText("AMT-001 の数量"),
+      amount: screen.getByLabelText("AMT-001 の販売金額"),
+    };
+  }
+
+  it.each([
+    ["m", 1, { inputmode: "decimal", min: "0.01", step: "0.01" }],
+    ["pcs", 1, { inputmode: "numeric", min: "1", step: null }],
+  ] as const)(
+    "UI-04-D18: %s の商品を追加すると数量 %s・金額 700 で、数量欄の属性は単位で決まる",
+    async (unit, initialQuantity, expected) => {
+      const { quantity, amount } = await addProduct(unit);
+      expect(quantity).toHaveValue(initialQuantity);
+      expect(amount).toHaveValue(700);
+      expect(quantity.getAttribute("inputmode")).toBe(expected.inputmode);
+      expect(quantity.getAttribute("min")).toBe(expected.min);
+      expect(quantity.getAttribute("step")).toBe(expected.step);
+    },
+  );
+
+  it("UI-04-D18: m の商品は数量 1.3 で金額 910、数量が空の間は金額欄も空、金額を直した後は追従しない", async () => {
+    const { user, quantity, amount } = await addProduct("m");
+    fireEvent.change(quantity, { target: { value: "1.3" } });
+    expect(amount).toHaveValue(910);
+    fireEvent.change(quantity, { target: { value: "" } });
+    expect(amount).toHaveValue(null);
+    fireEvent.change(quantity, { target: { value: "1.3" } });
+    expect(amount).toHaveValue(910);
+    // 同じ商品の再追加: 数量に 1 m を足し、未編集の金額は式で求め直す
+    // （追加すると候補の一覧は消えるので、検索し直して同じ商品を追加する）
+    await user.type(screen.getByLabelText("手動販売商品検索"), "金額{enter}");
+    const [addAgain] = await screen.findAllByRole("button", { name: "手動販売に追加" });
+    await user.click(addAgain);
+    expect(quantity).toHaveValue(2.3);
+    expect(amount).toHaveValue(1610);
+    // 金額を直した後は数量を変えても金額を変えない
+    fireEvent.change(amount, { target: { value: "800" } });
+    fireEvent.change(quantity, { target: { value: "2" } });
+    expect(amount).toHaveValue(800);
+  });
+
+  it("UI-04-D18: 個数の商品は数量を変えても金額を求め直さない", async () => {
+    const { quantity, amount } = await addProduct("pcs");
+    fireEvent.change(quantity, { target: { value: "3" } });
+    expect(amount).toHaveValue(700);
+  });
+});

@@ -29,6 +29,7 @@ import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
 import { PageShell } from "@/components/patterns/PageShell";
 import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
+import { quantityInputAttributes } from "@/lib/unit-quantity";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReceivingCreateResult } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
@@ -576,8 +577,7 @@ export function ReceivingPage() {
                     <TableCell>
                       <Input
                         type="number"
-                        inputMode="numeric"
-                        min="1"
+                        {...quantityInputAttributes(row.stockUnit)}
                         value={row.quantity}
                         disabled={isFormLocked}
                         aria-label={`${row.productCode} の数量`}
@@ -596,8 +596,9 @@ export function ReceivingPage() {
                     <TableCell>
                       <Input
                         type="number"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         min="0"
+                        step="0.01"
                         value={row.costPrice}
                         disabled={isFormLocked}
                         aria-label={`${row.productCode} の原価`}

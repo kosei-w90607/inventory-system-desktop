@@ -238,9 +238,9 @@ describe("feature-owned finite search schemas", () => {
       {
         value: "quantity",
         productLabel: "数量",
-        departmentLabel: null,
+        departmentLabel: "数量",
         align: "right",
-        modes: ["by_product"],
+        modes: ["by_product", "by_department"],
       },
       {
         value: "amount",

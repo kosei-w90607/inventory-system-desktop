@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 // 数量の桁区切りと単位名は共通formatterに揃える。
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
 import type { CsvImportStatus } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -283,7 +283,10 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
             description="この記録に紐づく有効な在庫変動は見つかりません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>

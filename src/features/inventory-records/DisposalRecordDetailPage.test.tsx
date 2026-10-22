@@ -39,9 +39,9 @@ function makeDetail(overrides: Partial<DisposalRecordDetail> = {}): DisposalReco
         stock_unit: "pcs",
         disposal_type: "damage",
         quantity: 2,
-        cost_price: 120,
+        cost_price_centi: 12000,
         reason: "袋破れ",
-        line_loss_cost: 240,
+        line_loss_cost_centi: "24000",
       },
       {
         id: 2,
@@ -51,9 +51,9 @@ function makeDetail(overrides: Partial<DisposalRecordDetail> = {}): DisposalReco
         stock_unit: "pcs",
         disposal_type: "disposal",
         quantity: 3,
-        cost_price: 80,
+        cost_price_centi: 8000,
         reason: "期限切れ",
-        line_loss_cost: 240,
+        line_loss_cost_centi: "24000",
       },
     ],
     movements: [
@@ -143,11 +143,40 @@ describe("DisposalRecordDetailPage (REQ-204 / REQ-206)", () => {
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "1,234 cm"],
-])("⑮ SC19: 廃棄詳細の %s を単位付き表示する", async (unit, expected) => {
+  ["m", "12.34 m"],
+] as const)("⑮ SC19: 廃棄詳細の %s を単位付き表示する", async (unit, expected) => {
   const detail = makeDetail();
   detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];
   mockGetDisposalRecord.mockResolvedValue({ status: "ok", data: detail });
   renderWithClient(<DisposalRecordDetailPage recordId={7} />);
   expect(await screen.findByText(expected)).toBeInTheDocument();
+});
+
+// REQ-204 / SPEC-UNIT-D3 の表の 1・6、SPEC-UNIT-D6: 廃棄の記録詳細は行の単位で数量と在庫変動を出し、
+// 行のロス原価は BIZ が返した 1/100 円の文字列を出す
+it("REQ-204: m の商品の廃棄は 0.5 m・166.50 円、合計 ¥167、関連する在庫変動は -0.5 m・25.7 m", async () => {
+  const detail = makeDetail();
+  const [item] = detail.items;
+  const [movement] = detail.movements;
+  detail.total_loss_cost = 167;
+  detail.items = [
+    {
+      ...item,
+      product_code: "DP-M",
+      stock_unit: "m",
+      quantity: 50,
+      cost_price_centi: 33300,
+      line_loss_cost_centi: "16650",
+    },
+  ];
+  detail.movements = [{ ...movement, product_code: "DP-M", quantity: -50, stock_after: 2570 }];
+  mockGetDisposalRecord.mockResolvedValue({ status: "ok", data: detail });
+  renderWithClient(<DisposalRecordDetailPage recordId={7} />);
+
+  expect(await screen.findByText("0.5 m")).toBeInTheDocument();
+  expect(screen.getByText("¥333")).toBeInTheDocument();
+  expect(screen.getByText("166.50 円")).toBeInTheDocument();
+  expect(screen.getByText("¥167")).toBeInTheDocument();
+  expect(screen.getByText("-0.5 m")).toBeInTheDocument();
+  expect(screen.getByText("25.7 m")).toBeInTheDocument();
 });

@@ -97,7 +97,7 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
             product_code: "F-0001",
             name: "生成り布",
             stock_quantity: 350,
-            stock_unit: "cm",
+            stock_unit: "m",
             is_discontinued: true,
           }),
         ]}
@@ -107,7 +107,7 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     const row = screen.getByText("F-0001").closest("tr");
     if (row === null) throw new Error("row not found");
 
-    expect(within(row).getByText("350 cm")).toBeInTheDocument();
+    expect(within(row).getByText("3.5 m")).toBeInTheDocument();
     // UI-01a-D8: 廃番は商品名セル内の text badge で示す（専用状態列なし）
     expect(within(row).getByText("廃番")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "状態" })).not.toBeInTheDocument();
@@ -176,7 +176,7 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
           makeMockProductWithRelations({
             product_code: "PRICE-001",
             selling_price: 1234,
-            cost_price: 567,
+            cost_price_centi: 56700,
           }),
         ]}
       />,
@@ -194,7 +194,7 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     ]);
     const row = screen.getByText("PRICE-001").closest("tr");
     if (row === null) throw new Error("row not found");
-    expect(within(row).getByText("￥567")).toBeInTheDocument();
+    expect(within(row).getByText("¥567")).toBeInTheDocument();
   });
 
   it("SC16 (Gated Amendment 6 S45): renders stock quantity with the Japanese unit label, no raw unit code", () => {

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useReviseProductPrice } from "@/features/products/hooks/useReviseProductPrice";
+import { formatCostYen } from "@/features/stock-inquiry/lib/format-stock-display";
 import { commands, type CostDiff } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -21,10 +22,6 @@ type UpdateState =
   | { status: "updating" }
   | { status: "success"; newCostPrice: number }
   | { status: "error"; detail: string };
-
-function formatYen(value: number): string {
-  return `${value.toLocaleString("ja-JP")} 円`;
-}
 
 export function CostDiffDialog({
   costDiffs,
@@ -56,12 +53,12 @@ export function CostDiffDialog({
       await revisePrice.mutateAsync({
         product_code: diff.product_code,
         new_selling_price: product.selling_price,
-        new_cost_price: diff.received_cost_price,
+        new_cost_price_centi: diff.received_cost_price_centi,
         assign_supplier_id: null,
       });
       setRowStates((current) => ({
         ...current,
-        [diff.product_code]: { status: "success", newCostPrice: diff.received_cost_price },
+        [diff.product_code]: { status: "success", newCostPrice: diff.received_cost_price_centi },
       }));
     } catch (error) {
       setRowStates((current) => ({
@@ -121,14 +118,16 @@ export function CostDiffDialog({
                   <div>
                     <dt className="text-muted-foreground">マスタ原価</dt>
                     <dd className="font-medium">
-                      {formatYen(
-                        state.status === "success" ? state.newCostPrice : diff.master_cost_price,
+                      {formatCostYen(
+                        state.status === "success"
+                          ? state.newCostPrice
+                          : diff.master_cost_price_centi,
                       )}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">今回の実原価</dt>
-                    <dd className="font-medium">{formatYen(diff.received_cost_price)}</dd>
+                    <dd className="font-medium">{formatCostYen(diff.received_cost_price_centi)}</dd>
                   </div>
                 </dl>
 

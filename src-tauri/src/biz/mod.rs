@@ -11,14 +11,18 @@ pub mod jan_code;
 pub mod plu_export_service;
 pub mod product_service;
 pub mod sales_service;
+pub mod stock_ledger;
 pub mod stocktake_service;
 pub mod system_service;
+pub mod unit_amount;
 
 // CMD層がBIZ経由で直接使用するDB型の re-export（CMD→db直接依存を避けるために維持）
 #[allow(unused_imports)]
 pub use crate::db::product_repo::{Department, Supplier};
 #[allow(unused_imports)]
-pub use crate::db::product_repo::{ProductBulkFilter, ProductSearchQuery, ProductWithRelations};
+pub use crate::db::product_repo::{
+    ProductBulkFilter, ProductSearchQuery, ProductStockUnit, ProductWithRelations,
+};
 #[allow(unused_imports)]
 pub use crate::db::sales_repo::CsvImport;
 #[allow(unused_imports)]

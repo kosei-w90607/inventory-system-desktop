@@ -1,34 +1,20 @@
 # テーブル定義（POS連携）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(b) は proposed・未実装、移行の止まりだけ (a) で実装済み）
 
-SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりだけで、表の列とほかの項目は (b)（proposed・未実装）。
 
-| 保存先 | 項目 | 制約と意味 |
+| 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
-| pos_import_sources（新設） | id INTEGER PK AUTOINCREMENT、file_hash TEXT、received_at TEXT | hashはNOT NULL UNIQUE、受領日時はNOT NULL。同hashは最初のID/受領時刻を維持。正のID、空集合cursorは0 |
-| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。日付から日時へ勝手な0時を補わない。settled_atは識別と表示のメタで、実測との前後判定に使わない |
-| pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは行わない（[decision-log](../decision-log.md) D-109 (4)） |
-| pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
-| csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない。時点証拠schemaのmigrationは旧importからsourceをbackfillせず、旧importのsource_idはNULLのまま残す（NULLを許す列とし、新importの必須はBIZが守る。[decision-log](../decision-log.md) D-109 (4)） |
+| csv_imports | machine_no TEXT | NOT NULL（新しい取込み）。IO-02 が Z004 のメタから読んだマシンNo.（leading zero を保つ文字列） |
+| csv_imports | settlement_no INTEGER | NOT NULL（新しい取込み）。IO-02 が読んだ精算回数を 10 進の整数にした値（0 以上） |
+| sale_records | stock_linked INTEGER | NOT NULL、0/1 の CHECK。確定の TX で、その行の商品の取込みのときの `pos_stock_sync` を写す（共有 JAN の行と商品の無い行は 0）。後から書き換えない。ADR D3 の理由 1 と D8 の在庫連動を始める検査が、今の設定でなくこの値で判定する |
 
-同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
-
-識別メタのNULL許容は同日追加の許可ではない。同じsettlement_dateのactive import（completed / completed_partial）をcsv_imports起点で取得し、sourceが取得できない行やmachine_no / settlement_noの片方・両方がNULLの行も除外しない。同日activeが存在し、取込み対象側または比較先側の識別メタが不足すれば、BIZは追加確認によらずsource_identity_conflictで拒否する。同日activeなしはこの追加guardの対象外だが、全受領sourceとの別hash衝突検査等は維持する。NULLを仮キーや衝突なしへ読み替えない。
-
-初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)の新形式で開始し、旧Z004試験取込みを持ち込まない。現行csv_importsのimported_atはアプリ取込み日時であり、精算日時や識別メタのbackfill元にはできない。原本がlayout Aでも旧importの保存情報は不足し得る。sourceなし/メタ不足のactive importが存在すれば、本番前preflight用に全日付を列挙できるよう行を保持し、比較先としての拒否も維持する。DB列追加だけで本番準備完了にせず、抽出→保存の実装を必須とする。過去日を理由に取込みを拒否する新しい日付制約は置かない。migrationは売上・在庫移動・履歴を削除せず、開発/試験DBの整合した作り直しは別作業とする。
-
-構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
-
-原本メタと初回受領は不変。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
-
-欠落表示の保存根拠はidentity_rejection_code/identity_rejected_atであり、保留集合ではない。BIZのread-only準備照会は拒否記録ありかつ当該sourceのactive importなしを抽出し、settlement_missingへ渡す。成功取込み後も証拠自体は保持し、取消でactiveがなくなれば再び表示対象とする。未提出/欠番の推測行を作らない。
-
-共有JAN行の保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも再確認・相殺の判定の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
-
----
-
-計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5 / D8（proposed）。資料受領記録と売上取込み状態を分離する。以下は現行スキーマであり、新列・新表は未実装。
+- 精算回数・マシンNo. を読めない Z004（従来の形）は取り込まない（preview で拒む。[32](../function-design/32-biz-csv-import-service.md) の新契約）。
+- 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
+- 精算日と精算回数の順の食い違い、別の machine_no、欠けた精算回数の知らせは BIZ が active な取込みの `settlement_date`・`settlement_no`・`machine_no` から判定する（新しい表を持たない）。
+- 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
+- 移行: 既存の取込みがある DB では runtime の migration は止まる（(a) の migration v9 で実装済み。tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
@@ -80,6 +66,7 @@ Z004ファイルの取込み履歴。重複取込み防止、ロールバック�
 - settlement_dateが同じ ＋ 別のfile_hash ＋ 既存がcompleted/completed_partial → 既存分を残す追加取込みとして確認する
 - 確認時は同日のactive importを全件表示し、承認後は新規分だけINSERTする
 - byte違いで同内容の復旧用ファイル等を選んでいないかをoperatorが確認し、キャンセル時は何もしない
+- D-118 の runtime からは、Z004 のケース2・3は精算回数で決める（上の「計数の置き場と在庫の求め直しの契約」）: 同じ machine_no・settlement_no の active があれば別 hash でも拒否し、別の精算回数なら確認なしに追加する。利用者確認は日報の側（§12b 以降）だけに残る（D-071 の Superseded in part の行）
 
 **ケース3: ファイル名が同じだが中身が違う（同じ日に2回精算した等）**
 - file_hashが異なるためケース2として処理される
@@ -161,7 +148,7 @@ Z001/Z002/Z005 の1営業日分ファイル束を1つの日報取込みとして
 ### 冪等性・同日追加方針
 - `bundle_hash` が一致し `status='completed'` の取込みがある場合はブロックする。
 - `report_date` が一致し別 `bundle_hash` の `completed` がある場合は、既存全件を提示して追加確認を要求する。承認後も既存parentを変更せず、新規取込みだけを作る。
-- `report_date` と `settlement_no` が一致し別 `bundle_hash` の `completed` がある場合はブロックする（追加確認で通さない。BIZ-08-D4）。`settlement_no` が NULL の行・束は照合しない。SD から取り込む束は `settlement_no` を持つ束だけなので（BIZ-08-D6）、SD の経路の行は NULL にならない。CV17 は SD の原本を移して複製するだけで bytes を作り直さないと推定する（29 §29.7.2 の SD-23、推定・強）が、bytes の一致だけに頼らず精算回数でも照らして、同じ精算を二重に数えないための照合。
+- `report_date` と `settlement_no` が一致し別 `bundle_hash` の `completed` がある場合はブロックする（追加確認で通さない。BIZ-08-D4）。`settlement_no` が NULL の行・束は照合しない。SD から取り込む束は `settlement_no` を持つ束だけなので（BIZ-08-D6）、SD の経路の行は NULL にならない。CV17 が SD の原本を移して複製するだけで bytes を作り直さないことは未確認の前提（29 §29.7.2 の SD-23）なので、bytes の一致だけに頼らず精算回数でも照らして、同じ精算を二重に数えないための照合。
 - `rolled_back` の同一bundleは再取込み可能。
 - `report_date` はgroup keyであってuniqueness keyではない。訂正は対象parent IDのrollbackと再取込みを明示した2操作で行う。
 
@@ -212,8 +199,9 @@ Z002由来の取引キー・支払・現金等の集計行を保存する。日�
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
-- Z002はNEL / raw 0x85 を含む可能性があるため、改行・文字コード処理はIO parserで閉じる。
+- 改行・文字コード処理はIO parserで閉じる。持ち帰った Z 帳票と SD の file は CRLF だけで、NEL / raw 0x85 の行終端の実例は無い（2026-10 の見直しの事実の一覧。0x85 は CP932 の 2 バイト文字の中にだけ現れる）。正規化は防御として残す。
 - 支払・取引キーはreporting/accounting意味を持つが、在庫引落しの根拠にはならない。
+- **同じ日の取込みをまたいで足す鍵（proposed・未実装、D-120）**: `payment_key` は保存を続けるが、足す鍵には使わない。日次売上の支払集計と日報の紙は、位置（`sort_order`）と名称（`label` の前後の空白を除いた文字列）の組で見分けて足す（行がずれ、1 本の中に同じ名称が 2 行ある日は足さない。規則の正本は [34](../function-design/34-biz-sales-service.md) SALES-SHEET-D2、画面の側は [24](../function-design/24-io-csv-import-repo.md) §14.21 手順 3）。並び順から作る `payment_N` で足すと、精算の間で名称が変わった日に別の項目を 1 行に足す。§12c の Z001 と §12e の Z005 の行も、日報の紙では同じ組で足す（日次売上の画面の Z001 は取込みごと〈D-096〉、Z005 は部門ごと〈24 §14.21 手順 4〉のまま）。列・制約・migration は変えない。
 
 ---
 
@@ -244,6 +232,34 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 
 ---
 
+## SD の一括取込みと EJ の控えの契約（proposed・未実装、D-121）
+
+EJ の記録の文をレシートの控えとして持つ表（BIZ-08-D9、[37 §37.11](../function-design/37-biz-daily-report-import-service.md)）。migration は後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」）が、その時点の版の番号で足す。`sale_records`・`inventory_movements`・日報の表と結ばない（EJ は在庫と売上の集計に使わない。ADR SPEC-STK-CNT-D11）。原価の列を持たないので、原価の lane の vB の起点の検査（[22 §16](../function-design/22-mnt-migration.md)）の対象の表にならない。DB の 1 file に入るので backup・restore の対象になる。
+
+### ej_records カラム定義
+
+| カラム名 | 型 | 制約 | 説明 |
+|---------|---|----|------|
+| id | INTEGER | PK AUTOINCREMENT | 記録の ID |
+| machine_prefix | TEXT | NOT NULL, CHECK(length(machine_prefix) = 4) | 記録の見出しの 4 桁の欄（IO-08 の `number_prefix`。Z004 の machine_no と同じ値を観測） |
+| record_no | TEXT | NOT NULL, CHECK(length(record_no) = 6) | 記録の 6 桁の番号（IO-08 の `number`。先頭 0 を保つ）。UNIQUE(machine_prefix, record_no) |
+| printed_at | TEXT | NOT NULL, INDEX | 記録の日時（`YYYY-MM-DD HH:MM`、レジの時計のまま） |
+| mode | TEXT | NOT NULL, CHECK(mode IN ('normal','return','training','settlement','inspection','program','program1','program3','off','unrecognized')) | 見出しのモード欄（IO-08 の `EjMode`） |
+| kind | TEXT | NOT NULL, CHECK(kind IN ('sale','cancelled','cash_movement','receipt','settlement','inspection','settings','training','unclassified')) | 記録の種類（IO-08 の `EjRecordKind`） |
+| settlement_report | TEXT | NULLABLE, CHECK(settlement_report IN ('daily','plu','attendance')) | 精算票の帳票（kind = settlement だけ） |
+| settlement_completed | INTEGER | NULLABLE, CHECK(settlement_completed IN (0,1)) | 精算票の終わりの印字の有無（kind = settlement だけ） |
+| total_amount | INTEGER | NULLABLE | 取引の合計（円）。kind = sale で明細を復元できた記録だけ（37 §37.11 手順 2） |
+| body_text | TEXT | NOT NULL | 見出し 2 行と本文の行を decode したまま "\n" でつないだ文（レシートの控え） |
+| imported_at | TEXT | NOT NULL | 保存の日時（YYYY-MM-DDTHH:MM:SS） |
+
+### 設計意図
+- 鍵は記録の番号で、file の hash・名前ではない（`XZ` 直下の EJ は伸び、同じ記録が `XZ` と `XZ_BKUP` に入る。IO-08.10）。
+- 明細を表に分けない。控えを見るには文で足り、復元できない記録（小数の数量・未知の行）も見える。`total_amount` は一覧で探す手がかりだけ。
+- insert-only。UPDATE・DELETE しない（同じ番号で文の違う記録は上書きせず知らせる。BIZ-08-D9）。取消の操作は持たない。
+- 店の実データ（品名・金額）を持つ表なので、tracked の fixture は合成の EJ だけにする。
+
+---
+
 ## B-2: Z001/Z002/Z005日報取込み仕様（2026-06-30 設計）
 
 ### 処理パイプライン: Parse bundle → Validate bundle → Preview → Commit
@@ -251,7 +267,7 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 **入力単位**:
 - 1営業日の日報取込みは `Z001`、`Z002`、`Z005` の3ファイルを必須束として扱う。
 - adapterはファイル名・内容からsourceを判定し、欠損、重複、未知sourceをPreview前にエラーにする。
-- CV17 1.1.1のZ001/Z002/Z005は、SD の `XZ_BKUP` とツール内部ディレクトリ常在ファイル（同じ bytes。取込み前の `XZ` の原本も同じ bytes と推定する。29 §29.7.2 の SD-23）の layout A（7行プリアンブル、1行ヘッダ、4列データ行）と、エクスポート機能出力の layout B（先頭メタフィールド、ヘッダ、4列反復の連結）を両方サポートする。adapterはどちらも `record_code, label, quantity_or_count, amount` 系の4列行へ正規化してから内部行へ変換する。
+- CV17 1.1.1のZ001/Z002/Z005は、SD の `XZ_BKUP` とツール内部ディレクトリ常在ファイル（同じ bytes。取込み前の `XZ` の原本も同じ bytes であることは未確認の前提。29 §29.7.2 の SD-23）の layout A（7行プリアンブル、1行ヘッダ、4列データ行）と、エクスポート機能出力の layout B（先頭メタフィールド、ヘッダ、4列反復の連結）を両方サポートする。adapterはどちらも `record_code, label, quantity_or_count, amount` 系の4列行へ正規化してから内部行へ変換する。
 - 日付はsource/layoutにより `YYYY/M/D` または `YYYY-MM-DD` で出力されるため、IO-07で `YYYY-MM-DD` に正規化してからBIZ-08へ渡す。
 - 入力の標準はアプリがレジの SD から直接読む束（IO-09、BIZ-08 §37.9、D-111）。予備は利用者が選ぶ 3 ファイル（PC の `EcrDatas` の写しを含む。`XZ_BKUP` と同じ bytes）。
 - Excel帳票はsource of truthでも日別archiveでもない。店は今、SDからCV17へ取り込んだZ001/Z002/Z005を同じExcelファイル群へ毎日ほぼそのまま貼り付けて上書きするため、日別履歴は印刷・バインダーだけに残る。layout A/Bの受理はadapter互換性であってoperatorの選択肢ではない。sanitized版のExcelは数値突合に使わず、列構成・ラベル・行の並びの参照に限定する。
@@ -357,7 +373,7 @@ COMMIT後に:
 **マスタ照合**:
 - products.jan_codeで検索（product_codeへのfallbackはしない）
 - ヒット1件 → matched（紐付け成功）
-- ヒット0件 → unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
+- ヒット0件 → 前の JAN の別名（[master-tables](master-tables.md) §1a、D-122、proposed・未実装）があればその商品で matched、無ければ unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
 - ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（グループコード商品は色を区別しない方針のため。常に同じ商品に紐付く決定的ルール）
 
 **返品の扱い**:
@@ -378,7 +394,7 @@ validate_result
 
 **画面表示内容**:
 - ファイル名、精算日
-- 冪等性チェック結果（同一hashブロック/同日別hash追加確認/問題なし）
+- 冪等性チェック結果（同一hashブロック/同日別hash追加確認/問題なし。D-118 の runtime からは、同一hashブロック/同じ精算の別版の拒否/精算回数の無い file の拒否/問題なし）
 - 「○○件の売上を取り込みます（合計 ¥○○○）」
 - error_rowsがある場合: 「以下の○件はスキップされます」（JAN・商品名・個数・金額・理由を一覧表示）
 
@@ -389,13 +405,15 @@ validate_result
 
 ### Stage 4: Commit（トランザクション内で一括書込み）
 
+下の Commit と Rollback は、現行 build では停止中の旧本体の記述（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)、[32](../function-design/32-biz-csv-import-service.md) §15.0）。
+
 BEGIN TRANSACTION内で:
 1. 同一active `file_hash` を再検査する。
 2. 同一 `settlement_date` のactive import ID一覧を再取得し、preview snapshotと一致することを確認する。不一致なら副作用なしで中断する。
 3. 既存importを変更せずcsv_importsにレコード作成（statusは仮値。ステップ6で確定）
 4. matched_rowsの各行について:
    - sale_recordsにINSERT（source='auto', source_line_no=レコード番号）
-   - pos_stock_sync=1の商品 → products.stock_quantity更新 + inventory_movementsにINSERT
+   - pos_stock_sync=1の商品 → inventory_movementsにINSERTし、その商品の写しを記録から求め直す（`recompute_stock`）
    - pos_stock_sync=0の商品 → sale_recordsのみ（在庫は動かさない）
 5. error_rowsがある場合 → csv_import_errorsテーブルにINSERT
 6. csv_imports.status / total_items / total_amount / skipped_countを確定:
@@ -406,7 +424,7 @@ BEGIN TRANSACTION内で:
 
 **Rollback**:
 1. `csv_imports.id` で対象を特定する。settlement_dateだけで対象を選ばない。
-2. BEGIN TRANSACTION内で対象ID由来の `sale_records` / `inventory_movements` だけをvoidし、movementをproduct_code別に逆補正して対象 `csv_imports.status='rolled_back'` にする。
+2. BEGIN TRANSACTION内で対象ID由来の `sale_records` / `inventory_movements` だけをvoidし、無効にした movement の商品ごとに `recompute_stock` で写しを求め直して（補償の movement は作らない）、対象 `csv_imports.status='rolled_back'` にする。
 3. 同一settlement_dateの他のactive import、sale_records、inventory_movementsは変更しない。すでにrolled_backの対象IDは冪等成功とする。
 4. COMMIT後に対象IDを含む `csv_rollback` operation logをbest-effortで記録する。
 
@@ -467,3 +485,4 @@ CSV取込み: 2026/03/21の精算データ
 |---|---|---|
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D1〜D8: business dateをgroup keyとし、両pipelineのinsert-only TX、active snapshot再検証、per-import rollbackを正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | `daily_report_imports.settlement_no` と同じ精算の二重取込みの拒否（BIZ-08-D4）。入力の標準をレジの SD の直読みにした。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | 「SD の一括取込みと EJ の控えの契約」（`ej_records`）を proposed で足した。 |

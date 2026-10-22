@@ -1,5 +1,7 @@
 # 62. UI-04: 手動販売出庫
 
+> **計数の置き場と在庫の求め直し（D-118。(a) は実装済み、(b) は proposed・未実装）**: この画面の日付の欄の意味は「品が動いた日」（手動販売は品を渡した日）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。(a) で入ったのは、この日付を業務日として movement に書くこと（`biz/inventory_service/common.rs` の `validate_business_date`）と、計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`）。計数を保存する公開の経路・精算の窓・この画面への反映は (b)。欄の見出し・説明の文言の細部は runtime の lane。
+
 > 対応仕様: REQ-203 / UI-04
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-04、`docs/architecture/cmd-task-specs.md` CMD-04、`docs/architecture/biz-task-specs.md` BIZ-02、`docs/function-design/31-biz-inventory-service.md`、`docs/function-design/44-cmd-inventory.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md` §5.3
@@ -35,6 +37,7 @@
 | REQ-203 / REQ-206 / UI-04 | UI-04-D15 | 手動販売出庫にも保存直後確認用の recent list を置く。表示は直近数件の業務日付、記録ID、代表商品、明細数、状態、記録日時、詳細導線とし、`すべての履歴を見る` は `/inventory/records?recordType=manual_sale` へ遷移する。 | UI-02/03/05 と同じ「保存直後の確認」体験にそろえる。作成画面内で検索・取消・訂正まで扱う案は、入力作業を重くし、調査責務を `入出庫履歴` と重複させるため採用しない。 |
 | REQ-203 / product add suggest | UI-04-D16 | 商品追加欄に live 候補プレビュー（catalog ⑮ ProductAddSuggest / SPEC-SUGGEST-D1〜D11）を追加する。Enter commit 経路（UI-04-D4）とフォーカス戻し（UI-04-D5）は不変。lock source は既存 `isFormLocked` 派生 state、候補確定は既存の複数件候補テーブル選択と同一 handler。 | UI-02-D14 と同一の variant B 判断（純 autocomplete 型はスキャナ退行のため不採用）。契約正本は catalog ⑮。 |
 | REQ-203 / REQ-206 / return | UI-04-D17 | 保存結果と recent list の「詳細を見る」は、search state を含む現在の `/inventory/manual-sale` URL を `returnTo` として手動販売詳細へ送る（DSR-18）。 | 詳細確認後に手動販売作業画面へ戻れるようにする。送信・検証・fallback の横断規範は DSR-18 を正とし、本書では手動販売画面の producer だけを固定する。 |
+| REQ-203 / D-113 | UI-04-D18 | 明細の数量欄は商品の単位で受ける（m の商品は m で小数 2 桁まで。[共通規則](10-common-rules.md) SPEC-UNIT-D3。wire は在庫の数量の整数〈長さは cm〉。上限は `9999999`）。UI-04-D7 の「数量は整数」は個数の商品に限る。商品を追加したときの数量の初期値は価格の基準数量ぶん（個数の商品 `1`、m の商品 `1`〈1 m〉）、販売金額の初期値は SPEC-UNIT-D7 の `売価 × 数量 ÷ 基準数量`（円未満は四捨五入、`決定（owner、D-113 J4）`）。利用者が金額欄を編集するまでは、数量を変えるたびに金額をこの式で求め直す（長さの商品〈`m`〉だけ。個数の商品は数量を変えても金額を変えず、再追加で売価を足す〈UI-04-D6〉）。数量が入力の error の間、長さの商品の未編集の金額欄は空にする。金額欄を編集した後は、数量を変えても金額を変えない。同じ商品の再追加は数量に基準数量ぶん（個数 1、長さ 1 m）を足し、金額は長さの商品で未編集なら式で求め直し、それ以外（個数の商品、金額を編集した長さの商品）は売価を足す（UI-04-D6 のまま）。金額の計算は TS の twin（SPEC-UNIT-D9）。 | 長さの商品で数量 1 = 1 cm に 1 m あたりの売価を付けると 100 倍になる（既知の不整合、Backlog）。長さの商品は数量を必ず直すので、金額が初期値のまま残ると気づかずに違う金額を保存しやすい。不採用: 金額を常に式で上書きする（割引・端数の手修正が消える）。数量を変えても金額を変えない形を長さの商品にも残す（金額の直し忘れ）。 |
 
 ## 62.2 Component / Route 構成
 
@@ -117,7 +120,7 @@ UI-04 実装 PR では以下を generated binding に出す。
 - 商品追加欄は `商品コード・JAN・商品名で追加` とし、Enter で検索する。候補が複数ある場合は商品名、商品コード、部門、現在庫、売価を見せる。
 - 商品追加欄は入力中に live 候補プレビュー（商品コード・商品名・部門、最大 5 件 + 超過 footer）を表示する（UI-04-D16、挙動契約は catalog ⑮ SPEC-SUGGEST-D1〜D11）。候補は ↓/↑ または click で選択でき、候補未選択の Enter は従来どおり検索を実行する。入力値が変わると候補は即座に閉じる。
 - 商品が見つからない場合は `商品登録へ` 導線を出す。未登録商品は商品マスタに登録してから手動販売へ戻ることを日本語で示す。既存明細・入力がある状態での離脱（`商品登録へ` 導線を含む）は未保存編集の離脱ガード（UI_TECH_STACK §6.11 `useUnsavedChangesWarning`）が破棄確認を出す。
-- 明細表は商品コード、商品名、部門、現在庫、数量（単位を同じ cell に添える）、販売金額（同じ cell に「円」を添える）、行削除を表示する。数量と単位を一つの値として読めるよう独立した単位列は置かず、現在庫も単位付き（例: `4 個` / `300 cm`、桁区切り付き）にする。生地は `cm` 単位を主表示にする。
+- 明細表は商品コード、商品名、部門、現在庫、数量（単位を同じ cell に添える）、販売金額（同じ cell に「円」を添える）、行削除を表示する。数量と単位を一つの値として読めるよう独立した単位列は置かず、現在庫も単位付き（例: `4 個` / `3 m`、桁区切り付き）にする。長さの商品の現在庫は m で出し、`m` の商品の数量は m で入力する（[共通規則](10-common-rules.md) SPEC-UNIT-D3）。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
 - 保存ボタンは通常 `手動販売を保存`、PLU確認待ちでは `確認して保存` とする。
 - PLU確認待ちでは warning Alert を表示し、BIZ が返した `plu_warnings` を行ごとに見せる。利用者は「確認して保存」または明細修正を選べる。
@@ -152,7 +155,7 @@ UI-04 実装 PR では以下を generated binding に出す。
 - 手動販売明細の CSV import。
 - inline 商品登録。
 - グローバル barcode scan detection。
-- cm / m 表示切替。
+- cm / m 表示切替（利用者が切り替える UI は作らない。長さの入力と表示は UI-04-D18 と SPEC-UNIT-D3 で決まる）。
 - PLU書出し画面への自動誘導。
 - レシート添付。返品・交換の UI-03 で別設計する。
 
@@ -163,7 +166,7 @@ UI-04 実装 PR では以下を generated binding に出す。
 - UI-04-D3: 理由 enum を日本語表示し、payload では `"plu_unregistered"` / `"other"` を送る。
 - UI-04-D4/D5: 商品追加欄 Enter で検索し、1件なら行追加、複数件なら候補選択、0件なら商品登録導線を出す。
 - UI-04-D6: 同一 `product_code` の再追加で数量が +1 され、販売金額が売価分加算され、重複行を増やさない。
-- UI-04-D7: 数量/販売金額 validation と `cm` 単位表示。
+- UI-04-D7: 数量/販売金額 validation と長さの商品の m の入力と表示。
 - UI-04-D8/D9: `needs_confirmation=true` で DB変更済みの result に進まず、token 付き再送だけで保存する。編集時は token を破棄する。
 - UI-04-D10: 同内容 retry 時に `idempotency_key` を再利用し、成功/リセット/編集再送後は新規 key になる。
 - UI-04-D11: submitting 中は戻る/リセット/入力/商品追加が disabled になる。
@@ -172,11 +175,14 @@ UI-04 実装 PR では以下を generated binding に出す。
 - UI-04-D14: Windows native L3 で連続入力、フォーカス戻し、日本語表示、PLU警告確認、保存結果、日次売上の「手動」Badge を確認する。
 - UI-04-D15: recent list に `すべての履歴を見る` と `詳細を見る` が表示され、保存成功後に recent list が更新される。取得失敗時も入力フォームは継続できる。
 - UI-04-D17: 保存結果と recent list の「詳細を見る」が、現在の手動販売画面 URL を `returnTo` として送る。
+- UI-04-D18: m の商品を追加すると数量 `1`・金額 = 売価、数量を `1.3` にすると金額が `売価 × 130 ÷ 100` の丸め、金額を編集した後は数量を変えても金額が変わらない。個数の商品の再追加は UI-04-D6 のまま。payload の数量は cm の整数。
 
 ## 62.10 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-10-08 | 単位の拡張 design lane | UI-04-D18 の金額の初期値の丸めを owner の決定（四捨五入、D-113 J4、TD-195）に改めた。 |
+| 2026-10-07 | 単位の拡張 design lane | UI-04-D18 を追加（proposed・未実装、D-113）: 数量を商品の単位で受け、金額の初期値を `売価 × 数量 ÷ 基準数量` にし、金額を編集するまで数量に合わせて求め直す。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-04-D17 を追加し、保存結果 / recent list の詳細導線に手動販売画面への `returnTo` 送信契約を設定。 |
 | 2026-08-05 | product add suggest design | UI-04-D16 新設: 商品追加欄の live 候補プレビュー（正本 = catalog ⑮ SPEC-SUGGEST-D1〜D10）。Enter commit 経路・フォーカス戻しは不変。 |
 | 2026-08-03 | UI safety net implementation | 手動販売 form の dirty 判定を共通離脱ガードへ接続し、保存中 / 保存結果の非 block を実装。 |

@@ -20,9 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 // 数量の桁区切りと単位名は共通formatterに揃える。
-import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
-import type { StocktakeStatus } from "@/lib/bindings";
+import {
+  formatCentiYen,
+  formatCostYen,
+  formatStockDisplay,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
+import type { ProductStockUnit, StocktakeStatus } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -41,12 +45,12 @@ const STATUS_LABELS: Record<StocktakeStatus, string> = {
   completed: "完了",
 };
 
-function formatSignedQuantity(value: number, unit: string): string {
+function formatSignedQuantity(value: number, unit: ProductStockUnit): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatStockDisplay(value, unit)}`;
 }
 
-function formatOptionalQuantity(value: number | null, unit: string): string {
+function formatOptionalQuantity(value: number | null, unit: ProductStockUnit): string {
   return value === null ? "—" : formatStockDisplay(value, unit);
 }
 
@@ -178,10 +182,16 @@ export function StocktakeRecordDetailPage({
             </TableHeader>
             <TableBody>
               {detail.items.map((item) => {
-                const lossCost =
-                  item.adjustment_quantity < 0 && item.valuation_cost_price !== null
-                    ? Math.abs(item.adjustment_quantity) * item.valuation_cost_price
-                    : 0;
+                // ロス原価は |差異| × 評価原価（1/100 円）を BigInt で掛けた 1/100 円の十進の文字列。
+                // number の積は安全な整数を越えうる（99999999 × 999999999）。基準数量で割らないのは
+                // 35 §20.5a の既知の不整合のまま（D-118 の (b)）
+                const lossCostCenti =
+                  item.adjustment_quantity < 0 && item.valuation_cost_price_centi !== null
+                    ? (
+                        BigInt(Math.abs(item.adjustment_quantity)) *
+                        BigInt(item.valuation_cost_price_centi)
+                      ).toString()
+                    : "0";
                 return (
                   <TableRow key={item.product_code}>
                     <TableCell className="font-mono font-medium">{item.product_code}</TableCell>
@@ -199,11 +209,13 @@ export function StocktakeRecordDetailPage({
                       {formatSignedQuantity(item.adjustment_quantity, item.stock_unit)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {item.valuation_cost_price === null
+                      {item.valuation_cost_price_centi === null
                         ? "—"
-                        : formatYen(item.valuation_cost_price)}
+                        : formatCostYen(item.valuation_cost_price_centi)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatYen(lossCost)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCentiYen(lossCostCenti)}
+                    </TableCell>
                     <TableCell>
                       <Link
                         className="font-medium text-primary underline-offset-4 hover:underline"
@@ -230,7 +242,10 @@ export function StocktakeRecordDetailPage({
             description="この記録に紐づく有効な在庫変動は見つかりません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>

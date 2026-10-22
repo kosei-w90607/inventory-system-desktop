@@ -29,7 +29,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
-import { commands, type OperationLog } from "@/lib/bindings";
+import {
+  STOCK_UNIT_LABELS,
+  formatLengthOrPlain,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import { commands, type OperationLog, type ProductStockUnit } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -85,13 +89,53 @@ function parseDetail(raw: string | null) {
   }
 }
 
-interface IntegrityAdjustment {
-  productCode: string;
-  oldStock: number;
-  newStock: number;
-  adjustment: number;
+function groupedNumber(value: number): string {
+  return value.toLocaleString("ja-JP");
 }
 
+interface StockCopyValue {
+  quantity: number;
+  /// 要再確認なら [low, high]、印 0 なら null（DB の CHECK で範囲は印と対）
+  range: [number, number] | null;
+}
+
+type IntegrityAdjustment = {
+  productCode: string;
+  /// 新しく書かれた log だけが持つ（key の無い記録済みの log は整数で出す。SPEC-UNIT-D3 の表の 12）
+  stockUnit: ProductStockUnit | undefined;
+} & (
+  | { kind: "legacy"; oldStock: number; newStock: number; adjustment: number }
+  | { kind: "copy"; before: StockCopyValue; after: StockCopyValue }
+);
+
+function isSafeInt(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+
+/// 36 の `StockCopy`（写しの 4 項目）。印と範囲が対にならない値は形に合わないとみなす
+function parseStockCopy(value: unknown): StockCopyValue | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const copy = value as Record<string, unknown>;
+  if (!isSafeInt(copy.stock_quantity) || typeof copy.stock_recheck !== "boolean") return null;
+  if (!copy.stock_recheck)
+    return copy.stock_range_low === null && copy.stock_range_high === null
+      ? { quantity: copy.stock_quantity, range: null }
+      : null;
+  return isSafeInt(copy.stock_range_low) && isSafeInt(copy.stock_range_high)
+    ? { quantity: copy.stock_quantity, range: [copy.stock_range_low, copy.stock_range_high] }
+    : null;
+}
+
+/// 在庫数と、要再確認なら後ろに「（要再確認 {low}〜{high}）」（75。整合性検証の画面と同じ書き方）
+function formatStockCopy(copy: StockCopyValue, unit: ProductStockUnit | undefined): string {
+  const quantity = formatLengthOrPlain(copy.quantity, unit, groupedNumber);
+  if (!copy.range) return quantity;
+  const [low, high] = copy.range.map((end) => formatLengthOrPlain(end, unit, groupedNumber));
+  return `${quantity}（要再確認 ${low}〜${high}）`;
+}
+
+/// 記録済みの形（old_stock・new_stock・adjustment）と新しい形（before・after。36）の両方を読む。
+/// どちらにも合わない要素が 1 つでもあれば null（技術情報〈JSON〉へ回す）
 function parseIntegrityAdjustments(
   log: OperationLog,
   detail: ReturnType<typeof parseDetail>,
@@ -103,23 +147,34 @@ function parseIntegrityAdjustments(
   for (const item of value) {
     if (!item || typeof item !== "object" || Array.isArray(item)) return null;
     const candidate = item as Record<string, unknown>;
-    if (
-      typeof candidate.product_code !== "string" ||
-      typeof candidate.old_stock !== "number" ||
-      !Number.isSafeInteger(candidate.old_stock) ||
-      typeof candidate.new_stock !== "number" ||
-      !Number.isSafeInteger(candidate.new_stock) ||
-      typeof candidate.adjustment !== "number" ||
-      !Number.isSafeInteger(candidate.adjustment)
+    if (typeof candidate.product_code !== "string") return null;
+    const base = {
+      productCode: candidate.product_code,
+      stockUnit:
+        typeof candidate.stock_unit === "string" &&
+        Object.keys(STOCK_UNIT_LABELS).includes(candidate.stock_unit)
+          ? (candidate.stock_unit as ProductStockUnit)
+          : undefined,
+    };
+    const before = parseStockCopy(candidate.before);
+    const after = parseStockCopy(candidate.after);
+    if (before && after) {
+      adjustments.push({ ...base, kind: "copy", before, after });
+    } else if (
+      isSafeInt(candidate.old_stock) &&
+      isSafeInt(candidate.new_stock) &&
+      isSafeInt(candidate.adjustment)
     ) {
+      adjustments.push({
+        ...base,
+        kind: "legacy",
+        oldStock: candidate.old_stock,
+        newStock: candidate.new_stock,
+        adjustment: candidate.adjustment,
+      });
+    } else {
       return null;
     }
-    adjustments.push({
-      productCode: candidate.product_code,
-      oldStock: candidate.old_stock,
-      newStock: candidate.new_stock,
-      adjustment: candidate.adjustment,
-    });
   }
   return adjustments;
 }
@@ -178,14 +233,37 @@ function Detail({ log, returnTo }: { log: OperationLog; returnTo: string }) {
                 className="grid gap-1 py-2 sm:grid-cols-[minmax(8rem,1fr)_auto_auto] sm:items-center sm:gap-4"
               >
                 <span className="font-mono font-medium break-all">{adjustment.productCode}</span>
-                <span className="tabular-nums">
-                  旧在庫 {adjustment.oldStock.toLocaleString("ja-JP")} → 新在庫{" "}
-                  {adjustment.newStock.toLocaleString("ja-JP")}
-                </span>
-                <span className="tabular-nums">
-                  差分 {adjustment.adjustment > 0 ? "+" : ""}
-                  {adjustment.adjustment.toLocaleString("ja-JP")}
-                </span>
+                {adjustment.kind === "copy" ? (
+                  <span className="tabular-nums sm:col-span-2">
+                    {formatStockCopy(adjustment.before, adjustment.stockUnit)} →{" "}
+                    {formatStockCopy(adjustment.after, adjustment.stockUnit)}
+                  </span>
+                ) : (
+                  <>
+                    <span className="tabular-nums">
+                      旧在庫{" "}
+                      {formatLengthOrPlain(
+                        adjustment.oldStock,
+                        adjustment.stockUnit,
+                        groupedNumber,
+                      )}{" "}
+                      → 新在庫{" "}
+                      {formatLengthOrPlain(
+                        adjustment.newStock,
+                        adjustment.stockUnit,
+                        groupedNumber,
+                      )}
+                    </span>
+                    <span className="tabular-nums">
+                      差分 {adjustment.adjustment > 0 ? "+" : ""}
+                      {formatLengthOrPlain(
+                        adjustment.adjustment,
+                        adjustment.stockUnit,
+                        groupedNumber,
+                      )}
+                    </span>
+                  </>
+                )}
               </li>
             ))}
           </ul>

@@ -1,8 +1,8 @@
 ## 12. IO-04: PLUフォーマッター
 
-> **CV17 1.1.1 adapter profile（2026-07-03 field gate反映）**: 2026-04-08 オンライン調査の CV17 Ver.2.0.1 前提（10列TSV / 1始まり / product_code fallback）は、現場 CV17 1.1.1 の `スキャニングPLU(商品)` 取込みで受理されなかった。2026-07-02 field gate では、CV17 1.1.1 export template 由来の11列ヘッダ、`.txt` 拡張子、JAN/EAN互換のスキャニングコードが必要であることを確認した。2026-07-03 field gate では、この形状の `.txt` を `CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の流れで反映できることを確認した。PLU総枠5000は通常PLUとスキャニングPLUで共有され、スキャニングPLU開始番号は通常PLUの件数 + 1 で決まる。2026-07-03 に SR-S4000 本体取扱説明書で仕様確認済み: 総枠 5,000 = 通常PLU 216 + スキャニングPLU 4,784 の工場出荷時配分であり、開始 217 は出荷時固定の境界（配分変更の設定は取説に見当たらない）。設定UIには広げず、コード側 profile として memory No. `217..=5000` を保持する。以下は SR-S4000 / CV17 1.1.1 用の現行 adapter profile とする。
+> **CV17 1.1.1 adapter profile（2026-07-03 field gate反映）**: 2026-04-08 オンライン調査の CV17 Ver.2.0.1 前提（10列TSV / 1始まり / product_code fallback）は、現場 CV17 1.1.1 の `スキャニングPLU(商品)` 取込みで受理されなかった。2026-07-02 field gate では、CV17 1.1.1 export template 由来の11列ヘッダ、`.txt` 拡張子、JAN/EAN互換のスキャニングコードが必要であることを確認した。2026-07-03 field gate では、この形状の `.txt` を `CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の流れで反映できることを確認した。PLU総枠5000は通常PLUとスキャニングPLUで共有する。SR-S4000 本体取扱説明書（2026-07-03 確認）の工場出荷時配分は通常PLU 216 + スキャニングPLU 4,784 で、スキャニングPLU は通常PLU の最大登録数 216 の次の 217 から始まる（店の通常PLU で登録があるのは試しの 2 枠だけで、開始は登録の件数では決まらない）。開始メモリNo. は CV17 の設定で変えられる（CV17 の取説）が、店は 217 のまま変えていない（owner 回答、D-117 (7)）。設定UIには広げず、コード側 profile として memory No. `217..=5000` を保持する。店が開始を変えたときは profile を見直す。以下は SR-S4000 / CV17 1.1.1 用の現行 adapter profile とする。
 >
-> **D-072（2026-08-18）**: memory No. は `plu_slots` に JAN 単位で永続割当し、入力行が保持する。Diff / Full とも CV17 へ投入でき、外部登録と free slot は出力しない（IO-04-D2〜D4 / SPEC-PLS-D3〜D5）。
+> **D-072（2026-08-18）/ D-117（2026-10-16）**: memory No. は `plu_slots` に JAN 単位で永続割当し、入力行が保持する。Diff / Full とも CV17 へ投入でき、外部登録と free slot は出力しない（IO-04-D2、D4 / SPEC-PLS-D3、D5）。clear 行（枠を消す行）は書かない（D-117 (1)。IO-04-D3 の撤去。runtime の lane が code と test を外す）。
 
 ### 12.1 モジュール構成
 
@@ -17,7 +17,6 @@ src-tauri/src/
 
 **PluExportRow構造体**（BIZ-04から渡される行データ。33-biz-plu-export-service.md で定義）:
 - memory_no: i64（`plu_slots` 由来）
-- row_kind: PluExportRowKind（`Product` / `Clear`）
 - product_code: String
 - jan_code: Option\<String\>
 - name: String
@@ -73,11 +72,7 @@ fn generate_plu_tsv(rows: &[PluExportRow]) -> Result<PluFileOutput, PluFormatErr
    f. **固定列**: 単品売り=`いいえ`、負単価=`いいえ`、品番PLU=`いいえ`、ゼロ単価=`いいえ`、入力桁制限=`無し`（IO-04-D5: `単品売り=はい` は SR-S4000 で scan-call 即時の自動会計 + レシート発行を意味し、2026-08-19 Windows native L3 で実機確認した。operator の通常会計待ちにするため `いいえ` を固定値とする。PR #85 gated amendment 4）
    g. **部門リンク** = department_name
 
-   `row_kind=Clear` は **11 field** を次の exact shape で出力する（IO-04-D3 / SPEC-PLS-D4）。
-   ```
-   {memory_no 6桁}\t00000000000000\t\t\0\t税1(内税)\tいいえ\tいいえ\tいいえ\tいいえ\t無し\tノンリンク
-   ```
-   `external` / `free` slot は入力行として受け付けず、IO-04 からも出力しない（IO-04-D4 / SPEC-PLS-D5）。
+   clear 行は出力しない（IO-04-D3 は D-117 で撤去）。`external` / `free` slot は入力行として受け付けず、IO-04 からも出力しない（IO-04-D4 / SPEC-PLS-D5）。
 
 3. **タブ区切りPLUファイル組み立て**:
    - 各フィールドをタブ（`\t`）で結合
@@ -112,7 +107,7 @@ fn generate_plu_tsv(rows: &[PluExportRow]) -> Result<PluFileOutput, PluFormatErr
 **出力例**（CP932バイト列をUTF-8表記した場合）:
 ```
 メモリNo.\tｽｷｬﾆﾝｸﾞｺｰﾄﾞ\t名称\t単価\t課税方式\t単品売り\t負単価\t品番PLU\tゼロ単価\t入力桁制限\t部門リンク\r\n
-000217\t4976383262108\tﾊﾏﾅｶ ｱﾐｱﾐ極太 c\t648\t税1(内税)\tはい\tいいえ\tいいえ\tいいえ\t無し\t毛糸\r\n
+000217\t4976383262108\tﾊﾏﾅｶ ｱﾐｱﾐ極太 c\t648\t税1(内税)\tいいえ\tいいえ\tいいえ\tいいえ\t無し\t毛糸\r\n
 ```
 
 **エラーハンドリング**:
@@ -181,12 +176,12 @@ fn generate_plu_tsv(rows: &[PluExportRow]) -> Result<PluFileOutput, PluFormatErr
 - 空リスト → ヘッダのみPLUファイル
 - selling_price = 0 → "0"
 - selling_price = 999999 → "999999"（6桁上限）
-- PLU総枠5000を通常PLUとスキャニングPLUで共有し、通常PLU216枠使用時は memory No. = 217始まりで出力されること
+- PLU総枠5000を通常PLUとスキャニングPLUで共有し、工場出荷時配分（通常PLU 216）の profile で memory No. = 217始まりで出力されること
 - suggested_filename = `.txt`
 - jan_code = None / 13桁以外 / チェックディジット不正 → InvalidScanningCode
 
 **手動互換性 gate（UI-08 implementation PR）**:
-- CV17 1.1.1 へ生成 `.txt` を投入し、11列ヘッダ、CP932、CRLF、税区分、部門リンク、16byte商品名、通常PLU使用数から導いたスキャニングPLU memory range、13桁JANコードの受理可否を確認する
+- CV17 1.1.1 へ生成 `.txt` を投入し、11列ヘッダ、CP932、CRLF、税区分、部門リンク、16byte商品名、工場出荷時配分のスキャニングPLU memory range（217〜5000）、13桁JANコードの受理可否を確認する
 - 確認証跡は実JAN・実商品名・価格を含めず、受理可否、列名差異、件数、エラー文言だけを記録する
 - CV17 import成功だけではSR-S4000反映成功を意味しない。SD-card書出し / SR-S4000設定読込 / register scan-call の確認はUI-08 PRのmanual gateとして残す
 

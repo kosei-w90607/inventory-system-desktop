@@ -1,5 +1,11 @@
 import type { DisposalCreateRequest } from "@/lib/bindings";
-import { createPrefixedIdempotencyKey, parseRequiredSafeInteger } from "@/lib/request-helpers";
+import { createPrefixedIdempotencyKey } from "@/lib/request-helpers";
+import {
+  ITEM_QUANTITY_FIELD,
+  parseCostInput,
+  parseQuantityInput,
+  priceBasisQuantity,
+} from "@/lib/unit-quantity";
 import type { DisposalFormErrors, DisposalFormValues, DisposalRow, DisposalType } from "../types";
 
 export { getLocalDateString } from "@/lib/request-helpers";
@@ -21,7 +27,7 @@ function normalizeRows(rows: DisposalRow[]) {
     product_code: row.productCode,
     disposal_type: row.disposalType,
     quantity: row.quantity.trim(),
-    cost_price: row.costPrice.trim(),
+    cost_price_centi: row.costPrice.trim(),
     reason: row.reason.trim(),
   }));
 }
@@ -33,12 +39,24 @@ export function buildDisposalSignature(values: DisposalFormValues): string {
   });
 }
 
-export function calculateLossTotal(rows: DisposalRow[]): number {
-  return rows.reduce((total, row) => {
-    const quantity = parseRequiredSafeInteger(row.quantity, 1) ?? 0;
-    const costPrice = parseRequiredSafeInteger(row.costPrice, 0) ?? 0;
-    return total + quantity * costPrice;
-  }, 0);
+/**
+ * ロス原価合計（円）の twin（Rust の `cost_line_centi`・`cost_total_yen` と同じ golden。SPEC-UNIT-D6・D9）。
+ * 行を 1/100 円で四捨五入してから足し、合計を円未満で四捨五入する。`BigInt` で求め、
+ * 安全な整数の範囲を外れたら null（画面は `—`）。入力の error の行（原価の形式の誤り・上限越えを含む）は
+ * 0 として数える。原価は 1/100 円のまま `BigInt` で掛ける（共通規則 (c)）。
+ */
+export function calculateLossTotal(rows: DisposalRow[]): number | null {
+  let totalCenti = 0n;
+  for (const row of rows) {
+    const quantity = parseQuantityInput(row.quantity, row.stockUnit, ITEM_QUANTITY_FIELD).value;
+    const costPrice = parseCostInput(row.costPrice);
+    if (quantity === null || typeof costPrice !== "number") continue;
+    const basis = BigInt(priceBasisQuantity(row.stockUnit));
+    const exact = BigInt(costPrice) * BigInt(quantity);
+    totalCenti += exact / basis + (2n * (exact % basis) >= basis ? 1n : 0n);
+  }
+  const yen = totalCenti / 100n + (totalCenti % 100n >= 50n ? 1n : 0n);
+  return yen <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(yen) : null;
 }
 
 export function buildDisposalRequest(
@@ -57,23 +75,25 @@ export function buildDisposalRequest(
   }
 
   const items = values.rows.map((row) => {
-    const quantity = parseRequiredSafeInteger(row.quantity, 1);
-    const costPrice = parseRequiredSafeInteger(row.costPrice, 0);
+    const quantity = parseQuantityInput(row.quantity, row.stockUnit, ITEM_QUANTITY_FIELD);
+    // 原価は小数 2 桁までの円 → 1/100 円（SPEC-UNIT-D5）
+    const costPrice = parseCostInput(row.costPrice);
     const reason = row.reason.trim();
     const messages = [];
     if (!DISPOSAL_TYPES.includes(row.disposalType)) {
       messages.push("種別を選択してください");
     }
-    if (quantity === null) messages.push("数量は1以上の整数で入力してください");
-    if (costPrice === null) messages.push("原価は0以上の整数で入力してください");
+    if (quantity.error !== null) messages.push(quantity.error);
+    if (costPrice === null) messages.push("原価は0以上で、小数は2桁までで入力してください");
+    else if (costPrice === "too_large") messages.push("原価が大きすぎます");
     if (reason === "") messages.push("理由は必須です");
     if (messages.length > 0) rowErrors[row.rowId] = messages.join(" / ");
 
     return {
       product_code: row.productCode,
       disposal_type: row.disposalType,
-      quantity: quantity ?? 0,
-      cost_price: costPrice ?? 0,
+      quantity: quantity.value ?? 0,
+      cost_price_centi: typeof costPrice === "number" ? costPrice : 0,
       reason,
     };
   });

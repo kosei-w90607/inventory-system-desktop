@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { SELECTION_TONE_ACTIVE } from "./selection-tone";
 
-// 群 wrapper（DSR-22 `:443`、操作枠 3:1、Gated Amendment 2 S9 / owner L3 FAIL-1）:
+// 群 wrapper（DSR-22、操作枠 3:1、Gated Amendment 2 S9 / owner L3 FAIL-1）:
 // 旧 stone 系直書きの構造線（対 --background 1.43:1）を撤去し border-border-strong
 // （対 --background 3.53:1）の 1 枠へ。Primary 色は使わない。
 export const segmentedControlListClass =

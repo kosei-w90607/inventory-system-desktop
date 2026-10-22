@@ -30,7 +30,8 @@ describe("ProductTable (REQ-501 商品コード readability)", () => {
         subtotal: {
           department_id: 1,
           department_name: "布",
-          quantity: 1,
+          count_points: 1,
+          length_cm: 0,
           amount: 100,
         },
       },
@@ -62,7 +63,8 @@ describe("ProductTable (REQ-501 商品コード readability)", () => {
         subtotal: {
           department_id: 1,
           department_name: "布",
-          quantity: 1,
+          count_points: 1,
+          length_cm: 0,
           amount: 100,
         },
       },
@@ -131,7 +133,13 @@ it("SC26 / REQ-501: manual is a neutral classification rather than a warning", (
           departmentId: 1,
           departmentName: "布",
           items: [item],
-          subtotal: { department_id: 1, department_name: "布", quantity: 1, amount: 100 },
+          subtotal: {
+            department_id: 1,
+            department_name: "布",
+            count_points: 1,
+            length_cm: 0,
+            amount: 100,
+          },
         },
       ]}
       sortBy={null}
@@ -146,4 +154,82 @@ it("SC26 / REQ-501: manual is a neutral classification rather than a warning", (
   expect(badge).not.toHaveAttribute("data-tone");
   expect(badge).not.toHaveClass("bg-warning-soft");
   expect(badge).not.toHaveClass("text-warning-strong");
+});
+
+// REQ-501 / SPEC-UNIT-D3 の表の 2・3: 明細は数量を単位つき・単価は 1 m あたり、小計と合計は点と長さの 2 本
+describe("ProductTable の数量と単価（REQ-501 / SPEC-UNIT-D3）", () => {
+  const cells = (name: RegExp) =>
+    Array.from(screen.getByRole("row", { name }).querySelectorAll("td")).map(
+      (cell) => cell.textContent,
+    );
+
+  it("REQ-501: m の商品は 1.3 m・¥700/m、個数の商品は 3 個・¥700、小計と合計は 5 点・1.8 m", () => {
+    const items = [
+      makeMockItem({ product_code: "M-1", stock_unit: "m", quantity: 130, amount: 910 }),
+      makeMockItem({ product_code: "CM-1", stock_unit: "m", quantity: 50, amount: 350 }),
+      makeMockItem({ product_code: "PCS-1", stock_unit: "pcs", quantity: 3, amount: 2100 }),
+      makeMockItem({ product_code: "SHEET-1", stock_unit: "sheet", quantity: 2, amount: 400 }),
+      makeMockItem({ product_code: "RET-1", stock_unit: "m", quantity: -130, amount: -910 }),
+      makeMockItem({ product_code: "ZERO-1", stock_unit: "m", quantity: 0, amount: 0 }),
+    ];
+    render(
+      <ProductTable
+        grouped={[
+          {
+            departmentId: 1,
+            departmentName: "布",
+            items,
+            subtotal: {
+              department_id: 1,
+              department_name: "布",
+              count_points: 5,
+              length_cm: 180,
+              amount: 2850,
+            },
+          },
+        ]}
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+        grandTotal={{ count_points: 1234, length_cm: 180, amount: 2850 }}
+      />,
+    );
+
+    expect(cells(/^M-1/).slice(3)).toEqual(["1.3 m", "¥700/m", "¥910"]);
+    expect(cells(/^CM-1/).slice(3)).toEqual(["0.5 m", "¥700/m", "¥350"]);
+    expect(cells(/^PCS-1/).slice(3)).toEqual(["3 個", "¥700", "¥2,100"]);
+    expect(cells(/^SHEET-1/).slice(3)).toEqual(["2 枚", "¥200", "¥400"]);
+    expect(cells(/^RET-1/).slice(3)).toEqual(["-1.3 m", "¥700/m", "¥-910"]);
+    expect(cells(/^ZERO-1/).slice(3)).toEqual(["0 m", "—", "¥0"]);
+    expect(cells(/^布/)).toEqual(["布", "5 点・1.8 m", "", "¥2,850"]);
+    expect(cells(/^合計/)).toEqual(["合計", "1,234 点・1.8 m", "", "¥2,850"]);
+  });
+
+  it("REQ-501: 個数の商品だけの部門は N 点、和が安全な整数を外れた小計は —", () => {
+    const section = (departmentId: number, count_points: number | null, length_cm: number) => ({
+      departmentId,
+      departmentName: `部門${String(departmentId)}`,
+      items: [makeMockItem({ product_code: `P-${String(departmentId)}` })],
+      subtotal: {
+        department_id: departmentId,
+        department_name: `部門${String(departmentId)}`,
+        count_points,
+        length_cm,
+        amount: 100,
+      },
+    });
+    render(
+      <ProductTable
+        grouped={[section(1, 5, 0), section(2, 0, 130), section(3, null, 0)]}
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+        grandTotal={{ count_points: 0, length_cm: 0, amount: 0 }}
+      />,
+    );
+    expect(cells(/^部門1/)[1]).toBe("5 点");
+    expect(cells(/^部門2/)[1]).toBe("1.3 m");
+    expect(cells(/^部門3/)[1]).toBe("—");
+    expect(cells(/^合計/)[1]).toBe("0 点");
+  });
 });

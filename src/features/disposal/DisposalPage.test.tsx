@@ -97,7 +97,7 @@ async function addSingleProduct(user: ReturnType<typeof userEvent.setup>) {
         makeMockProductWithRelations({
           product_code: "DP-001",
           name: "廃棄確認 商品",
-          cost_price: 120,
+          cost_price_centi: 12000,
           stock_quantity: 4,
         }),
       ],
@@ -121,6 +121,46 @@ beforeEach(() => {
 });
 
 describe("DisposalPage (UI-05 / REQ-204)", () => {
+  it("Matrix C17 / UI-05-D8: 候補の一覧の原価は ¥83.33、行の原価の初期値は 83.33 で 8333 を送る", async () => {
+    const user = userEvent.setup();
+    mockCreateDisposal.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 42, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({
+            product_code: "C17-A",
+            name: "原価の小数",
+            cost_price_centi: 8333,
+          }),
+          makeMockProductWithRelations({ product_code: "C17-B", name: "原価の小数 B" }),
+        ],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    renderWithClient(<DisposalPage />);
+    await user.type(await screen.findByLabelText("廃棄・破損商品検索"), "原価{enter}");
+    const candidate = (await screen.findByText("C17-A")).closest("tr");
+    if (candidate === null) throw new Error("expected table structure");
+    expect(within(candidate).getByText("¥83.33")).toBeInTheDocument();
+    await user.click(within(candidate).getByRole("button", { name: "廃棄・破損に追加" }));
+    const cost = await screen.findByLabelText("C17-A の原価");
+    expect(cost).toHaveValue(83.33);
+    expect(cost).toHaveAttribute("inputmode", "decimal");
+    expect(cost).toHaveAttribute("step", "0.01");
+    await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
+    await waitFor(() => {
+      expect(mockCreateDisposal).toHaveBeenCalledTimes(1);
+    });
+    const [request] = mockCreateDisposal.mock.calls[0] as [DisposalCreateRequest];
+    expect(request.items[0]?.cost_price_centi).toBe(8333);
+  });
+
   it("REQ-204 adds a single matching product and restores focus with damage defaults", async () => {
     const user = userEvent.setup();
     renderWithClient(<DisposalPage />);
@@ -251,7 +291,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
 
     expect(
       await screen.findByText(
-        "DP-001: 数量は1以上の整数で入力してください / 原価は0以上の整数で入力してください / 理由は必須です",
+        "DP-001: 数量は1以上の整数で入力してください / 原価は0以上で、小数は2桁までで入力してください / 理由は必須です",
       ),
     ).toBeInTheDocument();
     expect(mockScrollTo).not.toHaveBeenCalled();
@@ -284,7 +324,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
         product_code: "DP-001",
         disposal_type: "damage",
         quantity: 2,
-        cost_price: 120,
+        cost_price_centi: 12000,
         reason: "棚卸差異",
       },
     ]);
@@ -717,7 +757,7 @@ it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
 
 it.each([
   ["pcs", "1,234 個", "個"],
-  ["cm", "1,234 cm", "cm"],
+  ["m", "12.34 m", "m"],
 ] as const)(
   "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
@@ -775,4 +815,39 @@ it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義�
   );
   expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
   expect(dateTimeSource).not.toContain("formatCheckedAt");
+});
+
+// REQ-204 / UI-05-D8 / SPEC-UNIT-D3: 数量欄の属性は m の商品の行だけ小数 2 桁の入力にする
+it.each([
+  ["m", { inputmode: "decimal", min: "0.01", step: "0.01" }],
+  ["pcs", { inputmode: "numeric", min: "1", step: null }],
+] as const)("UI-05-D8: %s の商品の数量欄の属性", async (unit, expected) => {
+  const user = userEvent.setup();
+  mockSearchProducts.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        makeMockProductWithRelations({
+          product_code: "ATTR-001",
+          name: "属性確認A",
+          stock_unit: unit,
+        }),
+        makeMockProductWithRelations({ product_code: "ATTR-002", name: "属性確認B" }),
+      ],
+      total_count: 2,
+      page: 1,
+      per_page: 10,
+    },
+  });
+  renderWithClient(<DisposalPage />);
+  await user.type(await screen.findByLabelText("廃棄・破損商品検索"), "属性{enter}");
+  const candidate = (await screen.findByText("ATTR-001")).closest("tr");
+  if (candidate === null) throw new Error("expected table structure");
+  await user.click(within(candidate).getByRole("button", { name: "廃棄・破損に追加" }));
+  const input = await screen.findByLabelText("ATTR-001 の数量");
+  expect(input).toHaveValue(1);
+  expect(input).toHaveAttribute("type", "number");
+  expect(input.getAttribute("inputmode")).toBe(expected.inputmode);
+  expect(input.getAttribute("min")).toBe(expected.min);
+  expect(input.getAttribute("step")).toBe(expected.step);
 });

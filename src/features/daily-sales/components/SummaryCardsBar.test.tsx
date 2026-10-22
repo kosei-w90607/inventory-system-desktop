@@ -15,7 +15,7 @@ const mockToday: DailySalesReport = {
   date: "2026-06-11",
   items: [],
   department_subtotals: [],
-  grand_total: { quantity: 42, amount: 98000 },
+  grand_total: { count_points: 42, length_cm: 0, amount: 98000 },
   official_daily_report: null,
 };
 
@@ -23,7 +23,7 @@ const mockYesterday: DailySalesReport = {
   date: "2026-06-10",
   items: [],
   department_subtotals: [],
-  grand_total: { quantity: 30, amount: 80000 },
+  grand_total: { count_points: 30, length_cm: 0, amount: 80000 },
   official_daily_report: null,
 };
 
@@ -165,8 +165,11 @@ it.each([
   (current, label, color) => {
     render(
       <SummaryCardsBar
-        today={{ ...mockToday, grand_total: { quantity: 42, amount: current } }}
-        yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount: 100 } }}
+        today={{ ...mockToday, grand_total: { count_points: 42, length_cm: 0, amount: current } }}
+        yesterday={{
+          ...mockYesterday,
+          grand_total: { count_points: 30, length_cm: 0, amount: 100 },
+        }}
         summary={mockSummary}
         isLoading={false}
         yesterdayError={false}
@@ -185,8 +188,11 @@ it.each([
 ] as const)("⑰ SC1 / UIDISP-D1: amount %s has a single percentage sign", (amount, sub, value) => {
   render(
     <SummaryCardsBar
-      today={{ ...mockToday, grand_total: { quantity: 42, amount } }}
-      yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount: 100000 } }}
+      today={{ ...mockToday, grand_total: { count_points: 42, length_cm: 0, amount } }}
+      yesterday={{
+        ...mockYesterday,
+        grand_total: { count_points: 30, length_cm: 0, amount: 100000 },
+      }}
       summary={mockSummary}
       isLoading={false}
       yesterdayError={false}
@@ -203,7 +209,7 @@ it.each([
   render(
     <SummaryCardsBar
       today={mockToday}
-      yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount } }}
+      yesterday={{ ...mockYesterday, grand_total: { count_points: 30, length_cm: 0, amount } }}
       summary={mockSummary}
       isLoading={false}
       yesterdayError={false}
@@ -211,4 +217,24 @@ it.each([
   );
   expect(screen.getByText(sub, { exact: true })).toBeInTheDocument();
   expect(screen.getByText("比較不可")).toBeInTheDocument();
+});
+
+// REQ-501 / SPEC-UNIT-D3 の集計の規則（X9）: 販売点数は点と長さの 2 本、N は 3 桁区切り
+it.each([
+  [1234, 0, "1,234 点"],
+  [5, 130, "5 点・1.3 m"],
+  [0, 130, "1.3 m"],
+  [0, 0, "0 点"],
+  [-5, 0, "-5 点"],
+])("REQ-501: 販売点数のカード (%s 点, %s cm) は %s", (count_points, length_cm, expected) => {
+  render(
+    <SummaryCardsBar
+      today={{ ...mockToday, grand_total: { count_points, length_cm, amount: 98000 } }}
+      yesterday={mockYesterday}
+      summary={mockSummary}
+      isLoading={false}
+      yesterdayError={false}
+    />,
+  );
+  expect(screen.getByText(expected)).toBeInTheDocument();
 });

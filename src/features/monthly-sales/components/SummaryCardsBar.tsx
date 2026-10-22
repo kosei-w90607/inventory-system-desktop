@@ -4,6 +4,7 @@
 // 前月比カードは `hasPrevComparison === false` で「比較不可」灰表示（Q-5 失敗 4 状態 #3）。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.7
 
+import { formatQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,10 @@ export function SummaryCardsBar({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <SimpleCard title="月間売上合計" value={`¥${summary.totalAmount.toLocaleString("ja-JP")}`} />
-      <SimpleCard title="月間販売点数" value={`${String(summary.totalQuantity)} 点`} />
+      <SimpleCard
+        title="月間販売点数"
+        value={formatQuantityTotal(summary.totalCountPoints, summary.totalLengthCm)}
+      />
       <SimpleCard title="期間" value={periodLabel} />
       <SimpleCard
         title="前月比"
@@ -90,7 +94,7 @@ interface CompareLabel {
 
 /// 月間総額同士で前月比を計算する。
 /// `prevComparison === null` は specta `Option<Vec<T>>` 境界の defensive guard（通常 BIZ-05 は
-/// 前月データなしも `Some(空Vec)` を返す常時セット = `sales_service.rs:196-197`）、「比較不可」灰。
+/// 前月データなしも `Some(空Vec)` を返す常時セット = `src-tauri/src/biz/sales_service.rs` の `get_monthly_sales`）、「比較不可」灰。
 /// `prevComparison === []` の通常 path は下の for ループで prevTotal=0 になり、Q-7 ガード
 /// (`prev <= 0`) で「比較不可」灰に同じく落ちる。
 /// Q-7 ガード: 前月合計 <= 0 → 「比較不可」（除算 + 色分け逆転回避）。

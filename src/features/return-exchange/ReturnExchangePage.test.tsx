@@ -775,7 +775,7 @@ describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {
       expect(field).not.toHaveClass("bg-background");
     }
 
-    // registerOptionClass のラジオ選択肢ラベル（:147）は対象外、bg-background のまま不変。
+    // registerOptionClass のラジオ選択肢ラベルは対象外、bg-background のまま不変。
     const registerLabel = screen.getByLabelText("レジ未処理").closest("label");
     expect(registerLabel).not.toBeNull();
     expect(registerLabel).toHaveClass("bg-background");
@@ -808,7 +808,7 @@ it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
 
 it.each([
   ["pcs", "1,234 個", "個"],
-  ["cm", "1,234 cm", "cm"],
+  ["m", "12.34 m", "m"],
 ] as const)(
   "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
@@ -861,4 +861,39 @@ it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義�
   );
   expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
   expect(dateTimeSource).not.toContain("formatCheckedAt");
+});
+
+// REQ-202 / UI-03-D12 / SPEC-UNIT-D3: 数量欄の属性は m の商品の行だけ小数 2 桁の入力にする
+it.each([
+  ["m", { inputmode: "decimal", min: "0.01", step: "0.01" }],
+  ["pcs", { inputmode: "numeric", min: "1", step: null }],
+] as const)("UI-03-D12: %s の商品の数量欄の属性", async (unit, expected) => {
+  const user = userEvent.setup();
+  mockSearchProducts.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        makeMockProductWithRelations({
+          product_code: "ATTR-001",
+          name: "属性確認A",
+          stock_unit: unit,
+        }),
+        makeMockProductWithRelations({ product_code: "ATTR-002", name: "属性確認B" }),
+      ],
+      total_count: 2,
+      page: 1,
+      per_page: 10,
+    },
+  });
+  renderWithClient(<ReturnExchangePage />);
+  await user.type(await screen.findByLabelText("返品・交換商品検索"), "属性{enter}");
+  const candidate = (await screen.findByText("ATTR-001")).closest("tr");
+  if (candidate === null) throw new Error("expected table structure");
+  await user.click(within(candidate).getByRole("button", { name: "戻りに追加" }));
+  const input = await screen.findByLabelText("ATTR-001 の数量");
+  expect(input).toHaveValue(1);
+  expect(input).toHaveAttribute("type", "number");
+  expect(input.getAttribute("inputmode")).toBe(expected.inputmode);
+  expect(input.getAttribute("min")).toBe(expected.min);
+  expect(input.getAttribute("step")).toBe(expected.step);
 });

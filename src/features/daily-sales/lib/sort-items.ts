@@ -4,6 +4,7 @@
 // 設計: docs/function-design/56-ui-daily-sales.md §56.6
 
 import type { DailySaleItem } from "@/lib/bindings";
+import { compareQuantityPair, isLengthUnit } from "@/lib/unit-quantity";
 import type { SortColumn, SortDirection } from "../types";
 import { calculateEffectiveUnitPrice } from "./calculate-unit-price";
 
@@ -22,6 +23,10 @@ export function sortDailyItems(
   const indexed = items.map((item, idx) => ({ item, idx }));
 
   indexed.sort((a, b) => {
+    if (by === "quantity") {
+      const diff = compareQuantityPair(quantityPair(a.item), quantityPair(b.item));
+      return diff !== 0 ? diff * factor : a.idx - b.idx;
+    }
     const av = extractValue(a.item, by);
     const bv = extractValue(b.item, by);
 
@@ -43,14 +48,22 @@ export function sortDailyItems(
   return indexed.map((x) => x.item);
 }
 
-function extractValue(item: DailySaleItem, by: SortColumn): string | number | null {
+// 数量は行の単位で `(count_points, length_cm)` の組に当てて比べる（長さの商品が個数の商品の前）
+function quantityPair(item: DailySaleItem): { count_points: number; length_cm: number } {
+  return isLengthUnit(item.stock_unit)
+    ? { count_points: 0, length_cm: item.quantity }
+    : { count_points: item.quantity, length_cm: 0 };
+}
+
+function extractValue(
+  item: DailySaleItem,
+  by: Exclude<SortColumn, "quantity">,
+): string | number | null {
   switch (by) {
     case "product_code":
       return item.product_code;
     case "name":
       return item.name;
-    case "quantity":
-      return item.quantity;
     case "amount":
       return item.amount;
     case "unit_price":

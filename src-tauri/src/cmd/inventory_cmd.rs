@@ -138,7 +138,7 @@ mod tests {
             department_id: 1,
             supplier_id: None,
             selling_price: 500,
-            cost_price: 300,
+            cost_price_centi: 300,
             tax_rate: "10".to_string(),
             maker_code: None,
             stock_quantity: stock,
@@ -155,8 +155,8 @@ mod tests {
     fn insert_movement(conn: &db::DbConnection, code: &str, mt: &str, qty: i64, is_voided: bool) {
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, is_voided, created_at) \
-             VALUES (?1, ?2, ?3, 0, ?4, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, is_voided, created_at, business_date, phase) \
+             VALUES (?1, ?2, ?3, 0, ?4, '2026-03-15T10:00:00', '2026-04-01', 0)",
             rusqlite::params![code, mt, qty, is_voided as i32],
         )
         .unwrap();
@@ -177,7 +177,7 @@ mod tests {
         .unwrap();
         let rec_id = conn.last_insert_rowid();
         conn.execute(
-            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price) \
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price_centi) \
              VALUES (?1, 'SD-001', 5, 300)",
             rusqlite::params![rec_id],
         )
@@ -204,7 +204,7 @@ mod tests {
         // pcs商品: stock=2（閾値3以下 → ヒット）
         seed_product_with_stock(&conn, "LS-PCS", 2, "pcs");
         // cm商品: stock=300（閾値500以下 → ヒット）
-        seed_product_with_stock(&conn, "LS-CM", 300, "cm");
+        seed_product_with_stock(&conn, "LS-CM", 300, "m");
         // pcs商品: stock=10（閾値3超 → ヒットしない）
         seed_product_with_stock(&conn, "LS-OK", 10, "pcs");
 
@@ -217,6 +217,50 @@ mod tests {
         assert!(codes.contains(&"LS-PCS"));
         assert!(codes.contains(&"LS-CM"));
         assert!(!codes.contains(&"LS-OK"));
+    }
+
+    /// list_low_stock: 数量の種類の分岐（個数の単位は一般の基準、長さの単位は生地の基準）
+    #[test]
+    fn test_list_low_stock_req302_branches_by_unit_kind() {
+        // REQ-302 / SPEC-UNIT-D10: 新しい単位が在庫少から漏れない
+        let conn = setup_db();
+        seed_product_with_stock(&conn, "LK-BALL", 2, "ball"); // 一般の基準 3 以下 → 出る
+        seed_product_with_stock(&conn, "LK-M-LOW", 400, "m"); // 生地の基準 500 以下 → 出る
+        seed_product_with_stock(&conn, "LK-M-OK", 600, "m"); // 生地の基準を超える → 出ない
+        seed_product_with_stock(&conn, "LK-PCS-OK", 4, "pcs"); // 一般の基準を超える → 出ない
+        seed_product_with_stock(&conn, "LK-BALL-OK", 400, "ball"); // 長さの基準で比べない → 出ない
+
+        let result = crate::biz::product_service::list_low_stock(&conn, false).unwrap();
+        let mut codes: Vec<&str> = result
+            .iter()
+            .map(|p| p.product.product_code.as_str())
+            .collect();
+        codes.sort_unstable();
+        assert_eq!(codes, vec!["LK-BALL", "LK-M-LOW"]);
+    }
+
+    /// list_low_stock: 10 個の単位を 1 つずつ在庫 0 で置くと 10 個とも出る
+    #[test]
+    fn test_list_low_stock_req302_every_unit_is_listed() {
+        // REQ-302 / SPEC-UNIT-D10
+        let conn = setup_db();
+        for unit in crate::db::product_repo::ProductStockUnit::ALL {
+            seed_product_with_stock(&conn, &format!("LA-{}", unit.as_str()), 0, unit.as_str());
+        }
+
+        let result = crate::biz::product_service::list_low_stock(&conn, false).unwrap();
+        let mut units: Vec<&str> = result
+            .iter()
+            .map(|p| p.product.stock_unit.as_str())
+            .collect();
+        units.sort_unstable();
+        let mut expected: Vec<&str> = crate::db::product_repo::ProductStockUnit::ALL
+            .iter()
+            .map(|unit| unit.as_str())
+            .collect();
+        expected.sort_unstable();
+        assert_eq!(units.len(), 10);
+        assert_eq!(units, expected);
     }
 
     /// list_low_stock: include_discontinued=false で廃番除外
@@ -333,8 +377,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-CMD", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at) \
-             VALUES ('MV-CMD', 'disposal', -2, 8, 'disposal_record', 15, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-CMD', 'disposal', -2, 8, 'disposal_record', 15, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();

@@ -111,3 +111,33 @@ describe("return exchange request builder (UI-03 / REQ-202)", () => {
     expect(afterImage).not.toBe(before);
   });
 });
+
+describe("return exchange request の単位と上限（REQ-202 / UI-03-D12 / SPEC-UNIT-D3、X1）", () => {
+  const build = (stockUnit: "m" | "pcs", quantity: string) => {
+    const base = createValues().rows[0];
+    return buildReturnExchangeRequest(
+      createValues({ rows: [{ ...base, stockUnit, quantity }] }),
+      "ret-key-u",
+      { receiptImagePath: null },
+    );
+  };
+
+  it("REQ-202: m の商品は m で受けて cm の整数で送る（0.3 → 30）", () => {
+    expect(build("m", "0.3").request?.items).toEqual([
+      { product_code: "RT-001", direction: "in", quantity: 30 },
+    ]);
+  });
+
+  it("REQ-202: 数量は上限の端まで送れ、1 つ外は入力の error", () => {
+    expect(build("pcs", "9999999").request?.items[0]?.quantity).toBe(9999999);
+    expect(build("m", "99999.99").request?.items[0]?.quantity).toBe(9999999);
+    expect(build("pcs", "10000000").errors.rows?.["RT-001:in"]).toBe("数量が大きすぎます");
+    expect(build("m", "100000").errors.rows?.["RT-001:in"]).toBe("数量が大きすぎます");
+    expect(build("m", "1.234").errors.rows?.["RT-001:in"]).toBe(
+      "数量は0.01以上で、小数は2桁までの m で入力してください",
+    );
+    expect(build("pcs", "0").errors.rows?.["RT-001:in"]).toBe(
+      "数量は1以上の整数で入力してください",
+    );
+  });
+});

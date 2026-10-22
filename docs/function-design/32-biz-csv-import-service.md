@@ -1,80 +1,46 @@
 ## 15. BIZ-03: Z004商品別CSV取込みパイプライン
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる契約を本節にまとめる。日報bundle・売上の集計日・既存のactive hash拒否は維持し、同日追加確認は下記の精算同一性guard（識別メタ不足の拒否を含む）を通過した別精算の追加に限定する。同一精算の別hashや、メタ不足で同一性未確認の同日追加を確認操作で許可しない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D4・D7・D11）の BIZ-03 の側。以下の §15.3〜§15.5 の現行の parse / commit / rollback から変わる所を本節にまとめる。日報の束・売上の集計日・既存の active hash の拒否は変えない。旧 ADR（時点証拠）の資料の受領（`pos_import_sources`）・前後の分類（Before / After / Unknown）・全数読取り・要再確認 flag の表と 5 つの理由・売上と返品の相殺の判定・EJ の証拠の interface・準備照会（`get_pos_stock_readiness` と issue）・共有 JAN の file 全体の保留・取消の補償と保留・外部 probe 表は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた `csv_import_service/time_evidence.rs` は runtime の lane が外す）。
 
-#### 受領・previewの内部型
+#### 精算の識別と並び（SPEC-STK-CNT-D4）
 
-本番前のread-only照会は `get_pos_stock_readiness(conn) -> Result<PosStockReadiness, BizError>` とする。PosStockReadinessはready: boolとissuesを持ち、issueはcode（shared_jan / legacy_basis / ej_unverified / no_count_target / import_identity_missing / settlement_missing / sync_disabled_unreconciled / recount_after_importのgenerated enum）、CountRecoveryTargetの集合、settlement_dates: Vec<String>、source_ids: Vec<i64>、利用者向け説明を持つ。readyはissuesが空の場合だけtrue。全在庫連動商品に加え非連動化の未調整記録と同一性拒否sourceを連動/廃番設定で除外せず、現在の証拠状態を照会し、明細なし・auto_filled・legacyを区別する。確認checkboxを保存するAPIではなく、file固有のcommit可否は下記の分類で決める。
+`parse_and_validate` は IO-02 の精算の識別メタ（[23](23-io-z004-parser.md) の `settlement_metadata` の machine_no・settlement_no・精算日）を受け、次の順に検査する。どれかに当たれば preview を拒否し（既存の `ImportError`、下の message）、確定の TX でも同じ検査をやり直す（preview の後に別の取込みが確定した場合を拾う）。
 
-ej_unverifiedは、EJの日次取込みと下記の相殺の判定を持たないbuild（㉘）では、DBを入力にせず常に返す（[ADR D4](../adr/2026-09-18-stocktake-time-evidence.md)の在庫連動の有効化の条件）。これを外すのは、EJの日次取込みと相殺の判定を実装するlaneのcode変更だけで、そのlaneのmerge条件は下記の外部probe表のEJ完全性・EJ復元・商品同定の3行についてowner-operated gateの証拠があること。解除の条件には、PLU書出しの時点と準備照会で、切り詰め後の名称が他の商品や部門名と重なることを知らせる検知と、登録名の付け直しの支援が入っていることも含める。店は色違いの商品が多く、名称の重なりが多いと相殺の判定で候補の商品の数え直しが増えるため、PLUの本番より前に必須とする。DBのflag、設定key、確認checkbox、EJを1回取り込んだ事実では外れない。外した後にEJが欠けた日は、相殺の確認待ちだけで扱う。BIZ-01は同じ判定を使い、ej_unverifiedの間は在庫連動の有効化を拒否し、既定値をfalseにする（[30](30-biz-product-service.md)）。このissueのtargets・日付・source_idsは空。
-
-recount_after_importは、未解消の要再確認flagを持つ商品ごとに1件返す。targetsは回復先（active_count / independent_recount / no_count_target）の当該1要素、source_idsとsettlement_datesはその商品の未解消flagの資料IDと精算日（各昇順・重複なし）とする。targetsの要素はその商品の未解消flagの理由を型で持つ（[40](40-cmd-product.md)のrecount_reasons）。利用者向け説明はBIZがflagの理由から作る。計数と前後不明の販売・相殺の行あり・旧記録の実測は「取り込んだ後に数の再確認が必要です」。相殺の確認待ち（EJ待ち、offset_check_pending）は、EJの取込み機能がない間は「この日の電子ジャーナルがないため、売上と返品の相殺を確かめられません。今の数を確認してください」、取込み機能が入った後は「電子ジャーナルを取り込むか、今の数を確認してください」、そのうち前回のZ004が未受領なだけの区間は「前回の精算の商品別CSV（電子ジャーナルがまだならそれも）を取り込むか、今の数を確認してください」とする（EJの取込み機能がない間は、前回のZ004を取り込んでも再評価はEJ待ちにしかならないので、この区別は現れず、EJ待ちは全て取込み機能がない間の文言になる）。相殺の確認待ち（登録の変化、offset_mapping_changed。どの名称にも一致しない明細の行がある区間と、前回を証明できない区間）は、EJを取り込み直しても解消しないので「レジの商品の登録が変わったため、売上と返品の相殺を確かめられません。今の数を確認してください」とする。ただし直前のZ004が未受領の間のもの（最初の区間・受領済みの最小より小さい番号の区間・settlement_noが戻った区間）は直前のsettlement_noのZ004を使う業務TXで再評価され、中止・失敗の後も再試行できるので、EJの取込み機能が入った後は「直前の精算の商品別CSV（電子ジャーナルがまだならそれも）を取り込むか、今の数を確認してください」とし、取込み機能がない間はほかの登録の変化と同じ文言にする。1商品に理由の違うflagが複数あるときは、相殺の確認待ち2種以外が一つでもあれば「取り込んだ後に数の再確認が必要です」とする。確認待ちだけのときは次の最初に当たる説明とする。(1) 直前のZ004が未受領の間のものを除く登録の変化が一つでもあれば登録の変化の説明。(2) EJの取込み機能がない間は、直前のZ004が未受領の間の登録の変化が一つでもあれば同じ登録の変化の説明、なければ取込み機能がない間のEJ待ちの説明。(3) 取込み機能が入った後は、EJが無い・不完全のEJ待ちが一つでもあれば「電子ジャーナルを取り込むか、今の数を確認してください」、なければ直前のZ004が未受領の間の登録の変化が一つでもあれば直前の精算の商品別CSVの文言、全てが前回のZ004の未受領のときだけ前回の商品別CSVの文言。取込みを止めるissueではなく、確定対象の棚卸しに明細がある商品では確定を止める（[35](35-biz-stocktake-service.md)）。
-
-import_identity_missingは全日付のactive Z004 import（completed / completed_partial）を対象に、sourceなし、またはmachine_no / settlement_noの片方でも欠落を検出して返す。在庫連動商品がなくても走査し、移行前importとhashからbackfillされたメタなしsourceも除外しない。settlement_datesは該当精算日の重複なし昇順一覧（YYYY-MM-DD）、このissueのCountRecoveryTargetは空。recount_after_import以外の商品向けissueのsettlement_datesは空とし、偽のitem IDやmessage解析で日付を運ばない。取消済みだけの日付はこのissueの対象外だが、全受領sourceの別hash衝突guardは維持する。該当日は準備未完の理由となり、同日追加は下記guardで引き続き拒否する。preflight結果をcommit許可のtokenにせず、照会時の申告や初導入の前提でTX再検査を省略しない。
-
-sync_disabled_unreconciledは、pos_sync_disabled_revisionより後の適用済み新方式実測がない商品を、非連動/廃番も含めて返す。商品単位でissueを返し、targetsはactive_count/independent_recount/no_count_targetの当該1要素、日付/source_idsは空。active_countの説明は、measured pendingのobservation_revisionが切替版より後なら「棚卸しを確定すると、在庫数に反映されます。それまでは未調整です」とする。切替前/同版/版なし・未計数/auto_filled/legacyなら「在庫連動をやめた後に、もう一度この商品を数えてください」とする。切替前に保存したpendingを確定してもissueは残り、independent_recountなら「今の数を確認してください」、no_count_targetなら「棚卸しを始めると、この商品を数えられます」と説明する。既存issueの利用者向け説明をBIZで生成し、51/73も準備照会でこの説明を取得する。action/codeやwireの版fieldは増やさない。held履歴は参照せず商品側の切替記録から導出する。確認checkboxや売上取込み/取消で解消しない。
-
-settlement_missingは、sourceの同一性拒否記録があり、そのsourceのactive importがない場合だけ返す。source単位でissueを作り、source_idsとsettlement_datesは同じsourceのID/保存済み精算日の各1要素、targetsは空。issueはsource ID昇順にする。同じ精算日でもsource間で集約しない。既存の利用者向け説明は当該sourceのidentity_rejection_codeから生成し、identity_conflictなら「同じ精算と思われる別の資料があります」、missing_identityなら「精算を識別する情報が足りません」とする。recount_after_import以外の他issueのsource_idsは空。別hashの既存取込みがあってもその資料を採用できたとは扱わない。未提出資料や番号の穴から生成しない。ready=falseでもfile個別の受領/再実測/commitの入口は閉ざさず、当該fileのguardで可否を決める。再実測ではissueが残り、当該sourceのactive import成立時だけ表示対象から外す。
-
-parse_and_validateは受領TXを作るためmutable DB接続を受ける。構文・種別・サイズ/行数を検証した後、hash一意なsource受領をcommitし、そのIDでpreviewを構築する。受領失敗時は証拠付きpreviewを返さない。previewで売上・在庫・要再確認flagをcommitせず、資料の受領と同一性拒否の証拠だけを保存する。
-
-CachedPreviewへsource_idと、在庫判定用行（source_line_no / normalized_jan / quantity / amount / 全候補product_codeとpos_stock_sync）を加える。これは照合の再検証に必要な内部データであり、表示専用の名称をcacheへ複製するためではない。売上行と証拠行を分け、正常JANの0/0行も全候補照合に通す。0/0行そのものはsale_recordsや通常在庫movementを作らない。
-
-PreviewDataへstock_reviewを追加する。statusはready / recount_after_import / held、targetsは[回復対象型](40-cmd-product.md)、warningsは非連動化後の未調整の説明とする。精算の欠落状態はPosStockReadiness.issuesのsettlement_missingだけが所有する。heldは共有JAN行によるfile全体の業務commit不可、recount_after_importは最新の実測の所属によらず要再確認flagを残す取込みが可能、readyは現在の証拠で要再確認・保留の対象なしを表す。資料受領を取込み成功と表示しない。
-
-#### 一つの分類関数とcommit
-
-分類の内部入力はsourceの受領ID、商品候補、最新の有効観測（kind・所属・source_cursor）、行の数量・金額、同じ精算区間のEJの証拠（下記。なければなし）。出力はBefore / After / Unknownと、Unknownの場合のflagの理由（またはflagなし）。時刻・精算日時は入力にしない。
-
-1. 下記の精算同一性guardを、legacyや受領済みの早期returnより前に検査する。
-2. 共有JANの行全体guardを先に選ぶ。非連動との共有も含め、全在庫連動候補について後述の個別分類を計算し、全てBeforeの場合だけ在庫を全スキップしてcommit可能。他はfile全体をheldにし、先頭商品への通常適用へ進まない。全候補が非連動なら在庫分類は不要だが、非連動化の未調整表示は省略しない。売上の既存先頭紐付けはcommit可能な場合だけ維持する。
-3. 一意な行または共有JAN内の候補の個別分類: 非連動は売上のみ。ただし該当候補にsync_disabled_unreconciledがあれば、共有JANの全非連動経路も含めstock_reviewへ未調整のtargets/warningsを残す（これだけではheldにしない）。実測履歴のないNeverObservedはAfter、LegacyObservedはUnknown。auto_filledは新しい実測基準を作らず、それ以前の有効観測を隠さない。ここでは分類だけ行い、共有行の一部を先に適用しない。
-4. 有効な実測で `source.id <= source_cursor`ならBefore。それ以外はUnknown。保存Eや精算日時によるBefore/Afterや仮の始端は使わない。Unknownを実測前・実測後へ分ける方法（EJの取引単位の判定、番号印字）は次のdesign laneが決め、ここでは扱わない。
-5. 一意の商品のUnknownは、最新の実測の所属（進行中の棚卸し・確定済みの棚卸し・独立再実測・legacy）によらず通常適用し、同じ業務TXで(商品, 資料)単位の要再確認flagを作成import・理由とともに保存する。理由は、LegacyObservedの行なら数量によらず旧記録の実測、数量が0でない行なら計数と前後不明の販売、数量0で金額が0でない行なら相殺の行あり、数量・金額とも0の行なら次の相殺の判定による。確定対象の棚卸しに明細がある商品に未解消のflagが一つでもある間は、明細のkind（未計数・auto_filled〈廃番の開始時の自動入力を含む〉・measured）・最新の実測の所属・flagの理由によらず、force_fillでも確定できず、確定の拒否はその明細の計数へ案内する（[35](35-biz-stocktake-service.md)）。確定済み・独立再実測に属する商品のflagは取込みを止めず、商品単位の準備issue（recount_after_import）と取込み結果で示す。flagの解消は、当該資料を計数開始前に受領していた新しい実測の保存（active明細へのmeasured保存、または独立再実測）か、当該importの取消に限る。相殺の確認待ち（EJ待ち）と、直前のZ004が未受領の間の相殺の確認待ち（登録の変化）だけは、下記の相殺の判定の再評価でも解消し得る。復旧は現在のactive明細を優先し、なければ完了済み明細に対する独立再実測へ案内する。対象明細なしは未対応として示す。legacyというkindだけで保留へ変えない。旧activeの確定拒否はD8の別条件として維持する。file全体の保留は2.の共有JAN行だけである。
-6. 売上と返品の相殺の判定: 数量・金額とも0の、Unknownの商品（数えた商品）の行は、同じ精算区間の完全なEJ（ADR D5の完全性の全条件）に当該商品の行（販売・戻・訂正・取消）が一つもなければflagを付けず、一つでもあれば相殺の行ありとする。未精算の売上があるPLUをPLU書出しのclear行で消せる場合（ADR D5の外部前提）は、数えた商品のうち今回のZ004に行がなく前回のZ004にはあるcodeの商品も、数量・金額とも0の行として同じく判定する。明細の行が複数の商品の名称に一致する（16バイトの切り詰めによる同名を含む）、商品の名称と部門名の両方に一致する、または前回のZ004から対応が変わった名称（ADR D5。スキャニングコードと名称の組の集合差 `{名称 | (コード, 名称) ∈ 前回 − 今回}`）に一致する場合は、区間を不完全にせず、その名称を持つ候補の商品（今回のZ004の組の商品。対応が変わった名称では前回の組と今回の組の商品の和）のうち、その区間で数量・金額とも0の数えた商品を全て相殺の行ありにする。候補でない数えた商品には付けない。したがって価格だけ・廃番・名称変更・新しい名称の追加の書出しの後でも区間を確認待ちにしない。区間全体を確認待ちにするのは次に限り、対象はその区間の数量・金額とも0の数えた商品の全て（今回のZ004に行がない商品は含まない。上のclear行の場合の商品だけは含む）とする。前回のcodeが分からない区間（直前のsettlement_noのZ004を受領していない区間。最初の区間・受領済みの最小より小さいsettlement_noの区間・前回の未受領の区間・settlement_noが戻った区間）では、clear行の外部前提が真のとき、数えた在庫連動商品のうち今回のZ004に行がないものを全て対象に含め、区間の理由（EJ待ちか登録の変化）と同じflagを付ける。直前のsettlement_noのZ004を使う業務TXでの再評価（下記）で、前回にそのcodeがあれば同じ順で判定し（EJにその名称の行があれば相殺の行あり）、前回にも無ければ解消する（ADR D4）。EJがない・不完全（精算の同一性、開始と終了・取引一連番号・分割fileの連続、商品別の符号付き合計の不一致。区間の開始の証拠がEJにない場合を含む）な場合と、前回のZ004がまだ取り込まれていないだけの場合（そのmachine_noのZ004を受領したことがあり、直前のsettlement_noのZ004だけがない）は、相殺の確認待ち（EJ待ち）にする。どの商品の名称にも部門名にも前回のZ004の名称にも一致しない明細の行が区間のEJにある場合（前回のZ004を受領しているときだけ判定し、未受領の間はEJ待ちとする）と、前回を証明できない区間（EJに区間の開始の証拠はあるが受領済みの前回のZ004と一致しない区間、最初の区間、settlement_noが戻った区間、受領済みの最小より小さいsettlement_noの区間）は、相殺の確認待ち（登録の変化）にする。最初の区間（そのmachine_noのZ004を一度も受領していない）、settlement_noの戻り（受領済みのsettlement_noと同じ番号のZ004を別の精算として受領した。以後の前回の候補は戻った後に受領したZ004に限る）、受領済みの最小より小さいsettlement_noは、Z004の取込みの時点でEJの有無より先に判定する。受領済みの最小と最大のあいだの欠番を埋めるZ004は後追いの通常の受領として、前回の判定と再評価に使う（ADR D5）。商品別の符号付き合計は、候補でつながる名称と商品の単位（連結成分）ごとに照合し、Z004側はslot単位で数える。部門名とも一致する名称を含む単位と、clear行の場合の今回のZ004に行のないcodeを含む単位は照合しない（ADR D5）。部門名はZ004どうしの比較に含めない（区間の途中で部門名が変わった場合の誤った相殺の行ありと、旧部門名がどれにも一致しない行による登録の変化は、見逃しにならないので受け入れる。ADR D5）。相殺の確認待ちは2種とも進行中の確定を止め、準備表示に出る。区間の中の前後は問わず、時刻を使わない。
-
-EJの証拠は、EJ parser laneがEJの取込み・解析と行の分類（商品の行・部門売り・明細でない行・帰属できない行）を行い、精算区間ごとにZ004との同一精算か・完全性（ADR D5。帰属できない行と前回を証明できないことによる確認待ちをほかの不完全と区別し、前回のZ004が未受領なだけの区間と、区間の開始の証拠がEJにない不完全を示す）・商品別の行の有無（名称が重なる行は候補の商品全てを行ありとする）をBIZへinterfaceの形で渡す。BIZはこのinterfaceで受けた証拠だけを使い、EJの行を自分で解釈しない。再起動の後も、対象区間と今回・直前のZ004の組、取り込んだEJの証拠を保存済みの資料との対応から取り直せることを、このinterfaceの呼出し条件とする。pos_import_sourcesだけから元の明細を復元できるとは扱わない。EJの未取込みはEJなしとして判定するが、保存済みの必要な証拠を取得できない障害は、再評価済みとせず業務TXを失敗させる。当該区間のEJまたは直前のsettlement_noのZ004を取り込む各業務TXで、同一性・重複・共有JAN等のguardを通過した後、BIZは現在の未解消flagと証拠を読み直す。対象は相殺の確認待ち（EJ待ち）と、previous_recheck_pending=trueの相殺の確認待ち（登録の変化）である。後者は直前のZ004を利用できる場合だけ再評価し、settlement_noが戻った区間では戻った後に受領した直前の番号のZ004に限る。印は、最初の区間・受領済みの最小より小さい番号の区間・settlement_noが戻った区間で、直前のZ004の未受領を原因に登録の変化を作る業務TXで保存する（[tracking](../db-design/tracking-system-tables.md)）。直前のZ004の受領だけでは印を変更しない。ほかの登録の変化は再評価の対象にせず、数え直しで解消する。再評価はADR D4の順に行う。clear行の規則で今回にも直前のZ004にもcodeがない商品は解消する。対象に残る商品は、帰属できない行の有無（直前のZ004を利用できるときだけ）と前回の証明を先に判定し、帰属できない行があるかEJの開始の証拠が受領した前回と一致しなければ登録の変化、どちらもなく不完全ならEJ待ち、どちらもなく完全なら候補の行なしで解消、行ありで相殺の行ありとする。直前のZ004を使った再評価を確定するとき、残すflagの印をfalseにする。そこで残る登録の変化（帰属できない行がある区間と、EJの開始の証拠が受領した前回と一致しない区間）は凍結し、EJを取り込み直しても再評価せず、数え直しで解消する。再評価によるflagの変更・削除、印、必要な商品revisionの更新は、取込みの業務変更と同じTXで確定する。previewと資料受領TXでは変更しない。初回受領か同hashの再選択かによらずこの処理を通し、中止・拒否・失敗では受領記録と従前のflag・印を残す。再起動・previewの失効の後の同じfileの再選択では最初の受領IDへ接続し、業務TXで再試行する。成功済みの取込みはactive hashで重複拒否し、売上を再び適用しない。再評価の対象は現存するflagだけで、新しい実測や当該importの取消で解消したflagを作り直さず、残すflagの作成importへの参照も変えない。同じ証拠による再評価で結果が変わらなければ書込みもrevisionの更新も行わず、変わる場合はADR D1のchecked版更新を同じTXで行う。相殺の確認待ちは2種とも数え直しでも解消する。
-
-精算同一性guardはBIZがpreviewとcommit TXの両方でproduceする。同じ帳票種別についてmachine_no / settlement_noが一致する別hashの受領済みsourceを照合し、同一精算の候補衝突として `source_identity_conflict` で業務write前にfile全体を拒否する。精算系列（番号のリセット区間）を証明する手段はないため、別系列と推測して通さない。比較対象はactive importだけに限定せず、未取込み/取消済みsourceも含む。生の番号組の一致に一律UNIQUEは張らず、衝突の判定はBIZが行う。
-
-同一性guardが拒否を確定したら、BIZは業務write前にそのTXを戻し、DB lockを保持した独立証拠TXで対象sourceへ初回のidentity_rejection_code/identity_rejected_atを保存してからerrorを返す。previewの拒否も同じ経路。受領済み・拒否証拠は再起動や業務失敗でも残り、保存失敗はDB errorとして返す（業務writeは行わない）。UIは拒否応答後に準備照会をrefetchする。
-
-識別メタ不足も同じguardで拒否する。同じsettlement_dateのactive import（completed / completed_partial）を全件取得し、その集合が空でなく、取込み対象sourceまたは比較先のいずれかでmachine_no / settlement_noが揃わなければ、同一性未確認としてsource_identity_conflictを返す。両方NULL、machine_noだけNULL、settlement_noだけNULLは同じ扱い。比較先sourceの欠落も未確認であり、メタ一致検索やINNER JOINで候補0件へ落とさず、仮キーで埋めない。additional_import_confirmed=trueでも業務write前にfile全体を拒否する。同日activeがない場合（初回、他日のactiveだけ、同日が取消済みだけ）はこの追加条件では拒否しないが、全受領sourceとの別hash衝突・active hash拒否・時点分類等の他のguardは省略しない。従来shapeのparse受理は、同日追加commitの許可を意味しない。
-
-同日追加確認、受領後の再実測、元importの取消は同一精算別hashの関係を解決した証拠にならない。通常の同hash再取込みも別hash衝突がなければ可能という条件付きで、他方の受領を消して解除しない。衝突資料のどちらを採用するかを決める操作と既存sourceのメタ補完は本scopeにない。誤った版を取消しても訂正版は拒否されたままで、その精算の売上が欠落し、当該取込みによる在庫減算も行われない。番号resetの別系列も証明できないため同じ制限を受ける。メタ不足の同日追加も上記の拒否条件が残る間は取り込めない。再実測は現在庫を直すだけで売上欠落を復旧しない。利用者には[UI-07の確認・制限案内](55-ui-csv-import.md)を返す。
-
-初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)に従い、新しい識別メタの抽出→受領→保存を実装・検証してから開始し、メタを持たない旧Z004試験履歴を持ち込まない。これは旧行の存在時に拒否を外す例外ではない。原本layout Aでも移行前importはメタ不足になり得るため、preflightで日付を表示する。過去日の後追いは新形式どうしで他のguardを満たせば追加でき、本番開始日/最終取込み日による足切りは置かない。旧DBのlegacy実測・取消の保留も将来の更新/試験用に維持し、初導入にその本番履歴があると仮定しない。
-
-commitは既存のhash・同日active ID snapshotを再検査した同じTXで、精算同一性guard（同日active全件の識別メタ不足を含む）、JAN候補・連動設定・現在の証拠を取り直す。preview後の別hash受領・同日active追加も検出する。マスタ候補がpreviewと変わったら再previewを要求する。heldまたはsource_identity_conflictなら業務write前に全体を拒否し、source受領は残す。通る場合だけsource参照付きimport・売上・許可されたmovement・flag・revisionをまとめて保存する。成功結果のrecount_targets/warningsは実際に保存したimport flagに加え、TX時点の非連動化の未調整対象からも生成する。売上のみ成功を在庫調整済みと表示せず、永続issueは商品側が所有する。UI申告のskip集合や再実測値は入力に持たない。
-
-Beforeの販売/返品はどちらも在庫を動かさない。After（NeverObserved）とUnknownは売上・在庫ともZ004の純数量で通常適用する。全行0でも再確認・相殺の判定の用途があるfileは売上0で完了でき、解消後の再previewで0件guardへ戻さない。用途も対象もないfileは現行の空対象拒否を維持する。
-
-#### 取消と保留の復旧
-
-rollbackは対象importのstatus・有効movement ID・flagを同じTXで読み、legacy上限（`stocktake_legacy_movement_ceiling`）以下の取消で適用済み吸収先が分からない商品があれば、void前に全体を停止する。商品別純量0の例外でもflag・履歴・revisionを処理する。UIへrollback_recheck_requiredと対象（回復先はactive_count、なければindependent_recount）を返す。保留の解除は、対象商品に新しい適用済み実測（active明細があればその計数と確定、なければ独立再実測）ができた後に、同じimportの取消を再試行することで行う。新方式のpendingだけでは解除しない。取消のための専用の用途・理由・actionは設けない。旧完了記録の表示はreconciliation_version=0の意味で維持する。
-
-停止条件がなければ、現在も効力を持つ最初の吸収先を商品内の観測順で選ぶ。pendingなら通常戻しと同じTXでLから取消quantityを引く。適用済みなら通常戻しを同額のrollback_compensationで打ち消す。吸収先なしは通常戻しのみ。N/S/E・cursor・観測順を取消日時で置換しない。二度目の取消は副作用なし。source・独立recount・確定済み評価額を消さず、元importが作成したflagだけ解消する。
-
-対象importは単一TXなので、実測が同import内のmovementの途中へ入ることはない。商品ごとに取消quantityをchecked SUMし、適用済み吸収先へのrollback_compensationは非0なら商品ごと1本、純量0なら作らない。pendingのL補正も同じ純量を使い、行ごとの重複補償や複数観測への補償を行わない。
-
-共有JAN行の保留集合はpreviewの導出結果。中断/再起動後は同fileを再選択して再生成する。保存済みの個別実測はDBに残り、未保存の数量は持ち越さない。拒否された未取込み資料のsettlement_missingは現在庫を数え直しても消さず、未取込み売上を0と認定しない。
-
-#### 外部probeと本番条件
-
-本runでは実機検証を行っていない。以下の成立が証明されるまで、その外部証拠に依存する判定を有効にしない（ej_unverifiedを外さない）。受領後の新しい実測は引き続き復旧手段であり、恒常的なPLU本番運用の代替と説明しない。
-
-| 前提 | 外部probeで観測するもの | 成立時の許可 / 不成立時 |
+| 順 | 条件 | message |
 |---|---|---|
-| 精算系列 | 同機の連続精算・0売上・同日複数・日跨ぎ・番号reset、EJの精算区間とZ004の対応、Z004のsettlement_noがZ004ごとに1ずつ増えるか（他のZ帳票と共有のカウンタでないか） | 同じ精算と対応づけられた区間だけ相殺の判定に使う。reset後の系列は証明できないので、同番の別hashは衝突として拒否。同番のZ004を別の精算として取り込めるようになった後は、それを番号の戻りとして相殺の確認待ち（登録の変化）にする。受領済みの最小より小さいsettlement_noのZ004も相殺の確認待ち（登録の変化）、最小と最大のあいだの欠番を埋めるZ004は後追いの通常の受領 |
-| EJ完全性 | 精算の開始/終了、取引一連番号、分割fileの必要な続き、先頭/末尾/途中欠落、Z004との同一精算（machine_no・settlement_no）、商品別の符号付き合計の一致（候補でつながる名称と商品の単位〈連結成分〉ごと、Z004側はslot単位。部門名とも一致する名称を含む単位と、clear行の場合の今回のZ004に行のないcodeを含む単位は照合しない）、前回のZ004（同じmachine_noの直前のsettlement_noで区間の開始と連続を証明できるもの）と今回のZ004のスキャニングコードと名称の組の集合差による、対応が変わった名称の算出（価格だけ・廃番・名称変更・新しい名称の追加との区別、前回のZ004が未受領なだけの区間・最初の区間・欠番の後追い・受領済みの最小より小さいsettlement_no・settlement_noの戻り・区間の開始の証拠がない不完全・前回を証明できない区間の区別）、締めの時点で同じ日のEJをSDから取れるか、未精算の売上があるPLUをPLU書出しのclear行で消せるか | 対応が完全な区間だけ相殺の判定に使う。存在する末尾fileだけで完結と推測しない。不完全（開始の証拠がない場合を含む）と前回のZ004の未受領は相殺の確認待ち（EJ待ち）、前回を証明できない区間（最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻りを含む）は相殺の確認待ち（登録の変化）。直前のZ004が未受領の間の登録の変化（最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻り）は内部の印を保持して直前のZ004を使う業務TXで再評価し、中止・失敗・再起動の後も同hashの再選択から再試行する |
-| EJ復元 | 店が値引き・訂正・取消を使うことは確認済み（owner回答 2026-09-24）。未検証の観測対象は、通常/返品（戻の行に商品名が載るか）、数量×単価、名称反復、値引き（％－キー）・訂正・取消のEJの行の形、取引と数量の復元、未知行、取引内点数・商品別符号付き合計、行の分類（商品の行・部門売り・合計や支払などの明細でない行・帰属できない行） | 使用の確認だけではEJ復元・分類を検証済みにせず、owner-operated gateを保つ。Z004純合計一致は必要条件のみ。未知形式・相殺する欠落があれば区間を不完全とし相殺の確認待ち（EJ待ち）、どれにも一致しない帰属できない行があれば（前回のZ004を受領しているときだけ判定）相殺の確認待ち（登録の変化） |
-| 商品同定 | 出力時の名称（Z004で当該商品のスキャニングコードの行が持つキャラクター欄）、改名、共有/衝突、部門名との一致（商品の名称と部門名を合わせて数え、部門名と同じ名称の商品の行は候補の商品の行）、16バイトのレジ名称の重なりの程度（重なると候補の商品が余分に相殺の行ありになる）、JAN候補、区間の途中の部門名の変更（旧部門名の行）、行の分類（商品の行・部門売り・帰属できない行）と値引きの行がどの分類に入るか | 商品の行（名称が重なる行と対応が変わった名称の行は候補の商品全ての行）と、部門名だけに一致する部門売りの行を既知とする。どれにも一致しない行（どれにも一致しない旧部門名の行を含む）は帰属できない行として相殺の確認待ち（登録の変化）にする。現在のマスタ名だけで過去を推定しない |
+| 1 | machine_no か settlement_no が無い・settlement_no が 10 進の整数でない（従来の形の file を含む） | 精算回数の無い file は取り込めません。レジの SD の商品別の売上（Z004）を選んでください |
+| 2 | active な Z004 の取込み（completed / completed_partial）があり、その machine_no がこの file と違う | レジの番号が前の精算と合いません。レジの入替・初期化を確かめてください |
+| 3 | 同じ hash の active な取込みがある | （今の重複の拒否のまま） |
+| 4 | 同じ machine_no・settlement_no の active な取込みがあり、hash が違う | 同じ精算と思われる別の資料が既に取り込まれています（精算 {n}） |
+| 5 | active な取込みのうち、settlement_no がこの file より小さいのに精算日がこの file より後のもの、または settlement_no が大きいのに精算日が前のものがある | レジの日付か番号が前の精算と合いません。レジの時計か、レジの入替・初期化を確かめてください |
 
-EJ取得・完全性不成立時の拒否・再実測復旧まで確認してからPLU本番へ進む。sampleの形状観察済みと、系列/全取引形状の未検証を分ける。EJ完全性・EJ復元・商品同定の3行のowner-operated gateの証拠が、ej_unverifiedを外すlaneのmerge条件になる。名称の重なりの検知と登録名の付け直しの支援（上記）もej_unverifiedを外す条件に含む。追加の採取・レジ操作は別のowner-operated gateで行い、このdocs同期をその許可にしない。
+- 取り消した取込み（rolled_back）は比べる先にしない（誤った版を取り消して正しい版を取り込める。SPEC-STK-CNT-D7）。
+- 同じ精算日の別の精算（settlement_no が違う）は、利用者の追加確認なしに preview から確定へ進める（D-071 の Z004 の側の置換え。`additional_import_confirmed` は Z004 では使わない）。
+- 今の「精算日が未来の日付です」の拒否（`src-tauri/src/biz/csv_import_service/parse.rs` の `parse_and_validate` の `2a. settlement_date 業務妥当性チェック`）は外し、下の知らせ (b) に変える（レジと PC の日付のずれで取り込めなくなるのを避け、知らせて取り込む。ADR D4）。
+- 知らせ（拒否しない。preview と結果に出す）: (a) 欠け: active な取込みと、この file を合わせた settlement_no の最小から最大の間に、取り込まれていない番号があれば、連続した欠けを 1 つの区間にまとめ、「精算 {n}〜{m} が取り込まれていません」（区間が 1 つの番号なら「精算 {n} が取り込まれていません」。区間ごと、昇順。欠けた精算の売上は在庫に入っていない）。知らせの数は区間の数で上限があり、欠けた番号を 1 つずつ並べない（壊れた大きな精算回数を受けても preview が止まらない）。(b) 精算日が PC の今日より後なら「レジと PC の日付がずれている可能性があります」。
+- 理由: 精算回数は 4 年分の資料で減少・重複が無く、欠けは SD の本数の差と一致した（owner TD-261 の Q3 = a）。精算日と番号の食い違いは reset・レジの入替・時計の戻りのどれでも起き、精算の窓（ADR D3）が 1 つに決まらないので取り込まない（レジの日時は検知と窓の日付にだけ使い、PC の時計と比べない）。
 
-計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D6（proposed）。資料受領と売上commitの分離、区間の証拠、共有JANの保留、取消順序を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+#### 確定（commit）
+
+- 確定の TX は、上の検査・JAN の候補・連動の設定を取り直し、売上（`sale_records`）と、在庫連動の商品の movement（`business_date = settlement_date`、`phase = 1`、`settlement_no`）を書き、取り込み済みの精算の一覧が変わるので、計数を持つ全ての商品と、その取込みの売上か movement を持つ全ての商品（在庫連動の on / off を問わない）を [31](31-biz-inventory-service.md) の `recompute_stock` で求め直す（ADR の横断の表と D2 の原理）。売上と在庫を動かす行の対応は今のまま（計数に入っているかで在庫の適用を分けない。入っているかは求め直しが ADR D3 の窓の判定表で決める）。売上の各行に、その商品の取込みのときの `pos_stock_sync` を `stock_linked` として写す（pos-tables。共有 JAN の行と商品の無い行は 0）。
+- 結果（`ImportResult`）に、求め直しの後に要再確認になった商品の一覧（`recheck_targets`: この TX で求め直した商品のうち、求め直しの後に `stock_recheck=1` の商品。[40](40-cmd-product.md) の CountRecoveryTarget。`recount_reasons` 付き）と、上の知らせを足す。要再確認は取込みを止めない。
+- 同じ JAN を複数の商品が持つ行（SPEC-STK-CNT-D4、owner の決定 TD-296）: 店内コードの lane ができるまで在庫連動の外に置き、売上を今の規則（先頭の商品）で記録し、どの候補の movement も作らない（候補に在庫連動の商品があっても同じ。行エラーにしない）。
+- 数量・金額とも 0 の行（日計 0）は今のまま売上も movement も作らない（相殺の判定に使わないので保持しない）。数量 0 で金額が 0 でない行の売上の記録は今のまま。
+- 正常な行が全て 0 の file（その精算で PLU の売上が無かった）は、今の空の対象の拒否をやめ、売上と movement を作らずに精算の識別メタだけを持つ取込みとして確定する（ADR D4。精算の並び・D3 の窓・欠けの判定に入る。取り込まないと、その精算が欠けとして残り、計数の窓が決まらない）。
+
+#### 取消（rollback、SPEC-STK-CNT-D7）
+
+- 対象の取込みの売上と movement を `is_voided=1` にし（今のまま）、取り込み済みの精算の一覧が変わるので、計数を持つ全ての商品と、その取込みの売上か movement を持つ全ての商品（在庫連動の on / off を問わない）を [31](31-biz-inventory-service.md) の `recompute_stock` で求め直す（ADR の横断の表と D2 の原理）。補償の movement は作らない。計数は消さない。結果に、求め直しの後に要再確認になった商品の一覧を足す。
+
+#### 停止との関係
+
+本節の確定と取消は、停止 ADR の 5 つの入口を外すのと同じ配布の単位で入れる（SPEC-STK-CNT-D12、§15.0）。preview の検査（上の表と知らせ）は停止中でも足してよい（売上・在庫を作らない）。
+
+#### SD の一括取込み（D-121、proposed・未実装）
+
+SD の締めの一括取込み（[37 §37.10](37-biz-daily-report-import-service.md)、BIZ-08-D7）は、SD から読んだ Z004 を精算回数の昇順に、本節の preview の検査と確定をそのまま呼んで取り込む（runtime は backlog の「Z004 を SD の一括取込みに入れる runtime（B）」。本節の確定を入れる配布の単位の後）。上の表の拒否は、その file を飛ばして続ける。SD から読んだ file だけ、確定の TX の前に IO-10 の写しを書く（BIZ-08-D5 の引継ぎ。書けなければ確定しない）。ファイルを選ぶ経路（Z004 タブ）は写さず、ほかは変わらない。
 
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
@@ -263,7 +229,9 @@ fn parse_and_validate(
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
       - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
+        - （proposed・未実装、JAN の別名の runtime の lane、D-122）ヒット0件の行だけ、ErrorRow にする前に `product_repo::find_jan_alias(conn, &normalized_jan)` で前の JAN の別名（[master-tables](../db-design/master-tables.md) §1a、[30](30-biz-product-service.md) BIZ-01-D9）を引く。別名があればその商品をヒット1件と同じ形の MatchedRow にする（`pos_stock_sync` はその商品の値。warning は足さない）。無ければ上の ErrorRow のまま。不変条件（どの商品も持たない JAN だけが別名）により、ヒット1件・複数件の行に別名は無いので、引く順で結果は変わらない
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
+      - 引き当ての規則（上の 3 つと別名）は 1 つの関数に置き、preview と、D-118 の確定の TX での JAN の候補の取り直し（上の「確定（commit）」）の両方がそれを使う（preview の後に別名ができた・消えた場合も、確定はその時点の DB で引き当てる）。結果は 0 件 / 1 件（別名を含む）/ 複数（先頭と件数）を区別して返す（preview は複数の行に上の warning を足し、確定は複数の行を上の「確定（commit）」の共有 JAN の行として扱う）。引き当ては取込みの時点の DB を使い、売れた日の商品の JAN の履歴は持たない（取り消して取り込み直すと、その時点の別名と JAN で引き当て直す）
    c. parse_result.parse_errors を ErrorRow にマージ
       - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）
       - Option→String 変換規約: ParseError.raw_name/raw_quantity/raw_amount が None の場合、空文字列に変換する。None は error_type が invalid_format の場合にのみ発生する（フィールド分割前のエラーで値が取得できなかった）。Z004のフィールドは実運用で空文字にならないため、空文字はパース前エラーと判別可能。DB保存（csv_import_errors）は空文字のまま、UI表示時に error_type が invalid_format なら「(不明)」等に置換する
@@ -442,16 +410,12 @@ fn rollback_csv_import(
    - sales_repo::void_sale_records_by_import(&tx, csv_import_id) → voided_sale_count
 4. **inventory_movements の無効化と在庫補正データ取得**
    - sales_repo::void_movements_by_reference(&tx, "csv_import", csv_import_id) → voided_movements: Vec\<VoidedMovement\>
-5. **在庫補正**（product_code でグループ化して集計）
-   a. voided_movements を product_code でグループ化
-   b. 各 product_code について: correction = voided_movements の quantity を合算し符号反転
-      - 例: quantity = -3（販売で3個減）が void → correction = +3（3個戻す）
-      - 例: quantity = +1（返品で1個増）が void → correction = -1（1個引く）
-      - 計算式: correction = -SUM(voided.quantity)  ※同一product_codeの全movementを合算
-   c. product_repo::find_by_product_code(&tx, &product_code) → product
-   d. new_stock = product.stock_quantity + correction
-   e. inventory_repo::update_stock_quantity(&tx, &product_code, new_stock)
-   f. stock_corrections に StockCorrection { product_code, old_stock: product.stock_quantity, new_stock } を追加
+5. **在庫補正**（無効にした movement の商品ごとに求め直す。`csv_import_service/commit.rs` の `apply_void_stock_corrections`）
+   a. voided_movements の product_code を重複なく集める（quantity は使わない）
+   b. 各 product_code について:
+      - product_repo::find_by_product_code(&tx, &product_code) → product（old_stock = product.stock_quantity）
+      - stock_ledger::recompute_stock(&tx, &product_code) → new_stock（[31](31-biz-inventory-service.md)。無効にした記録を除いて記録から求め直し、写しを書く。上限の外は TX 全体を戻す）
+      - stock_corrections に StockCorrection { product_code, old_stock, new_stock } を追加
 6. **csv_imports の status 更新**
    - sales_repo::update_csv_import_status(&tx, csv_import_id, "rolled_back")
    - settlement_dateを条件にせず、指定IDだけを更新する。同日の他importは変更しない
@@ -462,11 +426,10 @@ fn rollback_csv_import(
 9. RollbackResult { success: true, voided_sale_count, voided_movement_count: voided_movements.len(), stock_corrections } を返す
 
 **在庫補正の詳細**:
-- movement.quantity = -3（販売で在庫3個減）→ void 後の在庫補正 = +3（3個戻す）
-- movement.quantity = +1（返品で在庫1個増）→ void 後の在庫補正 = -1（1個引く）
-- 同一 product_code に複数の voided_movement がある場合は合算してから1回の update_stock_quantity で更新する
+- 写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じ（例: quantity = -3〈販売で 3 個減〉の movement を無効にすると 3 個戻り、quantity = +1〈返品で 1 個増〉なら 1 個引かれる）。一致していなければ、記録から求め直した値になる
+- 同一 product_code に複数の voided_movement があっても、求め直しは商品ごとに 1 回
 
-**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない。apply_stock_change は movement を追加する関数のため、ここでは直接 update_stock_quantity を使う。void 対象の movement が取消の記録として残る（is_voided=1）。
+**設計判断 — apply_stock_change を使わない理由**: ロールバックは「元の movement を取り消す」操作であり、新しい inventory_movements レコードを追加しない（補償の movement は作らない）。apply_stock_change は movement を追加する関数のため使わず、無効にした記録を除いて recompute_stock で求め直す。void 対象の movement が取消の記録として残る（is_voided=1）。
 
 **入力例**:
 ```
@@ -559,7 +522,7 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
 | INV-1: quantity 符号変換 | commit_csv_import のステップ7b で inventory_quantity = -row.quantity。売上帳票視点→在庫視点の符号反転を BIZ 層で実施 |
-| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は直接 update_stock_quantity |
+| INV-2: stock_after 算出 | apply_stock_change 経由（commit 時）。rollback 時は movement を足さず、無効にした movement の商品を recompute_stock で求め直す |
 | INV-3: 負在庫ポリシー | commit 時に apply_stock_change が negative_stock_warning を返す。警告をstock_warningsに蓄積するが処理は続行 |
 | INV-4: is_voided 使用範囲 | rollback_csv_import で void_sale_records_by_import, void_movements_by_reference を呼び出し。is_voided=1 を設定するのはロールバック時のみ |
 | INV-6: file_hash 自然冪等性 | parse_and_validate のステップ5a で find_blocking_import_by_file_hash。commit_csv_import のステップ5で TX 内再チェック（TOCTOU 防止） |
@@ -626,3 +589,4 @@ enum BizError {
 | 2026-08-03 | CSV取込み詳細 Design Phase | §15.6a get_csv_import_record を追加（CSV取込み詳細画面用 wire DTO、31 §12.6a read-only パターン、ErrorRow 再利用、resolve_movement_source 共有） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別hashを追加取込みとし、全件summary、追加確認flag、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体 `legacy_*` の記述と明記 |
+| 2026-10-17 | JAN の別名の design lane（D-122） | §15.3 手順 4 b に、ヒット0件の行で前の JAN の別名を引く段と、引き当ての規則を preview と確定の取り直しで共有する文を足した（proposed・未実装） |

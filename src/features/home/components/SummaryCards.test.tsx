@@ -161,7 +161,7 @@ describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
           date: "2026-06-11",
           items: [],
           department_subtotals: [],
-          grand_total: { quantity: 5, amount: 12000 },
+          grand_total: { count_points: 5, length_cm: 0, amount: 12000 },
           official_daily_report: null,
         },
       }),
@@ -215,7 +215,7 @@ describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
           date: "2026-06-11",
           items: [],
           department_subtotals: [],
-          grand_total: { quantity: 0, amount: 0 },
+          grand_total: { count_points: 0, length_cm: 0, amount: 0 },
           official_daily_report: null,
         },
       }),
@@ -249,4 +249,27 @@ describe("UI-00 D-H7: 在庫切れ・在庫少の件数色（GA4）", () => {
     expect(within(outOfStockCard).getByText("0 件")).not.toHaveClass("text-destructive");
     expect(within(lowStockCard).getByText("0 件")).not.toHaveClass("text-warning-emphasis");
   });
+});
+
+// UI-00 / REQ-501 / SPEC-UNIT-D3 の集計の規則（X9）: 昨日売上カードの点数は点と長さの 2 本
+it.each([
+  [1234, 0, "1,234 点"],
+  [5, 130, "5 点・1.3 m"],
+  [0, 130, "1.3 m"],
+])("UI-00: 昨日の売上の点数 (%s 点, %s cm) は %s", (count_points, length_cm, expected) => {
+  const summary: HomeSummaryState = {
+    ...makeBaseSummary(),
+    sales: makeQueryResult<DailySalesReport>({
+      isSuccess: true,
+      data: {
+        date: "2026-06-11",
+        items: [],
+        department_subtotals: [],
+        grand_total: { count_points, length_cm, amount: 12000 },
+        official_daily_report: null,
+      },
+    }),
+  };
+  render(<SummaryCards summary={summary} />);
+  expect(screen.getByText(expected)).toBeInTheDocument();
 });

@@ -123,14 +123,7 @@ export function DailySalesPage({ search, onSearchChange }: DailySalesPageProps) 
             sortBy={sortBy}
             sortDir={sortDir}
             onSortChange={handleSortChange}
-            grandTotal={
-              todayQ.data
-                ? {
-                    quantity: todayQ.data.grand_total.quantity,
-                    amount: todayQ.data.grand_total.amount,
-                  }
-                : null
-            }
+            grandTotal={todayQ.data?.grand_total ?? null}
             emptyTitle={
               todayQ.data?.official_daily_report
                 ? "商品別明細は未取込み"
