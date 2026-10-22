@@ -18,7 +18,8 @@
 pub(crate) fn update_movement_stock_after(conn: &DbConnection, movement_id: i64, stock_after: i64) -> Result<(), DbError>
 // stock_counts の商品の行（id・count_value・count_kind・business_date・settlement_no・seen_movement_id）を id の順で
 pub(crate) fn list_stock_counts_for_product(conn: &DbConnection, product_code: &str) -> Result<Vec<StockCountRow>, DbError>
-// is_voided = 0 の movement（id・quantity・business_date・phase・settlement_no・reference_type IS NULL〈初期在庫〉）を id の順で
+// is_voided = 0 の movement（id・quantity・business_date・phase・settlement_no・初期在庫の印）を id の順で。
+// 初期在庫の印は reference_type IS NULL AND movement_type = 'receiving'（ADR D9。b1 で入る〈proposed・未実装〉。(a) の実装は reference_type IS NULL だけを見る。demo の seed の sale_auto は初期在庫にしない）
 pub(crate) fn list_ledger_movements_for_product(conn: &DbConnection, product_code: &str) -> Result<Vec<LedgerMovementRow>, DbError>
 ```
 

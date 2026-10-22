@@ -4,7 +4,7 @@
 
 accepted — 2026-10-16、design lane「棚卸しの数の置き場と在庫数の求め直し」（Plan Packet `docs/archive/plans/2026-10-16-stocktake-count-placement-design.md`、[decision-log](../decision-log.md) D-118）。設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせ、owner が採否を決める。repo 外の回答台帳 TD-258）の 4 段目として、owner の決定（TD-261・TD-263〜TD-268、TD-279・TD-280、TD-296、TD-298）を正本へ置き換えた。2026-10-17 に Plan Review round 1 の是正で、計数が記録を含むかの決め方を 1 つの原理（窓の重なり、SPEC-STK-CNT-D3）から導き直した。
 
-本 ADR は [棚卸しと後着売上の時点証拠 ADR](2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D10）と D-116 を置き換える（superseded）。[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) は残し、解除の段の名前だけを本 ADR の runtime に合わせて改めた（下の SPEC-STK-CNT-D12）。対象は REQ-205 / REQ-401。実装の状態: 配布の単位 (a)（SPEC-STK-CNT-D12）は runtime の (a) の lane（PR #176）で実装した。(b) は実装済みの契約ではない（後続の lane。[backlog](../backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」）。
+本 ADR は [棚卸しと後着売上の時点証拠 ADR](2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D10）と D-116 を置き換える（superseded）。[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) は残し、解除の段の名前だけを本 ADR の runtime に合わせて改めた（下の SPEC-STK-CNT-D12）。対象は REQ-205 / REQ-401。実装の状態: 配布の単位 (a)（SPEC-STK-CNT-D12）は runtime の (a) の lane（PR #176）で実装した。(b) は実装済みの契約ではない（後続の lane。[backlog](../backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」。b1・b2 の 2 つの lane に分けた。D12）。
 
 ## Context
 
@@ -41,7 +41,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 | 精算 n（精算日 d_n）の Z004 の movement | `(d_n, 1, n, 0)` |
 | fresh な計数（「入れ直す」。今日 T、保存の時点で取り込み済みの最大の精算回数 n。取込みが無ければ n は NULL） | `(T, 1, n, 1)`。n が NULL なら 3 つ目を −1 とみなす（精算回数は 0 以上なので、どの精算より前） |
 | 既定の計数（「数を保存」「0 にする」。日付 D）、入出庫の movement（業務日 D） | `(D, 0, NULL, 0)` |
-| 初期在庫の movement（登録日 D。`reference_type` が NULL の movement） | `(D, 0, NULL, -1)` とみなす |
+| 初期在庫の movement（登録日 D。`reference_type` が NULL で `movement_type` が `receiving` の movement。D9） | `(D, 0, NULL, -1)` とみなす |
 
 - 比べ方は辞書順。鍵は保存・表示の順と、在庫推移の並びにだけ使う。**記録が計数に入っているかは、鍵の大小を使わず、常に D3 の窓の判定表で決める**（鍵の前後と判定が一致しない記録がある。例: 既定の計数と同じ鍵の同じ日付の movement は決まらない、fresh な計数の後に保存された同じ日付の movement は鍵が前でも決まらない、計数の日付より後に登録した商品の初期在庫は鍵が後でも入っている）。
 - 計数どうしの順も D3 の窓で決める。保存の順は、fresh な計数が、それより先に保存された計数を全て置き換える所でだけ使う（D3 の「計数どうし」）。
@@ -140,7 +140,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 
 ### SPEC-STK-CNT-D9: 保存の形
 
-- `inventory_movements` に並びの鍵の列 `business_date`・`phase`・`settlement_no` を足す。初期在庫は `reference_type` が NULL の movement で見分ける（今の商品の登録と一括 import だけが作る）。
+- `inventory_movements` に並びの鍵の列 `business_date`・`phase`・`settlement_no` を足す。初期在庫は `reference_type` が NULL で `movement_type` が `receiving` の movement で見分ける（商品の登録と一括 import だけが作る）。demo の seed（`src-tauri/src/seed_demo.rs` の `seed_sales`）の売上の movement（`sale_auto`、`reference_type` が NULL）は初期在庫にせず、業務日で窓を持つ入出庫の movement として判定する（2026-10-22、(b) の最初の lane〈b1〉の起票で決めた。(a) の Plan Review の申し送り。理由: `reference_type` だけで見分けると、seed の売上が計数のどれよりも前とみなされ、計数の後の売上が引かれない。seed を Z004 の取込みの形に作り直す案は、開発・試験 DB の作り直しと seed の書き直しを要し、得るものが無い）。
 - 計数は append-only の新しい表（`stock_counts`）に置く: 商品、値（非負の整数）、種類（既定 / fresh）、日付、`settlement_no`（fresh だけ。保存の時点の最大の精算回数、取込みが無ければ NULL）、`seen_movement_id`（fresh だけ。保存の時点の `MAX(inventory_movements.id)`、無ければ 0）。fresh の `settlement_no` は取込みが無ければ NULL（0 は実際の精算回数として使える値なので印に使わない）、棚卸しの明細への参照（任意）、保存の連番、保存時刻（表示用）。`stocktake_items` は対象の一覧と評価の保存に残し、計数の値の正本にしない。
 - `csv_imports` に `machine_no`・`settlement_no` を足す。`sale_records` に取込みのときの連動 `stock_linked`（0/1）を足す（D3 の理由 1・D8）。
 - `products` に写しの `stock_recheck`（0/1）・`stock_range_low`・`stock_range_high` を足す。
@@ -151,7 +151,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 ### SPEC-STK-CNT-D10: 移行（legacy 互換を持たない）
 
 - legacy 互換（旧方式の実測を区別する kind・上限・再確認の状態機械）は持たない（owner TD-261 の Q11 = b）。本番の DB は無い。
-- runtime の migration は、棚卸しの明細か Z004 の取込みを 1 件でも持つ DB では止まる（失敗にして何も変えない）。そうした開発・試験 DB（owner の PC の L3 用の DB を含む）は作り直す（リリースの前まで包括で承認済み。古い file は消さずに移す。[decision-log](../decision-log.md) D-123、[22 §16](../function-design/22-mnt-migration.md) の作り直しの手順。対象と保全の範囲は作り直しを伴う配布の単位の packet が書く。2026-10-18 に D-119 (8) の「作り直しを 1 回にまとめる順」を置き換えた）。棚卸しと Z004 の取込みが無い DB では、既存の movement の `business_date` を参照先の業務記録の日付（初期在庫は登録日）から埋め、求め直しで写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、黙って書き換えず、件数と商品ごとの old / new を操作ログ（`integrity_fix` と同じ形）に残し、起動の後に整合性の画面で知らせる。D4 の共有 JAN の不変条件に既に違反している組（在庫連動の商品と同じ JAN を持つ別の商品）は、自動では変えず、件数と商品コードを同じ操作ログに残し、整合性の画面で知らせる。
+- runtime の migration は、棚卸しの明細か Z004 の取込みを 1 件でも持つ DB では止まる（失敗にして何も変えない）。そうした開発・試験 DB（owner の PC の L3 用の DB を含む）は作り直す（リリースの前まで包括で承認済み。古い file は消さずに移す。[decision-log](../decision-log.md) D-123、[22 §16](../function-design/22-mnt-migration.md) の作り直しの手順。対象と保全の範囲は作り直しを伴う配布の単位の packet が書く。2026-10-18 に D-119 (8) の「作り直しを 1 回にまとめる順」を置き換えた）。棚卸しと Z004 の取込みが無い DB では、既存の movement の `business_date` を参照先の業務記録の日付（初期在庫は登録日）から埋め、求め直しで写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、黙って書き換えず、件数と商品ごとの old / new を操作ログ（`integrity_fix` と同じ形）に残し、起動の後に整合性の画面で知らせる。D4 の共有 JAN の不変条件に既に違反している組（在庫連動の商品と同じ JAN を持つ別の商品）は、自動では変えず、整合性の画面で知らせる: 整合性の検査（[36](../function-design/36-biz-integrity-check.md)）が今の DB から組を求めて JAN ごとに商品コードを並べ、直し方（どちらかの JAN を直すか、在庫連動を外す）を示す。違反は BIZ-01 の不変条件で新しく作られないので、直すと一覧から消える（2026-10-22、b1 の起票で、「件数と商品コードを操作ログに残す」を置き換えた。理由: 操作ログの記録は直した後も残り、直したかを示せない。組を移行の時点に記録しなくても、今の DB から同じ組が求まる）。
 - 理由: 旧行を新しい軸へ黙って移す規則を持たない（旧行の位置は時刻からしか推せない）。
 
 ### SPEC-STK-CNT-D11: EJ は在庫に使わない
@@ -166,6 +166,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 - (a) 停止に触れない単位: 並びの鍵・求め直しの関数・入出庫と商品登録の切替・整合性の突合の相手の変更。計数が無い間は値が今と同じ。(b) の前に入れてよい。
 - (b) 停止を外す単位: 計数・完了・Z004 の確定と取消を新しい経路で置き換え、[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) の 5 つの入口（棚卸しの開始・保存・確定、Z004 の確定・取消）をまとめて外す（SPEC-STOP-D6 のとおり部分的に外さない。owner の決定 TD-296 で確認）。停止 ADR の「⑤」は、この (b) の単位を指すと改めた。
 - (a) と (b) の境の細部（2026-10-18、(a) の起票〈Plan Packet `docs/archive/plans/2026-10-18-stocktake-count-runtime-a.md`〉で決めた）: (a) は精算（Z004、`phase = 1`）を含まない記録の全部を持つ。並びの鍵の 3 列（`business_date`・`phase`・`settlement_no` と `phase` と `settlement_no` の対の CHECK）・`stock_counts`・写しの 3 列の migration（[22 §19](../function-design/22-mnt-migration.md)）、求め直しの関数のうち計数・入出庫・初期在庫の窓（D3 の判定表の「入出庫」「初期在庫」の行と「計数どうし」、要再確認の理由 2・3）、入出庫 4 業務と商品登録・一括 import の切替、整合性の突合の相手と画面。(b) へ回すもの: Z004 の movement と `phase = 1` を結ぶ CHECK（`inventory_movements` の 2 回目の作り直し）、`csv_imports` の machine_no・settlement_no と `sale_records.stock_linked`、棚卸しの完了の列（`valuation_quantity`・カーソル）、求め直しの「精算 k」の行と要再確認の理由 1、D4 の共有 JAN の不変条件と、移行の前から違反している組の知らせ（D10 の最後の文）、D8 の在庫連動を始める検査、商品の結果・在庫推移の要再確認と範囲の表示、`MovementRecord` の並びの鍵。理由: 停止中の旧本体（test だけが呼ぶ Z004 の確定と取消。SPEC-STOP-D3）の fixture は精算回数を持たず、(a) で Z004 と phase を結ぶ CHECK を入れると、旧本体の回帰 test が (b) で旧本体ごと外れるまで書けない。(a) の間、`phase = 1` の movement を作る経路は無い（Z004 の確定は停止中。旧本体は `phase = 0` で書く）ので、求め直しは `phase = 1` の行を見たら誤りで止まる。
+- (b) を 2 つの lane に分けた（2026-10-22、(b) の最初の lane の起票〈Plan Packet `2026-10-22-stocktake-count-runtime-b1`〉で決めた）: b1 は停止を外す単位で、上の「(b) へ回すもの」と本 ADR の (b) の契約のうち、次の b2 の分を除く全部を持つ（計数の保存・要再確認の一覧・完了と完了の後の差、Z004 の識別・確定・取消、精算の窓と理由 1、D4 の共有 JAN の不変条件と移行の前からの違反の知らせ、D8 の在庫連動を始める検査、停止 ADR の 5 つの入口・旧本体・D-109 の時点証拠の schema と code の撤去、2 回目の `inventory_movements` の作り直し）。b2 は要再確認の範囲と計数の履歴を商品の画面で見せる単位で、商品の結果の写しの 3 列（[40](../function-design/40-cmd-product.md) の商品の get / search の結果、[20](../function-design/20-io-product-repo.md) の商品の読取り）と、商品一覧・在庫照会・商品フォームの在庫の欄の範囲の表示（[50](../function-design/50-ui-product-list.md)・[58](../function-design/58-ui-stock-inquiry.md)・[51](../function-design/51-ui-product-form.md) の「在庫数の表示」の項）、在庫変動の履歴に計数の行を混ぜること（[65](../function-design/65-inventory-record-traceability.md) の D-118 の節の 1 つ目の項、[66](../function-design/66-ui-stock-movements.md)）と `MovementRecord` の並びの鍵（[21](../function-design/21-io-inventory-repo.md)）を持つ。理由: 停止を外して黙ってずれないために要るのは、書く経路・守り（D4・D8）・要再確認を見せる所（棚卸しの画面の一覧・取込みの結果・整合性の検査）で、b2 は読取りの表示だけ。b1 の後・b2 の前の版では、商品の画面は写しの値だけを出し（要再確認の範囲を出さない）、在庫変動の履歴に計数の行が無いので、計数を保存した前後で変動後の値が履歴の差分と合わないことがある（記録と写しは正しい）。初めて店へ入れる版は b2 まで含む（[Plans の導入の前の関門](../Plans.md#導入の前の関門) の 2.）。
 
 ## Rejected Options
 

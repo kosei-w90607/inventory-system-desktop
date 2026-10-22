@@ -8,6 +8,7 @@
 - preview の拒否（精算回数の無い file・別の machine_no・同じ精算の別版・精算の順の食い違い）は既存の `import_error` kind と BIZ の message で返す（回復型に載せない）。
 - preview と ImportResult に知らせ（`notices`: 欠けた精算回数の区間〈`{ from: i64, to: i64 }`。1 つなら from = to〉の一覧と、精算日が PC の今日より後の知らせ。32 の新契約）を足す。ImportResult と RollbackResult に、求め直しの後に要再確認になった商品の一覧（`recheck_targets: Vec<CountRecoveryTarget>`、[40](40-cmd-product.md)）を足す。売上 0 の正常な完了を失敗に変えない。
 - CMD は PC の今日（ローカルの日付）を BIZ へ渡す（精算日が今日より後の知らせのため）。
+- preview token は確定の成功のときだけ消す（拒否・失敗では消さない）。今の同じ日の取込みの状況の変化を message の文字列で見て消す分岐は、同じ日の追加の確認を Z004 で使わなくなるので外す（2026-10-22、b1 の起票で決めた。preview の後に状況が変わった拒否は、同じ token で確定し直しても同じ拒否になり、30 分の期限で消える。message の文字列で分岐しない）。
 - commit と rollback は停止 ADR の 5 つの入口を外すのと同じ runtime の配布の単位で新しい経路に繋ぐ（SPEC-STK-CNT-D12）。bindings の生成と UI-07 の分岐・preview の mock の更新は runtime で同時に行う。
 
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。

@@ -13,7 +13,7 @@ docs の棚卸しの lane 1（PR #180、設計・dashboard・backlog・decision-
 active な lane の Plan Packet は `docs/plans/` の dated packet が正本（lane の branch は各 packet の `Branch` 行、現在地は helper status）。lane の起票・closeout はこの節へ lane ごとの行を足さない（D-097）。
 
 - SD を直接読む設計（PR #150、2026-10-07）は merge 済み。次 = 後続の「SD 直読みの runtime」の lane（PR #172、Draft で進行中。R3、[backlog](backlog.md) の該当項目。起票時に Final Review の P3 4 件を直し、L3 の前に packet の Contract Probe の確認を行う）、その後に取込み済みを `XZ_BKUP` へ移す (b) の lane（D-111 (1)(b)、backlog の該当項目）。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
-- 棚卸しと Z004 の業務 commit の次の runtime は D-118 の (b)（[backlog](backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」）。2026-09-22 の owner 決定の着手順（㉘ ①〜⑤）は D-118 で置き換わった。移した記録は [完了履歴](archive/harness-context/2026-09-30-Plans-completed.md) の「移した「次の行動」の段落」。
+- 棚卸しと Z004 の業務 commit の次の runtime は D-118 の (b)（[backlog](backlog.md) の「棚卸しの数の置き場と在庫数の求め直しの runtime」。起票: b1 の [packet](plans/2026-10-22-stocktake-count-runtime-b1.md)、b2 は同じ packet の「後続の lane」）。2026-09-22 の owner 決定の着手順（㉘ ①〜⑤）は D-118 で置き換わった。移した記録は [完了履歴](archive/harness-context/2026-09-30-Plans-completed.md) の「移した「次の行動」の段落」。
 
 設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせる）の結果を正本へ置き換える design lane は、PLU の書出し（PR #163、D-117）・棚卸しの数の置き場と在庫数の求め直し（PR #167、D-118）・単位・数量・原価の精度（PR #168、D-119）の 3 本が merge 済み。見直しで分けた残りの design lane 2 本、「日報の紙と意味づけ」（PR #173、D-120）と「売上の SD からの一括取込みと EJ の控えの閲覧」（PR #175、D-121）も 2026-10-18 に merge 済みで、runtime は [backlog](backlog.md) の「日報の紙の runtime」「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」の項目。runtime の順: 開発・試験 DB はリリースの前まで作り直してよいので（D-123、[22 §16](function-design/22-mnt-migration.md)）、棚卸しの数の置き場と在庫数の求め直しの runtime は原価の lane（vB）を待たない（(a) は PR #176 で 2026-10-19 に merge、残りは (b)）。原価の lane（vB、版 10）は PR #184 で 2026-10-21 に merge 済み（原価の税は TD-331 で税抜き）。PLU 側の後続（SD を直接読む runtime の後に PLU の書出しの見直しの runtime）と、TD-284 の設計 lane（PR #174、2026-10-18 merge、D-122）の後続の「JAN の別名の runtime」（PLU の書出しの見直しの runtime と同じ lane か、その後）は [backlog](backlog.md) の各項目。デザインの刷新は v1.0 の前に入れる（機能が固まった後に画面を一新する。owner の決定 TD-296）。
 
@@ -46,7 +46,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 - 関門（confirmed）:
   1. 原価の lane の起点の migration（vB、[22 §16](function-design/22-mnt-migration.md)）を初回の導入の版に入れる（D-123 (4)。vB は行のある DB で止まるので、初回の版に無いと店の DB はその後の更新で止まる）。前提の U6（TD-331、税抜）と U1（2026-10-18 版の在庫 Excel で巻・cm 0 行）は揃った（D-128）。→ 済み: vB（版 10）は [PR #184](https://github.com/kosei-w90607/inventory-system-desktop/pull/184) で 2026-10-21 に main へ入った（[packet](archive/plans/2026-10-21-cost-lane-c.md)）。
-  2. D-118 の (b)（D-070 で v1.0 の条件）。今年の年末の棚卸しは在庫 Excel を埋めれば終わる（TD-347）ので、年末に間に合わせる必要は無い。backlog の「棚卸しの数の置き場と在庫数の求め直しの runtime」。
+  2. D-118 の (b)（D-070 で v1.0 の条件）。今年の年末の棚卸しは在庫 Excel を埋めれば終わる（TD-347）ので、年末に間に合わせる必要は無い。backlog の「棚卸しの数の置き場と在庫数の求め直しの runtime」。→ b1・b2 の 2 つの lane に分けた（b1 の [packet](plans/2026-10-22-stocktake-count-runtime-b1.md)。満たすのは b2 の merge の時点）。
   3. backup の PC の外の控えと復元の予行（Draft の [PR #155](https://github.com/kosei-w90607/inventory-system-desktop/pull/155)、D-114）。他の機能の前提ではないので、導入の直前（店でアプリに本物のデータが溜まり始める前）まででよい。外の控えの USB は用意済み（TD-346）。間に合わないときの方針は未回答。backlog の「backup に、PC の外のコピーと復元の実証が運用として設計されていない」。
   4. MSI の製品名と upgrade code の固定、`identifier` の確定（データの folder の名になり、変えると空の DB で起動する）、予行演習 M1〜M8 と店の PC の M9。backlog の「MSI の製品名と upgrade code の固定」「MSI の予行演習」。
 - 関門（candidate、owner が選んで足す）: 初期投入の手順（backlog の「初期投入の手順」）、操作ログの保持を 7 年程度へ（TD-348、backlog の「操作ログの保持を 7 年程度に延ばす」）、installer の種類を MSI に絞る（backlog の「MSI の製品名と upgrade code の固定」）。
