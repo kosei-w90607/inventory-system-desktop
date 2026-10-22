@@ -147,7 +147,13 @@ fn create_backup(state: State<AppState>, app_handle: tauri::AppHandle) -> Result
 1. `app_handle.path().app_data_dir()` でapp_data_dirを取得
 2. `backup_dir = app_data_dir.join("backups")` でバックアップディレクトリ決定
    - `backup_path`設定があればそちらを優先（空文字ならデフォルト使用）
-3. `mnt::backup::create_backup(conn, &backup_dir)` を呼び出す
+3. `mnt::backup::pin_backup_dir(&backup_dir)`（71 §71.4 の「書く先の固定」）で書く先を確かめ、`Err` なら下の固定の文の `validation` を返す（D-114。手動の backup で原因を名指す）
+4. `mnt::backup::create_backup(conn, &backup_dir)` を呼び出す（中で同じ固定と判定をもう一度行う）
+
+| `BackupDirError` | `CmdError` | 固定の文 |
+|---|---|---|
+| `Unpinnable` | `validation` | 「この保存先は PC の中の folder として確かめられません。PC の中の folder を選び直してください」 |
+| `RegisterSd` | `validation` | 「この保存先はレジの SD カードの上にあります。PC の中の folder を選び直してください」 |
 
 ---
 
@@ -194,11 +200,11 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 
 ---
 
-### 43.8.2〜43.8.6 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
+### 43.8.2〜43.8.7 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
 
-5 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
+6 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
 
-**実行の thread**: 5 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
+**実行の thread**: 6 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
 
 | § | command | 入力 → 出力 | 処理 |
 |---|---|---|---|
@@ -207,6 +213,7 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | 43.8.4 | `get_offsite_backup_status` | なし → `OffsiteBackupStatus` | `get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::offsite_status(&app_data_dir, &backup_dir, 今日のローカル日付)`（`backup_dir` は写す元と同じで、`local_backup_old` の材料。71 §71.11.5） |
 | 43.8.5 | `inspect_backup` | `InspectBackupRequest { backup_path: String }` → `BackupInspection` | `mnt::backup::inspect_backup(Path::new(&backup_path))`。DB を使わない。空の `backup_path` は `validation` |
 | 43.8.6 | `reset_offsite_state` | なし → `OffsiteCheckResult` | DB の Mutex を取り、`get_backup_dir` で `backup_dir` を読み、`mnt::backup::create_backup(conn, &backup_dir)`（§43.6 と同じ。操作ログ `backup_create`）を行ってから lock を放し、`mnt::offsite::reset_offsite_state(&app_data_dir, &backup_dir)`（71 §71.11.5a）を呼ぶ。作成が失敗したら MNT の作り直しを呼ばず、§43.6 と同じ写像で返す（記録に触れない）。バックアップ画面の「記録を作り直す」（UI-11b-D14）が呼ぶ |
+| 43.8.7 | `stop_offsite_backup` | なし → `null` | `mnt::offsite::stop_offsite_backup(&app_data_dir)`（71 §71.11.5b）。DB を使わない（lock を取らない）。PC の中の backup に触れない。バックアップ画面の「PC の外の控えをやめる」（確認の後、UI-11b-D14）が呼ぶ。作り直しの command に mode を持たせず別にしたのは、やめるには backup の作成も媒体も要らず、mode にすると request DTO と CMD の分岐が増えるため |
 
 **エラーの写像**（`CmdError.kind` の値は既存の `validation` / `internal` だけを使い、`CmdErrorKind` に値を足さない）:
 
@@ -220,6 +227,9 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
 | `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした。「記録を作り直す」を押してください」 |
 | `OffsiteError::StateUnsupported` | `validation` | 「PC の外の控えの記録は新しい版のアプリが書いたものです。新しい版のアプリを入れてください」 |
+| `OffsiteError::NoMediumAttached` | `validation` | 「用意した USB メモリが差さっていません。USB メモリを差して「記録を作り直す」を押すか、使わないなら「PC の外の控えをやめる」を押してください」 |
+| `OffsiteError::StopFailed` | `internal` | 「PC の外の控えをやめられませんでした。記録は元のまま残っています。もう一度「PC の外の控えをやめる」を押してください」 |
+| `OffsiteError::StateResetFailed` | `internal` | 「PC の外の控えの記録を退避・作り直しできませんでした。記録は元のまま残っています。もう一度「記録を作り直す」を押してください」 |
 | `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |
 | `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
 
@@ -299,7 +309,7 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
 ])
 ```
 
-D-114 の 5 command（§43.8.2〜§43.8.6）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
+D-114 の 6 command（§43.8.2〜§43.8.7）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 
