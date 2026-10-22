@@ -35,7 +35,7 @@ wave に属さない単独の lane。D-114（design lane = PR #155、[packet](..
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -51,6 +51,7 @@ wave に属さない単独の lane。D-114（design lane = PR #155、[packet](..
 
 1. kickoff → spec-check（2026-10-23、Writer）: owner の決定（TD-384）と backlog の「PC の外の控えの runtime」・「保存と起動の守りの follow-up」の (2) を起点に Scope を (a) に限り、Risk を R4 と記録した（下の Risk）。
 2. spec-check → plan-draft（2026-10-23、Writer、本 commit）: (a) が触る設計は 71 §71.3・§71.4・§71.4.1・§71.5・§71.8・§71.12、43 §43.6・§43.8.5、68 UI-11b-D13・D15・§68.4・§68.7・§68.11、22 MNT-03-D11 に揃っていて、新しい設計の判断が要らない（下の Design Readiness）。`docs/DEV_WORKFLOW.md` Workflow State の表の唯一の skip（Design Readiness が既存の設計正本で足りると引く）に当たる。owner の判断事項 J1（下）は範囲を足すかの問いで、既定（足さない）で設計は足りる。J1 で足すと決まれば design へ戻る（43 §43.7・68 UI-11b-D13 を直す）。Contract Probe の P7・P8 は未確認で、plan-approved の前に記録する（下の Contract Probe）。plan-gate へは Coordinator が進める。
+3. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner が判断事項 J1 に A（入れない。backlog に残す）と答えた（repo 外の回答台帳 TD-390）。推奨どおりで、Scope・契約は起票のまま。packet と Matrix が揃い commit されている。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 
 ## Owner Effort Budget
 
@@ -60,7 +61,7 @@ wave に属さない単独の lane。D-114（design lane = PR #155、[packet](..
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 7 | 0（起票の時点。TD-384 は lane の選択の前の決定で本 lane に数えない） | 6（owner の判断事項 J1 の 1、Contract Probe の P7・P8 の依頼 1〈結果の受領は同じ decision point〉、R4 の計画の承認 1、L3 1、R4 の承認と Ready 1、merge 1） | 1（L3 の 2 回目） | 7 = 0 + 6 + 1 |
+| 介入 | 7 | 1（2026-10-23: owner の判断事項 J1〈TD-390〉。TD-384 は lane の選択の前の決定で本 lane に数えない） | 5（Contract Probe の P7・P8 の依頼 1〈結果の受領は同じ decision point〉、R4 の計画の承認 1、L3 1、R4 の承認と Ready 1、merge 1） | 1（L3 の 2 回目） | 7 = 1 + 5 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。owner は 2026-10-21 から数日、手が使いにくい（左手だけ）。問いは記号か短文で答えられる形にする（下の owner の判断事項、Contract Probe の段取り）。
