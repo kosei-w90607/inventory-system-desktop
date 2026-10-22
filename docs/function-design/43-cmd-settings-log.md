@@ -147,7 +147,13 @@ fn create_backup(state: State<AppState>, app_handle: tauri::AppHandle) -> Result
 1. `app_handle.path().app_data_dir()` でapp_data_dirを取得
 2. `backup_dir = app_data_dir.join("backups")` でバックアップディレクトリ決定
    - `backup_path`設定があればそちらを優先（空文字ならデフォルト使用）
-3. `mnt::backup::create_backup(conn, &backup_dir)` を呼び出す
+3. `mnt::backup::pin_backup_dir(&backup_dir)`（71 §71.4 の「書く先の固定」）で書く先を確かめ、`Err` なら下の固定の文の `validation` を返す（D-114。手動の backup で原因を名指す）
+4. `mnt::backup::create_backup(conn, &backup_dir)` を呼び出す（中で同じ固定と判定をもう一度行う）
+
+| `BackupDirError` | `CmdError` | 固定の文 |
+|---|---|---|
+| `Unpinnable` | `validation` | 「この保存先は PC の中の folder として確かめられません。PC の中の folder を選び直してください」 |
+| `RegisterSd { sd_folder }` | `validation` | 「この保存先はレジの SD カードの上にあります（{sd_folder} が見つかりました）。レジの SD の写しを PC に置いているなら、写しを drive の直下でなく folder の中へ移してください。そうでなければ「保存先を選ぶ」で PC の中の別の folder を選び直してください」（`{sd_folder}` は 71 §71.4 の `pin_backup_dir` が見つけた `{祖先}\CASIO\SR500_550_4000` の path。判定に使った path の形で、junction の先だけで見つかったときは `\\?\Volume{GUID}\…` の形になる〈保存先を選び直す直し方は同じ〉） |
 
 ---
 
@@ -191,6 +197,45 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 2. 返された `PathBuf` を `to_string_lossy().to_string()` で文字列化して返す。
 
 **非目的**: バリデーション・パス加工・設定更新は行わない。CMD層は薄いラッパーのまま。
+
+---
+
+### 43.8.2〜43.8.7 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
+
+6 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
+
+**実行の thread**: 6 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
+
+| § | command | 入力 → 出力 | 処理 |
+|---|---|---|---|
+| 43.8.2 | `prepare_offsite_medium` | `PrepareOffsiteMediumRequest { selected_path: String }` → `OffsiteMediumView` | `app_data_dir` を取り、`get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::prepare_offsite_medium(&app_data_dir, &backup_dir, Path::new(&selected_path))` を呼ぶ（`backup_dir` は 71 §71.11.2 手順 6 の写しの元）。空の `selected_path` は `validation` |
+| 43.8.3 | `check_offsite_backup` | なし → `OffsiteCheckResult` | `backup_dir` を読んで lock を放し、`mnt::offsite::check_offsite_backup(&app_data_dir, &backup_dir)`。共通レイアウトの確認（UI-11b-D16）が `checkAutoBackup` の後に呼ぶ |
+| 43.8.4 | `get_offsite_backup_status` | なし → `OffsiteBackupStatus` | `get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::offsite_status(&app_data_dir, &backup_dir, 今日のローカル日付)`（`backup_dir` は写す元と同じで、`local_backup_old` の材料。71 §71.11.5） |
+| 43.8.5 | `inspect_backup` | `InspectBackupRequest { backup_path: String }` → `BackupInspection` | `mnt::backup::inspect_backup(Path::new(&backup_path))`。DB を使わない。空の `backup_path` は `validation` |
+| 43.8.6 | `reset_offsite_state` | なし → `OffsiteCheckResult` | DB の Mutex を取り、`get_backup_dir` で `backup_dir` を読み、`mnt::backup::create_backup(conn, &backup_dir)`（§43.6 と同じ。操作ログ `backup_create`）を行ってから lock を放し、`mnt::offsite::reset_offsite_state(&app_data_dir, &backup_dir)`（71 §71.11.5a）を呼ぶ。作成が失敗したら MNT の作り直しを呼ばず、§43.6 と同じ写像で返す（記録に触れない）。バックアップ画面の「記録を作り直す」（UI-11b-D14）が呼ぶ |
+| 43.8.7 | `stop_offsite_backup` | なし → `null` | `mnt::offsite::stop_offsite_backup(&app_data_dir)`（71 §71.11.5b）。DB を使わない（lock を取らない）。PC の中の backup に触れない。バックアップ画面の「PC の外の控えをやめる」（確認の後、UI-11b-D14）が呼ぶ。作り直しの command に mode を持たせず別にしたのは、やめるには backup の作成も媒体も要らず、mode にすると request DTO と CMD の分岐が増えるため |
+
+**エラーの写像**（`CmdError.kind` の値は既存の `validation` / `internal` だけを使い、`CmdErrorKind` に値を足さない）:
+
+| MNT の失敗 | `CmdError` | 固定の文（UI が出す。UI-11b-D14〜D16） |
+|---|---|---|
+| `OffsiteError::NotRemovable` | `validation` | 「USB メモリを選んでください（この場所は PC の外の控えに使えません）」 |
+| `OffsiteError::RegisterSd { sd_folder }` | `validation` | 「これはレジの SD カードです（{sd_folder} が見つかりました）。控えは USB メモリに作ってください。USB メモリにレジの SD の写しを置いているなら、写しを drive の直下でなく folder の中へ移してください」 |
+| `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
+| `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
+| `OffsiteError::Redirected` | `validation` | 「この USB メモリの InventoryBackup フォルダは別の場所へのリンクのため使えません」 |
+| `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
+| `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした。「記録を作り直す」を押してください」 |
+| `OffsiteError::StateUnsupported` | `validation` | 「PC の外の控えの記録は新しい版のアプリが書いたものです。新しい版のアプリを入れてください」 |
+| `OffsiteError::NoMediumAttached` | `validation` | 「用意した USB メモリが差さっていません。USB メモリを差して「記録を作り直す」を押すか、使わないなら「PC の外の控えをやめる」を押してください」 |
+| `OffsiteError::StopFailed` | `internal` | 「PC の外の控えをやめる操作を終えられませんでした。「PC の外の控えをやめる」がまだ出ていれば、もう一度押してください」（記録の状態は断言しない。card は取り直した status で決める、68 §68.4 手順 5） |
+| `OffsiteError::StateResetFailed` | `internal` | 「PC の外の控えの記録の作り直しを終えられませんでした。「記録を作り直す」がまだ出ていれば、もう一度押してください」（記録の状態は断言しない。card は取り直した status で決める、68 §68.4 手順 4） |
+| `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |
+| `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
+
+`check_offsite_backup` の失敗の種類は、UI が文言を分けるために `OffsiteBackupStatus.last_failure_kind`（43.8.4）から読む。`CmdError.message` の文字列で分けない（MNT-01-D4 と同じ方針）。
+
+**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field のうち、件数〈`product_count`。1 つの SQLite の DB の行の数で、DB の大きさの上限〈約 281 TB、https://www.sqlite.org/limits.html 〉から 2^53 に届かない〉と日数〈`days_since_last_success`。chrono の日付の差〉は JS の安全な整数の範囲に収まる。版〈`BackupInspection.schema_version`・`app_max_version`〉は外の DB の値で範囲を仮定せず、UI は判定にも表示にも使わない〈戻せるかの判定は MNT の `newer_than_app`、71 §71.12。UI-11b-D15 の文は版の数を出さない〉）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（7 値）・`BackupInspection` は 71 §71.11.1・§71.11.2・§71.11.4・§71.11.5・§71.12 の定義のまま。
 
 ---
 
@@ -263,6 +308,8 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
     cmd::settings_cmd::save_receipt_image,
 ])
 ```
+
+D-114 の 6 command（§43.8.2〜§43.8.7）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 
