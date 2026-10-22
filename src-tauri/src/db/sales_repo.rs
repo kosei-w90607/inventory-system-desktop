@@ -42,6 +42,8 @@ pub struct NewSaleRecord {
     pub source_line_no: Option<i64>,
     pub reason: Option<String>,
     pub note: Option<String>,
+    /// 取込みのときの在庫連動（Z004 の確定だけが `pos_stock_sync` を渡し、手動の売上ほかは false。pos-tables）
+    pub stock_linked: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -56,8 +58,8 @@ pub struct NewSaleRecord {
 pub fn insert_sale_record(conn: &DbConnection, record: &NewSaleRecord) -> Result<i64, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO sale_records (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, reason, note, is_voided, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)",
+        "INSERT INTO sale_records (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, reason, note, is_voided, created_at, stock_linked)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11)",
         rusqlite::params![
             record.csv_import_id,
             record.product_code,
@@ -69,6 +71,7 @@ pub fn insert_sale_record(conn: &DbConnection, record: &NewSaleRecord) -> Result
             record.reason,
             record.note,
             now,
+            record.stock_linked,
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -248,6 +251,126 @@ pub struct NewDailyReportDepartmentLine {
 // ---------------------------------------------------------------------------
 // CSV取込み関数（BIZ-03 用）
 // ---------------------------------------------------------------------------
+
+/// active な Z004 の取込みの精算（24「active な Z004 の精算の一覧」の 1 行）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SettlementRow {
+    pub import_id: i64,
+    pub machine_no: String,
+    pub settlement_no: i64,
+    pub settlement_date: String,
+}
+
+/// machine_no の照合先（24「Z004 の取込みの machine_no の照合先」）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MachineNoRef {
+    pub import_id: i64,
+    pub machine_no: String,
+    pub settlement_no: i64,
+    pub status: CsvImportStatus,
+    pub imported_at: String,
+}
+
+/// active（completed / completed_partial）な Z004 の取込みの精算を settlement_no の昇順で返す（24）
+pub(crate) fn list_active_settlements(conn: &DbConnection) -> Result<Vec<SettlementRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, machine_no, settlement_no, settlement_date FROM csv_imports
+         WHERE status IN ('completed','completed_partial')
+         ORDER BY settlement_no, id",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(SettlementRow {
+                import_id: row.get(0)?,
+                machine_no: row.get(1)?,
+                settlement_no: row.get(2)?,
+                settlement_date: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 取り消したものを含む Z004 の取込みのうち machine_no が引数と違うもの 1 件（active を優先し、
+/// 同じ状態の中では import ID の最大）。無ければ None（24。BIZ-03 の順 2）
+pub(crate) fn find_machine_no_mismatch(
+    conn: &DbConnection,
+    machine_no: &str,
+) -> Result<Option<MachineNoRef>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, machine_no, settlement_no, status, imported_at FROM csv_imports
+         WHERE machine_no <> ?1
+         ORDER BY status IN ('completed','completed_partial') DESC, id DESC LIMIT 1",
+    )?;
+    let mut rows = stmt.query([machine_no])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(MachineNoRef {
+            import_id: row.get(0)?,
+            machine_no: row.get(1)?,
+            settlement_no: row.get(2)?,
+            status: parse_csv_import_status(3, &row.get::<_, String>(3)?)?,
+            imported_at: row.get(4)?,
+        })),
+        None => Ok(None),
+    }
+}
+
+/// 同じ machine_no・settlement_no の active な取込みの ID と hash（0 件か 1 件。24。BIZ-03 の順 4）
+pub(crate) fn find_active_imports_for_settlement(
+    conn: &DbConnection,
+    machine_no: &str,
+    settlement_no: i64,
+) -> Result<Vec<(i64, String)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, file_hash FROM csv_imports
+         WHERE machine_no = ?1 AND settlement_no = ?2 AND status IN ('completed','completed_partial')
+         ORDER BY id",
+    )?;
+    let rows = stmt
+        .query_map(rusqlite::params![machine_no, settlement_no], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// その取込みの売上か movement を持つ商品（Z004 の確定・取消の求め直しの対象。無効の行も含む）
+pub(crate) fn list_import_product_codes(
+    conn: &DbConnection,
+    import_id: i64,
+) -> Result<Vec<String>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT product_code FROM sale_records WHERE csv_import_id = ?1
+         UNION
+         SELECT product_code FROM inventory_movements
+         WHERE reference_type = 'csv_import' AND reference_id = ?1
+         ORDER BY product_code",
+    )?;
+    let rows = stmt
+        .query_map([import_id], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 商品の、取込みのときに在庫連動だった有効な売上（個数 ≠ 0 か金額 ≠ 0）を持つ active な取込みの ID
+/// （ADR D3 の理由 1 の行の判定。今の `pos_stock_sync` を見ない）
+pub(crate) fn list_linked_sale_import_ids(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<Vec<i64>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT s.csv_import_id FROM sale_records s
+         JOIN csv_imports c ON c.id = s.csv_import_id
+         WHERE s.product_code = ?1 AND s.is_voided = 0 AND s.stock_linked = 1
+           AND (s.quantity <> 0 OR s.amount <> 0)
+           AND c.status IN ('completed','completed_partial')
+         ORDER BY s.csv_import_id",
+    )?;
+    let rows = stmt
+        .query_map([product_code], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
 
 /// csv_imports に1行INSERTし、挿入されたIDを返す
 ///
@@ -858,19 +981,21 @@ pub fn list_daily_report_imports(
 // ---------------------------------------------------------------------------
 
 /// rusqlite::Row → CsvImport の変換
+fn parse_csv_import_status(index: usize, value: &str) -> rusqlite::Result<CsvImportStatus> {
+    match value {
+        "completed" => Ok(CsvImportStatus::Completed),
+        "completed_partial" => Ok(CsvImportStatus::CompletedPartial),
+        "rolled_back" => Ok(CsvImportStatus::RolledBack),
+        value => Err(rusqlite::Error::FromSqlConversionFailure(
+            index,
+            rusqlite::types::Type::Text,
+            format!("unknown csv import status: {value}").into(),
+        )),
+    }
+}
+
 fn row_to_csv_import(row: &rusqlite::Row) -> rusqlite::Result<CsvImport> {
-    let status = match row.get::<_, String>(7)?.as_str() {
-        "completed" => CsvImportStatus::Completed,
-        "completed_partial" => CsvImportStatus::CompletedPartial,
-        "rolled_back" => CsvImportStatus::RolledBack,
-        value => {
-            return Err(rusqlite::Error::FromSqlConversionFailure(
-                7,
-                rusqlite::types::Type::Text,
-                format!("unknown csv import status: {value}").into(),
-            ))
-        }
-    };
+    let status = parse_csv_import_status(7, &row.get::<_, String>(7)?)?;
     Ok(CsvImport {
         id: row.get(0)?,
         filename: row.get(1)?,
@@ -1681,6 +1806,7 @@ mod tests {
             source_line_no: None,
             reason: Some("plu_unregistered".to_string()),
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(&conn, &record).unwrap();
         assert!(id > 0);
@@ -1721,6 +1847,7 @@ mod tests {
             source_line_no: Some(5),
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(&conn, &record).unwrap();
         assert!(id > 0);
@@ -1751,6 +1878,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let result = insert_sale_record(&conn, &record);
         assert!(
@@ -1776,6 +1904,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let result = insert_sale_record(&conn, &record);
         assert!(
@@ -1977,6 +2106,7 @@ mod tests {
                 source_line_no: Some(7),
                 reason: None,
                 note: None,
+                stock_linked: false,
             },
         )
         .unwrap();
@@ -1992,6 +2122,7 @@ mod tests {
                 source_line_no: Some(8),
                 reason: None,
                 note: None,
+                stock_linked: false,
             },
         )
         .unwrap();
@@ -2114,6 +2245,7 @@ mod tests {
                 source_line_no: Some(i + 1),
                 reason: None,
                 note: None,
+                stock_linked: false,
             };
             insert_sale_record(&conn, &record).unwrap();
         }
@@ -2962,6 +3094,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(conn, &record).unwrap();
         if is_voided {

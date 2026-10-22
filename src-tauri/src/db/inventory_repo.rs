@@ -126,8 +126,24 @@ pub(crate) struct LedgerMovementRow {
     pub business_date: String,
     pub phase: i64,
     pub settlement_no: Option<i64>,
-    /// `reference_type IS NULL`（商品の登録・一括 import の初期在庫）
+    /// 初期在庫の印（`reference_type` が NULL で `movement_type` が `receiving`。商品の登録・一括 import が作る。
+    /// demo の seed の `sale_auto`〈`reference_type` NULL〉は初期在庫にしない。ADR D9）
     pub initial_stock: bool,
+}
+
+/// 計数の保存（21 `insert_stock_count`。`stock_counts` へ 1 行。UPDATE・DELETE の関数は持たない）
+#[derive(Debug, Clone)]
+pub(crate) struct NewStockCount {
+    pub product_code: String,
+    pub count_value: i64,
+    /// `true` なら fresh（「入れ直す」）
+    pub fresh: bool,
+    pub business_date: String,
+    /// fresh だけ。保存の時点の active な Z004 の最大の精算回数（取込みが無ければ NULL）
+    pub settlement_no: Option<i64>,
+    /// fresh だけ。保存の時点の `MAX(inventory_movements.id)`（無ければ 0）
+    pub seen_movement_id: Option<i64>,
+    pub stocktake_item_id: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +262,8 @@ pub(crate) fn list_ledger_movements_for_product(
     product_code: &str,
 ) -> Result<Vec<LedgerMovementRow>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, quantity, business_date, phase, settlement_no, reference_type IS NULL
+        "SELECT id, quantity, business_date, phase, settlement_no,
+                reference_type IS NULL AND movement_type = 'receiving'
          FROM inventory_movements WHERE product_code = ?1 AND is_voided = 0 ORDER BY id",
     )?;
     let rows = stmt
@@ -260,6 +277,54 @@ pub(crate) fn list_ledger_movements_for_product(
                 initial_stock: row.get(5)?,
             })
         })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 計数を 1 行保存し、id を返す（21。BIZ-06 の `save_stock_count`・`zero_uncounted_items` だけが呼ぶ）
+pub(crate) fn insert_stock_count(
+    conn: &DbConnection,
+    count: &NewStockCount,
+) -> Result<i64, DbError> {
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    conn.execute(
+        "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
+             settlement_no, seen_movement_id, stocktake_item_id, counted_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![
+            count.product_code,
+            count.count_value,
+            if count.fresh { "fresh" } else { "default" },
+            count.business_date,
+            count.settlement_no,
+            count.seen_movement_id,
+            count.stocktake_item_id,
+            now,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// `MAX(inventory_movements.id)`（無ければ 0。fresh な計数と完了のカーソル）
+pub(crate) fn max_movement_id(conn: &DbConnection) -> Result<i64, DbError> {
+    Ok(conn.query_row(
+        "SELECT COALESCE(MAX(id), 0) FROM inventory_movements",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+/// `MAX(stock_counts.id)`（無ければ NULL。完了のカーソル）
+pub(crate) fn max_stock_count_id(conn: &DbConnection) -> Result<Option<i64>, DbError> {
+    Ok(conn.query_row("SELECT MAX(id) FROM stock_counts", [], |row| row.get(0))?)
+}
+
+/// 計数を持つ商品の一覧（Z004 の確定・取消の求め直しの対象。ADR の横断の表）
+pub(crate) fn list_counted_product_codes(conn: &DbConnection) -> Result<Vec<String>, DbError> {
+    let mut stmt =
+        conn.prepare("SELECT DISTINCT product_code FROM stock_counts ORDER BY product_code")?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }

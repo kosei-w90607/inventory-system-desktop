@@ -147,6 +147,7 @@ fn execute_commit(
                 source_line_no: Some(row.line_no as i64),
                 reason: None,
                 note: None,
+                stock_linked: false,
             },
         )?;
 
