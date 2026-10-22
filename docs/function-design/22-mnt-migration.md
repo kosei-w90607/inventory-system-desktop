@@ -408,7 +408,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 ## 17. MNT-03 追加: 日報の束の精算回数の列の migration（D-111）
 
-**MNT-03-D15 / IO-07-D5 / BIZ-08-D4 / D-111**: `daily_report_imports` に NULL を許す列 `settlement_no INTEGER` を足す migration（以下 vS）。列の意味の正本は [db-design/pos-tables.md](../db-design/pos-tables.md) §12b、保存と照合は [37](37-biz-daily-report-import-service.md) §37.4 手順 4a・6 と [24](24-io-csv-import-repo.md) §14.14・§14.18a。版の番号は SD 直読みの runtime の lane が merge の時点の次の番号にする（起票の時点〈2026-10-17〉の現物の最大は v8〈`db/migration.rs` の `migrations()`〉なので、先に merge する migration が無ければ v9）。原価の lane（vB、§16）・PLU の書出しの見直しの runtime（`plu_slots` の migration）・棚卸しの数の置き場と在庫の求め直しの runtime の migration が先に merge したら、後から merge する lane が番号を取り直す（`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項）。
+**MNT-03-D15 / IO-07-D5 / BIZ-08-D4 / D-111**: `daily_report_imports` に NULL を許す列 `settlement_no INTEGER` を足す migration（以下 vS）。列の意味の正本は [db-design/pos-tables.md](../db-design/pos-tables.md) §12b、保存と照合は [37](37-biz-daily-report-import-service.md) §37.4 手順 4a・6 と [24](24-io-csv-import-repo.md) §14.14・§14.18a。版の番号は SD 直読みの runtime の lane が merge の時点の次の番号にする（2026-10-23 の main の最大は v10〈`src-tauri/src/db/migration.rs` の `migrations()`。v9 は §19、v10 は §16 の vB〉なので、先に merge する migration が無ければ v11）。棚卸しの数の置き場と在庫の求め直しの runtime の (b) の最初の lane（b1）の migration（vZ）も次の版を取るので、先に merge した側が若い番号を取り、後から merge する側が file 名・`migrations()` の登録・test の版の期待を取り直す（`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項。§18 の JAN の別名・PLU の書出しの見直しの runtime の migration も同じ）。
 
 **手順**（`MigrationKind::Sql`。実行器が BEGIN → SQL → schema_versions の INSERT → COMMIT を持つ）:
 
@@ -417,9 +417,9 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 - 既存の行は NULL のまま（D-111 より前の取込みと layout B。値を推測して埋めない。BIZ-08-D4 は NULL の行を照合しない）。backfill・範囲の検査・表の作り直しは要らない（足すのは NULL を許す列だけで、既存の値を変えない）。CHECK・index は足さない（照合は `report_date` の既存の index で絞れる件数で、利用者は 1 人）。
 - 新しい DB も v4 で表を作ってから vS で列を足す（v4 の CREATE 文〈`schema_v4.rs`〉は書き換えない）。
 - 失敗は実行器の TX で戻り、版は記録されない（§3.2）。vS を適用した DB は vS を知らない旧版のアプリでは開けない（MNT-03-D11 の `SchemaNewerThanApp`）。旧版へ戻す手順は §16 の「回復」と同じ（更新の前の backup に戻す）。
-- DB の作り直しとの関係（§16 の「DB の作り直しを 1 回にまとめる順」）: vS は行のある DB にもそのまま当たり、作り直しを要さない。vB の起点の検査は `daily_report_imports` を見ないので、vS と vB はどちらが先でも互いに止めない。作り直しで移すアプリの data の folder には、SD から読んだ原本の写し（`pos-sources/`、[29 §29.8](29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）も入る（§16 の作り直しの手順は folder ごと移す）。
+- DB の作り直しとの関係（§16 の「DB の作り直しと順」）: vS は行のある DB にもそのまま当たり、作り直しを要さない。vB（§16 の手順 2）・v9（§19 の手順 1）・vZ の止まる検査は `daily_report_imports` を見ないので、vS とそれらはどちらが先でも互いに止めない。作り直しで移すアプリの data の folder には、SD から読んだ原本の写し（`pos-sources/`、[29 §29.8](29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）も入る（§16 の「作り直しの手順」は folder ごと移す）。
 
-**MIGRATIONS 登録順**: `migration.rs` の migrations() は v8 の後（または merge の時点の最後の版の後）に vS を登録する。description は `日報の束の精算回数の列（daily_report_imports.settlement_no）`、kind は `MigrationKind::Sql`。実装は、日報の行がある直前の版の DB からの適用で既存の行の `settlement_no` が NULL になること、`pragma_table_info('daily_report_imports')` に列があり型が `INTEGER`・NULL を許すこと、再実行で vS を重複して適用しないこと、`settlement_no` の値つきの INSERT が読めることを検証する（test `migration::adds_daily_report_settlement_no_nullable`）。
+**MIGRATIONS 登録順**: `migration.rs` の migrations() は merge の時点の最後の版の後に vS を登録する。description は `日報の束の精算回数の列（daily_report_imports.settlement_no）`、kind は `MigrationKind::Sql`。実装は、日報の行がある直前の版の DB からの適用で既存の行の `settlement_no` が NULL になること、`pragma_table_info('daily_report_imports')` に列があり型が `INTEGER`・NULL を許すこと、再実行で vS を重複して適用しないこと、`settlement_no` の値つきの INSERT が読めることを検証する（test `migration::adds_daily_report_settlement_no_nullable`）。
 
 ## 18. MNT-03 追加: 前の JAN の別名の migration（proposed・未実装、D-122）
 

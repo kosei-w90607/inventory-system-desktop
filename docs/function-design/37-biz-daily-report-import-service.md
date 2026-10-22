@@ -348,7 +348,7 @@ fn list_daily_report_imports(
 - Excel帳票のparse。
 - ECR+や他レジ形式の直接取込み。
 - (a) の段階（本書の SD 直読み）での SD への書込み（CV17 と同じく `XZ_BKUP` へ移すこと。owner 決定 2026-10-06 でこの段階では SD は動かさない、IO-09-D3。移す操作は D-111 (1) の (b) の後続の lane）。
-- 写しの保持期間・削除と、PC の外への backup（D-111 の未決 A・B）。
+- 写しの保持期間・削除（D-111 の未決 A）。写しは backup にも PC の外の控えにも入れない（未決 B、D-114 で決まった。[71](71-mnt-backup.md) の冒頭）。
 - `Z006`（グループ）、`Z009`（時間帯別）、`Z011`（担当者）の保存・集計。個人店の初期運用では使わない前提とし、必要性が確認された場合は後続設計で追加する。
 
 ### 37.9 scan_register_sd_daily_reports（SD から読む候補、BIZ-08-D3）
@@ -709,3 +709,4 @@ struct EjRecordDetail {
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | 選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。手で選んだ SD 上の file を SD の入力にする §37.3 手順 1a。BIZ-08-D4 の照合の repository 関数（24 §14.18a）。§37.4 の手順を 2a（D6）・2b（D5）の順に直した。`source_files_json` を内部の serialize 用の型で書く。同じ bytes の組で `XZ` の path を残す。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | BIZ-08-D6: SD の経路は精算回数のある束だけを取り込む（scan・preview・commit）。§37.3 手順 4 の精算回数の保存の文を IO-07-D5 → cache → DB の契約に直した。 |
 | 2026-10-17 | sd-bulk-import-design（design、D-121） | §37.10（BIZ-08-D7 締めの一括取込みの順・TX・失敗、BIZ-08-D8 日報の同日追加の確認を精算回数の照合で置き換える、BIZ-08-D10 CV17 との併存と (b) を妨げない約束）と §37.11（BIZ-08-D9 EJ の記録の取込みと閲覧）を proposed で足した。§37.3〜§37.9 は変えていない。Plan Review round 1 の是正で、内部の結果の `Failed(BizError)` と EJ の項目、日報の並べる鍵、同日の NULL の判定の repo、`XZ` 直下の最後の記録の保留、`body_text` の見出しの取り方、EJ の移動の条件を直した。Plan Review round 2 の是正で、§37.11 の保存の規則を 1 つの筋（形・日時の検査 → 名前による伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 結果）に書き直し（手で選んだ伸びうる file の保留、暦の検査、conflict の保存済みの有無、EJ の kind・mode の生成 enum）、移してよい EJ の条件に `held_count` 0 を足し、scan で読めなかった EJ の file 名を snapshot から一括の結果へ引き継ぎ、§37.10 手順 3 の Z004 の preview の `Err` の行き先を書いた。Plan Review round 3 の是正で、§37.10 手順 1 (a) の並べる鍵に `XZ` の束と `candidate_key` の順を足し、scan の EJ の数えに `held_count` を足し、§37.11 手順 3 (d) に保留した記録を次の読取りでもう一度確かめることを書き、BIZ-08-D9 の再検討に番号の一周を足した。Final Review の是正で、scan で読めなかった Z004 を `z004_unreadable_files` に持ち一括取込みの結果で名指しし、Z004 の項目に精算日（`settlement_date`）を足し、§37.10 手順 1 の同じ鍵の順を日報と Z004 の共通の 1 つの規則にした（Z004 の精算回数は `parse_z004` の識別メタから取る）。あわせて、scan に読めなかった Z004 の数（`z004_unreadable_count`）を足し、同じ bytes の Z004 を §37.9 手順 6 と同じ規則で 1 つにまとめ、Z004 の数えをまとめた後の集合にした。 |
+| 2026-10-23 | sd-direct-read-runtime（main への同期の当て直し） | §37.8 の写しの行を、D-114 で決まった未決 B（backup と PC の外の控えに写しを入れない）に合わせた。 |
