@@ -8,7 +8,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -25,6 +25,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 1. kickoff → spec-check（2026-10-17、起草役）: Coordinator の発注 367（D-111 の既決の契約の実装。D-117・D-118 の runtime は入れない）を Scope にし、規模を数えて 1 lane のままと決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 対象の正本は 29 §29.2（IO-07-D5）・§29.7・§29.8、37 §37.3・§37.4・§37.9、45 §45.2〜§45.8、55 UI-07-D12・D15・D16、24 §14.14・§14.18a、pos-tables §12b、22。設計 lane の fresh Final broad の P3 4 件（`docs/backlog.md` の「SD 直読みの runtime」）と、起票で見つけた正本の穴（migration の手順が 22 に無い、IO-07-D5 の `i64` の範囲、UI-07-D16 の選択の一覧の細部と文言、37 §37.9 手順 10・45 §45.6a 手順 2a〈D-117〉の実装の lane）を、本 packet と同じ commit で正本に入れた（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役）: 上の更新は正本にあり、D-111 の決定の向きを変えない。未解決の設計の問いは無い。残る P1・P4（Contract Probe）は設計の問いではなく、L3 の前に確かめる未確認の前提（下の Contract Probe）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: main（`eed07d37`）への同期と、Scope・AC を今の code と migration の版へ当て直した（D-114 の 71 MNT-01-D10・§71.11.3 を前提として 29 §29.7.4 と IO-09-D3 を直した）。Contract Probe P1 (a)・P4 は合格（下の Contract Probe）、P1 (b) は未確認のまま。owner の判断事項は無い。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 
 ## Owner Effort Budget
 
