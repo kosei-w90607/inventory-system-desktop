@@ -53,6 +53,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 4. plan-draft → plan-gate（2026-10-22、Coordinator、本 commit）: owner が判断事項 (i)〜(iii) に答えた（repo 外の回答台帳 TD-377〜TD-379。(i) B: D1 は b1 に入れず v1.0 の前のデザインの刷新で、(ii) A: 振替の `movement_type` は vZ に足さない、(iii) A: 返品・交換の `register_processed` の既定と TD-225 は b1 の外の小さな lane）。どれも推奨どおりで、b1 の Scope・契約は起票のまま。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate のまま是正（round 1、2026-10-22、Coordinator）: round 1 の reject を起草役が `9adc7047`・`097d319c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。owner が過去の取込みを記録から取り消す入口を導入の前の関門に入れた（repo 外の回答台帳 TD-380。b1 の範囲は変えない）。
 6. plan-gate のまま是正（round 2、2026-10-22、Coordinator）: round 2 の reject を起草役が `1688ccb9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
+7. plan-gate（round 3、上限、2026-10-23、Coordinator）: round 3 は両者 reject（Codex に P1 1）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした。起草役が `8655cb64` で直した（下の Review Response）。plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が P1 / P2 = 0 を報告し、owner が実装の前の R4 を承認した後。
 
 ## Owner Effort Budget
 
@@ -892,3 +893,9 @@ round 2（`e16b9eda`）: Claude 側 fresh Opus 5.5 = approve（P3 10）、Codex 
 
 - P2: 一括 import の確定の TX で当たった行は最初の行を名指して確定全体を戻す（既存の `import_row_commit_error` の形、wire は変えない。30・42・60、J3）、Ordinary Operation と L3 の起点を vB の後に作った DB に（v9 の商品入りの DB は vB で止まり 22 §16 の作り直し）、L3 の DB は Coordinator が demo の seed で用意し差し替える、外す出力の assert を assert の単位で分けた（T2 の表、35 の操作ログの新契約）。
 - P3: C2・C5・K1 の観測の手段（C2 の TX の外は Final Review の code 読みへ）、S9 は 9 file・T7 は 22 か所、T1 の command を広げ 9 行、invalidation の source を D-052 の SSOT に（U15 は 12 entry）、`zero_uncounted_items` は明細を参照する、同じ CSV の新規の行どうしの JAN、`seed_demo` の `delete_all` に `stock_counts`、AC11 を docs 全体に、共有 JAN の拒否を `recount_required` より先に。
+
+round 3（`c7468bd1`、上限）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 3）、Codex GPT-6 Astra（発注 503）= reject（P1 1 / P2 1 / P3 1）。重なりなし。Coordinator が全件を採用した（Codex の P1 は 32 の順 2 の表と「取り消した取込みは比べる先にしない」の文、Opus の P2 は商品フォームの `useUnsavedChangesWarning` を現物で確かめた）。round 天井のため disposition は「同型指摘の一括是正」。是正は起草役の `8655cb64`。
+
+- P1: 唯一の取込みを取り消した後に、別のレジ・番号の戻った精算が fresh な計数のカーソルの内と扱われる → 32 の順 2 は取り消した取込みとも machine_no を比べ（ADR D4）、fresh な計数の n は n の active な取込みがあるときだけ使う（ADR D3）。順 5 は active だけのまま（取り消した誤った版の精算日との偽の拒否を避ける）。Matrix L13・Z22・Z23。
+- P2: 未来の日付の精算と入出庫が完了の評価に入り、後の比較で外れて偽の差 → 完了の後の比較の範囲をカーソル（精算・movement・計数）と完了の前の記録で決める（35・ADR D6・D9。`stocktakes` に `cutoff_movement_id` を足し vZ の列は 7 つ。起草役が原則を入出庫にも当てたのを Coordinator が採った）。Matrix R2 (a)〜(c)。商品フォームから棚卸しへの導線は離脱の確認（UI-USW-D1）を通り、戻ったフォームで在庫連動を付け直す（51・73、L3-4、U9・U12）。
+- P3: AC11 に撤去した名前の docs の検索（除外に decision-log・backlog）、M1 の列を名指し、AC2 は comment の行を除く、K8・T2 の開始の操作ログの detail の key。
