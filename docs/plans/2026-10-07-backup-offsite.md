@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R4
 - Plan Commit: 962731ec73db29d0dc9a5a1fdc50674888f3aa7e
 - Amendments: none
@@ -28,6 +28,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 8. plan-gate（round 3、上限、2026-10-08、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `b4c77d98` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は Contract Probe の P1 の結果の記録と owner の承認を待つ。reviewer の再確認は Final Review。
 9. plan-gate のまま再開（2026-10-22、Coordinator）: owner がこの lane の再開を選んだ（repo 外の回答台帳 TD-372）。Writer が `origin/main`（`c98fe7dd`）へ同期し（merge `4d702174`、衝突は `docs/backlog.md`・`docs/decision-log.md`）、後から main に入った契約（D-118 (a) の v9、原価の lane C の vB、D-123〜D-127）との食い違いを新しい仕組みを足さずに直した（`91399121`: 71 MNT-01-D9 の保証の範囲、22 §16 の folder の外の場所 (3) と作り直しの手順 3、D-114 の Status、71 §71.10 の引用、AC3・AC4・AC6 の期待の測り直し）。Contract Probe の P1 は確認済み（repo 外の回答台帳 TD-375）。同期で足した契約の文は round 3 の review の後なので、plan-approved の前に fresh の reviewer の closure に出す。plan-approved は closure と owner の R4 の承認を待つ。
 10. plan-gate → plan-approved（2026-10-22、Coordinator、本 commit。state だけ）: 同期の closure（fresh Opus 5.5）は reject（P1 0 / P2 1 / P3 5）で、Writer が `962731ec` で 6 件を直した。closure 2（fresh Opus 5.5）が approve（P1 / P2 0、P3 4）。P3 4 件は implementing で直し、Final Review で確かめる（下の Review Response）。owner が R4 の計画の承認をした（repo 外の回答台帳 TD-376）。Plan Commit = `962731ec`。
+11. plan-approved → implementing（2026-10-22、Coordinator、本 commit。state だけ）: closure 2 の P3 4 件（N1〜N4）の是正を Writer に出す。design lane で docs だけなので、implementing の成果は P3 の是正と Implementation Results で、その後に Final Review（Minimum 2）。
 
 ## Owner Effort Budget
 
