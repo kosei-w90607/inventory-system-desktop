@@ -194,18 +194,19 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 
 ---
 
-### 43.8.2〜43.8.5 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
+### 43.8.2〜43.8.6 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
 
-4 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
+5 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
 
-**実行の thread**: 4 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
+**実行の thread**: 5 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
 
 | § | command | 入力 → 出力 | 処理 |
 |---|---|---|---|
 | 43.8.2 | `prepare_offsite_medium` | `PrepareOffsiteMediumRequest { selected_path: String }` → `OffsiteMediumView` | `app_data_dir` を取り、`get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::prepare_offsite_medium(&app_data_dir, &backup_dir, Path::new(&selected_path))` を呼ぶ（`backup_dir` は 71 §71.11.2 手順 6 の写しの元）。空の `selected_path` は `validation` |
 | 43.8.3 | `check_offsite_backup` | なし → `OffsiteCheckResult` | `backup_dir` を読んで lock を放し、`mnt::offsite::check_offsite_backup(&app_data_dir, &backup_dir)`。共通レイアウトの確認（UI-11b-D16）が `checkAutoBackup` の後に呼ぶ |
-| 43.8.4 | `get_offsite_backup_status` | なし → `OffsiteBackupStatus` | `mnt::offsite::offsite_status(&app_data_dir, 今日のローカル日付)`。DB を使わない（lock を取らない） |
+| 43.8.4 | `get_offsite_backup_status` | なし → `OffsiteBackupStatus` | `get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::offsite_status(&app_data_dir, &backup_dir, 今日のローカル日付)`（`backup_dir` は写す元と同じで、`local_backup_old` の材料。71 §71.11.5） |
 | 43.8.5 | `inspect_backup` | `InspectBackupRequest { backup_path: String }` → `BackupInspection` | `mnt::backup::inspect_backup(Path::new(&backup_path))`。DB を使わない。空の `backup_path` は `validation` |
+| 43.8.6 | `reset_offsite_state` | なし → `OffsiteCheckResult` | DB の Mutex を取り、`get_backup_dir` で `backup_dir` を読み、`mnt::backup::create_backup(conn, &backup_dir)`（§43.6 と同じ。操作ログ `backup_create`）を行ってから lock を放し、`mnt::offsite::reset_offsite_state(&app_data_dir, &backup_dir)`（71 §71.11.5a）を呼ぶ。作成が失敗したら MNT の作り直しを呼ばず、§43.6 と同じ写像で返す（記録に触れない）。バックアップ画面の「記録を作り直す」（UI-11b-D14）が呼ぶ |
 
 **エラーの写像**（`CmdError.kind` の値は既存の `validation` / `internal` だけを使い、`CmdErrorKind` に値を足さない）:
 
@@ -217,7 +218,8 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
 | `OffsiteError::Redirected` | `validation` | 「この USB メモリの InventoryBackup フォルダは別の場所へのリンクのため使えません」 |
 | `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
-| `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした」 |
+| `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした。「記録を作り直す」を押してください」 |
+| `OffsiteError::StateUnsupported` | `validation` | 「PC の外の控えの記録は新しい版のアプリが書いたものです。新しい版のアプリを入れてください」 |
 | `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |
 | `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
 
@@ -297,7 +299,7 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
 ])
 ```
 
-D-114 の 4 command（§43.8.2〜§43.8.5）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
+D-114 の 5 command（§43.8.2〜§43.8.6）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 

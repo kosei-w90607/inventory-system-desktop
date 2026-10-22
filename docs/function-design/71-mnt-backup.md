@@ -5,7 +5,7 @@
 ```
 src-tauri/src/
   mnt/
-    mod.rs        -- pub mod backup（既存宣言済み）
+    mod.rs        -- pub mod backup（既存宣言済み）。pub mod offsite は runtime の lane で足す
     backup.rs     -- バックアップ・リストア・自動チェック・控えの検査（本セクション、§71.12）
     offsite.rs    -- PC の外の控え（§71.11、MNT-01-D8。D-114 で設計、runtime は後続の lane）
   db/
@@ -71,7 +71,7 @@ fn create_backup(
 ```
 
 **処理ステップ**:
-0. `backup_dir` がレジの SD の上なら書かずに `DbError::QueryFailed` を返す（MNT-01-D10）
+0. 書く先を固定して確かめる（MNT-01-D10）: `backup_dir` を、それを含む volume に固定した path（下の「書く先の固定」）にする。固定できなければ書かずに `DbError::QueryFailed`。固定した path で、`backup_dir` 自身とその祖先（volume の root まで）のどれかの直下に `CASIO\SR500_550_4000` が directory としてあれば、書かずに `DbError::QueryFailed`。手順 1〜4b（folder の作成・作業名の掃除・`VACUUM INTO`・検査・公開・親 directory の sync）は全部この固定した path で行う。返す `BackupResult.file_path` は今までどおり `{backup_dir}/{ファイル名}`（wire の値は変えない）
 1. `backup_dir` が存在しなければ `std::fs::create_dir_all` で作成
 2. 現在日時からファイル名を生成: `inventory_backup_{YYYYMMDD}_{HHMMSS}.db`
 3. バックアップ先パスを構築: `{backup_dir}/{ファイル名}`。書込みは作業名 `{ファイル名}.partial` へ行う（MNT-01-D7）。`backup_dir` に残った作業名（前回の中断の残り）は先に消す。消すのは `.partial` を除いた名前が §71.3 の規約に完全に合う file（`extract_datetime_from_backup` が日時を返す名前に `.partial` を付けた名前）だけで、ほかの `*.partial`（別用途の file）は消さない（失敗は `tracing::warn!` で続行）
@@ -87,10 +87,12 @@ fn create_backup(
    - `detail_json`: `Some(json!({"file_name": ..., "size_bytes": ...}))`
 7. `BackupResult` を返す
 
+**書く先の固定**（手順 0、MNT-01-D10）: Windows は `GetVolumePathNameW(backup_dir)` で `backup_dir` を含む volume の mount point（`E:\` 等）を得て、`GetVolumeNameForVolumeMountPointW` でその volume GUID path（`\\?\Volume{GUID}\`）にし、`backup_dir` の mount point からの相対の部分を付ける（§71.11.3 の「媒体の固定」と同じ形。Microsoft の資料: drive 文字の割当ては抜き差しで変わり、volume GUID path は 1 つの volume しか指さない。`GetVolumePathNameW` は path を含む volume の mount point を返す。https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-volume 、https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumepathnamew ）。判定の後に drive 文字が別の媒体（レジの SD を含む）へ移っても、固定した path は元の volume しか指さず、元の volume が抜かれていれば書込みは失敗する（`DbError::QueryFailed`）。祖先は固定した path の上で字句のとおりに辿る（まだ無い folder も辿る。folder を作る前に判定するため）。途中の reparse point（junction）の先は見ない（PC の中の側の既存の規則、§71.11.3）。PC の中の既定の保存先（`{app_data}/backups`）も同じ規則で、system の drive の volume に固定される。Windows 以外（test）は `backup_dir` をそのまま固定した path とし、固定する関数を差し替えて、判定の後に drive 文字の指す先を替える注入で確かめる（§71.8 の注入境界と同じ形）。`GetVolumePathNameW` は既存の feature `Win32_Storage_FileSystem` にある見込みで、runtime の lane の build で確かめる。`VACUUM INTO` が volume GUID path の作業名へ書けることは、runtime の lane が Windows で確かめる（packet の Contract Probe の P7）
+
 **エラーハンドリング**:
 - ディレクトリ作成失敗 → `DbError::QueryFailed` に変換して返す
-- VACUUM INTO失敗（ディスク容量不足等）→ `DbError::QueryFailed` を返す
-- VACUUM INTO の途中の失敗・中断 → 作業名の file だけが残り、正式名の file は作られない（MNT-01-D7）。一覧・掃除・今日の backup の判定は正式名だけを見るので、残りを成功の世代に数えない
+- VACUUM INTO が `Err` を返した（ディスク容量不足等）→ 作業名の file を消して（best-effort。消せなければ `tracing::warn!`）`DbError::QueryFailed` を返す。正式名の file は作られない（MNT-01-D7）
+- process の中断（電源断・強制終了）と、消せなかった作業名 → 作業名の file だけが残り、次回の手順 3 が消す。一覧・掃除・今日の backup の判定は正式名だけを見るので、残りを成功の世代に数えない
 - 作業名の file の検査（手順 4a）の失敗 → 作業名の file を消して `DbError::QueryFailed`（消せなければ `tracing::warn!`。次回の手順 3 が消す）
 - 正式名への公開の失敗（同じ名前の正式名が既にある場合を含む）→ 既存の正式名の file は変えず、作業名の file を消して `DbError::QueryFailed`
 - 公開の後の親 directory の sync の失敗 → `DbError::QueryFailed`（正式名の file は検査済みで残りうる。MNT-01-D6 の metadata の失敗と同じく、次回の一覧で観測できる）
@@ -113,10 +115,10 @@ fn create_backup(
 
 **MNT-01-D10: backup の file をレジの SD の上に書かない（D-114）**
 
-- 決定: backup の file を書く処理（`create_backup` の手順 0、PC の外の控えの保存先の用意と写し〈§71.11〉）は、書く先の drive の root に `CASIO\SR500_550_4000`（IO-09 がレジの SD と見なす folder、29 §29.7）があれば書かない。`create_backup` は `DbError::QueryFailed`、§71.11 は `OffsiteError::RegisterSd` を返す
+- 決定: backup の file を書く・消す処理（`create_backup` の手順 0、`cleanup_old_backups`〈§71.5〉、PC の外の控えの保存先の用意と写し〈§71.11〉）は、書く先の folder 自身とその祖先（volume の root まで）のどれかの直下に `CASIO\SR500_550_4000`（IO-09 がレジの SD と見なす folder 名、29 §29.7）が directory としてあれば、書かない・消さない。判定と、その後の作成・公開・掃除は、判定した volume に固定した path で行う（§71.4 の「書く先の固定」、§71.11.3 の「媒体の固定」）。`create_backup` は `DbError::QueryFailed`、`cleanup_old_backups` は `io::Error`、§71.11 は `OffsiteError::RegisterSd` を返す。IO-09 と共有するのは folder 名の定数だけで、IO-09 の `resolve_register_sd_root`（選んだ path から下へ root を解決する関数、29 §29.7）は流用しない（`E:\backups` のような保存先の sub folder を SD と判定しない）
 - Why: Windows の drive 文字は差した順で変わる。`backup_path` や PC の外の保存先を drive 文字で覚えると、USB メモリを抜いてレジの SD を差した日に、同じ文字の SD へ backup を書きうる。SD はレジが精算に使う媒体で、アプリは SD に書かない（IO-09-D3、D-111）
 - Rejected alternatives: 取外し可能な drive を `backup_path` に選べなくする（既に選んだ人の設定を壊す。PC の外の控えは §71.11 の目印で別に扱う）／ 何もしない（上の Why）
-- 見直し契機: レジの機種が変わり IO-09 の folder が変わるとき（同じ判定の関数を使い、文字列を二重に持たない）
+- 見直し契機: レジの機種が変わり IO-09 の folder が変わるとき（同じ folder 名の定数を使い、文字列を二重に持たない）
 
 #### 71.4.1 上書きしない公開（MNT-01-D7・D8 で共有）
 
@@ -145,6 +147,7 @@ fn cleanup_old_backups(
 戻り値: 削除したファイル数
 
 **処理ステップ**:
+0. §71.4 手順 0 と同じ判定と固定を通す（MNT-01-D10）。レジの SD の上なら何も消さずに `io::Error`（`ErrorKind::Other`）、固定できなければ `io::Error`。以後の一覧と削除は固定した path で行う
 1. `backup_dir` 内のファイル一覧を `std::fs::read_dir` で取得
    - ディレクトリが存在しない → `Ok(0)` を返す
 2. 各ファイルについて:
@@ -529,10 +532,10 @@ pub fn resolve_backup_dir(conn: &DbConnection, app_data: &Path) -> Result<PathBu
 
 | 対象 | 検証内容 |
 |---|---|
-| MNT-01-D7 作業名 | `VACUUM INTO` の失敗・検査の失敗を注入し、正式名の file が無く、作業名の file が消え、成功の操作ログが無い。前回の作業名の掃除は規約に合う名前の `.partial` だけを消し、`notes.db.partial` 等を残す |
+| MNT-01-D7 作業名 | `VACUUM INTO` の失敗・検査の失敗を注入し、正式名の file が無く、作業名の file が消え、成功の操作ログが無い。作業名の削除の失敗も注入すると `tracing::warn!` で、次の `create_backup` の手順 3 が消す（中断の残りと同じ）。前回の作業名の掃除は規約に合う名前の `.partial` だけを消し、`notes.db.partial` 等を残す |
 | MNT-01-D7 公開 | 同じ名前の正式名が既にあるとき、既存の file の bytes が前後で同じで、作業名が消え、`DbError::QueryFailed`（§71.4.1）。注入した file 操作の記録で `sync_file` → 上書きしない公開 → `sync_parent` の順。sync・公開・親 directory の sync の各点の失敗で、成功の操作ログが無い |
 | MNT-01-D7 今日の判定 | 作業名 `inventory_backup_{今日}_{HHMMSS}.db.partial` だけ、または規約外の `inventory_backup_{今日}_manual.db` だけがある dir で `check_auto_backup` が backup を作る（今日の backup と数えない） |
-| MNT-01-D10 | root に `CASIO\SR500_550_4000` がある一時 directory を `backup_dir` にした `create_backup` と、§71.11 の用意・写しが、何も書かずに失敗する |
+| MNT-01-D10 | `{tmp}/CASIO/SR500_550_4000` を置き、`backup_dir = {tmp}/backups`（まだ無い sub folder）にした `create_backup`・`cleanup_old_backups` と、§71.11 の用意・写しが、何も書かず・消さずに失敗する（`backup_dir` の直下だけを見る実装と、IO-09 の `resolve_register_sd_root` を流用する実装が red）。書く先の固定: 固定する関数を差し替え、判定の後に `backup_dir` の指す先をレジの SD を模した folder へ替える注入で、SD を模した folder の一覧と bytes が前後で同じで、書込みは固定した先だけに起きる |
 | MNT-01-D8 用意 | 取外し可能でない root・レジの SD の root を拒む。目印が既にある媒体は同じ `medium_id` を使い、写しの file を消さない |
 | MNT-01-D8 写し | 用意していない（`NotPrepared`）・媒体が見えない（`MediumMissing`）ときは何も書かず `last_success` を変えない。写しの成功で正式名の file・`last_success`（hash を含む）が残る。同じ名前・同じ size が既にあれば写さない。写す元が共有の検査に通らない（壊れた・空の・このアプリのものでない正式名）と、媒体に何も書かず `last_failure` が `source_unverified`、`last_success` は前後で同じ |
 | MNT-01-D8 中断 | 公開の前（copy・`sync_all`・公開そのもの）の失敗の注入: 正式名が無い、`last_success` が前後で同じ、`last_failure` が `io` / `storage_full`、次の呼出しで作業名が消えて写り `Copied`。公開の後（親 directory の sync）の失敗の注入: 検査済みの正式名が残り、`last_success` は前後で同じ、`last_failure` が `io`、次の呼出しは `UpToDate`（状態を変えない）、PC の中に新しい backup を置いた後の呼出しで `Copied` と `last_success` の更新 |
@@ -541,7 +544,8 @@ pub fn resolve_backup_dir(conn: &DbConnection, app_data: &Path) -> Result<PathBu
 | MNT-01-D6 metadata の既存 test の移し替え | `test_create_backup_req901_metadata_error_propagates_without_success_log`（`src-tauri/src/mnt/backup.rs`）は `fail_any_metadata()` で全部の metadata を失敗させるので、手順 4a の検査（作業名の size を読む）で先に失敗して作業名が消え、今の oracle（message の「サイズ」・dir に 1 file）が red になる。注入を作業名でない path（公開の後の正式名）だけに当てる形へ替え、oracle は変えない（弱めない）。4a の metadata の失敗は MNT-01-D7 作業名の行で見る |
 | MNT-01-D8 照合 | 読み戻しの bytes を注入で変え、作業名の file が消え、正式名の file が無く、`last_failure` が `verify_mismatch` |
 | MNT-01-D8 保持 | 正式名の写しが `OFFSITE_KEEP` を超えると古い順に消え、今写した file と作業名でない他の file（目印・名前の規約に合わない file）を消さない |
-| MNT-01-D8 状態 | 状態の file が壊れていると写さずに `StateUnreadable` を返し、状態は「控えが古い」側に倒れる（黙って `NotPrepared` にならない）。`OFFSITE_STALE_DAYS` の境界（2 日前は古くない・3 日前は古い） |
+| MNT-01-D8 状態 | 状態の file が壊れていると写さずに `StateUnreadable` を返し、状態は「控えが古い」側に倒れる（黙って `NotPrepared` にならない）。`OFFSITE_STALE_DAYS` の境界（2 日前は古くない・3 日前は古い）。`local_backup_old` は PC の中の最新の正式名が無い・3 日以上前で `true`、2 日前で `false`、一覧の失敗で `false` |
+| MNT-01-D8 作り直し | 壊れた状態の file と目印のある媒体で `reset_offsite_state` が、元の bytes を `offsite-backup.json.unreadable-*` に残し、媒体を登録し直し、写す（新しい backup があれば `Copied`）。`format` が 1 でない数の状態は `StateUnsupported` で何も変えない。退避の失敗・状態の書込みの失敗の注入で、元の file か退避した file のどちらかが元の bytes のまま残る |
 | MNT-01-D9 | 新しすぎる版・`quick_check` の失敗・読めない file の 3 つを `inspect_backup` が区別し、どれも対象の file と folder を変えない（hash と folder の一覧が前後で同じ、journal の file を作らない）。空の file・`schema_versions` の無い DB・版 0 の DB・必須の表の無い DB は `Err`（読めない控え） |
 
 ---
@@ -585,13 +589,14 @@ enum OffsiteFailureKind {   // wire は snake_case
     StateUnreadable,        // PC 側の状態の file が読めない・形が違う
     SourceUnverified,       // 写す元の backup が共有の検査（§71.12）に通らない
 }
-// mnt::offsite の関数が返す失敗。上の 7 値と同じ名前の 7 つに、用意（§71.11.2）だけが返す 2 つを足す
+// mnt::offsite の関数が返す失敗。上の 7 値と同じ名前の 7 つに、用意（§71.11.2）だけが返す 2 つと、記録の作り直し（§71.11.5a）だけが返す 1 つを足す
 enum OffsiteError {
     RegisterSd, NotRemovable, StorageFull, VerifyMismatch, Io, StateUnreadable, SourceUnverified,
     MarkerUnsupported,      // 用意だけ: 媒体の目印の format が 1 でない（新しい版のアプリが用意した媒体）
     Redirected,             // 用意だけ: 媒体の InventoryBackup・目印が reparse point（§71.11.3 の「reparse point を追わない」）
+    StateUnsupported,       // 作り直しだけ: 状態の file の format が 1 でない数（新しい版のアプリの記録）
 }
-// OffsiteError::kind() -> Option<OffsiteFailureKind>: 同じ名前の 7 つは Some(同じ値)、MarkerUnsupported と Redirected は None
+// OffsiteError::kind() -> Option<OffsiteFailureKind>: 同じ名前の 7 つは Some(同じ値)、MarkerUnsupported・Redirected・StateUnsupported は None
 // （用意の失敗で何も書かないので last_failure に残さない。CMD は 43 §43.8.2 の表の固定の文に写す）
 
 const OFFSITE_DIR_NAME: &str = "InventoryBackup";
@@ -601,7 +606,7 @@ const OFFSITE_STALE_DAYS: i64 = 3;     // これ以上前なら「控えが古�
 
 - 写しの file 名は §71.3 の規約のまま（`inventory_backup_{YYYYMMDD}_{HHMMSS}.db`）。媒体の上の作業名は `{ファイル名}.partial`。
 - 目印と状態の file は 2 つとも、作業名へ書いて `sync_all` → 置き換え（restore の `replace`。§71.4.1 の最後）→ 親 directory の sync の順で公開する（restore の manifest〈MNT-01-D5 の durability 契約 (a)・(d)、`mnt/restore.rs` の `write_manifest`〉と同じ。途中で止まっても前の内容が残り、rename の後の電源断で名前が消えない）。
-- PC 側の状態の file の `format` が 1 でない・形が違うときは「読めない」（`StateUnreadable`）とし、上書きしない（新しい版のアプリの状態を古い版が壊さない）。媒体の目印も `format` が 1 でなければ書き換えず、その媒体に書かない（§71.11.2 手順 4、§71.11.3）。
+- PC 側の状態の file の `format` が 1 でない・形が違うときは「読めない」（`StateUnreadable`）とし、上書きしない（新しい版のアプリの状態を古い版が壊さない）。読めない記録は、バックアップ画面の「記録を作り直す」（§71.11.5a）が元の bytes のまま別の名前へ退避してから作り直す。`format` が 1 でない数の記録は退避もしない（`StateUnsupported`）。媒体の目印も `format` が 1 でなければ書き換えず、その媒体に書かない（§71.11.2 手順 4、§71.11.3）。
 - 状態を DB（`app_settings`）に置かない: 復元で DB が過去へ戻ると、媒体の一覧と「最後に写せた日」も戻り、用意した媒体を忘れて黙って写さなくなるため。
 
 #### 71.11.2 prepare_offsite_medium
@@ -679,12 +684,13 @@ enum OffsiteCheckResult {
 5. 1 つ以上写せたら `last_success = { at: 今, file_name, medium_id: 最後に写した媒体, sha256 }`、`last_failure = None` を書き `Copied`。写すものが無ければ `UpToDate`（状態を変えない）
 6. 手順 4 のどれかが失敗したら、その媒体の残りを止め、`last_failure = { at, kind, medium_id }` を書いて `Err`（他の媒体へ写せていれば `last_success` も書く）
 
-**排他**: 用意（§71.11.2）と 60 秒の確認が重ならないよう、`mnt::offsite` の中の 1 つの `Mutex<()>` で直列にする（ponytail: process 全体の lock。媒体ごとの lock は複数の媒体を同時に扱う要件が出たとき）。lock は公開関数（`prepare_offsite_medium`・`check_offsite_backup`）の入口で 1 回だけ取る。用意の手順 6 は lock を取らない内部関数（`check_offsite_backup` の本体）を呼ぶ（`std::sync::Mutex` は再入できず、入口の関数を呼ぶと自分を待って止まる）。`offsite_status` は書かないので lock を取らない。DB の Mutex は持たない（CMD が設定の読取りの間だけ持ち、写す前に放す。43 §43.8.3）。60 秒の確認と競合しうる操作ごとの扱い:
+**排他**: 用意（§71.11.2）と 60 秒の確認が重ならないよう、`mnt::offsite` の中の 1 つの `Mutex<()>` で直列にする（ponytail: process 全体の lock。媒体ごとの lock は複数の媒体を同時に扱う要件が出たとき）。lock は公開関数（`prepare_offsite_medium`・`check_offsite_backup`・`reset_offsite_state`）の入口で 1 回だけ取る。用意の手順 6 は lock を取らない内部関数（`check_offsite_backup` の本体）を呼ぶ（`std::sync::Mutex` は再入できず、入口の関数を呼ぶと自分を待って止まる）。`offsite_status` は書かないので lock を取らない。DB の Mutex は持たない（CMD が設定の読取りの間だけ持ち、写す前に放す。43 §43.8.3）。60 秒の確認と競合しうる操作ごとの扱い:
 
 | 操作 | 競合 | 扱い |
 |---|---|---|
 | 復元（控えの確かめの開始から終わりまで） | 媒体の掃除・PC の中の保持日数の掃除が、選んでいる控えを消す。復元の間に写す | 画面が確かめの開始の前に共通の確認を止め、実行中の回の完了を待つ。取消・復元の終わりまで止めたまま（68 UI-11b-D15・D16） |
 | 用意（`prepare_offsite_medium`） | 同じ媒体へ同時に書く | 上の `Mutex<()>` |
+| 記録の作り直し（`reset_offsite_state`、§71.11.5a） | 状態の file を退避・作り直す間に写す・状態を書く | 上の `Mutex<()>`（入口で 1 回。手順 6 は lock を取らない内部関数） |
 | 手動の backup・事前バックアップ（`create_backup`） | 写す元の一覧に作成途中の file が見える | 作業名へ書いて検査の後にだけ正式名を公開する（MNT-01-D7）ので、写す元は正式名の確かめ済みの file だけ。PC の中の保持日数の掃除は日付で古い file だけを消し、写す元の最新（今日の file）は消さない。`checkAutoBackup` とは DB の Mutex で直列 |
 | 設定の変更（`backup_path`） | 写しの途中で保存先が替わる | 確認は始めに読んだ `backup_dir` から写し終える（写す元は検査済みで、替わる前の保存先の file）。次の回から新しい保存先 |
 | 控えを選んで確かめる（短い確かめ、§71.13） | 確かめている控えを媒体の掃除が消す | 復元と同じ入口（UI-11b-D15）なので、同じく止める |
@@ -707,7 +713,7 @@ enum OffsiteCheckResult {
 
 **シグネチャ**:
 ```
-fn offsite_status(app_data_dir: &Path, today: chrono::NaiveDate) -> OffsiteBackupStatus
+fn offsite_status(app_data_dir: &Path, backup_dir: &Path, today: chrono::NaiveDate) -> OffsiteBackupStatus
 
 struct OffsiteBackupStatus {
     prepared: bool,                         // 用意した媒体が 1 つ以上ある
@@ -717,10 +723,34 @@ struct OffsiteBackupStatus {
     stale: bool,                            // 下の規則
     attached: Vec<OffsiteMediumView>,       // 今見えている用意済みの媒体
     last_failure_kind: Option<OffsiteFailureKind>, // 最後の確認が失敗なら
+    local_backup_old: bool,                 // PC の中の最新の backup が無いか、その日付が OFFSITE_STALE_DAYS 日以上前
 }
 ```
 
-**規則**: `stale = prepared && (last_success_at が無い || days_since_last_success >= OFFSITE_STALE_DAYS)`。日数は、写した日と写した控えの日付の古い方から数える（PC の中の backup が止まった後に古い控えを写しても、中身の古さで知らせる。例: 10 日前の控えを今日写せば 10 日。写した日だけで数えると、ホームが知らせずに 10 日前の中身のまま過ぎる）。知らせの文（UI-11b-D14、UI-00-D12）は変えず、原因（USB が抜けている・PC の中の backup が作られていない）は card の「最後に PC の外へ写した控え」の日時と PC の中の一覧で見分ける。状態の file が読めないときは `prepared = true`、`stale = true`、`last_failure_kind = StateUnreadable` を返す（知らせる側に倒す）。状態の file が無いときは `prepared = false`、`stale = false`（用意は導入時の owner の作業で、用意の前にホームで知らせない）。
+**規則**: `stale = prepared && (last_success_at が無い || days_since_last_success >= OFFSITE_STALE_DAYS)`。日数は、写した日と写した控えの日付の古い方から数える（PC の中の backup が止まった後に古い控えを写しても、中身の古さで知らせる。例: 10 日前の控えを今日写せば 10 日。写した日だけで数えると、ホームが知らせずに 10 日前の中身のまま過ぎる）。知らせの文（UI-11b-D14、UI-00-D12）は原因で分ける: USB が抜けている・写せないときは USB の文、PC の中の backup が作られていないときは PC の中の backup の文（下の `local_backup_old`）。状態の file が読めないときは `prepared = true`、`stale = true`、`last_failure_kind = StateUnreadable` を返す（知らせる側に倒す）。状態の file が無いときは `prepared = false`、`stale = false`（用意は導入時の owner の作業で、用意の前にホームで知らせない）。
+
+**PC の中の backup の古さ**（`local_backup_old`）: `list_backups(backup_dir)`（§71.6。正式名だけ）の先頭が無いか、その名前の日付（§71.3）が `today` から `OFFSITE_STALE_DAYS` 日以上前なら `true`（2 日前は `false`、3 日前は `true`）。`list_backups` が `Err` なら `false`（原因を決めつけない。PC の中の一覧の失敗は画面の一覧が出す）。`stale` の判定は変えない。`stale` のとき画面とホームが原因の文を選ぶ材料で（UI-11b-D14、UI-00-D12）、`true` なら USB を差し直しても直らない（写す元が古いので、写しても `UpToDate` のまま、または古い控えを写すだけ）ため、USB の文でなく PC の中の backup の直し方を出す。読む `backup_dir` は写す元と同じ（43 §43.8.4）。書かない
+
+#### 71.11.5a reset_offsite_state（読めない記録を作り直す）
+
+**関数要求**: PC 側の状態の file が読めない（§71.11.1。壊れた・形が違う）とき、バックアップ画面の操作だけで、読めない file を元の bytes のまま別の名前へ退避し、差してある用意済みの媒体を目印から登録し直して、写しを再開する（D-127。owner が app data の file を手で動かさない）。
+
+**シグネチャ**:
+```
+fn reset_offsite_state(app_data_dir: &Path, backup_dir: &Path) -> Result<OffsiteCheckResult, OffsiteError>
+```
+
+**処理ステップ**:
+1. §71.11.4 の `Mutex<()>` を取る（入口で 1 回）
+2. 状態の file を読む。無い・読める → 何も退避せず手順 6 へ（作り直す要が無い）
+3. 読めない file が JSON として読めて、`format` が 1 でない数 → 何も変えず `OffsiteError::StateUnsupported`（新しい版のアプリの記録を古い版が退避・上書きしない）
+4. 読めない file を `offsite-backup.json.unreadable-{YYYYMMDD_HHMMSS}` へ上書きしない操作（§71.4.1 の `publish_no_replace`）で移し、親 directory を sync する。同じ名前が既にある・移せなければ、何も変えず `OffsiteError::Io`（元の file はそのまま）
+5. 見えている媒体を §71.11.3 の規則で探し（取外し可能・レジの SD でない・reparse point でない・目印が `format` 1 で読める。状態の `media` との照合だけを外す）、各目印の `medium_id`・`label`・`prepared_at` で `media` を作り、`last_success` と `last_failure` の無い状態を §71.11.1 の公開の順で書く。見えている媒体が無ければ状態を書かない（用意の前に戻る）。書けなければ `OffsiteError::Io`（退避した file は残り、状態の file は無い = 用意の前）
+6. §71.11.4 の本体（lock を取らない内部関数）を 1 回行い、その結果を返す
+
+- 呼ぶ前に新しい backup を作る（CMD、43 §43.8.6）: 媒体に最新の写しが既にあると手順 6 が `UpToDate` になり、`last_success` が空のまま「まだ写せていません」が残るため。作成に失敗したら CMD は本関数を呼ばない（記録に触れない）
+- 持ち帰っていて見えていない媒体は登録されない。次に差したときに「この USB メモリを控えの保存先にする」で登録し直す（目印の `medium_id` と札を引き継ぐ、§71.11.2 手順 4）。それまで新しい USB メモリを用意しない（札が重なる、§71.13 の本番の復元と同じ）
+- 退避した file は消さない（数は作り直しの回数だけ。owner が中身を確かめて消してよい）
 
 #### 71.11.6 運用の型と脅威（D-114 の比較の要旨）
 
@@ -744,7 +774,8 @@ struct OffsiteBackupStatus {
 - 写すのは確かめ済みの最新の backup で、その後の入力（その日の作業）は次の backup（起動時・設定時刻、§71.8）まで PC の中だけにある
 - 目印の無い媒体・別の PC で用意した媒体・`format` が 1 でない目印の媒体・レジの SD・固定 disk・network には書かない。媒体の上でも `InventoryBackup\` の外には書かない。探して照合した後に抜かれ、同じ drive 文字に別の媒体が割り当たっても、その媒体には書かない（volume の識別と目印の読み直し、§71.11.3）
 - 媒体の上の正式名は、共有の検査に通った写す元と同じ bytes で、既存の正式名を上書きしない（§71.4.1）。例外: 検査の後・copy の前に PC の中の写す元の file が替わった場合（同じ process の中で backup の file を書き換える経路は無く、利用者の手の操作に限る）と、利用者が `InventoryBackup\` に手で置いた規約の名前の file（下の `InventoryBackup\` の項。検査を通らないまま写しと数えられうる。復元の前の確かめ〈§71.12〉が壊れた・このアプリのものでない file を止める）。公開の後の親 directory の sync の失敗では、検査済みの正式名が媒体に残り、`last_success` は次に写せた時まで変わらない（§71.11.4 のエラーの表）
-- 用意した後に状態の file が壊れたら、写さずに知らせる（黙って止まらない）。ホームとバックアップ画面は「記録を読めない」側の文を出す（UI-00-D12、68 §68.11）。owner の直し方: `{app_data_dir}\offsite-backup.json` を別の名前へ移し（消さない）、バックアップ画面の「今すぐバックアップを作成」を押してから（媒体に最新が既にあると用意の手順 6 が `UpToDate` になり、`last_success` が空のまま「まだ写せていません」と出るため）、差してある控えを「この USB メモリを控えの保存先にする」で登録し直す（目印の `medium_id` と札を引き継ぐ。持ち帰りの控えは次の訪問で登録し直す）。用意の前（状態の file が無い）は何もせず、ホームも知らせない
+- 用意した後に状態の file が壊れたら、写さずに知らせる（黙って止まらない）。ホームとバックアップ画面は「記録を読めない」側の文と、直す操作「記録を作り直す」を出す（UI-00-D12、68 §68.11）。作り直しは読めない file を退避して差してある控えを登録し直す（§71.11.5a）。`format` が 1 でない数の記録（新しい版のアプリの記録）は作り直さず、新しい版のアプリを入れる文を出す。用意の前（状態の file が無い）は何もせず、ホームも知らせない
+- 原因が PC の中の backup の古さ（自動 backup の無効・保存先への書込みの失敗の継続）のときは、USB を差し直しても直らないので、画面とホームは USB の文でなく PC の中の backup の直し方を出す（§71.11.5 の `local_backup_old`）
 - 媒体の `InventoryBackup\` はアプリが持つ。中の §71.3 の規約の名前の file は、手で置いた物も写しとして数え（同じ名前・同じ size なら写さない、§71.11.4 手順 4a）、新しい 30 本を残して古いものを消す（同 手順 4g）。手で保つ控え（更新の前の backup 等）は `InventoryBackup\` の外に置く
 - 用意した媒体を登録から外す操作は持たない（D-114 の Non-scope。外すには状態の file を消す。見直し契機に置く）
 - 新しい PC で戻した直後は、その PC の起動時の自動 backup と復元の事前バックアップ（どちらも空の DB の控え）が今日の backup と数えられ、写す元の最新になる。アプリは空の DB の控えを区別しない（店の記録の有無を判定する業務の規則を backup に持たない）ので、§71.13 の本番の復元の手順で、媒体を登録し直す前に手動の backup を作る
@@ -796,7 +827,7 @@ struct BackupInspection {
 
 **MNT-01-D9: 復元の前に控えを確かめ、新しすぎる版と壊れた控えを、確認の手順へ進む前に固有の文言で止める（D-114）**
 
-- 決定: 復元の詳細（UI-11b の `restore_detail`）は、選んだ控え（一覧の行・選んだ file のどちらも）に `inspect_backup` を行う。`newer_than_app` なら「この控えは、より新しい版のアプリで作られています。この版のアプリでは戻せません。新しい版のアプリを入れてから戻してください（今のデータは変わっていません）。」、`quick_check_ok = false` なら「この控えは壊れているため戻せません。別の控えを選んでください。」、`inspect_backup` が `Err`（このアプリの backup でない空の・別用途の DB を含む、§71.12 手順 2a）なら「この控えを読めませんでした。別の控えを選んでください。」を出し、復元へ進む button を出さない（事前バックアップも作らない）。差し替えの後の open の拒否（MNT-03-D11）は今のまま最後の守りとして残し、確かめた後に file が替わった場合などはその経路の既存の文言（`restore_failed_recovered`）になる。作り直しの起点の migration（22 §16 の vB、§19 の v9）より前の版の開発・試験 DB の控えで、その migration の止まる検査（22 §16 の vB、§19）に当たるものも、確かめは「戻せます」になり、差し替えの後の migrate で止まって同じ文言になる（確かめは版・このアプリの backup か〈§71.12 手順 2a〉・`quick_check` を見て、migration の止まる条件は見ない）。店の初回の版はそれらの migration を含む（D-123 (4)）ので、店で作る控えはこの形にならない。作り直しの手順（22 §16）は古い控えも移す
+- 決定: 復元の詳細（UI-11b の `restore_detail`）は、選んだ控え（一覧の行・選んだ file のどちらも）に `inspect_backup` を行う。`newer_than_app` なら「この控えは、より新しい版のアプリで作られています。この版のアプリでは戻せません。新しい版のアプリを入れてから戻してください（今のデータは変わっていません）。」、`quick_check_ok = false` なら「この控えは壊れているため戻せません。別の控えを選んでください。」、`inspect_backup` が `Err`（このアプリの backup でない空の・別用途の DB を含む、§71.12 手順 2a）なら「この控えを読めませんでした。別の控えを選んでください。」を出し、復元へ進む button を出さない（事前バックアップも作らない）。差し替えの後の open の拒否（MNT-03-D11）は今のまま最後の守りとして残し、確かめた後に file が替わって新しすぎる版・開けない file になった場合などは、その経路の既存の文言（`restore_failed_recovered`）になる。確かめた後に file が替わった場合（同じ drive 文字の媒体の入れ替えを含む）、差し替えの後の open が止めるのは新しすぎる版と開けない file までで、このアプリのものでない DB は止まらない（restore の契約は変えない、Non-scope。復元の前の事前バックアップ〈D-032〉から戻せる）。作り直しの起点の migration（22 §16 の vB、§19 の v9）より前の版の開発・試験 DB の控えで、その migration の止まる検査（22 §16 の vB、§19）に当たるものも、確かめは「戻せます」になり、差し替えの後の migrate で止まって同じ文言になる（確かめは版・このアプリの backup か〈§71.12 手順 2a〉・`quick_check` を見て、migration の止まる条件は見ない）。店の初回の版はそれらの migration を含む（D-123 (4)）ので、店で作る控えはこの形にならない。作り直しの手順（22 §16）は古い控えも移す
 - Why: 新しすぎる版の backup の復元は、事前バックアップ・2 段の確認・差し替えの後の open で初めて拒否され、画面は「もう一度お試しください」になる。同じ backup で何度試しても失敗するのに、版の事情が利用者に伝わらない（`docs/backlog.md` の「保存と起動の守りの follow-up」の (2)）。壊れた backup は差し替えの後の open で見つからず、壊れた DB に戻りうる。確認の手順へ進む前に止めれば、DB にも事前バックアップにも触れない
 - Rejected alternatives: restore の error に新しい kind（例: 新しすぎる版）を足す（MNT-01-D4 の 3 値の wire と復旧の分類を変える。文言は事前バックアップと 2 段の確認の後にしか出ない）／ `restore_failed_recovered` の message の中身で分ける（MNT-01-D4 が禁じる文字列の判定）／ 版の判定を restore にもう 1 つ書く（MNT-03-D11 が避けた二重化。本決定は同じ関数を共有する）／ 確かめに `integrity_check` を使う（遅い。MNT-01-D7 と同じ理由で `quick_check`）
 - Compatibility: `restore_backup` の command・`RestoreBackupRequest`・`RestoreError` の 3 値・`CmdErrorKind` の restore の 3 値・UI-11b-D2〜D5 の 2 段の確認と break-glass は変えない。MNT-03-D11 の「restore に版の事前検査は足さない」は「restore の中には足さず、復元の前の確かめ（本決定）が同じ関数で文言と早い停止を受け持つ」に改めた（22 §3.2）
