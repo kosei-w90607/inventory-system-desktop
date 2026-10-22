@@ -1,6 +1,6 @@
 # Plan Packet: 棚卸しの数の置き場と在庫数の求め直しの runtime (b1)（計数の保存と完了、Z004 の確定と取消の新しい経路、停止の入口の解除と旧本体・時点証拠の撤去）
 
-wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-count-placement.md)、design lane = PR #167）の runtime の 2 つ目の配布の単位 (b)（ADR SPEC-STK-CNT-D12。(a) は PR #176 で 2026-10-19 に merge）を 2 つの lane に分けた最初の lane（b1）。導入の前の関門 2（[Plans](../Plans.md#導入の前の関門) の 2.、D-070 で v1.0 の条件）。owner の決定（2026-10-22。repo 外の回答台帳の当日の記録）: 次の lane に (b) と PR #155（backup の外の控え）を並走で選び、docs の棚卸し lane 2b は両方の merge の後に直列。本 commit は Plan Packet と Test Design Matrix の起票と、plan-first の正本の修正だけで、runtime の実装は plan-approved の後の別の run。branch は `agent/stocktake-count-runtime-b`（main `c98fe7dd` から）。新しい決定の番号（D-129）は使わない（起票で決めたことは ADR・設計正本の該当の節に置いた。下の「起票時に起草役が決めたこと」）。
+wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-count-placement.md)、design lane = PR #167）の runtime の 2 つ目の配布の単位 (b)（ADR SPEC-STK-CNT-D12。(a) は PR #176 で 2026-10-19 に merge）を 2 つの lane に分けた最初の lane（b1）。導入の前の関門 2（[Plans](../Plans.md#導入の前の関門) の 2.、D-070 で v1.0 の条件）。owner の決定（2026-10-22。repo 外の回答台帳 TD-372）: 次の lane に (b) と PR #155（backup の外の控え）を並走で選び、docs の棚卸し lane 2b は両方の merge の後に直列。本 commit は Plan Packet と Test Design Matrix の起票と、plan-first の正本の修正だけで、runtime の実装は plan-approved の後の別の run。branch は `agent/stocktake-count-runtime-b`（main `c98fe7dd` から）。新しい決定の番号（D-129）は使わない（起票で決めたことは ADR・設計正本の該当の節に置いた。下の「起票時に起草役が決めたこと」）。
 
 ## 規模と手法
 
@@ -33,7 +33,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -50,6 +50,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 1. kickoff → spec-check（2026-10-22、起草役）: Coordinator の発注（D-118 の (b)）を範囲にし、規模を数えて 2 つの lane に分け、本 packet を最初の lane（b1）にした（上の「規模と手法」）。Risk を R4 と記録した（下の Risk）。
 2. spec-check → design（2026-10-22、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D12、停止 ADR SPEC-STOP-D1〜D6、tracking・pos・master・transaction の「計数の置き場と在庫の求め直しの契約」、[21](../function-design/21-io-inventory-repo.md)・[24](../function-design/24-io-csv-import-repo.md)・[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)・[32](../function-design/32-biz-csv-import-service.md)・[35](../function-design/35-biz-stocktake-service.md)・[36](../function-design/36-biz-integrity-check.md)・[40](../function-design/40-cmd-product.md)・[41](../function-design/41-cmd-pos.md)・[42](../function-design/42-cmd-sales-stocktake.md)・[51](../function-design/51-ui-product-form.md)・[55](../function-design/55-ui-csv-import.md)・[60](../function-design/60-ui-product-import.md)・[65](../function-design/65-inventory-record-traceability.md)・[73](../function-design/73-ui-stocktake.md)・[75](../function-design/75-ui-integrity-check.md) の同名の節、[22 §16・§19](../function-design/22-mnt-migration.md)、共通規則 SPEC-UNIT-D3・D4・D6・D8・D11 と「入力の上限と安全な整数の範囲」。設計の更新が要る点が 8 つあった（下の Design Readiness の「必要な設計成果物」）。
 3. design → plan-draft（2026-10-22、起草役、本 commit）: 上の 8 つを本 packet と同じ commit で正本に置いた（下の「本 commit で変えた正本」）。製品の振舞いで owner の判断が要る問いは 3 つあり、どれも b1 の契約を決める問いではない（下の「owner の判断事項」。(i) が A なら b1 の Scope を広げて design へ戻す）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-22、Coordinator、本 commit）: owner が判断事項 (i)〜(iii) に答えた（repo 外の回答台帳 TD-377〜TD-379。(i) B: D1 は b1 に入れず v1.0 の前のデザインの刷新で、(ii) A: 振替の `movement_type` は vZ に足さない、(iii) A: 返品・交換の `register_processed` の既定と TD-225 は b1 の外の小さな lane）。どれも推奨どおりで、b1 の Scope・契約は起票のまま。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 
 ## Owner Effort Budget
 
@@ -59,7 +60,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 0（起票の時点） | 7（起票の owner の判断事項 3〈(i)〜(iii)、1 回の問い合わせに束ねられる。(ii)(iii) は b1 を待たせないので問わない選択もある〉、実装の前の R4 の承認 1、L3 と最後の head の `r4` 1、Ready 1、merge 1） | 2（Plan Review の round の天井の判断 1、L3 の 2 round 目 1） | 9 = 0 + 7 + 2 |
+| 介入 | 9 | 3（2026-10-22: 起票の owner の判断事項 (i)〜(iii) の 3〈TD-377〜TD-379、1 回の問い合わせに束ねた〉） | 4（実装の前の R4 の承認 1、L3 と最後の head の `r4` 1、Ready 1、merge 1） | 2（Plan Review の round の天井の判断 1、L3 の 2 round 目 1） | 9 = 3 + 4 + 2 |
 
 owner の操作の回数を減らす工夫: (1) 起票の判断事項は 1 回の問い合わせに束ね、選択肢に推奨を付け、返事は記号 1 つで済む形にする。(2) L3 と最後の head の `r4` の承認を同じ 1 回で頼む（(a) と同じ）。(3) L3 の入力物（商品 CSV と合成の Z004）は repo の tracked の fixture（`tests/fixtures/z004/` の下。合成の値だけ）にし、Coordinator が Windows の path を省略しない形で台本と一緒に渡す（owner は file を作らない）。(4) L3 の項目を 1 本の通しの台本に並べ、前の段の結果を次の段の入力にする（計数 → 取込み → 要再確認 → 入れ直し → 完了 → 記録の詳細）。(5) L3 Eligibility の (3)（DB の手での改変や PC の時計の変更）に当たる項目は L3 に入れず、自動 test と Coordinator が渡す画面の写しで見る（下の Test Plan）。(6) Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
 
@@ -155,6 +156,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 - A（推奨）: b1 の外の小さな lane で直し方を決める（例: 商品が在庫連動で PLU の対象のときだけ既定 true、ほかは既定 false。交換の差額だけの戻しの案内）。b1 は答えを待たない。
 - B: b1 に入れる（返品・交換の画面と BIZ が b1 の Scope に加わる）。
+
+決定（2026-10-22、owner、repo 外の回答台帳 TD-377〜TD-379）: (i) B、(ii) A、(iii) A（どれも推奨どおり）。
 
 店主に新しく聞く必要がある事項: 無い（backlog の「入庫・返品の記録を、品物が届く・戻る前に入力することはあるか」は ADR の受け入れた穴の頻度の問いで、答えは b1 の契約を変えない。ADR の Revisit）。
 
