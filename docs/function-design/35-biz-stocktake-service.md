@@ -12,7 +12,7 @@
 - 保存の形（[tracking](../db-design/tracking-system-tables.md) の `stock_counts`）: `fresh=false` は `count_kind='default'`。`fresh=true` は `count_kind='fresh'`、`business_date=today`、`settlement_no` = 同じ TX で読んだ active な Z004 の取込みの最大の精算回数（取込みが無ければ NULL。0 は実在しうる精算回数なので使わない）、`seen_movement_id` = 同じ TX で読んだ `MAX(inventory_movements.id)`（無ければ 0）。`business_date` が today より後なら `ValidationFailed`（「未来の日付には保存できません」）。
 - 1 商品 1 TX で `stock_counts` へ INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書き、`stocktake_item_id` があれば明細の `actual_count`・`counted_at`（表示用の写し）を効く計数に合わせる。明細が進行中の棚卸しのものでないとき、明細の商品が `product_code` と違うとき（同じ TX で確かめる）は、書く前に `ValidationFailed`（「この明細は別の商品です」）。
 - 結果: 保存した計数の id・種類、求め直しの後の在庫（写しの値と範囲）、要再確認の理由（[40](40-cmd-product.md) の `recount_reasons` と同じ enum）、`later_count_exists: bool`。
-- 後入力の確認（ADR D5）: 既定の計数の保存の前に UI が `preview_stock_count_placement(conn, product_code, business_date, today) -> CountPlacementPreview`（読取りだけ）を呼び、ADR D3 の「計数どうし」でその計数より後の計数が既にあるか（`later_count_exists`）を受ける（「後の数が既にあり、そちらが効きます」。保存は拒まない）。
+- 後入力の確認（ADR D5）: 既定の計数の保存の前に UI が `preview_stock_count_placement(conn, product_code, business_date, today) -> CountPlacementPreview`（読取りだけ）を呼び、ADR D3 の「計数どうし」でその計数より後の計数が既にあるか（`later_count_exists`）を受ける（「後の数が既にあり、そちらが効きます」。保存は拒まない）。同じ結果は計数の欄の商品の文脈（商品名・単位・写しの在庫と範囲・要再確認の理由・効く計数の値と種類と日付。[42](42-cmd-sales-stocktake.md) の表）も持ち、棚卸しの明細の無い商品を「今の数を入れる」で開く画面（[73](73-ui-stocktake.md)）が読む（b1 の Plan Review round 1 の是正）。
 - 計数は消さない・書き換えない（誤った数は「入れ直す」で直す。fresh な計数は、それより先に保存された計数を全て置き換える。ADR D3）。再送の照会・冪等の key は持たない（同じ値の既定の計数がもう 1 行入っても、重なる計数で値が同じなら 1 つとみなす）。
 
 #### 開始と明細
@@ -22,7 +22,7 @@
 
 #### 完了（SPEC-STK-CNT-D6）
 
-`complete_stocktake(tx, CompleteStocktakeRequest { stocktake_id, today })` は、TX の中で次を検査し、1 つでも当たれば何も書かずに `StocktakeGuard`（[40](40-cmd-product.md) の code `completion_blocked`、明細ごとの target と `block_reason`）を返す。
+`complete_stocktake(tx, CompleteStocktakeRequest { stocktake_id, today })` は、TX の中で次を検査し、1 つでも当たれば何も書かずに `StocktakeGuard`（[40](40-cmd-product.md) の code `completion_blocked`、明細ごとの target と `block_reason`。`settlement_pending` があれば、取り込めば解ける精算を 40 の `SettlementPendingHint`〈欠けた精算回数の区間、(i) の日付の最大、(iii) の日付の最小〉で添える。b1 の Plan Review round 1 の是正）を返す。
 
 | block_reason | 条件 |
 |---|---|

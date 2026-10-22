@@ -8,7 +8,8 @@ Risk: R4
 
 ## Contracts Under Test
 
-- vZ（22 §20）: 止まる検査・全行と id の写し・`sqlite_sequence`・Z004 と phase を結ぶ CHECK・列の追加と CHECK（Z17）。
+- vZ（22 §20）: 止まる検査・全行と id の写し・`sqlite_sequence`・Z004 と phase を結ぶ CHECK・列の追加と CHECK（packet の横断の約束の Z17）、作り直しの後の失敗が全部戻ること（M8・M9。round 1 の是正）。
+- round 1 の是正で足した契約: 要再確認の対象の範囲と単位、完了の拒否の直し方（packet の横断の約束の Z18）、preview の cache の照合（同 Z19）、計数の欄の文脈（同 Z20）、共有 JAN の経路（update は在庫連動だけ、JAN は一括 import の上書き）、L3 の fixture の生成（F1）。
 - 精算の窓（ADR D3 の「精算 k」の行、A1、理由 1）と求め直す商品（ADR の横断の表）、初期在庫の見分け方（ADR D9）。
 - 計数の保存（既定・fresh・0 にする）の検査と保存と求め直し、後入力の確認、要再確認の一覧（ADR D5、35）。
 - 完了の拒否の 3 つの理由・評価額・カーソル・総額の範囲、記録の詳細と完了の後の差（ADR D6、35、65）。
@@ -46,11 +47,13 @@ Risk: R4
 |---|---|---|---|---|---|
 | M1 | 空の DB で vZ が当たり、5 つの列と Z004 と phase を結ぶ CHECK と 3 つの index がある | 列・CHECK・index の欠け | schema | `test_vz_req903_fresh_db_has_columns_checks_and_indexes` | 手順 3〜5 のどれかを落とす、index を作り直さない |
 | M2 | 直前の版の DB（入庫・返品交換・手動販売・廃棄・初期在庫と demo の seed の形の `sale_auto`〈`reference_type` NULL〉の movement、末尾の行を消した履歴）で全列と id が同じ、`sqlite_sequence` が前の値 | 行・値の欠け、id の使い回し | schema / regression | `test_vz_req903_rebuild_keeps_rows_ids_and_sequence` | 写しの列の漏れ、手順 4 の `sqlite_sequence` の戻しを落とす（次の INSERT の id が前の最大 + 1 になる） |
-| M3 | 止まる検査（`stocktakes` の行、`csv_imports` の行、`reference_type = 'csv_import'` の movement、`phase = 1` の movement。1 つずつ）で schema・値・版が何も変わらず `MigrationFailed`（`作り直し` と表名） | 止まる DB を変える、原因の文が無い | schema / negative | `test_vz_req903_stops_without_changes_on_stocktake_or_z004_rows` | 検査を書込みの後に置く、条件の 1 つを落とす、message に表名が無い |
-| M4 | vZ の後、`csv_import`・`phase = 0` と、`phase = 1`・`csv_import` でない行の INSERT が CHECK で拒まれ、`csv_import`・`phase = 1`・`settlement_no` 0 と 7 は入る（Contract Probe P3） | CHECK の漏れ・`=` で比べる誤り | schema / negative | `test_vz_req401_reference_type_and_phase_check` | CHECK を `=` で書く（NULL で通る）、CHECK を落とす |
+| M3 | 止まる検査（`stocktakes` の行、`csv_imports` の行、`reference_type = 'csv_import'` の movement、`phase = 1` の movement。1 つずつ）で schema・値・版が何も変わらず `MigrationFailed`（`作り直し` と表名） | 止まる DB を変える、原因の文が無い | schema / negative | `test_vz_req903_stops_without_changes_on_stocktake_or_z004_rows` | 条件の 1 つを落とす（その DB で vZ が通り版が進む）、`csv_imports` の行の検査を手順 5 の列の追加の後へ動かす（列の CHECK の失敗〈`CHECK constraint failed`〉で止まり、message に `作り直し` と表名が出ない）、message に表名が無い。検査を書込みの後へ動かしても TX が戻れば最終の状態は同じなので、最終の状態の比較ではなく message で見分ける（round 1 の是正） |
+| M4 | vZ の後、`csv_import`・`phase = 0`、`receiving_record`・`phase = 1`・`settlement_no` 5、`reference_type` NULL・`phase = 1`・`settlement_no` 5 の INSERT が CHECK で拒まれ、`csv_import`・`phase = 1`・`settlement_no` 0 と 7 は入る（Contract Probe P3。NULL・`phase = 1` の行だけが `=` と `IS` の違いを見分ける。round 1 の是正） | CHECK の漏れ・`=` で比べる誤り | schema / negative | `test_vz_req401_reference_type_and_phase_check` | CHECK を `=` で書く（NULL で通る）、CHECK を落とす |
 | M5 | `csv_imports` の `machine_no` が NULL・空、`settlement_no` が NULL・負の INSERT が CHECK で拒まれ、`('0001', 42)` は入る（Contract Probe P1） | 列の CHECK の漏れ | schema / negative | `test_vz_req401_csv_imports_settlement_key_checks` | 列の CHECK を落とす、`machine_no <> ''` を落とす |
 | M6 | `sale_records` の `stock_linked` の既定 0・2 の拒否、`stocktake_items` の `valuation_quantity`・`stocktakes` のカーソルが NULL を許す | 既定・CHECK の誤り | schema | `test_vz_req205_stock_linked_default_and_completion_columns` | 既定を 1 にする、CHECK を落とす、カーソルを NOT NULL にする |
 | M7 | 再実行で重複適用しない。最新の版までの migrate の後に §18 の trigger があれば残る（§18 が先に入った版で） | 二重適用・trigger の消失 | schema | `test_vz_req903_idempotent_and_keeps_jan_alias_triggers_when_present` | 版の記録を落とす、作り直しで trigger を消す（§18 は `products` の規則なので vZ では当たらないことの確かめ） |
+| M8 | 止まる検査を通った後、手順 3〜5（`DROP`・改名・列の追加）を終えてからの COMMIT の失敗（`migration_tx::fail_operations(&[FailurePoint::Commit])`。v9 の `test_migration_req903_vl_commit_failure_rolls_back_everything` と同じ注入）で、`sqlite_master` の `inventory_movements`・`csv_imports`・`sale_records`・`stocktakes`・`stocktake_items` の SQL、全行、`sqlite_sequence`、版が vZ の前のまま、`conn.is_autocommit()` が true（TX が終わっている）。失敗を外せば同じ DB で当たる（round 1 の是正） | 作り直しの後の失敗で部分的に残る | schema / negative | `test_vz_req903_commit_failure_after_rebuild_rolls_back_everything` | 共有の helper を使わず COMMIT する、ROLLBACK を落とす、`sqlite_sequence` を戻す所を TX の外に置く |
+| M9 | 手順 6 の確かめの失敗（`foreign_keys` を OFF にして、存在しない `csv_import_id` を指す `sale_records` の行を入れておく。手順 1 は `csv_imports` の行だけを見るので通り、手順 3〜5 の後に全体の `PRAGMA foreign_key_check` が `sale_records` を返す）で `MigrationFailed`（`作り直し` と `foreign_key_check` と表名）、M8 と同じ 5 項目が vZ の前のまま（round 1 の是正） | 確かめの後の失敗で部分的に残る | schema / negative | `test_vz_req903_verification_failure_after_rebuild_rolls_back_everything` | 手順 6 の確かめを落とす、確かめの失敗で ROLLBACK しない、確かめを `inventory_movements` だけに絞る |
 
 ### L: 精算の窓と求め直し（ADR D3・D2・D9、31）
 
@@ -83,15 +86,16 @@ Risk: R4
 | C6 | 明細の `actual_count`・`counted_at` は効く計数に揃う（fresh が先の計数を置き換える。後入力の古い日付の既定の計数は効かない） | 写しの誤り | integration | `test_save_stock_count_req205_item_copy_follows_effective_count` | 最後に保存した値を写す |
 | C7 | `preview_stock_count_placement` は ADR D3 の「計数どうし」で、その日付の計数より後の計数があるとき `later_count_exists = true`（保存は拒まない） | 後入力の確認の誤り | unit | `test_preview_stock_count_placement_req205_later_count_exists` | 日付だけで比べる（fresh の後の同じ日付の既定を後とする） |
 | C8 | `zero_uncounted_items`: 選んだ商品に値 0 の既定の計数を 1 TX で、商品ごとに求め直す。日付は選べ、未来は拒否。1 つでも拒否なら何も書かない | 部分的な保存 | integration / negative | `test_zero_uncounted_items_req205_one_tx_per_request` | 商品ごとに commit する、未来の日付を通す |
-| C9 | `list_recheck_products`: 写しが要再確認の商品、進行中の棚卸しに明細があれば `active_count` と `stocktake_item_id`、無ければ `count_now`、理由つき | 回復先の誤り | unit | `test_list_recheck_products_req205_actions_and_reasons` | action を取り違える、架空の id を入れる |
+| C9 | `list_recheck_products`: 写しが要再確認の商品、進行中の棚卸しに明細があれば `active_count` と `stocktake_item_id`、無ければ `count_now`、理由つき。各 target が `stock_unit`・写しの `stock`・範囲の両端を持つ（長さの商品で cm の値。round 1 の是正） | 回復先の誤り、範囲が届かない | unit | `test_list_recheck_products_req205_actions_reasons_and_range` | action を取り違える、架空の id を入れる、範囲を null のまま返す、単位を落とす |
 | C10 | 明細の読取り（`get_stocktake_items`・`find_stocktake_item`）: 効く計数の値・種類・日付、写しの在庫と範囲、理由、差異（効く計数 − 入っている記録だけの帳簿。計数が無ければ null）、`stock_unit`。進捗の計数済み = 明細を参照する計数がある | 差異・計数済みの定義の誤り | integration | `test_get_stocktake_items_req205_effective_count_and_difference` | 差異を `actual_count - system_stock` にする、計数済みを `actual_count` の NULL で数える |
+| C11 | `preview_stock_count_placement` は棚卸しの明細の無い商品でも、商品名・単位・写しの在庫と範囲・理由・効く計数（無ければ null）を返す（「今の数を入れる」の欄。42・35。round 1 の是正） | 計数の欄の文脈が届かない | unit | `test_preview_stock_count_placement_req205_returns_count_context_without_stocktake` | 明細から読む（棚卸しが無いと返らない）、範囲を落とす、計数の無い商品で 0 を入れる |
 
 ### K: 開始・完了（ADR D6、35、§20.5a）
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
 | K1 | 完了: 明細ごとに `valuation_quantity = max(写し, 0)`、評価原価、§20.5a の総額、カーソル（最大の精算回数〈無ければ NULL〉・最大の計数の id）、header を completed。movement を作らず写しを変えない | 在庫を動かす・カーソルの漏れ | integration | `test_complete_stocktake_req205_freezes_valuation_without_movements` | movement を書く、`recompute_stock` を呼ぶ、カーソルを書かない |
-| K2 | `settlement_pending` の (i) 精算日が X 以上の精算が無い、(ii) 取り込まれていない k が隣の精算の日付で X を挟む、(iii) 既定の計数で X より前の精算が無い → `StocktakeGuard`（`completion_blocked`、明細ごとの target と `block_reason`）、何も書かない | 未取込みを見落とす | negative | `test_complete_stocktake_req205_settlement_pending_three_conditions` | (i)〜(iii) のどれかを落とす、fresh の n の扱いを誤る |
+| K2 | `settlement_pending` の (i) 精算日が X 以上の精算が無い、(ii) 取り込まれていない k が隣の精算の日付で X を挟む、(iii) 既定の計数で X より前の精算が無い → `StocktakeGuard`（`completion_blocked`、明細ごとの target と `block_reason`）、何も書かない。`settlement_pending` に `SettlementPendingHint`（(ii) の欠けた精算回数の区間、(i) の X の最大、(iii) の X の最小。当たらない所は null。round 1 の是正） | 未取込みを見落とす、直し方を名指せない | negative | `test_complete_stocktake_req205_settlement_pending_three_conditions_and_hint` | (i)〜(iii) のどれかを落とす、fresh の n の扱いを誤る、hint の区間・日付の最大と最小を取り違える |
 | K3 | 明細の商品の写しが要再確認 → `recheck` | 要再確認を見落とす | negative | `test_complete_stocktake_req205_blocks_on_recheck` | `stock_recheck` を見ない |
 | K4 | 未計数 → `uncounted`。完了の時点で廃番かつ写し 0 の明細は止めない。理由は全部集めてから返す | 例外の誤り・最初の理由で返す | negative | `test_complete_stocktake_req205_uncounted_except_discontinued_zero` | 廃番 0 を止める、廃番で在庫 ≠ 0 を通す、最初の理由だけを返す |
 | K5 | 総額が安全な整数の範囲の外（原価と実数が上限の個数の単位の商品 10 個）→ `ValidationFailed`（「合計金額が大きすぎます」）、何も書かない。9 個は保存できる | 範囲の漏れ | negative / boundary | `test_complete_stocktake_req205_total_cost_safe_integer_range` | `check_safe_integer` を落とす |
@@ -120,15 +124,16 @@ Risk: R4
 | Z5 | 順 5: 精算回数が小さいのに精算日が後、大きいのに前 → 拒否（両方向） | 順の食い違いを通す | negative | `test_parse_req401_rejects_settlement_order_mismatch_both_directions` | 片方向だけ見る |
 | Z6 | 知らせ: 欠けを連続の区間にまとめ昇順（1 つなら `from = to`）、区間の数は欠けた番号の数に依らない（精算 1 と `9007199254740991` の間でも区間 1）。精算日が今日より後は知らせで拒否しない | 区間の誤り・番号を並べる | unit / boundary | `test_parse_req401_settlement_gap_notices_and_future_date` | 番号ごとに並べる（大きな番号で止まる）、未来の日付を拒む |
 | Z7 | 同じ精算日の別の精算は確認なしに確定まで進む（`additional_import_confirmed` が無い） | 同日の確認が残る | integration | `test_commit_req401_same_date_other_settlement_needs_no_confirmation` | 同日の snapshot の照合を残す |
-| Z8 | 確定: `csv_imports` に精算の鍵、売上に `stock_linked`、在庫連動の行の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no`、求め直す商品を求め直し、結果に `recheck_targets` と知らせ。写しと `derive_stock` が一致 | 鍵・求め直しの漏れ | integration | `test_commit_req401_writes_settlement_key_and_recomputes` | `settlement_no` を渡さない（CHECK で落ちる）、求め直さない |
+| Z8 | 確定: `csv_imports` に精算の鍵、売上に `stock_linked`、在庫連動の行の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no`、求め直す商品を求め直し、結果に `recheck_targets`（単位・写しの在庫・範囲つき。round 1 の是正）と知らせ。写しと `derive_stock` が一致。同じ商品の複数の行の movement の `stock_after` は全部同じ写しの値 | 鍵・求め直しの漏れ、範囲が届かない | integration | `test_commit_req401_writes_settlement_key_and_recomputes` | `settlement_no` を渡さない（CHECK で落ちる）、求め直さない |
 | Z9 | 正常な行が全て 0 の file は売上と movement を作らず取込みとして確定し、精算の並び・欠けに入る | 空の拒否が残る | integration | `test_commit_req401_zero_rows_file_is_imported_as_settlement` | 空の対象の拒否を残す |
 | Z10 | 共有 JAN の行: 売上は先頭の商品、どの候補の movement も作らない、`stock_linked = 0`、行の error にしない | 候補の在庫を動かす | integration | `test_commit_req401_shared_jan_row_records_sale_only` | 先頭の商品の在庫を動かす |
 | Z11 | 在庫連動でない商品の行は売上だけ（`stock_linked = 0`） | movement を作る | integration | 既存の `test_commit_req401_pos_stock_sync_false` を移す（T2） | 連動の分岐を落とす |
 | Z12 | 長さの商品の整数の数量は × 100 で売上と movement に入る。× 100 の後の絶対値が `9999999` を越える行は preview の行の error。小数の数量は今の行の error | 100 分の 1・溢れ | unit / boundary | `test_parse_req401_length_unit_quantity_converted_to_cm` | × 100 を落とす、上限の検査を落とす |
-| Z13 | 確定の取り直しで preview の行と違う商品に当たる・商品が無くなる行があれば何も書かずに `ImportError`（「商品の登録が読み込みの後に変わりました…」） | 黙って別の商品へ入れる | negative | `test_commit_req401_rejects_when_matched_product_changed_after_preview` | 取り直しの結果を比べない |
+| Z13 | 確定の取り直しで preview の行と違う商品に当たる・商品が無くなる行があれば何も書かずに `ImportError`（「商品の登録が読み込みの後に変わりました…」）。例: preview で JAN J → 商品 A、その後の一括 import の上書きで A の JAN を K、B の JAN を J にする（cache の `normalized_jan` J の引当先が B に変わる。商品コード A と今の JAN K からは求まらない。round 1 の是正） | 黙って別の商品へ入れる | negative | `test_commit_req401_rejects_when_original_jan_now_matches_other_product` | 取り直しを cache の `product_code` で引く（元の JAN を見ない）、取り直しの結果を比べない |
 | Z14 | 取消: 売上と movement を無効にし、求め直す商品を求め直し、補償の movement を作らず、計数を消さない。結果に `recheck_targets`。取消済みは冪等の Ok | 補償・計数の消去 | integration | `test_rollback_req401_voids_and_recomputes_without_compensation` | 補償の movement を書く、計数を消す、求め直さない |
 | Z15 | 確定の TX で順 1〜5 を取り直す（preview の後に別の取込みが確定した場合） | TOCTOU | negative | `test_commit_req401_rechecks_rules_in_tx` | 確定で検査を省く |
 | Z16 | 部分的な行の error・返品の符号・負の在庫の警告・在庫の上限で TX 全体が戻る（今の契約） | — | regression | 既存の `test_commit_req401_partial_with_errors`・`test_commit_req401_sign_flip_inv1`・`test_commit_req401_negative_stock_warning`・`test_commit_req401_stock_limit_rolls_back_whole_tx`・`test_preview_req401_pos_quantity_limit_is_row_error` を移す（T2） | — |
+| Z17 | preview の cache の照合の残りの 3 通り（32 の「preview の cache の契約」の (4)）: (a) preview で単独だった JAN が確定の前に共有 JAN になった（一括 import の上書きで別の商品に同じ JAN）、(b) preview で `unmatched_product` だった行の JAN に確定の前に商品ができた、(c) 確定の TX の順 1〜5 は cache の `settlement`（machine_no・精算回数・精算日）で取り直す（preview の後に同じ精算の別の版が確定していれば順 4 で拒否）。(a)(b) は何も書かずに `ImportError`、token は残る。対照: preview の後に変わったのが在庫連動の設定だけなら拒否せず、`stock_linked` は確定の時点の値（round 1 の是正） | 共有 JAN・未登録の行が黙って別の扱いになる、精算の識別を file から読み直す | negative / integration | `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache` | `shared_jan` を比べない、error 行を照合しない、cache に `settlement` を持たない（確定で順 4 を見ない）、連動の設定の変化を拒否にする |
 
 ### X: STK-1・STK-2 と cross feature の model
 
@@ -143,8 +148,8 @@ Risk: R4
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
 | J1 | create: 在庫連動の商品と同じ JAN の別の商品がある、または連動の新しい商品が別の商品と JAN を共有する → `ValidationFailedAt`（field `pos_stock_sync` か `jan_code`、30 の文） | create の漏れ | negative | `test_create_product_req101_rejects_shared_jan_with_stock_linked` | create で検査しない |
-| J2 | update: 連動の A が JAN を非連動の C と同じ値に、非連動の C が A と同じ JAN に、C を連動にする、の 3 通りで拒否 | どちらかの商品の変更の漏れ | negative | `test_update_product_req102_rejects_shared_jan_both_directions` | 自分の側だけを見る |
-| J3 | 商品一括 import: 当該行だけ error 行、他の正常行は続く。commit は wire の行を信頼せず TX の中で同じ検査 | preview だけの検証 | integration / negative | `test_import_req104_shared_jan_row_error_and_commit_recheck` | commit で検査しない |
+| J2 | update（在庫連動を始める場合だけ。update は JAN を変えない: `ProductUpdateRequest` に `jan_code` が無い）: 連動しない B と C が同じ JAN を持つ（今の不変条件で許される組）とき、C を在庫連動にする保存を拒否（field `pos_stock_sync`、30 の文）し、C の在庫連動を付けないほかの欄の保存は通る（round 1 の是正で JAN の向きの 2 通りを J3 へ移した） | 在庫連動を始める側の漏れ、連動しない保存の過剰な拒否 | negative | `test_update_product_req102_rejects_stock_link_on_shared_jan` | update の検査を落とす、自分の JAN だけを見て他の商品を見ない、在庫連動の変化を見ずに共有 JAN だけで拒む |
+| J3 | 商品一括 import（JAN が変わる経路は上書きの行だけ）: 上書きの行で連動の A の JAN を非連動の C と同じ値に、上書きの行で非連動の C の JAN を A と同じ値に、新規の行で連動の商品が既存の商品と JAN を共有、の 3 通りで当該行だけ error 行（field `jan_code` か `pos_stock_sync`、30 の文）、他の正常行は続く。commit は wire の行を信頼せず TX の中で同じ検査（round 1 の是正で J2 から 2 通りを移した） | preview だけの検証、どちらかの商品の向きの漏れ | integration / negative | `test_import_req104_shared_jan_row_error_both_directions_and_commit_recheck` | commit で検査しない、上書きの行で自分の側だけを見る |
 | J4 | 在庫連動を始める（false → true）: 連動なしの Z004 の売上（`stock_linked = 0`、個数 ≠ 0 か金額 ≠ 0）が全て効く計数に「入る」ときだけ許す。「入らない」「決まらない」・衝突・計数が無く売上がある → `StocktakeGuard`（`recount_required`、`active_count` / `count_now`） | 決まらない売上を通す | negative / integration | `test_update_product_req102_start_stock_link_requires_recount` | 「決まらない」を通す、計数の無いときを通す |
 | J5 | 一括 import の上書きで連動を始める行も同じ検査で行の error | import の漏れ | negative | `test_import_req104_start_stock_link_row_error` | import の上書きで検査しない |
 | J6 | true → false は記録も確認も要らない。連動の切替の TX でその商品を求め直す（値は変わらない） | 切替で写しがずれる | integration | `test_update_product_req102_toggle_stock_link_recomputes` | 求め直しを呼ばない（呼ばなくても値は同じなので、写しをわざと食い違わせた fixture で確かめる） |
@@ -178,17 +183,23 @@ Risk: R4
 | U3 | 商品の「入れ直す」は前に保存した数があるときだけ、`fresh: true`・日付は今日だけ | fresh の誤送信 | component | `U3 recount sends fresh true with today only` | 前の数が無いのに出す、日付を選ばせる |
 | U4 | m の商品の実数は小数 2 桁までを cm に直して送り、小数 3 桁・負・上限の外は入力の error | m の換算の誤り | component | `U4 length product count converts meters to cm` | 浮動小数で掛ける（`0.29` → 28） |
 | U5 | 日付の変わり目（時計を差し替える）: 前の保存から日付が変わったら確認 | 確認の漏れ | component | `U5 date change since last save asks before saving` | 日付の比べを落とす |
-| U6 | 要再確認の一覧（棚卸しの有無にかかわらず）と行の「入れ直す」（`stocktake_item_id` を送る）、保存の後に一覧から消える | 一覧・再取得の漏れ | component | `U6 recheck list recount resolves the row` | 保存の後に invalidate しない |
-| U7 | 完了の確認の文に H2 の問い、`completion_blocked` で `block_reason` ごとの一覧、「0 にする」と「残りをまとめて 0 にする」（確認を挟む、日付を選べる） | 理由の混同 | component | `U7 completion blocked lists reasons and zero actions` | 理由を 1 つの一覧に混ぜる、確認を挟まない |
+| U6 | 要再確認の一覧（棚卸しの有無にかかわらず。各行は商品・範囲〈`CountRecoveryTarget` の範囲を単位どおり。長さは m〉・理由）と行の「入れ直す」（`stocktake_item_id` を送る）、保存の後に一覧から消える（範囲の表示は round 1 の是正） | 一覧・再取得の漏れ、範囲が出ない | component | `U6 recheck list shows range and recount resolves the row` | 保存の後に invalidate しない、範囲を出さない、長さを cm で出す |
+| U7 | 完了の確認の文に H2 の問い、`completion_blocked` で `block_reason` ごとの一覧と「取り込んでいない精算がある」の直し方の文（`SettlementPendingHint` の `missing`・`on_or_after`・`before` から 73 の文。round 1 の是正）、「0 にする」と「残りをまとめて 0 にする」（確認を挟む、日付を選べる） | 理由の混同、直し方が出ない | component | `U7 completion blocked lists reasons, settlement hint and zero actions` | 理由を 1 つの一覧に混ぜる、確認を挟まない、hint を出さない |
 | U8 | 完了の結果: 評価額と明細の数、在庫を動かさない旨の文 | 旧い補正の一覧 | component | `U8 completion result shows valuation without adjustments` | `adjusted_items` の一覧を出す |
 | U9 | 「今の数を入れる」の入口（search の商品コードと `returnTo`）、保存の後に元の画面へ戻る | 戻り先の誤り | component / route | `U9 count_now entry saves fresh and returns` | `returnTo` を捨てる、検証しない |
 | U10 | Z004 の preview の拒否（BIZ の文の Alert、「ファイルを選び直す」）、知らせ、同じ日の追加の確認の dialog を出さない | 確認の残り | component | `PreviewStep.test.tsx` の `U10 z004 preview shows notices without additional confirm` | dialog を出す |
-| U11 | 取込みの結果と取消の結果の要再確認の一覧と棚卸しの画面への導線 | 導線の漏れ | component | `ResultStep.test.tsx` の `U11 import result lists recheck targets with recount link` | 一覧を出さない |
+| U11 | 取込みの結果と取消の結果の要再確認の一覧（商品・範囲〈単位どおり〉・理由。mock の範囲は 55 の例の「4〜5」と違う値にする）と棚卸しの画面への導線（範囲は round 1 の是正） | 導線の漏れ、範囲が出ない | component | `ResultStep.test.tsx` の `U11 import result lists recheck targets with range and recount link` | 一覧を出さない、範囲を出さない |
 | U12 | 商品フォーム: 共有 JAN の field 付きの拒否を欄の近くに、`recount_required` で文と回復先への導線、入力を保ち toast・遷移をしない | 回復の導線の漏れ | component | `ProductFormPage.test.tsx` の `U12 stock link start rejection shows recovery link` | 遷移する、message を解析する |
 | U13 | 棚卸しの記録の詳細: 明細の数・差異・評価数量・ロス原価（BIZ の文字列）、完了の後の差（確定と要再確認を分け合計）、「在庫変動」の節が無い | 旧い補正の表示 | component | `StocktakeRecordDetailPage.test.tsx` の `U13 record detail shows counts and after-completion diff` | movements の節を残す、ロス原価を画面で掛ける |
 | U14 | 整合性の画面の共有 JAN の一覧（文・JAN ごとの商品コード、補正の操作を持たない、差異なしと別の欄） | 一覧の漏れ | component | `IntegrityCheckPage.test.tsx` の `U14 shared jan conflicts are listed separately` | 差異の一覧に混ぜる |
 | U15 | 計数の保存・0 にする・完了・Z004 の取込みと取消の後に、写しを読む consumer（棚卸しの一覧と要再確認の一覧・在庫照会・商品一覧と詳細・在庫変動・整合性）を invalidate | 古い写しが残る | component | `StocktakePage.test.tsx` の `U15 writes invalidate stock copy consumers` と `useCsvImportFlow.test.tsx` の同名の case | invalidate の key を落とす |
 | U16 | 停止の案内が無く、開始・数の保存・完了・Z004 の「取り込む」が押せる | 停止の UI の残り | component | `U16 stocktake and z004 writes are enabled`（棚卸しと Z004 の 2 file） | 停止の prop や Alert を残す |
+
+### F: L3 の fixture の生成（round 1 の是正）
+
+| ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
+|---|---|---|---|---|---|
+| F1 | 固定の T（`2026-01-15`）で packet の Test Plan の「L3 の fixture の表」の 9 file を一時の folder に作り、Z004 の 7 つを `parse_z004` で読み戻すと、マシンNo. `0001`・精算回数・精算日（T からの相対）・行（JAN・数量・金額）が表と同じで、商品の CSV の 2 つを `parse_product_csv` で読み戻すと P1〜P6 の行（と上書きの行）が表と同じ。env の `INVENTORY_L3_DAY` と `INVENTORY_L3_OUT` で書く `#[ignore]` の test は同じ関数と同じ読み戻しを使う | L3 の当日に file が取り込めない、表と違う中身で台本の期待が外れる | unit | `test_l3_fixtures_req401_req104_generated_files_parse_back`（`src-tauri/src/io/l3_fixtures.rs`。手元の `#[ignore]` は `write_b1_l3_fixtures`） | 精算回数のメタ行の形を誤る（`parse_z004` の `settlement_metadata` が None）、精算日を T からずらし損ねる、CP932 で書かない、JAN の check digit を誤る |
 
 ## State Lifecycle Matrix
 
@@ -214,6 +225,7 @@ Risk: R4
 | query invalidation（D-052 の SSOT） | `src/features/stocktake/stocktake-error-invalidation.ts` と各 hook の `invalidateQueries` | 保存・0 にする・完了・Z004 の取込みと取消 | — | U15 |
 | `CmdErrorKind` の網羅（`CMD_ERROR_KIND` の `satisfies`、`describeError`、`BackupRestorePage` の kind の分岐） | `rg -n 'restore_durability_unknown' src src-tauri/src --glob '!src/lib/bindings.ts'` | `invoke.ts`・`describe-error.ts` | `BackupRestorePage` は restore の kind だけを分ける（`stocktake_guard` を受けない画面なので足さない） | W7 |
 | route search の `returnTo`（UI-01b-D2 ほか） | `rg -n 'returnTo' src/routes` | `/stocktake/` の search | — | U9 |
+| env で folder を受ける手元の `#[ignore]` の test（round 1 の是正） | `rg -n '#\[ignore' src-tauri/src`（`ej_parser.rs` の `real_ej_structure_probe`） | `io/l3_fixtures.rs` の `write_b1_l3_fixtures` | 読み戻しの確かめは通常の test（F1）にも置き、CI で生成の誤りを止める（手元の test だけに頼らない） | F1・AC12 |
 | 生成の enum（D-061） | `src-tauri/src/finite_enum_contract_tests.rs` の一覧 | 新しい 5 つ | — | W6 |
 | 写しを求め直す書く経路（(a) の Y2） | `rg -n 'recompute_stock\(' src-tauri/src --glob '!*test*'` | 計数の保存・0 にする・Z004 の確定と取消・連動の切替 | 完了（在庫を動かさない） | L12・C1・Z8・Z14・J6 |
 
@@ -460,9 +472,149 @@ exit=0
 
 - 移す: `cmd/mod.rs` の kind の test と `finite_enum_contract_tests.rs` の一覧に `stocktake_guard` と新しい 5 つの enum を足す（W1・W6）。`BackupRestorePage` の kind の分岐は変えない（Adjacent Pattern Audit の除外）。
 
+### T10 vZ の CHECK・`NewCsvImport`・内部型の固定で red になる既存の test（round 1 の是正）
+
+```
+$ rg -n "INSERT INTO csv_imports|NewCsvImport \{|'csv_import'" src-tauri/src
+src-tauri/src/cmd/csv_import_cmd.rs:337:            &crate::db::sales_repo::NewCsvImport {
+src-tauri/src/cmd/csv_import_cmd.rs:350:            &crate::db::sales_repo::NewCsvImport {
+src-tauri/src/cmd/csv_import_cmd.rs:474:                    &crate::db::sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/commit.rs:124:        &NewCsvImport {
+src-tauri/src/biz/stock_ledger.rs:509:             VALUES ('L12', 'sale_auto', -1, 0, 'csv_import', 1, '2026-05-20T10:00:00', ?1, 1, 3)",
+src-tauri/src/biz/csv_import_service/tests/time_evidence_tests.rs:68:        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount,
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:135:                 WHERE reference_type = 'csv_import' AND reference_id = ?1 AND is_voided = 0",
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:154:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:198:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:358:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:405:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:445:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:464:        &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:500:            &sales_repo::NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/parse_tests.rs:294:        &NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/parse_tests.rs:340:        &NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/parse_tests.rs:353:        &NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/list_tests.rs:17:            &NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/list_tests.rs:67:        &NewCsvImport {
+src-tauri/src/biz/csv_import_service/tests/list_tests.rs:149:         VALUES ('CSV-DETAIL-P1', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, 0, '2026-08-03T12:00:00', '2026-04-01', 0)",
+src-tauri/src/db/schema_v1.rs:185:    reference_type TEXT CHECK(reference_type IN ('csv_import','manual_sale','receiving_record','return_record','disposal_record','stocktake') OR reference_type IS NULL),
+src-tauri/src/db/schema_v9.rs:42:    reference_type TEXT CHECK(reference_type IN ('csv_import','manual_sale','receiving_record','return_record','disposal_record','stocktake') OR reference_type IS NULL),
+src-tauri/src/db/schema_v9.rs:199:             WHERE reference_type IN ('csv_import', 'stocktake') OR movement_type = 'stocktake')",
+src-tauri/src/db/schema_v9.rs:696:            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount,
+src-tauri/src/db/sales_repo.rs:101:pub struct NewCsvImport {
+src-tauri/src/db/sales_repo.rs:258:        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
+src-tauri/src/db/sales_repo.rs:525:         WHERE reference_type = 'csv_import'
+src-tauri/src/db/sales_repo.rs:1708:            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
+src-tauri/src/db/sales_repo.rs:1794:        let record = NewCsvImport {
+src-tauri/src/db/sales_repo.rs:2030:                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 0)",
+src-tauri/src/db/sales_repo.rs:2141:             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+src-tauri/src/db/sales_repo.rs:2153:                "SELECT is_voided FROM inventory_movements WHERE reference_type = 'csv_import' AND reference_id = ?1",
+src-tauri/src/db/sales_repo.rs:2170:             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+src-tauri/src/db/test_support.rs:134:         INSERT INTO csv_imports (id, filename, settlement_date, file_hash, total_items, total_amount,
+src-tauri/src/db/test_support.rs:144:         ('LG-MEAS','sale_auto',-1,3,'csv_import',1,'2026-03-20T20:00:00', '2026-04-01', 0);",
+src-tauri/src/db/disposal_repo.rs:763:            "INSERT INTO csv_imports
+exit=0
+$ rg -n 'fn test_' src-tauri/tests/import_internal_contract_test.rs
+113:fn test_import_internal_contract_req401_is_minimal() {
+196:fn test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic() {
+250:fn test_sales_design_req502_future_coverage_counts_distinct_report_dates() {
+300:fn test_active_sales_import_vocabulary_sweep_i_g1() {
+324:fn test_sweep_dir_for_tokens_skips_known_generated_paths() {
+exit=0
+$ rg -n 'phase_one_movement_is_error_until_b' src-tauri/src
+src-tauri/src/biz/stock_ledger.rs:501:    fn test_stock_ledger_req401_phase_one_movement_is_error_until_b() {
+exit=0
+```
+
+| hit（file の symbol） | 分類 | 理由 / 代わりの行 |
+|---|---|---|
+| `src-tauri/src/biz/csv_import_service/commit.rs` の `execute_commit`、`src-tauri/src/db/sales_repo.rs` の `NewCsvImport` の定義と `insert_csv_import` | production（S2・S5） | — |
+| `src-tauri/src/db/schema_v1.rs`・`schema_v9.rs` の CHECK と止まる検査、`sales_repo.rs` の `get_csv_import_record_detail` の `reference_type = 'csv_import'` | 変えない | 版の履歴の SQL と、読取りの絞り込み（vZ の CHECK に当たらない） |
+| `schema_v9.rs` の `test_migration_req205_vl_stops_on_stocktakes_or_csv_imports_without_changes` | 変えない | v8 の DB に v9 だけを当てる test で、vZ を当てない |
+| `csv_import_cmd.rs` の `test_csv_cmd_req401_parse_cache_preserves_ordered_same_date_ids` | 契約ごと外す | T2 と同じ（ADR D4。同じ日の取込みの一覧を Z004 で使わない。W5） |
+| `csv_import_cmd.rs` の `test_csv_cmd_req401_rollback_stop` | 期待を変える | 停止の assert を外し（停止 ADR を superseded に）、取消の CMD が新しい経路を通ることを確かめる形にする。fixture の `NewCsvImport` に精算の鍵を足す（W5 と同じ file） |
+| `commit_tests.rs` の `test_commit_req401_toctou_check` | 移す | 同じ hash の再検査は順 3 で残る。fixture の `NewCsvImport` に精算の鍵を足す（値の期待は変えない） |
+| `commit_tests.rs` の `test_commit_req401_same_day_additional_import_is_insert_only`・`additional_import_requires_confirmation`・`settlement_date_toctou`・`same_date_snapshot_removal_requires_repreview`・`same_date_snapshot_replace_requires_repreview`・`same_date_snapshot_order_requires_exact_match` | 契約ごと外す | T2 と同じ（ADR D4） |
+| `parse_tests.rs` の `test_parse_and_validate_req401_file_hash_blocking` | 移す | 順 3（同じ hash の拒否）は残る。fixture に精算の鍵 |
+| `parse_tests.rs` の `test_parse_and_validate_req401_same_date_snapshot_is_ordered` | 契約ごと外す | ADR D4（同じ日の snapshot を Z004 で持たない。Z7） |
+| `list_tests.rs` の `test_list_csv_imports_req401_normal`・`seed_detail_import`（helper）・`test_get_csv_import_record_req207_movement_source` | 移す | 一覧と詳細の読取りの契約は変わらない。`NewCsvImport` に精算の鍵、`csv_import` の movement を `phase = 1`・`settlement_no` つきに（値の期待は変えない） |
+| `stock_ledger.rs` の `test_stock_ledger_req401_phase_one_movement_is_error_until_b` | 契約ごと外す | ADR D12 の (a) の「`phase = 1` の行は誤りで止まる」を b1 で精算の窓に置き換える（31）。L9 が「計数の無い商品で `phase = 1` を含む和」を、L1〜L5 が精算の窓を止める |
+| `disposal_repo.rs` の `seed_csv_import`（helper） | 移す | helper の INSERT に精算の鍵を足す。helper を呼ぶ test の期待は変えない |
+| `sales_repo.rs` の `test_insert_sale_record_req401_auto_with_csv_import`・`seed_csv_import`（helper）・`test_get_csv_import_record_detail_req207_movements_filter`・`test_void_movements_req401_by_reference`・`test_void_movements_req401_no_movement_type_filter` | 移す | raw の INSERT に精算の鍵、`csv_import` の movement を `phase = 1`・`settlement_no` つきに（値の期待は変えない） |
+| `test_support.rs` の `seed_legacy_fixture`、`time_evidence_tests.rs` の `import` | 契約ごと外す | T3（時点証拠の撤去） |
+| `src-tauri/tests/import_internal_contract_test.rs` の `test_import_internal_contract_req401_is_minimal` | 期待を変える | 32 の「preview の cache の契約」で BIZ-03-D1 を改めた: `MatchedRow` は `line_no`・`normalized_jan`・`product_code`・`shared_jan`・`quantity`・`amount`、`CommitRequest` は `cached_data`・`today`。Rust と 32 の §15.2 の型の節の両方を同じ並びにする（Z13・Z17） |
+| 同じ file の `test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic` | 変えない | 固定の語（`AdditionalImportConfirmationRequired`・`additionalImportConfirmed`・`same_date_imports`）は日報の取込みの型（`DailyReportDuplicateStatus`・`commitDailyReportImport`・`DailyReportDuplicateCheck`）が持ち続ける。bindings の再生成の後に通ることを確かめ、通らなければ期待を変えるに移し、理由を PR に書く |
+| 同じ file の `test_sales_design_req502_future_coverage_counts_distinct_report_dates`・`test_active_sales_import_vocabulary_sweep_i_g1`・`test_sweep_dir_for_tokens_skips_known_generated_paths` | 変えない | b1 は固定の語を足さない・戻さない（新しい code に `Overwrite` 系の語を書かない） |
+
+### T11 棚卸しの repo の test（round 1 の是正）
+
+```
+$ rg -n -A2 '#\[test\]' src-tauri/src/db/stocktake_repo.rs | rg -c 'fn '
+45
+exit=0
+```
+
+| test（`src-tauri/src/db/stocktake_repo.rs`） | 分類 | 理由 / 代わりの行 |
+|---|---|---|
+| `test_find_active_stocktake_req205_*`（4）、`test_insert_stocktake_item_req205_*`（3）、`test_find_stocktake_item_by_code_req205_*`（5）、`test_find_last_completed_stocktake_req205_*`（2）、`test_insert_stocktake_req205`、`test_find_stocktake_by_id_req205_*`（2）、`test_find_eligible_products_req205_*`（4）、`test_list_stocktake_items_req205_basic`・`_includes_is_discontinued`・`_dept_filter`（3）、`test_get_stocktake_record_detail_req206_not_found`・`_header_and_item_count`（2） | 移す（26。下の 2 行と合わせて 30） | 読取り・開始の契約は残る（明細の型に field が増えても、今の field の期待は変えない） |
+| `test_update_item_count_req205`・`_not_found`（2） | 移す | `update_stocktake_item_count` は計数の保存で明細の表示用の写し（`actual_count`・`counted_at`）を書くのに使い続ける（35） |
+| `test_find_item_with_parent_status_req205_found`・`_not_found`（2） | 移す | 計数の保存の明細の確かめ（進行中の棚卸しの明細か）に使い続ける（35。C5） |
+| `test_list_stocktake_items_req205_counted_filter`・`_dept_and_counted_combined`・`_dept_and_uncounted_combined`（3）、`test_get_stocktake_progress_req205`、`test_count_uncounted_items_req205`、`test_list_uncounted_items_req205` | 期待を変える（6） | 35 の新契約の「計数済み」は明細を参照する計数があること（`actual_count` の NULL でない）。fixture に計数の行を入れる（C10・K4・C8） |
+| `test_complete_stocktake_req205`・`_already_completed`（2）、`test_update_item_valuation_req205` | 期待を変える（3） | 完了の TX がカーソルと `valuation_quantity` も書く（35・tracking。K1） |
+| `test_get_items_for_complete_req205_normal`・`_partial`・`_excludes_null`（3） | 契約ごと外す | force_fill の後に `actual_count` の NULL が無い全明細を読む旧本体の手順（35 の新契約の完了は計数から評価数量を求め、この読取りを使わない。owner の決定 TD-263）。K1・K4 |
+| `test_get_stocktake_record_detail_req207_correction_items_live_basis`・`_movements_filter`（2） | 契約ごと外す | 65 の新契約（記録の詳細は補正の movement を持たない）。R1・R3 |
+| `test_find_saved_request_req205_item_recount_and_both`（`mod time_evidence` の中、1） | 契約ごと外す | T3 |
+
+### T12 形の変わる型・引数を作る所（機械的な追随。round 1 の是正）
+
+```
+$ rg -c 'NewSaleRecord \{' src-tauri/src
+src-tauri/src/cmd/sales_cmd.rs:1
+src-tauri/src/db/sales_repo.rs:9
+src-tauri/src/biz/sales_service.rs:1
+src-tauri/src/biz/csv_import_service/commit.rs:1
+src-tauri/src/biz/inventory_service/manual_sale.rs:1
+exit=0
+$ rg -c 'CommitRequest \{' src-tauri/src
+src-tauri/src/cmd/csv_import_cmd.rs:1
+src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs:4
+src-tauri/src/biz/csv_import_service/tests/commit_tests.rs:17
+src-tauri/src/biz/csv_import_service/tests/legacy_stop_tests.rs:2
+src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs:1
+src-tauri/src/biz/csv_import_service/mod.rs:1
+exit=0
+$ rg -c 'CachedPreview \{' src-tauri/src
+src-tauri/src/cmd/csv_import_cmd.rs:3
+src-tauri/src/biz/csv_import_service/test_support.rs:2
+src-tauri/src/biz/csv_import_service/mod.rs:1
+src-tauri/src/biz/csv_import_service/tests/legacy_stop_tests.rs:1
+exit=0
+$ rg -c 'MatchedRow \{' src-tauri/src
+src-tauri/src/biz/csv_import_service/parse.rs:2
+src-tauri/src/biz/csv_import_service/mod.rs:1
+exit=0
+$ rg -c 'IntegrityResult \{' src-tauri/src
+src-tauri/src/biz/integrity_service.rs:2
+exit=0
+$ rg -l 'mismatch_count' src --glob '*.test.*'
+src/features/stocktake/StocktakePage.test.tsx
+src/features/integrity-check/IntegrityCheckPage.test.tsx
+exit=0
+$ rg -c 'apply_stock_change\(' src-tauri/src
+src-tauri/src/biz/csv_import_service/commit.rs:1
+src-tauri/src/biz/inventory_service/common.rs:7
+src-tauri/src/biz/inventory_service/receiving.rs:1
+src-tauri/src/biz/inventory_service/disposal.rs:1
+src-tauri/src/biz/inventory_service/manual_sale.rs:1
+src-tauri/src/biz/inventory_service/returns.rs:1
+exit=0
+```
+
+- 移す（値の期待は変えない）: `NewSaleRecord` の literal に `stock_linked`（手動の売上ほかは false、Z004 の確定だけが取込みのときの値）、`CommitRequest` の literal から `additional_import_confirmed` を外し `today` を足す（旧本体の test は T2 の分類のとおり移すか外す）、`CachedPreview` の literal に `settlement`（`active_same_date_import_ids` を外す）、`MatchedRow` の literal に `normalized_jan`・`shared_jan`（`pos_stock_sync` を外す）、`IntegrityResult` の literal と TS の mock（`StocktakePage.test.tsx`・`IntegrityCheckPage.test.tsx`）に `shared_jan_conflicts: []`、`apply_stock_change` の呼出しから `settlement_no` を外す（`common.rs` の定義と test、入出庫 4 業務の 4 か所。Z004 の確定の 1 か所は S5 で消える）。
+- 着手時に上の command を逐語で回し、出力と表が違えば表を直してから進める。
+
 ## Residual Test Gaps
 
-- Windows の実機での HID・IME・native の file dialog の CP932 の取込みは L3（packet の Test Plan の L3-3・L3-5・L3-8）。
+- Windows の実機での HID・IME・native の file dialog の CP932 の取込みは L3（packet の Test Plan の L3-3・L3-6・L3-8・L3-10）。
 - 移行の前からある共有 JAN の組の画面の一覧は、DB の手での改変が要るので L3 に入れず、U14 と画面の写し。
 - 日付の変わり目（U5）は時計を差し替える自動 test と画面の写しで、Windows の実機の時計では見ない。
 - 計数の衝突（理由 3）の画面の表示は L3 の台本に入れず、C10・U6 と画面の写し。

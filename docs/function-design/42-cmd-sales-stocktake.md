@@ -7,7 +7,7 @@
 | command | wire 入力 | wire 出力 |
 |---|---|---|
 | save_stock_count | request: SaveStockCountRequest（`product_code`・`count_value: i64`・`fresh: bool`・`business_date: String`・`stocktake_item_id: Option<i64>`） | Result<StockCountSaveResult, CmdError> |
-| preview_stock_count_placement | `product_code`・`business_date` | Result<CountPlacementPreview, CmdError>（`later_count_exists`） |
+| preview_stock_count_placement | `product_code`・`business_date` | Result<CountPlacementPreview, CmdError>（`later_count_exists` と、計数の欄に出す商品の文脈: `product_name`・`stock_unit`・写しの `stock`・`stock_range_low`・`stock_range_high`・`recount_reasons`・効く計数の `count_value`・`count_kind`・`count_business_date`〈計数が無ければ null〉。棚卸しの明細の無い商品を「今の数を入れる」で開くときの読取り。b1 の Plan Review round 1 の是正） |
 | zero_uncounted_items | `stocktake_id`・`product_codes: Vec<String>`・`business_date: String` | Result<Vec<StockCountSaveResult>, CmdError> |
 | list_recheck_products | なし | Result<Vec<CountRecoveryTarget>, CmdError> |
 
