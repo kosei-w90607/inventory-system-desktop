@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 962731ec73db29d0dc9a5a1fdc50674888f3aa7e
 - Amendments: e6158aa673a5982c20545e5157a25af7a8be8b01, 7af3804348eb93d6b2f20ba33ac18484ca164350
@@ -39,7 +39,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 11 | 9（2026-10-22: USB の控えを任意にし「PC の外の控えをやめる」を範囲へ 1〈TD-381〉、R4 の計画の承認 1〈TD-376〉。2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈TD-202〉、Contract Probe の P1 の依頼 1〈TD-204。結果の受領は同じ decision point〉、上限の改定 1〈TD-205〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない。再開の選択〈TD-372〉と P1 の結果の受領〈TD-375〉は TD-204 と同じ decision point で数えない） | 2（Ready の head での R4 の承認と Ready を 1 回、merge 1） | 0 | 11 = 9 + 2 + 0 |
+| 介入 | 11 | 11（closeout 時点。2026-10-23: R4 の承認と Ready 1〈TD-383〉、merge 1〈TD-385〉。2026-10-22: USB の控えを任意にし「PC の外の控えをやめる」を範囲へ 1〈TD-381〉、R4 の計画の承認 1〈TD-376〉。2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈TD-202〉、Contract Probe の P1 の依頼 1〈TD-204。結果の受領は同じ decision point〉、上限の改定 1〈TD-205〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない。再開の選択〈TD-372〉と P1 の結果の受領〈TD-375〉は TD-204 と同じ decision point で数えない。次の lane の候補の決定〈TD-384〉は本 lane の後の判断で数えない） | 0 | 0 | 11 = 11 + 0 + 0 |
 
 ## Risk
 
@@ -296,7 +296,7 @@ design lane で docs だけ（code・test・bindings は変えない、AC6）。
 
 - 設計正本: `docs/function-design/71-mnt-backup.md`（§71.1、§71.3 の名前の解析、§71.4 の MNT-01-D7・D10 と §71.4.1、§71.8 手順 3、§71.10 の D-114 の表、§71.11 の MNT-01-D8、§71.12 の MNT-01-D9、§71.13）、`68-ui-backup-restore.md`（UI-11b-F8〜F10・D14〜D16、§68.3〜§68.13 の該当の行、UI-11b-L3-6〜9）、`53-ui-home.md`（§53.1、UI-00-D12）、`43-cmd-settings-log.md`（§43.8.2〜§43.8.7、§43.11）、`22-mnt-migration.md`（MNT-03-D11 の「復元への波及」、§16 の作り直しの手順の folder の外の場所 (3) と手順 3）、`docs/architecture/cmd-task-specs.md`（CMD-11）・`mnt-task-specs.md`（MNT-01）、`docs/ARCHITECTURE.md`・`docs/FUNCTION_DESIGN.md` の MNT-01 の行、`docs/SCREEN_DESIGN.md`（1 日の動線、ホーム、バックアップ・復元画面）。
 - 決定: `docs/decision-log.md` の D-114 と、D-111 の末尾の `Superseded in part by: D-114` の行（未決 B）。
-- Test Design Matrix: `docs/plans/test-matrices/2026-10-07-backup-offsite.md`（runtime の lane が実装する test の設計）。
+- Test Design Matrix: `docs/archive/plans/test-matrices/2026-10-07-backup-offsite.md`（runtime の lane が実装する test の設計）。
 - `docs/backlog.md`: 本 lane の項（着手・導入の前の関門・設計の Draft と再開・残り）と「保存と起動の守りの follow-up」の (2) の着手。
 
 AC1〜AC6 の最終の出力（closure の是正と TD-381 の反映の後、逐語）:
@@ -329,6 +329,12 @@ AC1〜AC6 の最終の出力（closure の是正と TD-381 の反映の後、逐
 - 利用者が `InventoryBackup\` に手で置いた規約の名前の file は、検査を通らずに写しと数えられうる（71 §71.11.7。復元の前の確かめが止める）。MSI の手順書の流れ 3 の直しは runtime の lane の起票で行う（申し送りの表、backlog）。
 - 更新・migration の前の保全の gate は無い（Non-scope、backlog の同項の残り）。導入の前の関門で足された 3 点のうち、PC の中の保持日数と日付での掃除は本 lane の外（backlog）。
 - 作り直しの起点の migration より前の版の開発・試験 DB の控えは、確かめを通って復元で止まる（71 MNT-01-D9。店の初回の版はそれらの migration を含むので、店の控えには当たらない）。
+
+closeout（2026-10-23）:
+
+- 結果: 確かめ済みの最新の backup を用意した USB メモリへ自動で写して読み戻しで照合し、PC の中と PC の外の成功を分けて画面とホームに出し、復元の前に控えを確かめて新しすぎる版・壊れた控えを止め、別の PC で媒体の控えから戻す手順までを設計正本と D-114 に置いた。USB の控えは任意で、やめる操作を持つ（TD-381）。code・migration・bindings は変えず、店で PC の外の控えが毎日取れる通常運用は後続の runtime の lane の後に成り立つ。
+- review・CI・merge: Plan Review は round 1〜3（上限）と同期の closure（reject → 是正）・同期の closure 2（fresh Opus、approve）で、owner が R4 の計画を承認した（TD-376）。Final Review（Minimum 2、Claude 側 Fable 5.1 と Codex GPT-6 Astra）は broad と closure の reject と是正を重ね、途中の契約の変更を Gated Amendment として記録して broad を取り直し、closure の 2 回目で両者が approve（P3 だけ）した。helper の専用 record は review pass・r4 pass で、owner の R4 の承認と Ready（TD-383）の後の run の `Merge gate` は success、owner の merge の指示（TD-385）の後に helper 経由で squash merge した。PR: [#155](https://github.com/kosei-w90607/inventory-system-desktop/pull/155)
+- 後続: `docs/backlog.md` の「PC の外の控えの runtime」（申し送りは上の「runtime の置き場所」と申し送りの表、下の Review Response の closeout の段落の (a)〜(c)、Contract Probe の P7・P8）と、自動 backup の確認の失敗の知らせの候補（AI の review 由来）。導入の前の関門 3 の残りは、その runtime の lane と復元の予行演習（71 §71.13）。
 
 ## Review Response
 
@@ -365,3 +371,19 @@ round 3（上限、`7a38423c`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3
 - P3: §71.11.7 に手で置いた file も写しとして数えて掃除する旨（F2）、backlog の待ちの文（F3）、Non-scope の MSI の句と Scope の decision-log の行（F4）、AC6 の base（F5）、MNT-01-D9 の確かめの対象と止まる条件の引用（F6）。
 
 同期の closure 2（2026-10-22、`962731ec`）: Claude 側 fresh Opus 5.5 = approve（P1 / P2 0、P3 4）。F1〜F6 は全部 closed。P3 は implementing で直す（Writer）: N1 Design Readiness に「P1 は Plan Gate の前に owner が確かめる」が残る、N2 71 §71.11.4 の 4a の括弧と保証の範囲の文が手で置いた file を例外に挙げていない、N3 MNT-01-D9 の止まる条件を手順の列挙でなく 22 §16・§19 の節で引く、N4 MSI の手順書の流れ 3 の申し送り先を runtime の lane だけにするか backlog の同項の「残り」に 1 行足す。
+
+Final Review と closeout（2026-10-23）: Final Review は Minimum 2（Claude 側 Fable 5.1 と Codex GPT-6 Astra、各 high）。
+
+- broad: 両者 reject（Fable P2 1 / P3 4、Codex 492 P1 1 / P2 3 / P3 1）。是正は書く先の volume への固定と祖先の判定、読めない記録の画面での作り直し、知らせの原因の区別ほか（Implementation Results の「Final Review の是正」）。
+- closure: 両者 reject（Fable P2 2 / P3 4、Codex 496 P2 2 / P3 1）。是正は書く先の固定の `pin_to_volume` への置き換えと作り直しの順の組み替えで、同時に owner の決定 TD-381（USB の控えは任意、「PC の外の控えをやめる」を範囲へ）を反映した。ここまでの契約の変更を Gated Amendment として `Amendments` に記録し（介入の上限 10 → 11）、broad を取り直した（helper は broad の Plan Commit・Amendments が packet と同じことを求める）。
+- broad の取り直し: 両者 reject（Fable P2 1 / P3 6、Codex 499 P2 2 / P3 1）。是正は `RegisterSd` で見つけた folder を名指すことと、失敗の後の画面を取り直した status で決めること。
+- closure: Fable approve（P3 6）、Codex 502 reject（P2 2 / P3 3）。是正は作り直しの手順 7 の後の status を §71.11.5 の式どおりにする、やめる操作の画面から届かない再試行の経路を消す、`io` の文を (5) に戻す、PC 側の状態の失敗を `Io` にする。
+- closure の 2 回目: 両者 approve（Fable P3 2、Codex 505 P3 1）。helper の record は review pass、r4 pass（owner の R4 の承認と Ready、TD-383）。Ready の後の run の `Merge gate` は success で、owner の merge の指示（TD-385）の後に merge した。
+
+P3 の disposition（Coordinator の裁定）:
+
+- packet の errata（packet を変えると Gated Amendment になるので merge の前に直さず、ここに記録する）: Scope の `docs/architecture/cmd-task-specs.md` の行の「CMD-11 の表に 5 行」は 6 行（43 §43.8.2〜§43.8.7）。Contract Ledger の MNT-01-D10 の行に 43 §43.6（手動の backup の `pin_backup_dir` と `BackupDirError` の写像）が無い。Boundary / Wire Contract の precision/range の、版も値が小さく JS の安全な整数の範囲に収まるとする文は、43 §43.8 の DTO の形の文が正本（版は範囲を仮定せず、UI は判定にも表示にも使わない）。AC1・AC2 の期待の行の位置は merge の時点で AC1 `114:`・`122:`・`827:`・`871:`、AC2 68 `119:`〜`121:`・53 `213:`（数と中身は Implementation Results の最終の出力と同じ）。
+- 後続の runtime の lane へ申し送る（closure の 2 回目の P3）: (a) 用意済みの媒体が差してある（`attached` が空でない）のに `io` が続くとき（書込み禁止の媒体ほか）、53 UI-00-D12・68 UI-11b-D14 の (5) が「USB メモリが差してあるか確かめてください」を出して副情報と食い違う。`attached` で文を分ける。(b) 手順 7 の中で成功の記録を置き換えた後の親 directory の sync の失敗で、card に成功の日時と「PC の外の控えを写せませんでした」が並ぶ（71 §71.11.4 の表の「状態の file の書込みの失敗 → `Io`」は merge より前からの契約）。置き換えの後の sync の失敗を掃除と同じ「成功のまま・warn」にするかを runtime の lane で決める。(c) Matrix の原因の文の行に `stale = true` の前提が明記されていない。
+- backlog（AI の review から出た候補。出所を書き、owner の確認の前に要件にしない）: 自動 backup の確認（UI-11b-D13、owner 決定 2026-09-25 (a)）の失敗は連続失敗の最初の 1 回の toast だけで原因を名指さず、失敗のときに backup の一覧を取り直さない。USB を使わない店では、自動 backup が止まり続けても原因が届きにくい（PC の外の控えを用意した店はホームの `local_backup_old` の知らせと手動 backup の文が名指す）。`docs/backlog.md` に 1 項目として置いた。
+
+packet の本文（Scope・Contract Ledger・AC・Contract Probe）は当時の契約の記録として書き換えない。Owner Effort Budget の表は closeout の時点の値（上限 11、消費 11）に直した。
