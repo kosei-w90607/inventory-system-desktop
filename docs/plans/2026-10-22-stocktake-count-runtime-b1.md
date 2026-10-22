@@ -33,7 +33,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R4
 - Plan Commit: aba17e2e2422695b2ffff6bcd3fd9bebebf24339
 - Amendments: none
@@ -55,6 +55,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 6. plan-gate のまま是正（round 2、2026-10-22、Coordinator）: round 2 の reject を起草役が `1688ccb9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 7. plan-gate（round 3、上限、2026-10-23、Coordinator）: round 3 は両者 reject（Codex に P1 1）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした。起草役が `8655cb64` で直した（下の Review Response）。plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が P1 / P2 = 0 を報告し、owner が実装の前の R4 を承認した後。
 8. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側の fresh Opus 5.5 が closure で P1・P2 が無いと報告した（Review Response 参照）。Codex の closure は利用上限で 2026-10-24 まで得られず、`docs/AGENT_OPERATING_MANUAL.md` §3.3・座組表の Codex 停止中の列（Plan Review は fresh Opus 5.5 だけで進める）に従い、owner の決定（repo 外の回答台帳 TD-389。TD-387 を見直した）で進めた。closure の P3 4 件は plan-gate のまま起草役が `5c45d253`・`aba17e2e` で直した（Plan Commit は是正の後の版）。owner は同じ回答で実装の前の R4 を承認した（TD-389）。実装の commit はまだ無い。
+9. plan-approved → implementing（2026-10-23、Coordinator、本 commit）: main（`eed07d37`、PR #155・#189 の後）を単段で取り込み（衝突は `docs/Plans.md` の 1 か所）、AC の数の baseline の command 21 本を逐語で再測して上の値と一致した（`rg` の出力の並びだけが違う）。実装の Writer に S1〜S7 と S9 の L3 の fixture の生成から発注する。
 
 ## Owner Effort Budget
 
