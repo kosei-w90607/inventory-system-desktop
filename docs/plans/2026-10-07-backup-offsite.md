@@ -7,7 +7,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 962731ec73db29d0dc9a5a1fdc50674888f3aa7e
-- Amendments: none
+- Amendments: e6158aa673a5982c20545e5157a25af7a8be8b01, 7af3804348eb93d6b2f20ba33ac18484ca164350
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -29,16 +29,17 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 9. plan-gate のまま再開（2026-10-22、Coordinator）: owner がこの lane の再開を選んだ（repo 外の回答台帳 TD-372）。Writer が `origin/main`（`c98fe7dd`）へ同期し（merge `4d702174`、衝突は `docs/backlog.md`・`docs/decision-log.md`）、後から main に入った契約（D-118 (a) の v9、原価の lane C の vB、D-123〜D-127）との食い違いを新しい仕組みを足さずに直した（`91399121`: 71 MNT-01-D9 の保証の範囲、22 §16 の folder の外の場所 (3) と作り直しの手順 3、D-114 の Status、71 §71.10 の引用、AC3・AC4・AC6 の期待の測り直し）。Contract Probe の P1 は確認済み（repo 外の回答台帳 TD-375）。同期で足した契約の文は round 3 の review の後なので、plan-approved の前に fresh の reviewer の closure に出す。plan-approved は closure と owner の R4 の承認を待つ。
 10. plan-gate → plan-approved（2026-10-22、Coordinator、本 commit。state だけ）: 同期の closure（fresh Opus 5.5）は reject（P1 0 / P2 1 / P3 5）で、Writer が `962731ec` で 6 件を直した。closure 2（fresh Opus 5.5）が approve（P1 / P2 0、P3 4）。P3 4 件は implementing で直し、Final Review で確かめる（下の Review Response）。owner が R4 の計画の承認をした（repo 外の回答台帳 TD-376）。Plan Commit = `962731ec`。
 11. plan-approved → implementing（2026-10-22、Coordinator、本 commit。state だけ）: closure 2 の P3 4 件（N1〜N4）の是正を Writer に出す。design lane で docs だけなので、implementing の成果は P3 の是正と Implementation Results で、その後に Final Review（Minimum 2）。
+12. implementing のまま Gated Amendment（2026-10-22、Coordinator、本 commit。state だけ）: Final broad（head `3e3350c1`）の reject を Writer が `e6158aa6` で直し、その closure（Fable 5.1・Codex）の reject と owner の決定（repo 外の回答台帳 TD-381: USB の控えは任意、「PC の外の控えをやめる」を範囲へ）を `7af38043` で直した。どちらも Plan Gate の後の契約の変更（新しい command・error・手順）なので `Amendments` に足す。broad の記録は `Amendments` none の時点のものなので、closure でなくこの head で fresh broad（Minimum 2）を取り直す（`scripts/pr-gate.py` の validate_review は broad の Plan Commit と Amendments が packet と同じことを求める）。TD-381 で介入の上限を 10 から 11 に上げた（下の Owner Effort Budget）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 10（2026-10-08 に 8 から上げた、owner 承認〈repo 外の回答台帳 TD-205〉。理由: Plan Review round 1 で Contract Probe の P1 を Plan Gate の前に owner が確かめることになり、上限 8 を超えるため）。起票時: 8（既定 6 から上げた。理由: 製品の運用の判断が 3 点〈owner の判断事項 1〜3〉と、owner に聞く機器・訪問の事実が 1 点〈Contract Probe の P5・P6、1 回の問い合わせにまとめる〉ある。1 回の問い合わせにまとめても decision point の数で数える）
+- 介入回数上限: 11（2026-10-22 に 10 から上げた、owner の決定〈repo 外の回答台帳 TD-381〉。理由: Final Review の closure の後に owner が USB の控えを任意にし、「PC の外の控えをやめる」を範囲に入れた判断が 1 回足された）。その前: 10（2026-10-08 に 8 から上げた、owner 承認〈repo 外の回答台帳 TD-205〉。理由: Plan Review round 1 で Contract Probe の P1 を Plan Gate の前に owner が確かめることになり、上限 8 を超えるため）。起票時: 8（既定 6 から上げた。理由: 製品の運用の判断が 3 点〈owner の判断事項 1〜3〉と、owner に聞く機器・訪問の事実が 1 点〈Contract Probe の P5・P6、1 回の問い合わせにまとめる〉ある。1 回の問い合わせにまとめても decision point の数で数える）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 10 | 8（2026-10-22: R4 の計画の承認 1〈TD-376〉。2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈TD-202〉、Contract Probe の P1 の依頼 1〈TD-204。結果の受領は同じ decision point〉、上限の改定 1〈TD-205〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない。再開の選択〈TD-372〉と P1 の結果の受領〈TD-375〉は TD-204 と同じ decision point で数えない） | 2（Ready の head での R4 の承認と Ready を 1 回、merge 1） | 0 | 10 = 8 + 2 + 0 |
+| 介入 | 11 | 9（2026-10-22: USB の控えを任意にし「PC の外の控えをやめる」を範囲へ 1〈TD-381〉、R4 の計画の承認 1〈TD-376〉。2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈TD-202〉、Contract Probe の P1 の依頼 1〈TD-204。結果の受領は同じ decision point〉、上限の改定 1〈TD-205〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない。再開の選択〈TD-372〉と P1 の結果の受領〈TD-375〉は TD-204 と同じ decision point で数えない） | 2（Ready の head での R4 の承認と Ready を 1 回、merge 1） | 0 | 11 = 9 + 2 + 0 |
 
 ## Risk
 
