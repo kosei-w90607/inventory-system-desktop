@@ -1,6 +1,6 @@
 # Test Design Matrix: 棚卸しの数の置き場と在庫数の求め直しの runtime (b1)
 
-Plan Packet: [2026-10-22-stocktake-count-runtime-b1](../2026-10-22-stocktake-count-runtime-b1.md)。期待値は設計正本（ADR SPEC-STK-CNT-D1〜D12、22 §20、24・30・31・32・35・36・40・41・42・51・55・65・73・75 の D-118 の節、共通規則）から導き、実装や mock から写さない。test の名前は REQ を含む（`docs/DOC_STYLE_GUIDE.md` §1）。横断の約束の # は packet の「横断の約束」（Z1〜Z17）。
+Plan Packet: [2026-10-22-stocktake-count-runtime-b1](../2026-10-22-stocktake-count-runtime-b1.md)。期待値は設計正本（ADR SPEC-STK-CNT-D1〜D12、22 §20、24・30・31・32・35・36・40・41・42・51・55・65・73・75 の D-118 の節、共通規則）から導き、実装や mock から写さない。test の名前は REQ を含む（`docs/DOC_STYLE_GUIDE.md` §1）。横断の約束の # は packet の「横断の約束」（Z1〜Z20）。
 
 ## Risk
 
@@ -41,7 +41,7 @@ Risk: R4
 - oracle は検証対象と独立の正本から転記し、mutation は production 側だけを変える。
 - 結果を空にする注入で、期待が空集合の case だけが kill を主張していないかを確かめ、各組合せに非空の期待を 1 件置く。
 
-### M: migration vZ（22 §20、Z17）
+### M: migration vZ（22 §20、横断の約束の Z17）
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
@@ -133,7 +133,7 @@ Risk: R4
 | Z14 | 取消: 売上と movement を無効にし、求め直す商品を求め直し、補償の movement を作らず、計数を消さない。結果に `recheck_targets`。取消済みは冪等の Ok | 補償・計数の消去 | integration | `test_rollback_req401_voids_and_recomputes_without_compensation` | 補償の movement を書く、計数を消す、求め直さない |
 | Z15 | 確定の TX で順 1〜5 を取り直す（preview の後に別の取込みが確定した場合） | TOCTOU | negative | `test_commit_req401_rechecks_rules_in_tx` | 確定で検査を省く |
 | Z16 | 部分的な行の error・返品の符号・負の在庫の警告・在庫の上限で TX 全体が戻る（今の契約） | — | regression | 既存の `test_commit_req401_partial_with_errors`・`test_commit_req401_sign_flip_inv1`・`test_commit_req401_negative_stock_warning`・`test_commit_req401_stock_limit_rolls_back_whole_tx`・`test_preview_req401_pos_quantity_limit_is_row_error` を移す（T2） | — |
-| Z17 | preview の cache の照合の残りの 3 通り（32 の「preview の cache の契約」の (4)）: (a) preview で単独だった JAN が確定の前に共有 JAN になった（一括 import の上書きで別の商品に同じ JAN）、(b) preview で `unmatched_product` だった行の JAN に確定の前に商品ができた、(c) 確定の TX の順 1〜5 は cache の `settlement`（machine_no・精算回数・精算日）で取り直す（preview の後に同じ精算の別の版が確定していれば順 4 で拒否）。(a)(b) は何も書かずに `ImportError`、token は残る。対照: preview の後に変わったのが在庫連動の設定だけなら拒否せず、`stock_linked` は確定の時点の値（round 1 の是正） | 共有 JAN・未登録の行が黙って別の扱いになる、精算の識別を file から読み直す | negative / integration | `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache` | `shared_jan` を比べない、error 行を照合しない、cache に `settlement` を持たない（確定で順 4 を見ない）、連動の設定の変化を拒否にする |
+| Z21 | preview の cache の照合の残りの 3 通り（32 の「preview の cache の契約」の (4)）: (a) preview で単独だった JAN が確定の前に共有 JAN になった（一括 import の上書きで別の商品に同じ JAN）、(b) preview で `unmatched_product` だった行の JAN に確定の前に商品ができた、(c) 確定の TX の順 1〜5 は cache の `settlement`（machine_no・精算回数・精算日）で取り直す（preview の後に同じ精算の別の版が確定していれば順 4 で拒否）。(a)(b) は何も書かずに `ImportError`、token は残る。対照: preview の後に変わったのが在庫連動の設定だけなら拒否せず、`stock_linked` は確定の時点の値（round 1 の是正） | 共有 JAN・未登録の行が黙って別の扱いになる、精算の識別を file から読み直す | negative / integration | `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache` | `shared_jan` を比べない、error 行を照合しない、cache に `settlement` を持たない（確定で順 4 を見ない）、連動の設定の変化を拒否にする |
 
 ### X: STK-1・STK-2 と cross feature の model
 
@@ -208,7 +208,7 @@ Risk: R4
 | 計数の保存（既定・fresh） | 数量欄は空、日付は今日 | 保存中は商品の切替・離脱を抑止 | 写しと明細の写しが変わり feedback | 写しの consumer（U15） | 一覧・要再確認の一覧 | 同じ商品をもう一度検索すると前の数が読取りで出る | 再起動の後も DB の計数が効く（UI の draft を復活させない） | 拒否は文と field、入力を保つ | 入力を直して保存 | C1〜C8・U1〜U6・U15 |
 | 要再確認 | 写しの印 0 | — | 入れ直しで解ける | 保存・取込み・取消の後 | 一覧 | 取込みの結果と棚卸しの画面の両方 | DB の写しが正 | — | 入れ直し | L5・L6・C9・U6・U11 |
 | 完了 | 進行中 | 完了中は全操作を無効 | 評価額の固定、結果の表示 | 進行中・前回の要約・記録の一覧 | 前回の要約（完了の前の snapshot を結果に渡す今の UI-10-D5 を保つ） | 記録の詳細で完了の後の差 | 完了した記録は変わらない | `completion_blocked` は理由の一覧、範囲の外は文 | 理由を片付けて再び完了 | K1〜K5・R1〜R5・U7・U8 |
-| Z004 の取込み | ファイル選択 | preview → 確定中は離脱を抑止 | 結果と要再確認の一覧 | 写しの consumer・取込みの一覧 | 結果の後の一覧 | 取込みの記録の詳細 | token は 30 分で消える | 拒否の文、token を残す | ファイルを選び直す | Z1〜Z16・U10・U11 |
+| Z004 の取込み | ファイル選択 | preview → 確定中は離脱を抑止 | 結果と要再確認の一覧 | 写しの consumer・取込みの一覧 | 結果の後の一覧 | 取込みの記録の詳細 | token は 30 分で消える | 拒否の文、token を残す | ファイルを選び直す | Z1〜Z16・Z21・U10・U11 |
 | Z004 の取消 | 取込みの記録 | 取消中 | 結果と要再確認の一覧 | 同上 | 同上 | 取り込み直し（同じ精算回数の file） | — | 失敗の文 | — | Z14・U11 |
 | 在庫連動を始める | 連動 off の商品 | 保存中 | 連動 on | 商品の consumer | — | 回復先から戻る（`returnTo`） | — | `recount_required` と導線 | 数を入れて保存し直す | J4〜J6・U12・U9 |
 | migration vZ | 直前の版の DB | 起動中 | 版 vZ | — | — | — | 止まった DB は作り直し | `MigrationFailed`（作り直しの文） | 作り直しの後に起動 | M1〜M7 |
@@ -541,7 +541,7 @@ exit=0
 | `disposal_repo.rs` の `seed_csv_import`（helper） | 移す | helper の INSERT に精算の鍵を足す。helper を呼ぶ test の期待は変えない |
 | `sales_repo.rs` の `test_insert_sale_record_req401_auto_with_csv_import`・`seed_csv_import`（helper）・`test_get_csv_import_record_detail_req207_movements_filter`・`test_void_movements_req401_by_reference`・`test_void_movements_req401_no_movement_type_filter` | 移す | raw の INSERT に精算の鍵、`csv_import` の movement を `phase = 1`・`settlement_no` つきに（値の期待は変えない） |
 | `test_support.rs` の `seed_legacy_fixture`、`time_evidence_tests.rs` の `import` | 契約ごと外す | T3（時点証拠の撤去） |
-| `src-tauri/tests/import_internal_contract_test.rs` の `test_import_internal_contract_req401_is_minimal` | 期待を変える | 32 の「preview の cache の契約」で BIZ-03-D1 を改めた: `MatchedRow` は `line_no`・`normalized_jan`・`product_code`・`shared_jan`・`quantity`・`amount`、`CommitRequest` は `cached_data`・`today`。Rust と 32 の §15.2 の型の節の両方を同じ並びにする（Z13・Z17） |
+| `src-tauri/tests/import_internal_contract_test.rs` の `test_import_internal_contract_req401_is_minimal` | 期待を変える | 32 の「preview の cache の契約」で BIZ-03-D1 を改めた: `MatchedRow` は `line_no`・`normalized_jan`・`product_code`・`shared_jan`・`quantity`・`amount`、`CommitRequest` は `cached_data`・`today`。Rust と 32 の §15.2 の型の節の両方を同じ並びにする（Z13・Z21） |
 | 同じ file の `test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic` | 変えない | 固定の語（`AdditionalImportConfirmationRequired`・`additionalImportConfirmed`・`same_date_imports`）は日報の取込みの型（`DailyReportDuplicateStatus`・`commitDailyReportImport`・`DailyReportDuplicateCheck`）が持ち続ける。bindings の再生成の後に通ることを確かめ、通らなければ期待を変えるに移し、理由を PR に書く |
 | 同じ file の `test_sales_design_req502_future_coverage_counts_distinct_report_dates`・`test_active_sales_import_vocabulary_sweep_i_g1`・`test_sweep_dir_for_tokens_skips_known_generated_paths` | 変えない | b1 は固定の語を足さない・戻さない（新しい code に `Overwrite` 系の語を書かない） |
 

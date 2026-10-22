@@ -280,7 +280,7 @@ Contract Ledger と Matrix はこの表の # を引く。(a) の Y1〜Y8 は変�
 | 対象 | 変更 | 作る所 | 読む所・test |
 |---|---|---|---|
 | `parse_and_validate` | 32 の新契約の表の順 1〜5（順 3 は今の重複の拒否のまま）、知らせ（欠けの区間・精算日が今日より後）、今の「精算日が未来の日付です」の拒否と同じ日の取込みの一覧を外す、Z8 の数量の換算と上限の行の error、正常な行が全て 0 の file を拒まない。`today` は引数。preview の cache を 32 の「preview の cache の契約」の形で作る（`MatchedRow` の `normalized_jan`・`shared_jan`・在庫の数量、`CachedPreview.settlement`。round 1 の是正） | `src-tauri/src/biz/csv_import_service/parse.rs`、`mod.rs`（型と §15.2 の型の節。`src-tauri/tests/import_internal_contract_test.rs` の固定を同じ形に。Matrix の T10） | Matrix の Z1〜Z7・Z9・Z12 |
-| `commit_csv_import` | 停止を外し、確定の TX で順 1〜5（cache の `settlement` で。file を読み直さない）と JAN の候補（cache の `normalized_jan` で引き直し、候補が無い・先頭の商品が違う・共有 JAN かどうかが違う・未登録だった行に候補ができた、のどれかなら拒否。32 の「preview の cache の契約」の (4)）と連動の設定を取り直す → `csv_imports` に精算の鍵 → 売上（`stock_linked`）→ 在庫連動の行の movement（`business_date = settlement_date`・`settlement_no`。下の「Z004 の movement の書き方」のとおり `insert_movement` に精算回数を渡す）→ 求め直す商品の `recompute_stock` → 結果に `recheck_targets` と知らせ。`additional_import_confirmed` を外し、`today` を受ける | `commit.rs` | Matrix の Z8〜Z13・Z15〜Z17 |
+| `commit_csv_import` | 停止を外し、確定の TX で順 1〜5（cache の `settlement` で。file を読み直さない）と JAN の候補（cache の `normalized_jan` で引き直し、候補が無い・先頭の商品が違う・共有 JAN かどうかが違う・未登録だった行に候補ができた、のどれかなら拒否。32 の「preview の cache の契約」の (4)）と連動の設定を取り直す → `csv_imports` に精算の鍵 → 売上（`stock_linked`）→ 在庫連動の行の movement（`business_date = settlement_date`・`settlement_no`。下の「Z004 の movement の書き方」のとおり `insert_movement` に精算回数を渡す）→ 求め直す商品の `recompute_stock` → 結果に `recheck_targets` と知らせ。`additional_import_confirmed` を外し、`today` を受ける | `commit.rs` | Matrix の Z8〜Z13・Z15・Z16・Z21 |
 | `rollback_csv_import` | 停止を外し、売上と movement を無効にして求め直す商品を `recompute_stock`（補償の movement を作らない。`StockCorrection` を外す）。結果に `recheck_targets`。取消済みへの再度の取消は今の冪等の Ok のまま | `rollback.rs` | Matrix の Z14 |
 | Z004 の movement の書き方 | Z004 の確定は `apply_stock_change` を行ごとに呼ばない（行ごとに求め直すと、同じ商品の複数の行の `stock_after` が途中の値になり、31 の「Z004 の同じ商品の複数の行も同じ値」と合わない）。在庫連動の行の movement を全部、仮の `stock_after`（今の写しの値）で `insert_movement`（`settlement_no` を渡し `phase = 1`）してから、求め直す商品ごとに `recompute_stock` を 1 回呼び、その TX で書いた movement の `stock_after` を写しの値で `update_movement_stock_after` で書く（31 の `apply_stock_change` の順を商品ごとにまとめた形。入出庫 4 業務の `apply_stock_change` は変えない） | `commit.rs`。`apply_stock_change` の `settlement_no` の引数は外す（31。呼ぶのは入出庫 4 業務だけで全部 `None` だった。`src-tauri/src/biz/inventory_service/common.rs` の定義と test の 6 か所、`receiving.rs`・`returns.rs`・`manual_sale.rs`・`disposal.rs` の呼出し。Matrix の T12） | Matrix の Z8 |
 | test の fixture | `make_z004_bytes` を layout A のメタ（マシンNo.・精算回数）を持つ形へ（精算回数を引数に取る）。旧本体の test は Matrix の T2 の分類で新しい経路へ移す。`csv_imports` を直に書く test・`NewCsvImport` の literal・`csv_import` の movement を `phase = 0` で入れる test は vZ の CHECK で落ちるので、Matrix の T10 の分類で fixture を直す | `src-tauri/src/biz/csv_import_service/test_support.rs`、`tests/*.rs`（`list_tests.rs` を含む）、`src-tauri/src/db/sales_repo.rs`・`disposal_repo.rs` の test、`src-tauri/src/cmd/csv_import_cmd.rs` の test | — |
@@ -502,7 +502,7 @@ tests/fixtures/z004/README.md
 
 - 上の Goal の「非目的」の全部（b2、P の小数、D1 の見た目、Z004 の SD の一括取込み〈(B)〉、EJ、JAN の別名、振替の `movement_type`、`register_processed` の既定、TD-333 の点数の検査）。TD-333（レジの打ち方と Z004 の数量の入れ替わり）は設計の種で決定ではなく、どの行を「不自然」とするかに店の事実が要る。b1 の契約の正しさ（記録と写しの一致）は変えないので backlog に残す。
 - 日報の取込みの同日追加の確認（BIZ-08。`AdditionalImportConfirmDialog` と日報の `additional_import_confirmed`）。SD 直読みの runtime（PR #172）の範囲。
-- 取込みの記録の詳細（`/csv-import/records/$importId`）から過去の Z004 の取込みを取り消す入口（round 1 の是正で判断した）。正本は決めていない: 55 は取消の画面の入口を取込みの結果の step だけとし（§55.0 の「取消の画面入口は結果 step だけ」、§55.4 の手順 18 の「取り消す」CTA）、65 は CSV 取込みの詳細に「rollback 状態」を出すとだけ書き、取消・訂正の CTA は「対象記録種別の cancel / correct command が実装済みの場合だけ表示する」の完成形の契約（業務記録の取消の lane。今は無い）に置く。ADR D7 と 24 は取消の処理だけを決め、入口を決めていない。b1 は今の入口（結果の画面の「取り消す」）を新しい経路に繋ぐだけにし、L3-10 も結果の画面で取り消す。残る使い手の穴（取り込んだ後に結果の画面を離れると、誤った版を取り消して取り込み直す〈ADR D7〉入口が無い）は下の「残りの危険」に書き、closeout で backlog に「Z004 の取込みの記録の詳細から取り消す入口」を足す（D-127 の「その場で直せる」に当たる。b2 と並べて起票できる。関門に入れるかは owner の判断）。
+- 取込みの記録の詳細（`/csv-import/records/$importId`）から過去の Z004 の取込みを取り消す入口（round 1 の是正で判断した）。正本は決めていない: 55 は取消の画面の入口を取込みの結果の step だけとし（§55.0 の「取消の画面入口は結果 step だけ」、§55.4 の手順 18 の「取り消す」CTA）、65 は CSV 取込みの詳細に「rollback 状態」を出すとだけ書き、取消・訂正の CTA は「対象記録種別の cancel / correct command が実装済みの場合だけ表示する」の完成形の契約（業務記録の取消の lane。今は無い）に置く。ADR D7 と 24 は取消の処理だけを決め、入口を決めていない。b1 は今の入口（結果の画面の「取り消す」）を新しい経路に繋ぐだけにし、L3-10 も結果の画面で取り消す。残る使い手の穴（取り込んだ後に結果の画面を離れると、誤った版を取り消して取り込み直す〈ADR D7〉入口が無い）は下の「残りの危険」に書く。owner は 2026-10-22 に、この入口を「導入の前の関門」に入れると決めた（repo 外の回答台帳 TD-380。D-127 の「その場で直せる」に当たる）。b1 の範囲は変えず、別の lane で入れる。closeout で [Plans](../Plans.md) の `## 導入の前の関門` に項目を、backlog に「Z004 の取込みの記録の詳細から取り消す入口」を足す。
 - 「店に確かめる問い（入庫・返品の記録を品物が届く前に入力することはあるか）」の答え（ADR の Revisit。b1 の契約を変えない）。
 - 停止 ADR の撤去で外す以外の旧い記録の型（`movement_type` の `stocktake`・`ReferenceType::Stocktake` の enum と画面の label）。
 - 起動の失敗の画面の文の種類を増やすこと（vZ の止まりは今の `DatabaseInit` の文に手順 1 の message を添える。(a) の Residual と同じ）。
@@ -512,7 +512,7 @@ tests/fixtures/z004/README.md
 - AC1（migration）: `cd src-tauri && cargo test --lib db::` が全 PASS し、Matrix の M1〜M9 の test 名が `rg -n 'fn <名前>' src-tauri/src/db` で 1 件ずつ見つかる。
 - AC2（精算の窓）: `cd src-tauri && cargo test --lib biz::stock_ledger` が全 PASS し、Matrix の L1〜L12 の test 名が見つかる。`rg -c 'phase != 0' src-tauri/src/biz/stock_ledger.rs` が 0（exit 1）、`rg -c 'RecheckReason::UndeterminedSettlement' src-tauri/src/biz/stock_ledger.rs` が 1 以上、`rg -c "reference_type IS NULL AND movement_type = 'receiving'" src-tauri/src/db/inventory_repo.rs` が 1。
 - AC3（計数・完了・記録の詳細）: `cd src-tauri && cargo test --lib biz::stocktake_service` が全 PASS し、Matrix の C1〜C11・K1〜K8・R1〜R5 の test 名が見つかる。`rg -n 'pub fn (save_stock_count|preview_stock_count_placement|zero_uncounted_items|list_recheck_products)\(' src-tauri/src/biz | wc -l` が 4。`rg -c "reference_type = 'stocktake'" src-tauri/src/db/disposal_repo.rs src-tauri/src/db/stocktake_repo.rs` が 0（exit 1）。
-- AC4（Z004）: `cd src-tauri && cargo test --lib biz::csv_import_service` が全 PASS し、Matrix の Z1〜Z17・X1〜X3 の test 名が見つかる。`rg -c '#\[ignore' src-tauri/src/biz` が 0（exit 1）。
+- AC4（Z004）: `cd src-tauri && cargo test --lib biz::csv_import_service` が全 PASS し、Matrix の Z1〜Z16・Z21・X1〜X3 の test 名が見つかる。`rg -c '#\[ignore' src-tauri/src/biz` が 0（exit 1）。
 - AC5（共有 JAN・在庫連動・整合性）: `cd src-tauri && cargo test --lib -- biz::product_service biz::integrity_service` が全 PASS し、Matrix の J1〜J6・I1・I2 の test 名が見つかる。
 - AC6（撤去）: `rg -n 'fn legacy_(start_stocktake|update_count|complete_stocktake|commit_csv_import|rollback_csv_import)\(' src-tauri/src | wc -l` が 0、`rg -l 'time_evidence|stock_revision|pos_import_sources|stocktake_recount|observation_kind|stocktake_adjustment_kind' src-tauri/src scripts | wc -l` が 0、`rg -l '一時停止中' src src-tauri/src --glob '!src/lib/bindings.ts' | wc -l` が 0、`test -d scripts/probes && echo present || echo absent` が `absent`、`rg -l 'updateCount|update_count|forceFill|force_fill' src src-tauri/src --glob '!src/lib/bindings.ts' | wc -l` が 0、`rg -l 'additionalImportConfirmed' src/features/csv-import | wc -l` が 0、`rg -l 'apply_void_stock_corrections|StockCorrection' src src-tauri/src --glob '!src/lib/bindings.ts' | wc -l` が 0。
 - AC7（wire と command）: `rg -c '"stocktake_guard"' src/lib/bindings.ts` が 1 以上、`rg -c '^export type (SaveStockCountRequest|StockCountSaveResult|CountPlacementPreview|CountRecoveryTarget|StocktakeRecovery|SharedJanConflict|SettlementGap) =' src/lib/bindings.ts` が 7、`rg -c 'cmd::stocktake_cmd::(save_stock_count|preview_stock_count_placement|zero_uncounted_items|list_recheck_products),' src-tauri/src/lib.rs` が 8（2 つの一覧に 4 つずつ）。`cd src-tauri && cargo test --lib -- cmd:: finite_enum_contract_tests` が全 PASS し、Matrix の W1〜W6・W8 の test 名が見つかる。
@@ -655,7 +655,7 @@ Test Design Matrix: [2026-10-22-stocktake-count-runtime-b1](test-matrices/2026-1
 
 - If the Human Gate includes L3, Writer completion includes `cargo check --release` before the owner native build; this is not a CI gate.
 - targeted tests: `cd src-tauri && cargo test --lib db::` / `cargo test --lib biz::stock_ledger` / `cargo test --lib biz::stocktake_service` / `cargo test --lib biz::csv_import_service` / `cargo test --lib biz::product_service` / `cargo test --lib biz::integrity_service` / `cargo test --lib cmd::` / `cargo test --lib finite_enum_contract_tests` / `cargo test --lib io::l3_fixtures` / `cargo test --test import_internal_contract_test`、`npm test -- src/features/stocktake src/features/csv-import src/features/products src/features/inventory-records src/features/integrity-check src/lib`。
-- negative tests: Matrix の M3〜M5・M8・M9（vZ が止まる・CHECK が拒む・作り直しの後の失敗が戻る）、C3〜C5（計数の拒否）、K2〜K5（完了の拒否と範囲）、Z1〜Z5・Z12・Z13・Z15・Z17（Z004 の拒否と確定の照合）、J1〜J5（共有 JAN と在庫連動の拒否）。
+- negative tests: Matrix の M3〜M5・M8・M9（vZ が止まる・CHECK が拒む・作り直しの後の失敗が戻る）、C3〜C5（計数の拒否）、K2〜K5（完了の拒否と範囲）、Z1〜Z5・Z12・Z13・Z15・Z21（Z004 の拒否と確定の照合）、J1〜J5（共有 JAN と在庫連動の拒否）。
 - compatibility checks: 既存の test のうち契約が残るものを新しい経路で期待を変えずに通す（AC10）。記録済みの操作ログの読み手は今のまま。
 - data safety checks: fixture は全部合成（Rust と TS の test、L3 の Z004 と商品の CSV）。
 - main wiring/integration checks: X1・X2（STK-1・STK-2 の診断を新しい経路で PASS）、X3（cross feature の model）、Z8・Z14（確定と取消の後の写しと `derive_stock` の一致）、W2（command の登録）、U15（再取得）。
@@ -742,7 +742,7 @@ L3 の fixture の表（生成の test〈S9〉と `tests/fixtures/z004/README.md
 | IO-24（`NewCsvImport` の精算の鍵、active な精算の一覧、同じ精算の取込み） | 24 | S2 | Z1〜Z5 | — |
 | IO-20（棚卸しの明細の読取り、共有 JAN の読取り） | 20 | S2 | C10・J1・I1 | 非対象: 商品の読取りの写しの 3 列（b2） |
 | BIZ-06（計数・完了・読取り・`StocktakeGuard`） | 35 | S4 | C1〜C10・K1〜K8・R1〜R5 | — |
-| BIZ-03（preview・確定・取消・引き当ての食い違い・整数の数量） | 32 | S5 | Z1〜Z17 | L3-3・L3-8・L3-10 |
+| BIZ-03（preview・確定・取消・引き当ての食い違い・整数の数量） | 32 | S5 | Z1〜Z16・Z21 | L3-3・L3-8・L3-10 |
 | BIZ-02（求め直しの精算の窓、`apply_stock_change` の精算回数） | 31 | S3・S5 | L1〜L12・Z8 | — |
 | BIZ-01（共有 JAN・在庫連動を始める検査） | 30 | S6 | J1〜J6 | L3-4・L3-12 |
 | BIZ-07（共有 JAN の一覧、精算の窓を持つ `derive_stock` との比較） | 36 | S6 | I1・I2 | — |
@@ -802,7 +802,7 @@ round 1 の是正で足した契約の文（Z18〜Z20、32 の「preview の cac
 - 移行の前からの共有 JAN の組は、整合性の画面を開いて「チェック」を押すまで知らせが出ない（ホームや取込みの結果には出ない）。Z004 の取込みでは、その商品の行は売上だけで在庫が動かない（D4 のとおり）。
 - Z004 の小数の数量の行は、P が入るまで行の error で取り込まれない（売上も在庫も入らない。黙っては入らない）。2026-09-30 の実物の Z004 に小数の個数の行が 1 つあった（backlog の入力 4 の (e)）。
 - 計数の衝突（同じ日付の別の値の既定の計数）は L3 で見ず、自動 test と画面の写しで見る。
-- Z004 の取込みを取り消す入口は取込みの結果の画面だけ（55 §55.4 の手順 18）。結果の画面を離れた後に誤った版に気づくと、アプリの中で取り消して取り込み直せない（b1 の版は店へ入れない。入口の lane を初めて店へ入れる版の前に入れるかは、closeout で backlog に足すときに Coordinator が owner に諮る。Non-scope の項）。
+- Z004 の取込みを取り消す入口は取込みの結果の画面だけ（55 §55.4 の手順 18）。結果の画面を離れた後に誤った版に気づくと、アプリの中で取り消して取り込み直せない（b1 の版は店へ入れない。入口は owner の決定〈2026-10-22、repo 外の回答台帳 TD-380〉で「導入の前の関門」の項目になり、別の lane で入れる。closeout で [Plans](../Plans.md) の `## 導入の前の関門` と backlog に足す。Non-scope の項）。
 
 ## Implementation Results
 
