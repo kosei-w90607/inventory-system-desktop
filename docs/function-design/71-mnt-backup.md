@@ -551,8 +551,8 @@ pub fn resolve_backup_dir(conn: &DbConnection, app_data: &Path) -> Result<PathBu
 | MNT-01-D8 照合 | 読み戻しの bytes を注入で変え、作業名の file が消え、正式名の file が無く、`last_failure` が `verify_mismatch` |
 | MNT-01-D8 保持 | 正式名の写しが `OFFSITE_KEEP` を超えると古い順に消え、今写した file と作業名でない他の file（目印・名前の規約に合わない file）を消さない |
 | MNT-01-D8 状態 | 状態の file が壊れていると写さずに `StateUnreadable` を返し、状態は「控えが古い」側に倒れる（黙って `NotPrepared` にならない）。`OFFSITE_STALE_DAYS` の境界（2 日前は古くない・3 日前は古い）。`local_backup_old` は PC の中の最新の正式名が無い・3 日以上前で `true`、2 日前で `false`、一覧の失敗で `false` |
-| MNT-01-D8 やめる | 状態の file（読める・壊れた・`format: 2` の 3 つ）で `stop_offsite_backup` が、元の bytes を `offsite-backup.json.stopped-*` に残し、`offsite_status` が `prepared = false`・`stale = false`。媒体の `InventoryBackup` の一覧と bytes、PC の中の backup の一覧が前後で同じ。また用意すると同じ `medium_id` で写る。移せない注入で `StopFailed`、状態の file は元のまま。移した後の親 directory の sync の失敗の注入で `StopFailed`・`offsite_status` が `prepared = false`、注入を外した再試行が手順 2 で親 directory を sync して `Ok` |
-| MNT-01-D8 作り直し | 壊れた状態の file と目印のある媒体で `reset_offsite_state` が、元の bytes を `offsite-backup.json.unreadable-*` に copy し、状態の file を新しい内容に置き換え、媒体を登録し直し、写す（新しい backup があれば `Copied`）。`format` が 1 でない数の状態は `StateUnsupported`、媒体が 0 本なら `NoMediumAttached` で、どちらも状態の file の bytes と app data の一覧が前後で同じ。手順 4〜6 の置き換えまでの各点の失敗の注入で `StateResetFailed`、状態の file の bytes が元のまま、`offsite_status` が `state_unreadable`、押し直しで回復する。置き換えの後の親 directory の sync の失敗の注入で `StateResetFailed`・`offsite_status` が `prepared = true`・`last_failure_kind = None`（`state_unreadable` でない）。手順 7 の写しの失敗の注入で §71.11.4 の失敗・`offsite_status` がその `last_failure_kind` |
+| MNT-01-D8 やめる | 状態の file（読める・壊れた・`format: 2` の 3 つ）で `stop_offsite_backup` が、元の bytes を `offsite-backup.json.stopped-*` に残し、`offsite_status` が `prepared = false`・`stale = false`。媒体の `InventoryBackup` の一覧と bytes、PC の中の backup の一覧が前後で同じ。また用意すると同じ `medium_id` で写る。移せない注入で `StopFailed`、状態の file は元のまま。移した後の親 directory の sync の失敗の注入で `StopFailed`・`offsite_status` が `prepared = false` |
+| MNT-01-D8 作り直し | 壊れた状態の file と目印のある媒体で `reset_offsite_state` が、元の bytes を `offsite-backup.json.unreadable-*` に copy し、状態の file を新しい内容に置き換え、媒体を登録し直し、写す（新しい backup があれば `Copied`）。`format` が 1 でない数の状態は `StateUnsupported`、媒体が 0 本なら `NoMediumAttached` で、どちらも状態の file の bytes と app data の一覧が前後で同じ。手順 4〜6 の置き換えまでの各点の失敗の注入で `StateResetFailed`、状態の file の bytes が元のまま、`offsite_status` が `state_unreadable`、押し直しで回復する。置き換えの後の親 directory の sync の失敗の注入で `StateResetFailed`・`offsite_status` が `prepared = true`・`last_failure_kind = None`（`state_unreadable` でない）。手順 7 の写しの失敗の注入で §71.11.4 の失敗・`offsite_status` がその `last_failure_kind`。手順 7 の中の成功の記録の置き換えの後の親 directory の sync の失敗の注入で `Io`・`offsite_status` が `stale = false`・`last_failure_kind = None` |
 | MNT-01-D9 | 新しすぎる版・`quick_check` の失敗・読めない file の 3 つを `inspect_backup` が区別し、どれも対象の file と folder を変えない（hash と folder の一覧が前後で同じ、journal の file を作らない）。空の file・`schema_versions` の無い DB・版 0 の DB・必須の表の無い DB は `Err`（読めない控え） |
 
 ---
@@ -647,7 +647,7 @@ struct OffsiteMediumView { label: String, drive_root: String, newest_copy: Optio
 6. 続けて §71.11.4 を 1 回行い、用意した媒体へ最新の控えを写す（用意した直後に「写せた」まで見せる）。写しの失敗は用意を取り消さず、状態の `last_failure` に残す
 7. `OffsiteMediumView` を返す
 
-**エラーハンドリング**: `NotRemovable` / `RegisterSd` / `StateUnreadable` / `Redirected` / `MarkerUnsupported` は何も書かない（どれも手順 4 の書込みより前に判定する）。folder・目印・状態の書込みの失敗は `OffsiteError::Io`（空きなしは `StorageFull`）。
+**エラーハンドリング**: `NotRemovable` / `RegisterSd` / `StateUnreadable` / `Redirected` / `MarkerUnsupported` は何も書かない（どれも手順 4 の書込みより前に判定する）。媒体の folder・目印の書込みの失敗は `OffsiteError::Io`（媒体の空きなしは `StorageFull`）。PC 側の状態の file の書込みの失敗は、空き不足を含め `Io`（`StorageFull` は 43 の文が「USB メモリの空き」を名指すので媒体に限る）。
 
 #### 71.11.3 媒体を探す（内部）
 
@@ -766,7 +766,7 @@ fn reset_offsite_state(app_data_dir: &Path, backup_dir: &Path) -> Result<Offsite
 - 手順 4〜6 のどれかが失敗したら（同じ秒の再試行で退避名が既にある場合を含む）`OffsiteError::StateResetFailed`。手順 7 の失敗は §71.11.4 の失敗（`Io`・`StorageFull` 等）をそのまま返す。失敗の後の状態は 1 通りで、画面は失敗の種類でなく取り直した `offsite_status` で決める（68 §68.4 手順 4）:
   - 手順 6 の置き換えより前の失敗: 状態の file は元の読めない file のまま。`offsite_status` は `state_unreadable` を返し続け、ホームの知らせと「記録を作り直す」が残り、押し直せる
   - 手順 6 の置き換えの後の親 directory の sync の失敗: 状態は新しい内容で読め（`media` だけ、`last_success`・`last_failure` なし）、`offsite_status` は `prepared = true`・`stale = true`・`last_failure_kind = None` を返す（画面とホームは UI-11b-D14 の (1) 以外の原因の文、「記録を作り直す」は出ない）。次の確認（60 秒以内）が写して直る
-  - 手順 7 の失敗: 状態は新しい内容で読め、§71.11.4 が `last_failure` を書く（状態の書込みの失敗を除く）。`offsite_status` は `prepared = true`・`stale = true`・その `last_failure_kind` を返す（UI-11b-D14 の (1) 以外の原因の文、「記録を作り直す」は出ない）
+  - 手順 7 の失敗: 状態は新しい内容で読め、§71.11.4 が `last_failure` を書く（状態の書込みの失敗を除く）。`offsite_status` は §71.11.5 の式どおり（手順 7 の中で成功の記録を置き換えた後の状態の file の親 directory の sync の失敗や、一部の媒体だけ写せたときは `last_success` があり `stale = false` になりうる）。「記録を作り直す」は出ず、原因の文は `stale` のときだけ出る（UI-11b-D14）
 - 呼ぶ前に新しい backup を作る（CMD、43 §43.8.6）: 媒体に最新の写しが既にあると手順 7 が `UpToDate` になり、`last_success` が空のまま「まだ写せていません」が残るため。作成に失敗したら CMD は本関数を呼ばない（記録に触れない）
 - 持ち帰っていて見えていない媒体は登録されない。次に差したときに「この USB メモリを控えの保存先にする」で登録し直す（目印の `medium_id` と札を引き継ぐ、§71.11.2 手順 4）。それまで新しい USB メモリを用意しない（札が重なる、§71.13 の本番の復元と同じ）
 - 退避した file は消さない（数は作り直しを試した回数だけ。owner が中身を確かめて消してよい）
@@ -782,8 +782,8 @@ fn stop_offsite_backup(app_data_dir: &Path) -> Result<(), OffsiteError>
 
 **処理ステップ**:
 1. §71.11.4 の `Mutex<()>` を取る（入口で 1 回）
-2. 状態の file が無ければ、親 directory（`app_data_dir`）を sync して `Ok`（既に用意の前。前回の手順 3 の移した後の sync の失敗の再試行は、ここで同期を済ませる）。sync の失敗は `OffsiteError::StopFailed`
-3. 状態の file を、読める・読めない・`format` に依らず、`offsite-backup.json.stopped-{YYYYMMDD_HHMMSS}` へ上書きしない操作（§71.4.1 の `publish_no_replace`）で移し、親 directory を sync する。同じ名前が既にある・移せなければ、何も変えず `OffsiteError::StopFailed`（状態の file は元の名前に残り、`offsite_status` は用意の後のまま）。移した後の親 directory の sync の失敗も `OffsiteError::StopFailed`（状態の file は既に退避名にあり、`offsite_status` は用意の前を返す。電源断で移動が戻れば用意の後に戻る）。停止の完了は親 directory の sync まで
+2. 状態の file が無ければ `Ok`（既に用意の前）
+3. 状態の file を、読める・読めない・`format` に依らず、`offsite-backup.json.stopped-{YYYYMMDD_HHMMSS}` へ上書きしない操作（§71.4.1 の `publish_no_replace`）で移し、親 directory を sync する。同じ名前が既にある・移せなければ、何も変えず `OffsiteError::StopFailed`（状態の file は元の名前に残り、`offsite_status` は用意の後のまま）。移した後の親 directory の sync の失敗も `OffsiteError::StopFailed` で、そのとき `offsite_status` は用意の前（`prepared = false`）を返し、電源断で移動が戻れば状態の file が元の名前に戻って用意の後になり、「PC の外の控えをやめる」をもう一度押せる
 4. `Ok`。以後 `offsite_status` は `prepared = false`・`stale = false`、`check_offsite_backup` は `NotPrepared`
 
 - 失敗の後の画面は、失敗の種類でなく取り直した `offsite_status` で決める（68 §68.4 手順 5）

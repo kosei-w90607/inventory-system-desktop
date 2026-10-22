@@ -153,7 +153,7 @@ fn create_backup(state: State<AppState>, app_handle: tauri::AppHandle) -> Result
 | `BackupDirError` | `CmdError` | 固定の文 |
 |---|---|---|
 | `Unpinnable` | `validation` | 「この保存先は PC の中の folder として確かめられません。PC の中の folder を選び直してください」 |
-| `RegisterSd { sd_folder }` | `validation` | 「この保存先はレジの SD カードの上にあります（{sd_folder} が見つかりました）。レジの SD の写しを PC に置いているなら、写しを drive の直下でなく folder の中へ移してください。そうでなければ「保存先を選ぶ」で PC の中の別の folder を選び直してください」（`{sd_folder}` は 71 §71.4 の `pin_backup_dir` が見つけた `{祖先}\CASIO\SR500_550_4000` の path） |
+| `RegisterSd { sd_folder }` | `validation` | 「この保存先はレジの SD カードの上にあります（{sd_folder} が見つかりました）。レジの SD の写しを PC に置いているなら、写しを drive の直下でなく folder の中へ移してください。そうでなければ「保存先を選ぶ」で PC の中の別の folder を選び直してください」（`{sd_folder}` は 71 §71.4 の `pin_backup_dir` が見つけた `{祖先}\CASIO\SR500_550_4000` の path。判定に使った path の形で、junction の先だけで見つかったときは `\\?\Volume{GUID}\…` の形になる〈保存先を選び直す直し方は同じ〉） |
 
 ---
 
