@@ -281,7 +281,40 @@ Test Design Matrix: [2026-10-07-backup-offsite](test-matrices/2026-10-07-backup-
 
 ## Implementation Results
 
-Fill after implementation.
+design lane で docs だけ（code・test・bindings は変えない、AC6）。PR: [#155](https://github.com/kosei-w90607/inventory-system-desktop/pull/155)。
+
+成果物:
+
+- 設計正本: `docs/function-design/71-mnt-backup.md`（§71.1、§71.3 の名前の解析、§71.4 の MNT-01-D7・D10 と §71.4.1、§71.8 手順 3、§71.10 の D-114 の表、§71.11 の MNT-01-D8、§71.12 の MNT-01-D9、§71.13）、`68-ui-backup-restore.md`（UI-11b-F8〜F10・D14〜D16、§68.3〜§68.13 の該当の行、UI-11b-L3-6〜9）、`53-ui-home.md`（§53.1、UI-00-D12）、`43-cmd-settings-log.md`（§43.8.2〜§43.8.5、§43.11）、`22-mnt-migration.md`（MNT-03-D11 の「復元への波及」、§16 の作り直しの手順の folder の外の場所 (3) と手順 3）、`docs/architecture/cmd-task-specs.md`（CMD-11）・`mnt-task-specs.md`（MNT-01）、`docs/ARCHITECTURE.md`・`docs/FUNCTION_DESIGN.md` の MNT-01 の行、`docs/SCREEN_DESIGN.md`（1 日の動線、ホーム、バックアップ・復元画面）。
+- 決定: `docs/decision-log.md` の D-114 と、D-111 の末尾の `Superseded in part by: D-114` の行（未決 B）。
+- Test Design Matrix: `docs/plans/test-matrices/2026-10-07-backup-offsite.md`（runtime の lane が実装する test の設計）。
+- `docs/backlog.md`: 本 lane の項（着手・導入の前の関門・設計の Draft と再開・残り）と「保存と起動の守りの follow-up」の (2) の着手。
+
+AC1〜AC6 の最終の出力（closure 2 の P3 の是正の後、逐語）:
+
+- AC1: `106:**MNT-01-D7: …`・`114:**MNT-01-D10: …`・`753:**MNT-01-D8: …`・`797:**MNT-01-D9: …` の 4 行
+- AC2: 68 は `114:| UI-11b-D14 |`・`115:| UI-11b-D15 |`・`116:| UI-11b-D16 |` の 3 行、53 は `213:#### PC の外の控えの知らせ（UI-00-D12、D-114）` の 1 行
+- AC3: `205:| 43.8.2 |`〜`208:| 43.8.5 |` の 4 行
+- AC4: `981:## D-114: …` の 1 行
+- AC5: 3 本とも出力なし・exit 1
+- AC6: `git diff --name-only c98fe7dd HEAD -- src src-tauri` は出力なし・exit 0
+
+計画からの外れ:
+
+- main への同期（遷移の記録 9）: 衝突は `docs/backlog.md`・`docs/decision-log.md`。後から main に入った契約（D-118 (a) の v9、原価の lane C の vB、D-123〜D-127）との食い違いを 4 か所で直した: 71 MNT-01-D9 の保証の範囲（作り直しの起点の migration より前の版の開発・試験 DB の控え）、22 §16 の folder の外の場所 (3) と作り直しの手順 3（Scope の 22 の行が §16 に広がった）、D-114 の Status から実装の状態を外した（D-126）、71 §71.10 の行番号の引用（D-125）。AC3・AC4 の期待を測り直した。
+- 同期の closure の是正（Review Response、遷移の記録 10）: D-111 は本文への差し込みをやめて `Superseded in part by` の形にした。§71.11.7 に手で置いた file の扱い。backlog の待ちの文。Non-scope の MSI の句と Scope の decision-log の行。AC6 の command の base を同期の基点 `c98fe7dd` に替えた。MNT-01-D9 の確かめの対象。
+- closure 2 の P3 の是正（遷移の記録 11、Review Response）: N1 P1 の状態の文、N2 §71.11.4 手順 4a と §71.11.7 の例外、N3 MNT-01-D9 の止まる検査を節で引く、N4 MSI の手順書の流れ 3 の申し送り先。
+- 新しい module・command・DTO・error kind は計画から足していない。
+
+残りの危険:
+
+- runtime は後続の lane。店で PC の外の控えが毎日取れる通常運用は runtime の後に成り立つ（Ordinary Operation）。
+- `Removable` を `DRIVE_REMOVABLE` と同じ区分と見なす前提は、runtime の lane の L3（UI-11b-L3-6）で確かめる（Contract Probe の P1）。
+- 読み戻しの照合は Windows の file cache から返りうる（P2、71 §71.11.7）。
+- 持ち帰りの 1 本の古さはアプリから見えず、訪問の間隔が決まっていないので、PC と差しっぱなしの 1 本を同時に失ったときに失う日数に上限は無い（Ordinary Operation の残るリスク、D-114 の Guarantee range）。
+- 利用者が `InventoryBackup\` に手で置いた規約の名前の file は、検査を通らずに写しと数えられうる（71 §71.11.7。復元の前の確かめが止める）。MSI の手順書の流れ 3 の直しは runtime の lane の起票で行う（申し送りの表、backlog）。
+- 更新・migration の前の保全の gate は無い（Non-scope、backlog の同項の残り）。導入の前の関門で足された 3 点のうち、PC の中の保持日数と日付での掃除は本 lane の外（backlog）。
+- 作り直しの起点の migration より前の版の開発・試験 DB の控えは、確かめを通って復元で止まる（71 MNT-01-D9。店の初回の版はそれらの migration を含むので、店の控えには当たらない）。
 
 ## Review Response
 
