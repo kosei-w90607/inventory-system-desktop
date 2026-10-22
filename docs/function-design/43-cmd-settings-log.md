@@ -153,7 +153,7 @@ fn create_backup(state: State<AppState>, app_handle: tauri::AppHandle) -> Result
 | `BackupDirError` | `CmdError` | 固定の文 |
 |---|---|---|
 | `Unpinnable` | `validation` | 「この保存先は PC の中の folder として確かめられません。PC の中の folder を選び直してください」 |
-| `RegisterSd` | `validation` | 「この保存先はレジの SD カードの上にあります。PC の中の folder を選び直してください」 |
+| `RegisterSd { sd_folder }` | `validation` | 「この保存先はレジの SD カードの上にあります（{sd_folder} が見つかりました）。レジの SD の写しを PC に置いているなら、写しを drive の直下でなく folder の中へ移してください。そうでなければ「保存先を選ぶ」で PC の中の別の folder を選び直してください」（`{sd_folder}` は 71 §71.4 の `pin_backup_dir` が見つけた `{祖先}\CASIO\SR500_550_4000` の path） |
 
 ---
 
@@ -220,7 +220,7 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | MNT の失敗 | `CmdError` | 固定の文（UI が出す。UI-11b-D14〜D16） |
 |---|---|---|
 | `OffsiteError::NotRemovable` | `validation` | 「USB メモリを選んでください（この場所は PC の外の控えに使えません）」 |
-| `OffsiteError::RegisterSd` | `validation` | 「これはレジの SD カードです。控えは USB メモリに作ってください」 |
+| `OffsiteError::RegisterSd { sd_folder }` | `validation` | 「これはレジの SD カードです（{sd_folder} が見つかりました）。控えは USB メモリに作ってください。USB メモリにレジの SD の写しを置いているなら、写しを drive の直下でなく folder の中へ移してください」 |
 | `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
 | `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
 | `OffsiteError::Redirected` | `validation` | 「この USB メモリの InventoryBackup フォルダは別の場所へのリンクのため使えません」 |
@@ -228,14 +228,14 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした。「記録を作り直す」を押してください」 |
 | `OffsiteError::StateUnsupported` | `validation` | 「PC の外の控えの記録は新しい版のアプリが書いたものです。新しい版のアプリを入れてください」 |
 | `OffsiteError::NoMediumAttached` | `validation` | 「用意した USB メモリが差さっていません。USB メモリを差して「記録を作り直す」を押すか、使わないなら「PC の外の控えをやめる」を押してください」 |
-| `OffsiteError::StopFailed` | `internal` | 「PC の外の控えをやめられませんでした。記録は元のまま残っています。もう一度「PC の外の控えをやめる」を押してください」 |
-| `OffsiteError::StateResetFailed` | `internal` | 「PC の外の控えの記録を退避・作り直しできませんでした。記録は元のまま残っています。もう一度「記録を作り直す」を押してください」 |
+| `OffsiteError::StopFailed` | `internal` | 「PC の外の控えをやめる操作を終えられませんでした。「PC の外の控えをやめる」がまだ出ていれば、もう一度押してください」（記録の状態は断言しない。card は取り直した status で決める、68 §68.4 手順 5） |
+| `OffsiteError::StateResetFailed` | `internal` | 「PC の外の控えの記録の作り直しを終えられませんでした。「記録を作り直す」がまだ出ていれば、もう一度押してください」（記録の状態は断言しない。card は取り直した status で決める、68 §68.4 手順 4） |
 | `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |
 | `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
 
 `check_offsite_backup` の失敗の種類は、UI が文言を分けるために `OffsiteBackupStatus.last_failure_kind`（43.8.4）から読む。`CmdError.message` の文字列で分けない（MNT-01-D4 と同じ方針）。
 
-**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field は件数・日数・版で、JS の安全な整数の範囲に収まる）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（7 値）・`BackupInspection` は 71 §71.11.1・§71.11.4・§71.11.5・§71.12 の定義のまま。
+**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field のうち、件数〈`product_count`。1 つの SQLite の DB の行の数で、DB の大きさの上限〈約 281 TB、https://www.sqlite.org/limits.html 〉から 2^53 に届かない〉と日数〈`days_since_last_success`。chrono の日付の差〉は JS の安全な整数の範囲に収まる。版〈`BackupInspection.schema_version`・`app_max_version`〉は外の DB の値で範囲を仮定せず、UI は判定にも表示にも使わない〈戻せるかの判定は MNT の `newer_than_app`、71 §71.12。UI-11b-D15 の文は版の数を出さない〉）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（7 値）・`BackupInspection` は 71 §71.11.1・§71.11.2・§71.11.4・§71.11.5・§71.12 の定義のまま。
 
 ---
 
