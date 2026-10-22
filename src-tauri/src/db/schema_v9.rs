@@ -468,7 +468,10 @@ mod tests {
         // REQ-903 / MNT-03-D17 手順 4〜7 / SPEC-STK-CNT-D1・D9 / Matrix M1
         let dir = tempfile::tempdir().unwrap();
         let conn = crate::db::init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(version(&conn), (10, 10));
+        assert_eq!(
+            version(&conn),
+            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+        );
         let columns = |table: &str| -> Vec<Vec<Value>> {
             dump(
                 &conn,

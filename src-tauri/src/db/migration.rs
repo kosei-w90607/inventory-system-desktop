@@ -11,6 +11,7 @@
 use super::migration_tx;
 use super::schema_v1;
 use super::schema_v10;
+use super::schema_v11;
 use super::schema_v2;
 use super::schema_v3;
 use super::schema_v4;
@@ -89,6 +90,11 @@ fn migrations() -> Vec<Migration> {
             version: 10,
             description: "原価を1/100円の列へ、単位から巻・cmを外す（作り直しの起点）",
             kind: MigrationKind::Custom(schema_v10::apply_v10_cost_centi_origin),
+        },
+        Migration {
+            version: 11,
+            description: "Z004の精算の鍵・売上の連動・棚卸しの完了の列（D-118 (b1)）",
+            kind: MigrationKind::Custom(schema_v11::apply_v11_z004_settlement_key),
         },
     ]
 }
@@ -412,8 +418,12 @@ mod tests {
             .split("#[cfg(test)]")
             .next()
             .unwrap();
+        let schema_v11 = include_str!("schema_v11.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
         for source in [
-            migration, schema_v2, schema_v3, schema_v8, schema_v9, schema_v10,
+            migration, schema_v2, schema_v3, schema_v8, schema_v9, schema_v10, schema_v11,
         ] {
             assert!(!source.contains("execute_batch(\"ROLLBACK;\").ok()"));
             assert!(!source.contains("execute_batch(\"COMMIT;\")"));
@@ -424,12 +434,14 @@ mod tests {
         assert_eq!(schema_v8.matches("rollback_after_error").count(), 1);
         assert_eq!(schema_v9.matches("rollback_after_error").count(), 1);
         assert_eq!(schema_v10.matches("rollback_after_error").count(), 1);
+        assert_eq!(schema_v11.matches("rollback_after_error").count(), 1);
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v8.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v9.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v10.matches("commit_transaction").count(), 1);
+        assert_eq!(schema_v11.matches("commit_transaction").count(), 1);
     }
 
     // -----------------------------------------------------------------------
@@ -907,7 +919,10 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (10, 10));
+        assert_eq!(
+            (max_version, version_count),
+            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+        );
     }
 
     #[test]
@@ -1545,7 +1560,10 @@ mod tests {
         // REQ-903 / MNT-03-D13: 新規の DB（v1 から v8）と行 0 の v7 の DB で成功する
         let dir = tempfile::tempdir().unwrap();
         let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(max_version_and_count(&conn), (10, 10));
+        assert_eq!(
+            max_version_and_count(&conn),
+            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+        );
         // v8 の CHECK（12 個）は v8 まで当てた新規の DB で確かめる。最新の版の CHECK は vB の test（Matrix T1 (c)）
         let conn = Connection::open(dir.path().join("fresh-v8.db")).unwrap();
         super::migrate_up_to(&conn, 8).unwrap();
@@ -1684,7 +1702,10 @@ mod tests {
             drop(raw);
             let conn = init_database(dir.path().join("test.db").to_str().unwrap()).unwrap();
             assert_eq!(foreign_keys(&conn), 1);
-            assert_eq!(max_version_and_count(&conn), (10, 10));
+            assert_eq!(
+                max_version_and_count(&conn),
+                (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+            );
             assert_eq!(
                 schema_version_rows(&conn)
                     .iter()
