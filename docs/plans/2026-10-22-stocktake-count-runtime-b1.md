@@ -190,12 +190,12 @@ Contract Ledger と Matrix はこの表の # を引く。(a) の Y1〜Y8 は変�
 | Z3 | fresh のカーソル（`stock_counts.settlement_no`・`seen_movement_id`） | 同じ TX で読んだ active な Z004 の取込みの最大の精算回数（無ければ NULL）と `MAX(inventory_movements.id)`（無ければ 0）。DB の CHECK（fresh なら `seen_movement_id` が NOT NULL）。判定で n を使うのは精算回数 n の active な取込みがあるときだけで、無ければ NULL とみなす（ADR D3。round 3 の是正） | 精算回数 0 は実在しうるので NULL を印にする（n = 0 も active な取込みの有無で決める） | 読取りと INSERT が同じ TX。n の使える・使えないは求め直しの TX で取込みの今の状態から決める（保存しない） | n は同じ系列の精算回数とだけ比べる（取消で系列の根拠が消えたら日付で判定） | fresh な計数の保存、求め直し、完了の (ii)(iii) |
 | Z4 | 写しの数・印・範囲（`products.stock_quantity`・`stock_recheck`・範囲） | (a) の Y2・Y3 のまま（`recompute_stock` が書く直前に上限 `999999999`）。求め直す商品は ADR の横断の表の「求め直す商品」の列 | 0 と負を受ける | 呼出し元の TX 全体が戻る | 計数・movement と同じ在庫の数量の単位 | 全ての書く経路 |
 | Z5 | Z004 の精算回数（`csv_imports` の `settlement_no`、知らせの区間の端） | ASCII の数字だけで 0 以上 `9007199254740991` 以下（32 の表の順 1）。preview と確定の TX で検査。DB の列の CHECK は NOT NULL と 0 以上 | 0 は有効な精算回数 | 外れれば preview も確定も拒否（何も書かない） | — | Z004 の preview・確定 |
-| Z6 | マシンNo.（`csv_imports` の `machine_no`） | 空でない文字列（leading zero を保つ）。DB の列の CHECK。32 の順 2 は取り消した取込みとも比べる（round 3 の是正） | — | 同上 | 別のレジの精算回数を同じ系列に混ぜない | 同上 |
+| Z6 | マシンNo.（`csv_imports` の `machine_no`） | 空でない文字列（leading zero を保つ）。DB の列の CHECK。32 の順 2 は取り消した取込みとも比べ（round 3 の是正）、取り消した取込みとだけ合わないときは拒否の文でその取込み（取込みID・精算回数・取込み日・レジ番号）を名指す（closure の是正） | — | 同上 | 別のレジの精算回数を同じ系列に混ぜない | 同上 |
 | Z7 | 精算日（`csv_imports` の `settlement_date`、Z004 の movement の `business_date`） | IO-02 の日付の規則（今のまま）。精算日と精算回数の順の食い違いは拒否（32 の順 5）。精算日が今日より後は知らせ（拒否しない） | — | preview と確定の TX | — | 同上 |
 | Z8 | Z004 の行の数量（`sale_records.quantity`、movement の `quantity`） | IO-02 の整数を在庫の数量へ換える（個数の単位はそのまま、長さの単位は × 100）。換えた後の絶対値が `9999999` を越える行は preview の行の error | 正 = 販売、負 = 返品。数量・金額とも 0 の行は売上も movement も作らない。数量 0 で金額が 0 でない行は売上だけ | preview で行の error。確定は preview の行を取り直す | 長さの商品は cm（SPEC-UNIT-D4・D8）。小数は P（行の error のまま） | Z004 の preview・確定 |
 | Z9 | 取込みのときの連動（`sale_records` の `stock_linked`） | 確定の TX の `pos_stock_sync`。共有 JAN の行と商品の無い行は 0。後から書き換えない | 0/1 の CHECK | 確定の TX | 共有 JAN の行は売上だけ（先頭の商品）で在庫連動の外 | Z004 の確定 |
 | Z10 | 欠けの知らせ（wire の `SettlementGap { from, to }`） | Z5 の範囲の整数。連続した欠けを 1 つの区間にまとめ、数は区間の数（欠けた番号の数に依らない） | 1 つの番号なら `from = to` | preview と確定の結果。取込みを止めない | — | Z004 の preview・確定 |
-| Z11 | 評価数量・カーソル（`stocktake_items` の `valuation_quantity`、`stocktakes` の `cutoff_settlement_no`・`cutoff_count_id`・`cutoff_movement_id`） | `max(写しの在庫, 0)`（在庫の上限の中）。カーソルは完了の時点の最大の精算回数（無ければ NULL）と `stock_counts` の最大 id と `MAX(inventory_movements.id)`（無ければ 0。round 3 の是正）。完了の後の比較は、完了の時点にあった記録（カーソル以下）に完了の後に入れた完了の前の記録を足して求める（35） | 負の在庫は 0 で評価する。movement のカーソル 0 は movement が無い（id は 1 から） | 完了の TX。完了の後に書き換えない | 計数・movement・精算のカーソルはそれぞれ自分の種類とだけ比べる（Z004 の movement は精算のカーソル） | 完了、記録の詳細の読取り |
+| Z11 | 評価数量・カーソル（`stocktake_items` の `valuation_quantity`、`stocktakes` の `cutoff_settlement_no`・`cutoff_count_id`・`cutoff_movement_id`） | `max(写しの在庫, 0)`（在庫の上限の中）。カーソルは完了の時点の最大の精算回数（無ければ NULL）と `stock_counts` の最大 id と `MAX(inventory_movements.id)`（無ければ 0。round 3 の是正）。完了の後の比較は、完了の時点にあった記録（カーソル以下）に完了の後に入れた完了の前の入出庫・初期在庫・精算の記録を足して求める（計数はカーソル以下だけ。35。closure の是正） | 負の在庫は 0 で評価する。movement のカーソル 0 は movement が無い（id は 1 から） | 完了の TX。完了の後に書き換えない | 計数・movement・精算のカーソルはそれぞれ自分の種類とだけ比べる（Z004 の movement は精算のカーソル） | 完了、記録の詳細の読取り |
 | Z12 | 評価額の総額（`stocktakes` の `total_cost`、wire の `total_cost`） | §20.5a の関数の後に `check_safe_integer`（±`9007199254740991`）。外れれば `ValidationFailed`（「合計金額が大きすぎます」） | 0 は有効 | 完了の TX 全体が戻る | 価格の基準数量で割る（長さは 1 m あたり） | 完了 |
 | Z13 | 記録の詳細の金額（行のロス原価、完了の後の評価額の差の行と合計） | 読取りで求め、保存しない。行のロス原価は 1/100 円の十進の文字列（SPEC-UNIT-D6）、評価額の差の行と合計は円の十進の文字列（範囲の決まらない読取りの合計） | 差 0 の明細は差の一覧に出さない。負の数量を評価の関数に渡さない（`max(…,0)`） | 溢れは既存の `ValidationFailed`（読取りの失敗） | 価格の基準数量で割る | 記録の詳細の読取り |
 | Z14 | 有限の値（`StockCountKind`・`RecountReason`・`CountRecoveryAction`・`CompletionBlockReason`・`StocktakeRecoveryCode`、`CmdErrorKind` の `stocktake_guard`） | Rust の enum を正とする generated literal union（D-061）。`recount_reasons` は重複なし・`undetermined_settlement`・`same_date_movement`・`conflicting_counts` の順 | — | — | — | 計数・完了・要再確認の一覧・在庫連動の拒否 |
@@ -238,6 +238,7 @@ Contract Ledger と Matrix はこの表の # を引く。(a) の Y1〜Y8 は変�
 - round 1 の是正で直した正本（Review Response 参照）: [40](../function-design/40-cmd-product.md)（`CountRecoveryTarget` の単位・写しの在庫・範囲、`StocktakeRecovery.settlement_pending` と `SettlementPendingHint`）、[35](../function-design/35-biz-stocktake-service.md)（完了の拒否の直し方、`preview_stock_count_placement` の計数の欄の文脈）、[42](../function-design/42-cmd-sales-stocktake.md)（`preview_stock_count_placement` の出力）、[73](../function-design/73-ui-stocktake.md)（要再確認の一覧の範囲、完了の拒否の直し方の文、「今の数を入れる」の文脈の読み先）、[30](../function-design/30-biz-product-service.md)（共有 JAN の不変条件の経路: update は在庫連動の変更だけ、JAN の変更は一括 import の上書き）、[31](../function-design/31-biz-inventory-service.md)（Z004 の確定は `insert_movement` と商品ごとの求め直し、`apply_stock_change` の `settlement_no` を b1 で外す）、[32](../function-design/32-biz-csv-import-service.md)（preview の cache の契約: `MatchedRow`・`CachedPreview`・`CommitRequest` と確定の照合）。
 - round 2 の是正で直した正本: [30](../function-design/30-biz-product-service.md)（商品一括 import の判定の状態と確定の TX の拒否の形と message、在庫連動を始める拒否の順、§4.9 のエラーハンドリング）、[35](../function-design/35-biz-stocktake-service.md)（`zero_uncounted_items` の明細の参照と拒否、操作ログ）、[42](../function-design/42-cmd-sales-stocktake.md) §22.6（`commit_import` の確定の拒否は 30 を引く）、[60](../function-design/60-ui-product-import.md)（確定の拒否の表示）、[UI_TECH_STACK](../UI_TECH_STACK.md)（再取得の経路と entry と要再確認の一覧の key）。
 - round 3 の是正で直した正本: [ADR](../adr/2026-10-16-stocktake-count-placement.md) D3（fresh な計数の n を使うのは n の active な取込みがあるときだけ）・D4（machine_no は取り消した取込みとも比べる）・D6（完了の後の比較の範囲と movement のカーソル）・D9（`cutoff_movement_id`）、[32](../function-design/32-biz-csv-import-service.md)（表の順 2 と取り消した取込みの比べ方）、[24](../function-design/24-io-csv-import-repo.md)・[POS](../db-design/pos-tables.md)（machine_no の読取りと判定）、[35](../function-design/35-biz-stocktake-service.md)（完了の (ii)(iii) の n、完了のカーソル、完了の後の比較の範囲）、[tracking](../db-design/tracking-system-tables.md)（n の比べ方、完了のカーソル）、[22 §20](../function-design/22-mnt-migration.md)（手順 5 の列）、[51](../function-design/51-ui-product-form.md)・[73](../function-design/73-ui-stocktake.md)（「今の数を入れる」の導線が離脱の確認を通ること、`/stocktake/` の search の `product` と `returnTo`）。
+- Plan Review closure の是正で直した正本: [ADR](../adr/2026-10-16-stocktake-count-placement.md) D4（取り消した取込みとだけ合わないときに拒否の文で名指す。owner の決定〈2026-10-23、repo 外の回答台帳 TD-388〉）・D6（完了の後の比較の範囲から完了の後に保存した計数を除く）・D7（取り込み直しと machine_no の照合）、[32](../function-design/32-biz-csv-import-service.md)（表の順 2 の拒否の文と比べる先）、[24](../function-design/24-io-csv-import-repo.md)（machine_no の照合先の読取りを新設する 1 通りに）、[35](../function-design/35-biz-stocktake-service.md)・[tracking](../db-design/tracking-system-tables.md)（完了の後の比較の範囲の計数）。
 
 ### S1 migration vZ（22 §20）
 
@@ -255,7 +256,7 @@ Contract Ledger と Matrix はこの表の # を引く。(a) の Y1〜Y8 は変�
 |---|---|---|---|
 | 初期在庫の印 | `list_ledger_movements_for_product` の初期在庫の印を `reference_type IS NULL AND movement_type = 'receiving'` に（ADR D9） | `src-tauri/src/db/inventory_repo.rs` の `list_ledger_movements_for_product` と `LedgerMovementRow` の doc comment | Matrix の L8 |
 | 計数の保存 | `insert_stock_count`（`stock_counts` へ 1 行。UPDATE・DELETE の関数は持たない）と、保存の時点のカーソルの読取り（`MAX(inventory_movements.id)`、active な Z004 の最大の精算回数） | `inventory_repo.rs`（21 の新契約の「計数の保存」） | BIZ-06 の `save_stock_count` だけが呼ぶ |
-| 精算の読取り | active な Z004 の精算の一覧（import ID・`machine_no`・`settlement_no`・`settlement_date`、精算回数の昇順）、取り消したものを含む Z004 の取込みの `machine_no`（32 の順 2。今の一覧の読取りで足りれば新設しない。round 3 の是正）、同じ精算の active な取込み（0 件か 1 件）、取込みの商品（売上か movement を持つ商品）の一覧、商品の決まらない精算の行の判定に要る行（その取込みの `sale_records` の `stock_linked`・個数・金額） | `src-tauri/src/db/sales_repo.rs`（24 の新契約）、`inventory_repo.rs` | BIZ-03 の識別・順・欠け、BIZ-02 の求め直し（精算の窓と理由 1） |
+| 精算の読取り | active な Z004 の精算の一覧（import ID・`machine_no`・`settlement_no`・`settlement_date`、精算回数の昇順）、machine_no の違う Z004 の取込み 1 件（取り消したものを含み active を優先。import ID・`machine_no`・`settlement_no`・`status`・`imported_at`。32 の順 2 の判定と拒否の文の名指しに使う。新設する: active な一覧は rolled_back を返さず、`CsvImport` は新しい列を読まない。round 3 と closure の是正）、同じ精算の active な取込み（0 件か 1 件）、取込みの商品（売上か movement を持つ商品）の一覧、商品の決まらない精算の行の判定に要る行（その取込みの `sale_records` の `stock_linked`・個数・金額） | `src-tauri/src/db/sales_repo.rs`（24 の新契約）、`inventory_repo.rs` | BIZ-03 の識別・順・欠け、BIZ-02 の求め直し（精算の窓と理由 1） |
 | 取込みの保存 | `NewCsvImport` に `machine_no`・`settlement_no`。`NewSaleRecord` に `stock_linked: bool`（Z004 の確定だけが取込みのときの `pos_stock_sync` を渡し、手動の売上ほかは false。DB の既定 0 に頼らず、作る所が値を書く。round 1 の是正）。読取りの型 `CsvImport`（一覧の行）・`CsvImportRecordDetail`・`Stocktake` は形を変えない（新しい列を読まない。画面と TS の mock を変えない） | `sales_repo.rs` の `NewCsvImport`・`NewSaleRecord` と INSERT の関数 | `NewCsvImport` を作る所は BIZ-03 の確定だけ（旧本体は S5 で消える。test は Matrix の T10）。`NewSaleRecord` を作る所は `rg -c 'NewSaleRecord \{' src-tauri/src` の 5 file（`sales_repo.rs` 9〈定義と test〉・`csv_import_service/commit.rs`・`inventory_service/manual_sale.rs`・`sales_service.rs`・`cmd/sales_cmd.rs` 各 1。Matrix の T12） |
 | 棚卸しの明細と記録 | 明細の読取り（`list_stocktake_items`・`find_stocktake_item_by_code`）は明細と商品の列に、明細を参照する計数の有無と単位を足す（効く計数・差異・範囲・理由は BIZ が求める）。進捗の「計数済み」は明細を参照する計数があること。開始は自動の 0 の入力をやめる。完了は `valuation_quantity`・カーソル・`total_cost`・`completed_at` を書く。記録の詳細は明細と header から読む（補正の movement から読まない） | `src-tauri/src/db/stocktake_repo.rs` | 明細の型 `StocktakeItemDetail`・`StocktakeRecordDetailItem` の形は下の Boundary。旧本体だけが使う関数は S4 で `rg` で数えて消す |
 | 共有 JAN の読取り | 変更の後の状態で、在庫連動の商品と同じ `jan_code` を持つ別の商品の一覧（BIZ-01 の検査）と、全ての組（整合性の検査） | `src-tauri/src/db/product_repo.rs`（今の `find_by_jan_code` で足りるなら新設しない。S2 で決める） | BIZ-01・BIZ-07 |
@@ -757,7 +758,8 @@ L3 の fixture の表（生成の test〈S9〉と `tests/fixtures/z004/README.md
 - 初期在庫の見分け方の変更（ADR D9）が、商品の登録・一括 import の初期在庫と demo の seed の両方で正しいか。共有 JAN の違反を整合性の検査で並べる形（ADR D10）。
 - round 1 の是正: 画面の約束に要る値が wire の型にあるか（`CountRecoveryTarget` の範囲と単位、`SettlementPendingHint`、`CountPlacementPreview` の文脈）、preview の cache が確定の照合に要る値（元の JAN・共有 JAN かどうか・精算の識別メタ）を持つか、L3 の台本の各段が前の段の後の状態から一意に決まるか、L3 と test が今のアプリで操作できる入口だけを使うか（JAN は一括 import の上書き、取消は結果の画面）。
 - round 2 の是正: 商品一括 import の確定の TX の拒否の形（行を名指して確定全体を戻す。30 の D-118 の節）が、今の確定の再検証（BIZ-01-D8、D-122 の J3・J4・J7）と同じ形で、画面・wire を変えずに名指しと直し方に届くか。L3 の DB の用意と差し替え（Coordinator が置く合成の DB → 空の DB）で、台本の各段の前の状態と期待が 1 通りに決まるか。Matrix の T1〜T12 の「移す」に外す出力・引数の assert が残っていないか（「assert の単位で分けた test」）。「Would fail if」が kill を主張する mutant が全部観測の手段を持つか（観測できないものは Matrix の Residual Test Gaps の Final Review の code 読みの項目）。
-- round 3 の是正: 取消・取り込み直しで照合や比較の根拠が消える・入れ替わる所（32 の順 2 は取り消した取込みとも比べる、fresh な計数の n は n の active な取込みがあるときだけ使う〈ADR D3〉）が、誤った版を取り消して正しい版を取り込む経路（D7）を壊さず、偽の拒否を作らないか。完了の後の比較の範囲（完了の時点にあった記録〈3 つのカーソル以下〉に、完了の後に入れた完了の前の記録を足す。ADR D6・35）が、未来の日付の精算と入出庫で偽の差を出さないか。商品フォームの「今の数を入れる」が離脱の確認を通り、戻った後の操作が 1 通りに決まるか（51・73・L3-4）。
+- round 3 の是正: 取消・取り込み直しで照合や比較の根拠が消える・入れ替わる所（32 の順 2 は取り消した取込みとも比べる、fresh な計数の n は n の active な取込みがあるときだけ使う〈ADR D3〉）が、誤った版を取り消して正しい版を取り込む経路（D7）を壊さず、偽の拒否を作らないか。完了の後の比較の範囲（完了の時点にあった記録〈3 つのカーソル以下〉に、完了の後に入れた完了の前の入出庫・初期在庫・精算の記録を足す。計数はカーソル以下だけ。ADR D6・35。closure の是正）が、未来の日付の精算と入出庫で偽の差を出さないか。商品フォームの「今の数を入れる」が離脱の確認を通り、戻った後の操作が 1 通りに決まるか（51・73・L3-4）。
+- closure の是正: 32 の順 2 で取り消した取込みとだけ合わないときの拒否の文が、原因の取込み（取込みID・精算回数・取込み日・レジ番号）を名指し、machine_no の違う active な取込みがあるときは今の文のままか（24 の照合先は active を優先する）。完了の後の比較の範囲が完了の後に保存した計数を入れないか（ADR D6・35）。
 - 公開 repo に実データを書いていないか。並走の lane の節を触っていないか（所有表）。
 
 ## Contract Ledger
@@ -769,7 +771,7 @@ L3 の fixture の表（生成の test〈S9〉と `tests/fixtures/z004/README.md
 | SPEC-STK-CNT-D1（Z004 の movement の鍵 `(d_n, 1, n, 0)`、fresh の計数の鍵） | ADR D1、tracking | S1（CHECK）、S5（`settlement_no` を渡す） | M4・Z8 | L3-8 |
 | SPEC-STK-CNT-D2（求め直す商品の原理、Z004 の確定・取消の求め直し） | ADR D2・横断の表、31 | S3・S5 | L12・Z8・Z14・X2 | L3-8・L3-10 |
 | SPEC-STK-CNT-D3（精算 k の行、A1、理由 1、範囲、解け方、fresh な計数の n を使える条件〈round 3 の是正〉） | ADR D3、31 | S3 | L1〜L11・L13・X1・Z23 | L3-8 |
-| SPEC-STK-CNT-D4（精算回数の識別・並び・欠け・未来の日付・全て 0 の file・共有 JAN の行、machine_no は取り消した取込みとも比べる〈round 3 の是正〉） | ADR D4、32、24、pos | S2・S5 | Z1〜Z7・Z9・Z10・Z22 | L3-3・L3-10 |
+| SPEC-STK-CNT-D4（精算回数の識別・並び・欠け・未来の日付・全て 0 の file・共有 JAN の行、machine_no は取り消した取込みとも比べる〈round 3 の是正〉、取り消した取込みとだけ合わないときは拒否の文で名指す〈closure の是正〉） | ADR D4、32、24、pos | S2・S5 | Z1〜Z7・Z9・Z10・Z22 | L3-3・L3-10 |
 | SPEC-STK-CNT-D4（BIZ-01 の共有 JAN の不変条件） | ADR D4、30、master | S6 | J1〜J3 | L3-12 |
 | SPEC-STK-CNT-D5（既定の計数・fresh な計数・後入力の確認・日付の変わり目） | ADR D5、35、73 | S4・S8 | C1〜C8・U1〜U5 | L3-4・L3-6〜L3-9 |
 | SPEC-STK-CNT-D6（完了の条件・0 にする・評価額・カーソル・完了の後の差と比較の範囲〈round 3 の是正〉） | ADR D6、35、65、tracking | S1・S2・S4・S8 | M1・M6・K1〜K8・R1〜R5・U7・U8・U13 | L3-11・L3-13 |
@@ -783,7 +785,7 @@ L3 の fixture の表（生成の test〈S9〉と `tests/fixtures/z004/README.md
 | MNT-03-D1（COMMIT・ROLLBACK は共有の helper） | 22 §3.2 | S1 | 構造の test（file の列挙に足す） | — |
 | D-123（作り直しの承認と順） | decision-log、22 §16 | Data Safety | — | L3-1（止まったとき） |
 | IO-21（`insert_stock_count`、精算の読取り、初期在庫の印） | 21、24 | S2 | C1・C2・L8・Z8 | — |
-| IO-24（`NewCsvImport` の精算の鍵、active な精算の一覧、取り消したものを含む machine_no、同じ精算の取込み） | 24 | S2 | Z1〜Z5・Z22 | — |
+| IO-24（`NewCsvImport` の精算の鍵、active な精算の一覧、machine_no の照合先〈取り消したものを含む 1 件。closure の是正〉、同じ精算の取込み） | 24 | S2 | Z1〜Z5・Z22 | — |
 | IO-20（棚卸しの明細の読取り、共有 JAN の読取り） | 20 | S2 | C10・J1・I1 | 非対象: 商品の読取りの写しの 3 列（b2） |
 | BIZ-06（計数・完了・読取り・`StocktakeGuard`・操作ログ〈round 2 の是正〉） | 35 | S4 | C1〜C11・K1〜K8・R1〜R5・W3 | — |
 | BIZ-03（preview・確定・取消・引き当ての食い違い・整数の数量） | 32 | S5 | Z1〜Z16・Z21〜Z23 | L3-3・L3-8・L3-10 |
@@ -843,6 +845,15 @@ round 3 の是正で足した契約の文（32 の順 2 を取り消した取込
 
 この是正で、新しい wire の型・field・画面の状態は足していない（DB の列は vZ の手順 5 に `stocktakes` の `cutoff_movement_id` を 1 つ。route の search の key は S8 で予定していた商品コードと `returnTo` に名前を付けた）。消した記述: tracking の「入出庫の movement はカーソルを持たず、業務日で切る」、ADR D6 と 35 の「完了日より後の日付の記録は入れない」、51 の回復先の行き先の分け（`active_count` なら棚卸しの明細）、32 の「取り消した取込みは比べる先にしない」を順 2 にも当てる読み、L3-4 の「元の商品フォームに戻って、もう一度保存」。
 
+Plan Review closure の是正で足した契約の文（32 の順 2 の取り消した取込みを名指す拒否の文と比べる先、24 の machine_no の照合先の読取り〈新設〉、ADR D4・D7 の同じ文、ADR D6・35・tracking の完了の後の比較の範囲から完了の後に保存した計数を除くこと）の一巡:
+
+- 安全な整数の範囲: 文に入る精算回数は Z5 の範囲、取込みID は SQLite の id で、どちらも `import_error` の message の文字列の中に入り、wire の number にならない。新しい wire の数・DB の列は無い。→ 不足は無かった。
+- 0 の表示: 精算回数 0 は「精算 0」と出す（0 を「無い」の印にしない。Z5 と同じ）。machine_no は leading zero を保つ文字列のまま出す（Z6）。照合先が None なら順 2 を通る（取込みが無い DB と、同じ machine_no の取込みだけの DB）。完了の後に保存した値 0 の計数も、ほかの計数と同じく比較の範囲に入れない。→ 不足は無かった。
+- 失敗の時点と順序: 順 2 は順 1 の後・順 3 の前で、preview と確定の TX の両方で照合先を読み直し、書く前に拒む（Z15。名指すのはその TX で読んだ取込み）。machine_no の違う active な取込みがあれば今の文を返し、取り消した取込みだけのときに名指す文を返す（24 の照合先が active を優先するので、1 回の読取りで分岐が決まる）。完了の後の比較は読取りで求め、何も書かない。→ 不足は 32 の順 2（原因を名指さない）と 24（読取りが 1 通りに決まっていない）で、本 commit で直した。
+- 単位や種類の混在: 名指す日付は取込み日（`imported_at`、PC の日時）で、精算日（`settlement_date`、レジの日付）と取り違えない（文の語を「取込み日」にする。既存の重複の拒否の文と同じ）。machine_no（レジ）と精算回数（系列の中の順）を分けて出す。完了の後の比較は、入出庫・初期在庫・精算を「完了の前の記録」で足し、計数はカーソル以下だけ（計数は観測で、記録の追加と種類が違う）。→ 不足は ADR D6・35（計数を「完了の前の記録」に含める読みを許した）で、本 commit で直した。
+
+この是正で、新しい wire の型・field・画面の状態は足していない（拒否の文は今の `import_error` の BIZ の message。[41](../function-design/41-cmd-pos.md)・[55](../function-design/55-ui-csv-import.md) は BIZ の文をそのまま出す）。消した記述: 24 の「今の一覧の読取りで足りれば新設しない」、残りの危険の「レジの入替と同じ止まり方…で続け方を決める」、ADR D4 の順 2 と順 5 を 1 つにまとめた文、ADR D7 の「D4 の比べる先に取り消した取込みは入らない」、35 の非遡及の例の「後入力の計数」。
+
 ## Contract Probe
 
 本 lane が依る外部の前提（同梱の SQLite の振舞い）を、2026-10-22 に repo の外の scratch の crate（`rusqlite = "=0.31.0"` bundled、`sqlite_version()` → `3.45.0`。commit しない）で確かめた。同じ文を python の sqlite3（3.51.3）でも当て、同じ結果だった。
@@ -867,7 +878,7 @@ round 3 の是正で足した契約の文（32 の順 2 を取り消した取込
 - 計数の衝突（同じ日付の別の値の既定の計数）は L3 で見ず、自動 test と画面の写しで見る。
 - 商品一括 import で、上書きを選んだ行どうしが同じ新しい JAN になり片方が在庫連動になる組は、preview では知らせられず（上書きするかが preview の時点で分からない）、確定で行を名指して拒む（30 の D-118 の節。利用者は preview に戻り、その行をスキップにするか CSV を直す。round 2 の是正）。
 - Z004 の取込みを取り消す入口は取込みの結果の画面だけ（55 §55.4 の手順 18）。結果の画面を離れた後に誤った版に気づくと、アプリの中で取り消して取り込み直せない（b1 の版は店へ入れない。入口は owner の決定〈2026-10-22、repo 外の回答台帳 TD-380〉で「導入の前の関門」の項目になり、別の lane で入れる。closeout で [Plans](../Plans.md) の `## 導入の前の関門` と backlog に足す。Non-scope の項）。
-- 取り消した取込みしか無い DB でも、別の machine_no の Z004 は拒む（レジの入替と同じ止まり方。別のレジの file を誤って最初に取り込んで取り消した DB では、店のレジの file も取り込めない。ADR の Revisit の契機〈レジの入替・初期化〉で続け方を決める。round 3 の是正）。
+- 取り消した取込みしか無い DB でも、別の machine_no の Z004 は拒む（照合は残す。owner の決定〈2026-10-23、repo 外の回答台帳 TD-388〉）。拒否の文は原因の取り消した取込み（取込みID・精算回数・取込み日・レジ番号）を名指す（32 の順 2）が、照合の基準を入れ替える操作は無いので、別のレジの file を誤って最初に取り込んで取り消した DB では、店のレジの file を取り込めない（b1 の版は店へ入れない）。これが実際に起きたとき、または ADR の Revisit の契機（レジの入替・初期化）で、基準を入れ替える操作を見直す（closure の是正）。
 - 全ての取込みを取り消した後にレジの番号が戻った（初期化）ときは、32 の順 5 が止めない（比べる active な取込みが無い）。fresh な計数は n の active な取込みが無い間は日付で判定するので黙ってずれないが、新しい系列の精算回数が古い fresh な計数の n に届いた時点でその計数がまだ効いていると、n より前の新しい精算を計数に入っているとみなす（n 回の精算の間、その商品を数え直さないことが要る。完了の後の差の `cutoff_settlement_no` も同じ。レジの初期化は ADR の Revisit の契機。round 3 の是正）。
 - fresh な計数の n の精算を取り消してから取り込み直すまでの間、その計数の日付の精算が決まらない側へ倒れ、要再確認が出ることがある（過剰側。取り込み直すと解ける。Matrix の L13。round 3 の是正）。
 

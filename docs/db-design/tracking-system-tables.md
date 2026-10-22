@@ -32,7 +32,7 @@
 この節は全部 (b)（proposed・未実装）。
 
 - `stocktakes` と `stocktake_items` は対象の一覧と評価の保存に残す。`stocktake_items.actual_count`・`counted_at` は、その明細の効く計数を表示のために写す（計数の値の正本は stock_counts）。`system_stock` は明細を作った時点の帳簿で、差異の計算に使わない参考値（表示する差異は 35 の新契約）。
-- 完了の TX で `valuation_cost_price_centi`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_settlement_no`・`cutoff_count_id`・`cutoff_movement_id`（INTEGER NULL。完了の時点の取り込み済みの最大の精算回数〈取込みが無ければ NULL〉・`stock_counts` の最大 id・`inventory_movements` の最大 id〈無ければ 0〉。完了の前は NULL）。完了の後の比較は、完了の時点にあった記録（カーソル以下）に、完了の後に入れた完了の前の記録を足して求める（ADR D6）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
+- 完了の TX で `valuation_cost_price_centi`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_settlement_no`・`cutoff_count_id`・`cutoff_movement_id`（INTEGER NULL。完了の時点の取り込み済みの最大の精算回数〈取込みが無ければ NULL〉・`stock_counts` の最大 id・`inventory_movements` の最大 id〈無ければ 0〉。完了の前は NULL）。完了の後の比較は、完了の時点にあった記録（カーソル以下）に、完了の後に入れた完了の前の入出庫・初期在庫・精算の記録を足して求める（計数はカーソル以下だけ。ADR D6）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
 - 自動の 0 の入力（auto_filled・force_fill）を持たない。完了の時点で廃番かつ在庫 0 の商品の明細は、未計数でも完了を止めない（計数の記録を作らない）。
 
 ### 移行（SPEC-STK-CNT-D10）
