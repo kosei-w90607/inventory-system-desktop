@@ -1,0 +1,326 @@
+# Plan Packet: docs の棚卸し lane 1 の残りの小口（decision-log の Status・名前の参照・task-specs の注記・archive の link ほか）
+
+wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18、計画は repo 外の回答台帳 TD-327〉の lane 1 の残り。owner の決定は repo 外の回答台帳 TD-391〈2026-10-23〉: `docs/backlog.md` の「次の docs の lane の候補（docs の棚卸し lane 1 の残り）」の (1)〜(8) のうち、owner の判断が要らないものを 1 lane で直す）。docs だけ。code・migration・bindings・画面の振舞いは変えない。
+
+出所: backlog の同じ項目（PR #180 の Follow-up と Final Review の closure、2026-10-20）。下の行番号と数は起点 `eed07d37`（main）で command を逐語で実行した出力（D-062）。本 packet は dated の Plan Packet なので、行番号を起票の時点の観測として書く（`docs/DOC_STYLE_GUIDE.md` §1 の対象外の項）。直した後の正本の文は行番号で引かない（D-125）。
+
+規模と手法: 触る file は 15 と本 packet（下の Scope の段ごとの表）。作業を S1〜S6 に分け、段ごとに AC を置く。S7 は直さない分類（owner の判断事項）。本 run（起票）は packet だけを置き、docs の本体の直しは plan-approved の後の別の run で行う（先例: docs の棚卸し lane 1〈`docs/archive/plans/2026-10-19-docs-contract-refresh.md`〉と lane 2a〈`docs/archive/plans/2026-10-20-docs-file-line-rewrite.md`〉）。
+
+## Workflow State
+
+- Phase: plan-draft
+- Risk: R2
+- Plan Commit: pending
+- Amendments: none
+- Coordinator: Opus 5.5 main session
+- Writer: Opus 5.5 subagent（起票は本 run。docs の直しは plan-approved の後の別の run）
+- Plan Reviewer: fresh Opus 5.5（fork でない）+ Codex。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Reviewer: fresh Opus 5.5（Claude 側。R2 で design lane でないので座組表の「それ以外」の行）+ Codex。座組表どおり
+- Final Review Minimum: 1
+- Human Gate: ready,merge
+- Branch: agent/docs-small-batch-1023
+
+manual なし: 製品の runtime・画面・配布物を変えない docs の変更で、Windows native で確かめる物が無い。
+
+遷移の記録:
+
+1. kickoff → spec-check（2026-10-23、起草役）: 範囲を backlog の項目の (1)〜(8) にし、Risk を R2 と記録した（下の Risk）。発注 516 は R0/R1 を見込んでいたが、起草役の判定（R2）を Coordinator が採り、1 lane の R2 として進めると裁定した（2026-10-23）。
+2. spec-check → plan-draft（2026-10-23、起草役、同じ commit）: 表の唯一の skip。直す先の設計正本（下の Design Readiness の一覧）は契約として足りていて、本 lane は新しい設計の選択をしない。S1〜S4・S6 は文を code（実装の現物）・正本・decision-log の規則に合わせるだけ、S5 は owner の決定（TD-350）を入庫の正本に書き写すだけで、決定の中身は決まっている。
+3. plan-draft に留まる: 下の S7（owner の判断事項 3 つ）の答えを待つ。答えの後に Coordinator が packet を直して plan-gate へ進める。
+
+## Owner Effort Budget
+
+- 介入回数上限: 6（既定）
+- 実働時間上限: 30 分（既定）
+- Plan Review round 天井: 3（既定）
+
+| 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
+|---|---|---|---|---|---|
+| 介入 | 6 | 1（起票の時点。TD-391〈lane の選択〉） | 2（S7 の 3 つの答え〈1 回の問いにまとめる〉1、Ready・merge の指示 1。plan-approved は repo 外の回答台帳 TD-296 の 4a で Coordinator が進める） | 3 | 6 = 1 + 2 + 3 |
+
+承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
+
+## Risk
+
+Risk: R2
+
+Reason:
+docs だけの変更で、runtime の契約を変えない。ただし `docs/DEV_WORKFLOW.md` Risk Tiers の R0（「Typo, link, non-semantic doc cleanup.」）には当たらない。S1 は decision-log の Status の行から決定の状態と出所でない文を外し、S3 は task-specs に今の runtime を書き分ける注記を足し、S5 は入庫の正本に決まりを足し、S6 は設計の規則と正本の文を今の code・正本に合わせる。どれも文の意味を変える。R2 の行（「docs change that affects maintainability but not runtime contracts.」）に当たる。同じ種類の作業を R2 とした先例は lane 1（#180、S3 で Status を直した）。境の規則（R2 と R3 で迷えば、安定した契約・出力 schema・data safety の境・command の形・route・workflow gate に触れるなら R3）には当たらない: command・DTO・DB・画面の振舞い・merge gate を変えない。`docs/msi-distribution-runbook.md`（data safety の手順書）は S2 の参照の語 1 か所だけを替え、手順・判定を変えない。触る file はどれも `scripts/ci/classify-changes.sh` の workflow の一覧（`case` の 2 つの path の列）に無い（`eed07d37` で確かめた）ので、classifier は `workflow=true` を出さず、Final Review Minimum は 1 のまま。function-design を触るので traceability の分類には当たる。Human Gate は `ready,merge`（R2 の既定）。
+
+## Goal
+
+Goal Invariant:
+
+### 最小完了条件
+
+- decision-log の S1 の 15 の D の Status の行が、decision-log の頭の「Status の書き方」と D-126 の形（状態の語と、括弧の中の出所だけ）になり、決定の本文は 1 行も変わらない。
+- 設計正本・runbook・ADR が backlog の項目を名前で引く所（S2）が、今の backlog の項目の名前か、設計の節の ID で引かれ、読んだ人が今ある項目・節へ着く。
+- `docs/architecture/cmd-task-specs.md` の CMD-08 と `docs/architecture/ui-task-specs.md` の UI-01a・UI-01b・UI-08 を読んだ人が、D-117 の後の形（採用済み）と今の build の振舞いを取り違えずに読める（S3）。
+- archive の 3 file の link（S4）が、項目の今の置き場へ着く。
+- 入庫の正本（[61](../function-design/61-ui-receiving.md)）を読んだ人が、取り寄せ（客注）の品を入庫に入れない決まり（TD-350）を読める（S5）。
+- DSR-22 と 56 の S6 の文が、今の code と `docs/SCREEN_DESIGN.md` と合う。
+- backlog の「次の docs の lane の候補」の項目が、直したものを外し、残り（S7 の 3 つのうち本 lane で直さないもの）だけを書く形に書き直される（D-127）。
+
+### 失敗定義
+
+- decision-log の決定の本文（Status の行の外）を書き換える（D-126 (3)）。
+- Status の行から外した文に、他の場所に無く今も効く中身があったのに、確かめずに消す。
+- 直した後の文が code の現物・正本と食い違う（例: S3 の注記が、今の build に無い command を「今ある」と書く。S6 の DSR-22 が `StockStatusBadge` の今の表示名と違う名を書く）。
+- owner の判断が要る S7 の 3 つを、答えの前に直す。
+- 店の運用の細部・実値・発言の原文を repo に書く。
+- 並走の lane の行（下の「他の lane との所有」）を触る。
+
+### 非目的
+
+- code・migration・bindings・route・画面の文言を変える（S7 の部門 12 の `code_prefix` を code の側で直すことも含む）。
+- decision-log の Status の規則そのもの（頭の節と D-126）を変える。
+- S1 の 15 の D の外の Status、ADR の Status を直す。
+- backlog の他の項目の名前の参照、archive の他の file の link を洗い直す。
+- file:行 の引用の書き換え（lane 2a で済み、検査は lane 2b）。
+
+Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
+
+## Ordinary Operation
+
+not applicable: operator の操作・data / command の契約・業務の状態遷移を変えない docs の変更で、workflow の変更でもない（通常列は発注 → review → owner の Ready / merge）。S5 は入庫の画面の使い方の決まりを正本に書き写すが、画面の操作列と結果を変えない。
+
+## Scope
+
+段ごとの対象と直し方。各段の表の「結果」列は実装の run が「直した」か「残す（理由）」で埋める（AC-S0-1）。直す前に、主張の根拠（code・decision-log・正本・archive の packet）を `rg` か実読で確かめ、確かめられなければ直さずに「残す（未確認）」とする。新しく書く文の引用は D-125・`docs/DOC_STYLE_GUIDE.md` §1 の形（path と symbol、節の ID か見出し）。新しい文言に作業の印の語（AC-S9-1 の command が探す 7 語）を使わない。
+
+### S1 decision-log の Status の 15 行（backlog の (1)）
+
+規則: decision-log の頭の「Status の書き方」（D-126）。Status は状態の語だけを書き、括弧に出所（owner の決定の日付・repo 外の回答台帳の ID・design lane）を添えてよい。決定の本文は main に merge された後は append-only で、後から直してよいのは Status の行（状態の語と出所）・Status の行の追加・Superseded の行の追加・file の移送に伴う link の path だけ。よって、Status の行の括弧の外にある文と、括弧の中の出所でない文は Status の行から外す。外した文は本文へ移せない（append-only）。外して中身が失われないことを、行ごとに他の置き場で確かめた（下の表の「外す文の置き場」）。どの行も規則で直し方が一つに決まり、owner の判断事項に回す行は無い。
+
+| # | D（`eed07d37` の行） | 今の形 | 直した形の向き | 外す文の置き場 | 結果 |
+|---|---|---|---|---|---|
+| S1-1 | D-042（329） | 英文: `accepted during the Phase B R4 Design Phase, before the plan-first execution commit and before any destination mutation.` | `accepted（Phase B の R4 の Design Phase で、plan-first の実行の commit と移行先の変更の前）`。時点は出所として括弧に入れる | 外す文なし（訳すだけ） | |
+| S1-2 | D-075（626） | 括弧の後に「画面設計の中身（一括改定画面のレイアウト・操作フロー等）と SP-103-04（商品一覧の原価列追加）の最終判断は本決定の対象外とし、Plan Packet に委ねる。」 | 括弧の後の文を外し、`accepted（owner 裁定 2026-08-21〜22、issue #90 聞き取り）` | 委ねた先は済んでいる: 一括改定の画面は [77](../function-design/77-ui-bulk-price-revision.md)（UI-14）、SP-103-04 は [50](../function-design/50-ui-product-list.md) UI-01a-D13（`docs/spec/requirements-coverage.md` の SP-103-04 の行は current）。委ねた事実は `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md` の SP-103-04 の行（「最終判断は Plan Packet」）と D-075 の Impact の行（Plan Packet の起草の入力）に残る | |
+| S1-3 | D-086（729） | 括弧の後の「。」 | 「。」を外す | — | |
+| S1-4 | D-088（746） | 同上 | 同上 | — | |
+| S1-5 | D-090（760） | 同上 | 同上 | — | |
+| S1-6 | D-091（767） | 同上。括弧の中は owner の決定の日付とその対象（2026-09-24・25 に了承した試しと確定した事項、runtime lane A を 1 PR にすること）で、出所として残す | 「。」を外す | — | |
+| S1-7 | D-092（780） | 括弧の後の「。」 | 「。」を外す | — | |
+| S1-8 | D-093（793） | 同上 | 同上 | — | |
+| S1-9 | D-094（800） | 括弧の後に「試し 8 点の採否は owner の L3 round 1（2026-09-28）の答えで確定した（下の「試し 8 点の採否」）。」 | 括弧の後の文を外し、出所として「owner の L3 round 1〈2026-09-28〉で試し 8 点の採否」を括弧の中に足す | 本文の「試し 8 点の採否（owner の L3 round 1、2026-09-28）」の項が同じ中身を持つ | |
+| S1-10 | D-096（814） | 括弧の後の「。」 | 「。」を外す | — | |
+| S1-11 | D-097（824） | 同上 | 同上 | — | |
+| S1-12 | D-098（835） | 同上 | 同上 | — | |
+| S1-13 | D-099（845） | 同上 | 同上 | — | |
+| S1-14 | D-109（937） | 括弧の後の「。」。括弧の中に出所でない決定の文「同日の owner 決定: 時点証拠 ADR は ② 〜 ④ の間 proposed のまま進め、⑤ で停止 ADR を superseded にするのと同時に accepted にする。STK-2 の診断 `XFA_LATE_IMPORT_FAIL` は ⑤ の時点で「要再確認のあと数え直しで正しい数へ戻る」を green とする」 | 決定の文を外し（出所の「owner 2026-10-06 の lane 選択」「Plan Packet `docs/archive/plans/2026-10-06-stocktake-p1.md` の設計判断」は残す）、「。」を外す | 前半は D-109 の Compatibility の行（「時点証拠 ADR は本 lane で編集せず、Status は ⑤ で accepted にする（owner 2026-10-06）」）が持つ。後半を含む両方は出所の packet の Q2 決定 (A) の項と `XFA_LATE_IMPORT_FAIL` の行が持つ。⑤ の列は D-109 の `Superseded in part by: D-118` の行が D-118 の runtime に置き換わったと書く | |
+| S1-15 | D-123（1086） | 括弧の後の「。」 | 「。」を外す | — | |
+
+### S2 名前で引く参照（backlog の (2)）
+
+旧名の項目は、backlog の今の項目の頭の「旧名」の句か、[閉じた項目の archive](../archive/2026-10-19-backlog-closed.md) で辿れる。直す先は、設計の節があればその ID、無ければ今の backlog の項目の名前。
+
+| # | file（`eed07d37` の行） | 今の句 | 直す先 | 結果 |
+|---|---|---|---|---|
+| S2-1 | `docs/function-design/29-io-daily-report-parser.md`（97） | 「単位の拡張（[backlog] の「単位の拡張」。Z004 の小数を 100 倍の整数で受け、商品の単位が長さなら BIZ で cm に換算する案）」 | [10](../function-design/10-common-rules.md) SPEC-UNIT-D8（POS の数量〈Z004・EJ〉を 100 倍の整数で読む契約）。「案」の言い換えは外す（SPEC-UNIT-D8 が契約を持つ） | |
+| S2-2 | 同（113） | 「backlog の「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」で扱う」 | backlog の「日報の紙の runtime」（旧名の句がこの項目の頭にある） | |
+| S2-3 | `docs/function-design/33-biz-plu-export-service.md`（82） | 「Z004 の業務の取込みを同じ SD の読取りで行うようになったら（後続の lane。backlog の「売上の SD からの一括取込みと EJ の控えの閲覧」）」 | backlog の「Z004 を SD の一括取込みに入れる runtime（B）」（Z004 を SD の一括取込みに入れる項目） | |
+| S2-4 | `docs/function-design/37-biz-daily-report-import-service.md`（447） | 「…の設計は後続の lane（backlog の「売上の SD からの一括取込みと EJ の控えの閲覧」）が決める。」 | 設計は済んでいる（PR #175、D-121）。「…の設計は §37.10・§37.11（D-121）が決めた」の向きへ。runtime は §37.10 の冒頭が backlog を引く | |
+| S2-5 | `docs/msi-distribution-runbook.md`（31） | 「本書の外の lane で行う（backlog の「MSI 配布手順 docs 化」の項）」 | backlog の「MSI の製品名と upgrade code の固定」。参照の語だけを替え、手順と判定を変えない。並走の MSI の固定の lane との扱いは下の所有表 | |
+| S2-6 | `docs/adr/2026-09-18-stocktake-time-evidence.md`（228） | 「backlog の「実測とPOS系列の対応を取得・保存する」の入力1・入力2」 | backlog の「実測とPOS系列の対応の入力 1〜5」の入力 1・入力 2。同じ ADR の 232・233・238 の「同項目の入力 N」は 228 を受けるので、228 を直せば着く（触らない） | |
+
+直さない（D-126 (3) で一意に決まる）: decision-log の D-104（902 の Guarantee range、903 の Compatibility）、D-105（910 の Why）、D-120（1051 の Decision、1052 の Why）の句は、どれも決定の本文の行にある。D-126 (3) は main に merge された決定の本文を append-only にし、後から直してよいのは Status の行・Status の行の追加・Superseded の行の追加・file の移送に伴う link の path だけで、名前の書き換えはそのどれでもない。旧名は今の backlog の項目の頭の「旧名」の句で辿れる（S2-1・S2-2 の直す先の項目、[閉じた項目の archive](../archive/2026-10-19-backlog-closed.md)）。backlog の項目から外す。
+
+### S3 task-specs の D-117 の runtime の注記（backlog の (3)）
+
+形: 既に注記を持つ `docs/architecture/biz-task-specs.md` の BIZ-04 と `docs/architecture/io-task-specs.md` の IO-04 と同じ「> **runtime の状態**: 上は D-117 の後の形（採用済み）。今の build は …。外すのは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。」の 1 段。今の build の事実は、実装の run が下の symbol を `rg` で確かめ直してから書く。
+
+| # | 行 | 今の build（`eed07d37` で確かめた symbol） | 結果 |
+|---|---|---|---|
+| S3-1 | cmd-task-specs の CMD-08 の表の後 | `src-tauri/src/cmd/plu_export_cmd.rs` の `import_plu_register_snapshot`（利用者が選ぶ Z004 で占有を照合する command。`src-tauri/src/lib.rs` の `collect_commands` に登録）が残り、`get_plu_slot_summary` は件数の要約（`src-tauri/src/biz/plu_export_service.rs` の `PluRegisterSnapshotSummary` の `free_count` ほか、`release_pending_count` を含む）を返す。CMD-12 の `scan_register_sd` は `src-tauri/src` に無い | |
+| S3-2 | ui-task-specs の UI-01a | `src/features/products/ProductListPage.tsx` に PLU の絞り込み（URL の `plu`）と、絞り込みに一致する全件の一括更新（`commands.bulkSetPluTarget`）が残る | |
+| S3-3 | ui-task-specs の UI-01b | `src/features/products/ProductFormPage.tsx` の edit が「レジメモリNo.」（`plu_memory_no`）を表示する | |
+| S3-4 | ui-task-specs の UI-08 | `src/features/plu-export/PluExportPage.tsx` が利用者の選ぶ Z004 で占有を読む（`commands.importPluRegisterSnapshot`）。SD の読取りでの自動の照合は無い | |
+
+### S4 archive の link（backlog の (4)）
+
+link の先の backlog の節「やると決めたもの（順番未定）」は今の `docs/backlog.md` に無く（`grep -n '^## ' docs/backlog.md` に出ない）、項目は 2026-10-19 に [閉じた項目の archive](../archive/2026-10-19-backlog-closed.md) の同じ名の節へ移った。archive の本文の出来事の記述は変えず、link の先だけを今の置き場へ替える。下の表の「閉じた項目の節」は `../2026-10-19-backlog-closed.md#やると決めたもの順番未定`（3 file とも `docs/archive/` の 1 段下にあるので相対 path は同じ）。
+
+| # | file（`eed07d37` の行） | 引く項目 | 直す先 | 結果 |
+|---|---|---|---|---|
+| S4-1 | `docs/archive/plans/2026-09-15-display-fixes-batch-2.md`（327） | destructive Alert の soft 塗り + 三角 icon | 閉じた項目の節（項目はその節にある） | |
+| S4-2 | `docs/archive/plans/2026-09-23-stocktake-time-evidence-adr-revision.md`（94） | 実測と POS 系列の対応を取得・保存する | 同上 | |
+| S4-3 | `docs/archive/harness-context/2026-09-30-Plans-completed.md`（54） | 「型生成の失敗が成功扱いになる」entry | 項目は PR #88 で閉じ、backlog にも閉じた項目の archive にも無い。閉じた packet `../plans/2026-09-22-bindings-export-failure-detection.md` を引く | |
+| S4-4 | 同（68） | 監査所見 STK-1 / STK-2 / NAV-1 / DATA-2 / DOC-2 | DATA-2 は今の backlog にあり、ほかの 4 つは閉じた項目の archive にある。backlog の link（anchor を外す）と、閉じた項目の archive の link の両方を引く | |
+| S4-5 | 同（112） | 「㉘ ③ 〜 ⑤ の申し送り」 | 閉じた項目の節（STK-1 の項目の子） | |
+
+### S5 取り寄せの品を入庫に入れない決まり（backlog の (7)、TD-350）
+
+[61](../function-design/61-ui-receiving.md) §61.1 の設計判断の表に 1 行（`UI-02-D17`）を足し、§61.10 の変更履歴に 1 行を足す。中身: 取り寄せ（客注）の品が届いたときは入庫に記録しない（owner の決定、repo 外の回答台帳 TD-350、2026-10-20）。理由は `docs/project-memory.md` の Store Premises の棚卸しの項（取り寄せは先払いで、受注の時点で JAN が分からないことがあるのでレジで部門キーで打つ。先払いの取り寄せ品はお渡し待ちの間に棚卸しになっても数えない）を引いて書き、店の運用の細部・実値は写さない。アプリの検査・画面の文言は足さない（決まりを正本に置くことが TD-350 の決定）。
+
+| # | 行 | 結果 |
+|---|---|---|
+| S5-1 | 61 §61.1 の `UI-02-D17` | |
+| S5-2 | 61 §61.10 の変更履歴 | |
+
+### S6 引用が支える文と今の code・正本の食い違い（backlog の (8)）
+
+| # | file（`eed07d37` の行） | 今の文 | 直す向き | 根拠 | 結果 |
+|---|---|---|---|---|---|
+| S6-1 | `docs/design-system/01-decision-rules.md` DSR-22（136） | 「canonical `通常`=…`StockStatusBadge` の中立の Badge」 | 「canonical `在庫あり`」 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` の `StockStatusBadge` の中立の Badge の文字は「在庫あり」（icon なし、枠あり） | |
+| S6-2 | `docs/function-design/56-ui-daily-sales.md`（375） | 「`source: string` に対する防御的 if-else 実装…未知値は内訳に含めない（防御的設計、bindings.ts では literal union 化されていない）」 | 「`source`（bindings の `DailySaleSource`）を `switch` で分け、`default` の `never` で網羅を型で確かめる（値が増えれば compile error）」の向き | `src/features/daily-sales/lib/compute-summary.ts` の `computeSalesLineSummary` は `switch (item.source)` と `const exhaustive: never`。`src/lib/bindings.ts` の `DailySaleItem` の `source` は `DailySaleSource` | |
+| S6-3 | 同（26） | 「SCREEN_DESIGN.md の主動線「CSV取込み完了 → 売上レポート確認」を成立させる」 | 「SCREEN_DESIGN.md の主要な画面間遷移「売上データ取込み完了 → 売上レポート」を成立させる」 | `docs/SCREEN_DESIGN.md` の「主要な画面間遷移」の項に「売上データ取込み完了 → 売上レポート（自然な流れ）」がある | |
+
+### S6b backlog の項目の書き直し
+
+`docs/backlog.md` の「次の docs の lane の候補（docs の棚卸し lane 1 の残り）」（`eed07d37` の 111 行）を、直したもの（(1)〜(4)・(7)・(8)）と、直さないことが一意に決まったもの（(2) の decision-log の句、(5)。理由は S2 の末尾と下の S5b）を外し、残り（S7 のうち本 lane で直さないもの）だけを書く形に書き直す。継ぎ足さない（D-127）。S7 の答えで 3 つとも本 lane か別の lane の Scope に入れば、項目そのものを外す（行き先を 1 句で書く）。
+
+### S5b D-040・D-041・D-045 の関係（backlog の (5)、直さない）
+
+D-126 が Status に許すのは状態の語と出所だけで、決定の本文は append-only、足してよい行は `Superseded by:`・`Superseded in part by:` と、Status の行が無い D への Status の行だけ。「D-041 が D-040 の Phase B の実行の契約であること」「D-045 が D-041・D-042 の証跡の要求の裁定に効き、D-040 の clone の役割の分離を変えないこと」は、置き換わり（Superseded）でも出所でもない。D-126 が許す行は無く、残さないことが一意に決まる。file は変えず、backlog の項目から外す（S6b）。
+
+### S7 owner の判断事項（backlog の (6)、本 lane では直さない）
+
+答えの後に Coordinator が本 packet を直す（Scope へ入れるか、別の lane へ送るか）。答えの前に直さない。
+
+**S7-1 部門 12（宅急便）の `code_prefix`**: `docs/db-design/master-tables.md` の「初期データ（全21部門）」の表は NULL（備考「在庫管理対象外。サービス取次。Z005に載るがシステムでは追跡しない」）、`src-tauri/src/db/schema_v1.rs` の `departments` の初期データは `'TK'`。裏付け: `src-tauri/src/biz/product_service.rs` の独自コードの発番は `code_prefix` が NULL の部門で `ValidationFailed` を返す（`'TK'` なら宅急便の部門で `TK-0001` の形の商品コードを発番できる）。`docs/ARCHITECTURE.md` は宅急便の部門を「在庫管理対象外と確定（2026-04-10）」と書き、`schema_v1.rs` の初期データの `created_at` は `2026-04-03`（確定より前）。どちらの値も 2026-07-13 の公開の snapshot（`902647b8`）から変わっていない（`git log -S`）。`departments` を書き換える migration は無い（`rg 'UPDATE departments' src-tauri/src` は `next_seq` の更新だけ）。
+- (a) code を正本に合わせる（`schema_v1.rs` の初期データを NULL にする）。DB の初期データの変更で R3 の別の lane（code と test）。開発・試験 DB はリリースの前まで作り直してよい（D-123）。
+- (b) 正本を code に合わせる（master-tables を `TK` にする）。docs だけで本 lane に入る。宅急便の部門で独自コードの発番ができる形を正とする。
+- 推奨: (a)（precondition-dependent: 宅急便の商品を登録しない運用が今も正しいこと）。在庫管理対象外という確定（2026-04-10）は初期データより後で、`TK` は確定の前の値と読める。発番の道を閉じるほうが「追跡しない」と合う。
+
+**S7-2 「グループコード商品は色を区別しない」**: `docs/db-design/master-tables.md` の products の「困りそうなケース」（「グループコード商品は色を区別しない方針なので、どの商品に紐づけても在庫管理上は問題ない」）と `docs/db-design/pos-tables.md` の Z004 の照合の項（「ヒット複数件 → `ORDER BY product_code ASC` で先頭に紐付け（グループコード商品は色を区別しない方針のため…）」）の 2 か所。今の決定と食い違う: 同じ JAN で色・柄が違う品は別の商品（repo 外の回答台帳 TD-334・TD-344）、その群は全色を独自コードにし JAN をバーコードの欄に持たせる（TD-352）、共有 JAN の行は店内コードの lane まで在庫連動の外で売上だけ記録する（D-118 の Compatibility、TD-296）。共有 JAN の売上を先頭の商品へ割り当てる今の振舞いの限界は backlog の DATA-2 が持つ。
+- (a) 2 か所の理由の句を今の決定に合わせて書き直す（「色を区別しない方針」を外し、先頭へ紐付ける規則は今の code の決定的な規則として残し、共有 JAN の扱いは D-118・DATA-2 を引く）。docs だけで本 lane に入る。
+- (b) 店内コードの lane（共有 JAN の扱いを決める lane）まで残す。
+- 推奨: (a)（confirmed: 食い違う先の決定は全て決まっている）。理由の句が今の決定と逆を言い、読んだ人を誤らせる。規則（先頭へ紐付ける）そのものは変えない。
+
+**S7-3 `manual_sales` の「レジ外販売は実質ゼロ」**: `docs/db-design/transaction-tables.md` の `manual_sales` の設計意図（「reasonを簡素化した理由: 利用者ヒアリングの結果、レジ外販売は実質ゼロ。使うケースは「PLU未登録新商品」がほぼ全て。'off_register'や'fabric_cut'は実態に合わないため削除」）。[10](../function-design/10-common-rules.md) SPEC-UNIT-D4 の未決の項の既定 (a) は、長さの商品の在庫連動の自動提案を `false` にし、売った分を手動販売（[62](../function-design/62-ui-manual-sale.md)）で記録する（店主の答えが無い間の形、D-119 の U5 = c）。長さの商品の販売は手動販売の主な使い道になり得て、「PLU未登録新商品がほぼ全て」と食い違う。
+- (a) 設計意図の文を今の正本に合わせ、手動販売の使い道に SPEC-UNIT-D4 の既定 (a)（長さの商品）を加え、reason の値は変えない（2026-03 のヒアリングは当時の事実として出所に残す）。docs だけで本 lane に入る。
+- (b) 店主の答え（長さの商品の在庫をどの道で減らすか、SPEC-UNIT-D4 の未決）が出るまで残す。
+- (c) reason の値（`fabric_cut` の類）を戻すかを決める。DB の CHECK・画面の変更で R3 の別の lane。
+- 推奨: (a)（precondition-dependent: reason の値を今のまま使えること。値を戻す要否は (c) として別に問う）。既定 (a) は今の正本の形で、答えが (b) に変わっても文の直しは小さい。
+
+### 他の lane との所有
+
+| file | 節・行 | 所有 |
+|---|---|---|
+| `docs/decision-log.md` | S1 の 15 の D の `- Status:` の行だけ | 本 lane |
+| `docs/decision-log.md` | 末尾に足す新しい D、ほかの D の行 | 並走の lane（起票中の PC の外の控え (b)・棚卸し b2 ほか。本 lane は触らない） |
+| `docs/backlog.md` | 「次の docs の lane の候補（docs の棚卸し lane 1 の残り）」の項目だけ（S6b） | 本 lane |
+| `docs/backlog.md` | ほかの項目（「MSI の製品名と upgrade code の固定」を含む） | 並走の lane（PR #172・#190、MSI の固定の lane `agent/msi-fix-1023`） |
+| `docs/msi-distribution-runbook.md` | 「製品名と upgrade code を固定する。」の項の、backlog の項目の名前の 1 句だけ（S2-5） | 本 lane。PR #190 と MSI の固定の lane もこの file を触る。MSI の固定の lane が先に merge してこの句を消す・書き換えたら、本 lane は S2-5 を「残す（並走の lane が書き換えた）」にして触らない。本 lane が先なら、向こうが単段 merge で同期する |
+| `docs/function-design/29-io-daily-report-parser.md`・`37-biz-daily-report-import-service.md` | S2-1・S2-2・S2-4 の句だけ | 本 lane（PR #172 も同じ file の別の行を触る。`eed07d37` の時点で #172 の差分にこれらの句は無い〈`gh pr diff 172` を句で `rg`〉） |
+| 上の表の他の file（S2〜S6 の行） | 各段の行 | 本 lane |
+| workflow の正本（`AGENTS.md`・`CLAUDE.md`・`docs/DEV_WORKFLOW.md`・`docs/ci.md`・`docs/AGENT_OPERATING_MANUAL.md`・`docs/code_review.md`・`docs/quality/review-checklist.md`・`docs/project-profile.md`・`docs/agent-guidance/**`・`docs/templates/**`）と `docs/Plans.md` | 全体 | 本 lane は触らない（`docs/Plans.md` は lane ごとの行を置かない、D-097） |
+
+同じ file を触る lane は、後に merge する方が `origin/main` の単段 merge で同期する（`docs/DEV_WORKFLOW.md` Wave Operation）。
+
+## Non-scope
+
+- code・migration・bindings・route・画面の文言の変更。
+- S7 の 3 つ（答えの前）。
+- decision-log の Status の規則（頭の節と D-126）、S1 の 15 の外の Status、ADR の Status、決定の本文。
+- S2 の 6 か所の外の名前の参照、S4 の 3 file の外の archive の link、`docs/adr/2026-09-18-stocktake-time-evidence.md` の名前の無い `[backlog](../backlog.md)` の link（100・534 行）。
+- workflow の正本と `docs/Plans.md`。
+
+## Acceptance Criteria
+
+baseline は起点 `eed07d37` で下の command を逐語で実行した出力。
+
+- AC1: `bash scripts/doc-consistency-check.sh` が exit 0、末尾の WARN の件数が 12 以下（baseline: exit 0、「結果: WARN 12 件（ERROR なし）」）。
+- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-23-docs-small-batch.md` が exit 0。
+- AC3: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（function-design を触る。REQ の参照は増減させない。61 の `UI-02-D17` の行は 61 が既に持つ REQ-201 だけを引く）と、`cd src-tauri && cargo test --test design_compliance_test` が PASS（function-design の節を足さず消さない）。手元のメモリが他の lane の build で足りないときは、hosted の Draft run の該当の job の pass で代える（PR の Validation に書く）。
+- AC-S0-1: Scope の各段の表の「結果」列が全行埋まっている（読んで確かめる）。
+- AC-S1-1: 次の command が何も出さない（exit 1）。baseline は 15 の D を全部出す（`D-042 D-075 D-086 D-088 D-090 D-091 D-092 D-093 D-094 D-096 D-097 D-098 D-099 D-109 D-123`）。
+
+  ```bash
+  for d in 042 075 086 088 090 091 092 093 094 096 097 098 099 109 123; do awk -v h="## D-$d" 'index($0,h)==1{f=1;next} f&&/^## D-/{exit} f&&/^- Status:/{print "D-'$d'\t" $0;exit}' docs/decision-log.md; done | rg -v '^D-[0-9]+\t- Status: accepted（[^（）]*(（[^（）]*）[^（）]*)*）$'
+  ```
+
+- AC-S1-2（決定の本文を変えていない）: 次の command が何も出さない（exit 1）。diff の頭の 2 行と Status の行を除いた変わった行を出す。
+
+  ```bash
+  git diff -U0 eed07d37...HEAD -- docs/decision-log.md | rg '^[-+]' | rg -v '^(\+\+\+|---) [ab]/' | rg -v '^[-+]- Status: '
+  ```
+
+- AC-S1-3（読んで確かめる）: S1-2・S1-9・S1-14 で外した文が、表の「外す文の置き場」に今もある。
+- AC-S2-1: 次の command が何も出さない（exit 1）。baseline は 6 行（29:97・29:113・33:82・37:447・msi-distribution-runbook:31・time-evidence ADR:228）。
+
+  ```bash
+  rg -n -e '「単位の拡張」' -e '「既存の支払集計（Z002）' -e '「売上の SD からの一括取込みと EJ の控えの閲覧」' -e '「MSI 配布手順 docs 化」' -e '「実測とPOS系列の対応を取得・保存する」の入力' docs/function-design/29-io-daily-report-parser.md docs/function-design/33-biz-plu-export-service.md docs/function-design/37-biz-daily-report-import-service.md docs/msi-distribution-runbook.md docs/adr/2026-09-18-stocktake-time-evidence.md
+  ```
+
+  S2-5 を「残す（並走の lane が書き換えた）」にした場合は、msi-distribution-runbook の行が出ないことを並走の lane の merge の結果で確かめる。
+- AC-S2-2（decision-log の句を変えていない）: 次の command が 5 を出す（baseline: 5）。
+
+  ```bash
+  rg -c -e '単位の拡張（backlog）' -e 'backlog の Z002 の合算の項目' -e 'backlog.md` の EJ の入力 \(5\)' -e '既存の支払集計（Z002）で異なる項目が 1 行に合算されうる' -e '日報画面の Excel 印刷・バインダー代替受入判定' docs/decision-log.md
+  ```
+
+- AC-S2-3（読んで確かめる）: S2 の直す先の項目・節が今の backlog と正本にあり、名前が一字一句合う。
+- AC-S3-1: `rg -c 'runtime の状態' docs/architecture/cmd-task-specs.md docs/architecture/ui-task-specs.md` が cmd-task-specs で 1、ui-task-specs で 3（baseline: 何も出さない、exit 1）。
+- AC-S3-2（読んで確かめる）: S3 の各注記が名指す symbol が、直した時点の `src-tauri/src`・`src` にある（`rg` で確かめる）。D-117 の後の形を今の build の振舞いと書いていない。
+- AC-S4-1: `rg -n '\.\./\.\./backlog\.md#やると決めたもの順番未定' docs/archive/plans/2026-09-15-display-fixes-batch-2.md docs/archive/plans/2026-09-23-stocktake-time-evidence-adr-revision.md docs/archive/harness-context/2026-09-30-Plans-completed.md` が何も出さない（exit 1。baseline は 3 行: display-fixes:327・adr-revision:94・Plans-completed:68）。
+- AC-S4-2: archive の plan を変えたときは path を名指しして確かめる（`docs/DEV_WORKFLOW.md` Plan Packet Rules）。`bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-09-15-display-fixes-batch-2.md` と `bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-09-23-stocktake-time-evidence-adr-revision.md` が exit 0 で、WARN が baseline を超えない（baseline: 前者は exit 0・WARN 1〈PK6、既存〉、後者は exit 0・WARN 0）。`docs/archive/harness-context/2026-09-30-Plans-completed.md` は plan でないので AC1 の全体の検査で link の先の file の実在を見る。anchor は checker が見ないので、直した link の anchor が link の先の file の見出しから作られることを読んで確かめる。
+- AC-S5-1: `rg -n 'UI-02-D17' docs/function-design/61-ui-receiving.md` が 1 行以上を出し、その行が TD-350 を引く（baseline: 何も出さない、exit 1）。
+- AC-S6-1: 次の command が何も出さない（exit 1。baseline は 3 行: 01-decision-rules:136・56:26・56:375）。
+
+  ```bash
+  rg -n -e 'canonical `通常`' -e 'CSV取込み完了 → 売上レポート' -e '防御的 if-else' docs/design-system/01-decision-rules.md docs/function-design/56-ui-daily-sales.md
+  ```
+
+- AC-S6b-1（読んで確かめる）: backlog の項目が S7 の残りだけを書き、(1)〜(5)・(7)・(8) の句が残っていない。外した理由（S2 の末尾・S5b）が本 packet にある。
+- AC-S6b-2: `rg -c '次の docs の lane の候補' docs/backlog.md` が 1 以下（S7 が全て Scope か別の lane へ行けば 0）。
+- AC-S9-1（新しい文言）: `git diff eed07d37...HEAD -- docs ':!docs/plans/**' | rg '^\+' | rg -n 'T[O]DO|T[B]D|F[I]XME|H[A]CK|未確[定]|要確[認]|要検[討]'` が何も出さない（exit 1）。文字の組の形は、本 packet の文が doc check の印の検査に当たらないようにするためで、探す語は 7 語のまま。
+
+## Design Readiness
+
+- 引用する設計正本（節まで）: decision-log の頭の「Status の書き方」と D-126（S1・S5b・S2 の末尾）、D-117 と [33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記・`docs/architecture/biz-task-specs.md` BIZ-04・`docs/architecture/io-task-specs.md` IO-04 の注記の形（S3）、[10](../function-design/10-common-rules.md) SPEC-UNIT-D8（S2-1）、[37](../function-design/37-biz-daily-report-import-service.md) §37.10・§37.11 と D-121（S2-4）、[61](../function-design/61-ui-receiving.md) §61.1・§61.10 と `docs/project-memory.md` の Store Premises（S5）、[DSR-22](../design-system/01-decision-rules.md)・[56](../function-design/56-ui-daily-sales.md)・`docs/SCREEN_DESIGN.md` の「主要な画面間遷移」（S6）。
+- 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。S5 は owner の決定（TD-350）を書き写す 1 行で、新しい設計の選択を持たない（Review Focus Q2）。
+- plan にしかない durable な判断の昇格先: 本 packet が決める判断は 2 つ。(1) S1 の各行で外す文の扱い（D-126 の適用。昇格先は decision-log の Status の行そのもの）、(2) (2) の decision-log の句と (5) を直さないこと（D-126 (3) の適用。backlog の項目から外し、理由は本 packet に残る）。どちらも規則の新設でなく既存の規則の適用。
+- 前提・制約と延期した gap: S7 の 3 つは owner の答えまで延期する。延期しても安全な理由: 本 lane は S7 の文を変えず、答えの前に正本の向きを決めない。
+- 絶対保証の自己点検: S3 の注記の「今の build は …」は `eed07d37` の code の現物（S3 の表の symbol）に基づき、実装の run が直す時点で `rg` で確かめ直す（AC-S3-2）。PLU の書出しの見直しの runtime が先に merge して symbol が消えたら、注記を足さずに「残す（runtime が merge 済み）」とする。
+- 判定: ready（S7 を除く）。
+
+## Registration / Generation Obligations
+
+| 変更対象 | 義務 | 本 lane |
+|---|---|---|
+| REQ / coverage の追加・変更・削除 | `cargo run --bin generate_traceability` で 90 を再生成 | REQ の参照は増減させない（S5 の行は 61 が既に持つ REQ-201 を引く）。AC3 の `--check` で確かめ、drift が出たら再生成して Scope に足す |
+| function-design doc の節 | `design_compliance_test` の必須節 | 節を足さず消さない（29・33・37・56・61 の文と表の行だけ）。AC3 で確かめる |
+| source / workflow doc 新設・改名・削除 | 親文書の目次・索引 | 本 packet の新設だけ（`docs/plans/` の dated packet で、索引は持たない。D-097） |
+
+ほかの行（Tauri command、route、operator 画面）は該当なし。
+
+## Impact Review Lenses
+
+not applicable: 起点は現地調査・実機確認・外部 tool の振舞いでなく、repo の中の docs と code の照合（lane 1・2a の Follow-up）。S5 の決まりは owner の決定（TD-350）で、店の事実は `docs/project-memory.md` の既存の行を引くだけ。
+
+## Boundary / Wire Contract
+
+変えない。JSON・CSV・config・manifest・DTO・bindings・DB に触れない。
+
+## Test Plan
+
+Test Design Matrix は置かない（R2 で任意。各段の AC が `rg` の件数と読んで確かめる項目で直した所を確かめる）。
+
+- targeted tests: AC3（`generate_traceability -- --check`・`design_compliance_test`）。code を変えないので Rust・frontend の test は足さない。
+- negative tests: AC-S1-1・AC-S2-1・AC-S4-1・AC-S6-1・AC-S9-1（旧い表現・禁じた語が残らないこと）、AC-S1-2・AC-S2-2（decision-log の本文を変えていないこと）。
+- compatibility checks: AC1・AC2・AC-S4-2（link の先の file の実在。anchor は読んで確かめる）。
+- data safety checks: `git diff --name-only eed07d37...HEAD` が docs の file だけで、店の運用の細部・実値・発言の原文を書いていない（S5 は TD-350 と project-memory の行を引くだけ）。
+- main wiring/integration checks: AC-S2-3（直した名前の参照が今の項目・節へ着く）、AC-S6b-1（backlog の項目の残りが S7 と合う）。
+
+起票の run の検証（AC1・AC2 と `bash scripts/check-workflow-git.sh`）の結果は PR の Validation の欄に書く。
+
+## Review Focus
+
+- S1: 各行で外す文が、出所でない（状態の語と出所の外）と言えるか。外した文の中身が「外す文の置き場」に本当にあり、今も効く中身を失っていないか（特に S1-2 の D-075 と S1-14 の D-109）。括弧の中に残す文（S1-6 の D-091 ほか）を出所と読んでよいか。
+- S2: (2) の decision-log の句を直さない根拠（D-126 (3)）が成り立つか。S2-4 の「設計は済んだ」の向きが D-121 と §37.10・§37.11 の現物と合うか。
+- S3: 注記の「今の build」が code の現物と合い、D-117 の後の形を実装済みと読ませないか。
+- S7: 選択肢に漏れが無いか、推奨の前提の区別（confirmed / precondition-dependent）が正しいか。
+- Q1（D-127）: この変更で不要になる記述・条件は無いか。例: S3 の注記は PLU の書出しの見直しの runtime の merge で消す対象になる（33 §16 の冒頭の注記と同じく、runtime の lane が外す）。S6b の backlog の項目は残りが無くなれば外す。
+- Q2（Plan Review で答える）: S5 は design の段（spec-check → design → plan-draft）を経るべきか。既定: 経ない。決定の中身は TD-350 が持ち、本 lane は正本へ書き写すだけで、設計の選択（画面の検査・文言を足すか）は TD-350 が「決まりを正本に置く」と決めている。
+
+## Implementation Results
+
+Fill after implementation.
+
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+## Review Response
+
+Fill after review.
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
