@@ -8,6 +8,7 @@
 |---|---|
 | import の保存 | `NewCsvImport` に `machine_no: String`・`settlement_no: i64` を足す（[POS](../db-design/pos-tables.md) の同名の契約）。既存の active hash の重複の判定と取消済みの再取込みは変えない |
 | active な Z004 の精算の一覧 | (conn) → completed / completed_partial の全件の import ID・`machine_no`・`settlement_no`・`settlement_date`（settlement_no の昇順）。BIZ-03 の識別・順の検査・欠けの知らせと、BIZ-02 の求め直し（取り込み済みの精算の並び）が使う。判定は BIZ が行う |
+| Z004 の取込みの machine_no | (conn) → 取り消したものを含む全ての Z004 の取込みの `machine_no`（重複なし）。BIZ-03 の順 2（[32](32-biz-csv-import-service.md)）が使う。今の一覧の読取りで足りれば新設しない（b1 の実装の S2 で決める） |
 | 同じ精算の active な取込みの取得 | (conn, machine_no, settlement_no) → active な import の ID と hash（0 件か 1 件。2 件以上は DbError ではなく BIZ が不整合として拒む） |
 | movement の保存 | Z004 の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no` を持つ（[21](21-io-inventory-repo.md) の `NewMovement` の並びの鍵） |
 
