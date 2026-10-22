@@ -398,6 +398,8 @@ fn commit_import(
 
 `old_jan_aliases` は、前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）に「ある」と答えた上書きの行の `{ product_code, old_jan }` の組（`OldJanAliasAnswer`、30 §4.8。`old_jan` は preview の `old_jan_question` の値をそのまま返す）。省略できる引数にはしない（UI は 1 つの build で常に送る。空の一覧が全て「ない」）。generated の呼出しは `commands.commitImport(validRows, overwriteCodes, oldJanAliases)`。CMD は検査を持たず BIZ に渡すだけ（形の検査と commit の判定は BIZ の §4.9 手順 0b・2 e.）。error の型・field・message・回復は 30 §4.9.2 の判定表（J1〜J7）が持ち、CMD は既存の変換（§22.3 の `ValidationFailedAt` の行と、40 §5.3 の `ValidationFailed → "validation"`）でそのまま写す: `ValidationFailedAt { message, field }` は kind `validation` で field を保ち（現物 `src-tauri/src/cmd/mod.rs` の `impl From<BizError> for CmdError` の `field: Some(field)`、test `test_cmd_error_req205_from_validation_failed_at_preserves_field`）、`ValidationFailed` は kind `validation`・field null になる。field `"old_jan_aliases"` が付くのは判定表の J6 だけ（増える wire はこの field の値だけ）。
 
+（proposed・未実装、D-118 の b1）確定の TX で行が共有 JAN の不変条件か在庫連動を始める検査に当たったときの error（kind `validation`、field null、最初に当たった行を名指す message で確定全体を戻す）と回復は [30](30-biz-product-service.md) の「計数の置き場と在庫の求め直しの契約」の節が持ち、CMD は既存の変換で写す。`ImportResult`（TS 名 `ProductImportResult`）の形は変えない。
+
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得
 2. biz::product_service::commit_import(&mut conn, valid_rows, overwrite_codes, old_jan_aliases) を呼ぶ

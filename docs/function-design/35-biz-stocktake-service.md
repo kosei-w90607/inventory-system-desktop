@@ -31,7 +31,7 @@
 | `uncounted` | 明細を参照する計数が無い。ただし、その時点で廃番かつ在庫（写し）が 0 の商品は対象外 |
 
 - message: 「棚卸しを完了できません。数え直し・未計数・取り込んでいない精算のある商品があります」。UI は `block_reason` ごとに一覧を出す。その日の最後の精算を取り込んでいないことは判定できない（ADR D6 の H2）ので、UI の完了の確認の文で確かめる（[73](73-ui-stocktake.md)）。
-- 未計数を片付ける操作: 「数を入れる」は通常の計数の保存。「0 にする」は `count_value=0`・`fresh=false` の計数の保存で、`business_date` は UI が選んだ日（既定は今日、今日より後は `ValidationFailed`。ADR D6）（`zero_uncounted_items(tx, stocktake_id, product_codes, business_date, today)` でまとめて保存できる。1 TX、商品ごとに求め直す）。帳簿の数とみなす操作（force_fill）は持たない。
+- 未計数を片付ける操作: 「数を入れる」は通常の計数の保存。「0 にする」は `count_value=0`・`fresh=false` の計数の保存で、`business_date` は UI が選んだ日（既定は今日、今日より後は `ValidationFailed`。ADR D6）（`zero_uncounted_items(tx, stocktake_id, product_codes, business_date, today)` でまとめて保存できる。1 TX、商品ごとに求め直す）。各計数は進行中の棚卸しの当該明細を参照する（`stocktake_item_id` に明細の id を入れる。参照しない計数では明細が「計数済み」にならず、完了が `uncounted` で拒み続ける）。選んだ商品のどれかが進行中の棚卸しの明細を持たなければ、何も書かずに `ValidationFailed`（「この商品は棚卸しの対象にありません: {商品コード}」）（b1 の Plan Review round 2 の是正）。帳簿の数とみなす操作（force_fill）は持たない。
 - 通れば、各明細の `valuation_cost_price_centi` にその時点の原価を、`valuation_quantity` に評価数量 `max(写しの在庫, 0)` を固定し、[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め) の関数（SPEC-STK-VAL-D1〜D6）で `total_cost` を求め、stocktakes の完了の時点のカーソル（`cutoff_settlement_no`〈取込みが無ければ NULL〉・`cutoff_count_id`）を保存し、header を completed にする。完了は在庫を動かさず、movement を作らない。数量と積和は checked 演算。
 - 完了した評価額は、後から入った記録（棚卸しの期間の日付を選んだ入出庫・後入力の計数・遅れて取り込んだ Z004）で変えない（非遡及）。差は示す（ADR SPEC-STK-CNT-D6、owner の決定 TD-296）: `get_stocktake_record` が、明細ごとに「完了の時点の在庫」を [31](31-biz-inventory-service.md) の `derive_stock` と同じ規則で今の記録から求め直す（計数は id ≤ `cutoff_count_id`、入出庫の movement は業務日 ≤ 完了日の全て〈カーソルで切らない。完了の前に保存した完了日の記録は `valuation_quantity` にも入っているので差に効かず、完了の後に入れた完了日以前の日付の記録が差になる〉、精算は精算日 < 完了日のものと、精算日 = 完了日で精算回数 ≤ `cutoff_settlement_no` のもの。完了日より後の日付の記録は入れない）。その `max(…, 0)` と `valuation_quantity` を、凍結した `valuation_cost_price_centi` でそれぞれ §20.5a の関数で評価し、丸めた後の総額を差し引いて参考の差とする（負の数量を関数に渡さない。読取りで求め、保存しない）。求め直した完了の時点の在庫が要再確認（範囲 lo〜hi）の明細は、差を確定の差と分け、「要再確認」の印と差の範囲（`max(lo,0)` と `max(hi,0)` をそれぞれ `valuation_quantity` と比べた幅、評価額も同じ 2 端で評価した幅）で示し、確定の差の合計に入れない（決まらない記録による差を確定の数として出さない）。差のある明細の一覧（確定の差と要再確認の差を分ける）と確定の差の合計を返す。完了した `total_cost`・`valuation_cost_price_centi`・`valuation_quantity` は書き換えない。
 
@@ -39,6 +39,18 @@
 
 - 明細の一覧は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（効く計数の値 − その計数に入っている記録だけから求めた帳簿。計数が無ければ NULL）を返す。差異は表示用で、在庫を動かさない。
 - 要再確認の一覧 `list_recheck_products(conn) -> Vec<CountRecoveryTarget>`（`stock_recheck=1` の商品。進行中の棚卸しに明細があれば action `active_count` と `stocktake_item_id`、なければ `count_now`）。棚卸しが無いときも読める（取込みの結果と同じ一覧を棚卸しの画面に出す。[73](73-ui-stocktake.md)）。一覧からの保存は fresh な計数で、`stocktake_item_id` があれば渡す（明細の `actual_count`・`counted_at` を置き換わった計数に揃える）。
+
+#### 操作ログ（b1 の Plan Review round 2 の是正）
+
+開始と完了は今のとおり COMMIT の後（TX の外）に 1 行ずつ書き、書けなければ警告だけにする。計数の保存と「0 にする」は操作ログを書かない（今の数の入力と同じ。計数は `stock_counts` に残る）。
+
+| operation_type | summary | detail_json の key |
+|---|---|---|
+| `stocktake_start` | 「棚卸しを開始しました（対象: {item_count}件）」（今のまま） | `stocktake_id`・`item_count`（`auto_filled_count` を外す。自動の 0 の入力をやめた） |
+| `stocktake_complete` | 「棚卸しを確定しました（差異: {difference_count}件、仕入原価総額: ¥{total_cost}）」（形は今のまま） | `stocktake_id`・`total_cost`・`total_items`・`difference_count`（`adjusted_count`・`force_fill_used` を外す。補正の movement と force_fill は無い） |
+
+- `difference_count` は、完了の時点の明細のうち、差異（上の「読取り」の差異を完了の時点のカーソルで求めた値。[65](65-inventory-record-traceability.md) の記録の詳細の差異と同じ値）が null でなく 0 でない明細の数。今の summary の「差異」は補正の movement を作った明細の数で、どちらも「数えた数が帳簿と違った商品の数」の意味を保つ（完了は在庫を動かさないが、差異は読取りで求まる）。
+- 記録済みの旧い detail（`adjusted_count`・`force_fill_used`・`auto_filled_count` を持つ行）は書き換えない。[74](74-ui-operation-logs.md) は operation_type の label だけを読み、detail の key を読まない。
 
 ### 20.0 現行buildの一時停止
 
