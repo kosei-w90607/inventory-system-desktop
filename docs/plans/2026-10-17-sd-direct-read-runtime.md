@@ -26,6 +26,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 2. spec-check → design（2026-10-17、起草役）: 対象の正本は 29 §29.2（IO-07-D5）・§29.7・§29.8、37 §37.3・§37.4・§37.9、45 §45.2〜§45.8、55 UI-07-D12・D15・D16、24 §14.14・§14.18a、pos-tables §12b、22。設計 lane の fresh Final broad の P3 4 件（`docs/backlog.md` の「SD 直読みの runtime」）と、起票で見つけた正本の穴（migration の手順が 22 に無い、IO-07-D5 の `i64` の範囲、UI-07-D16 の選択の一覧の細部と文言、37 §37.9 手順 10・45 §45.6a 手順 2a〈D-117〉の実装の lane）を、本 packet と同じ commit で正本に入れた（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役）: 上の更新は正本にあり、D-111 の決定の向きを変えない。未解決の設計の問いは無い。残る P1・P4（Contract Probe）は設計の問いではなく、L3 の前に確かめる未確認の前提（下の Contract Probe）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: main（`eed07d37`）への同期と、Scope・AC を今の code と migration の版へ当て直した（D-114 の 71 MNT-01-D10・§71.11.3 を前提として 29 §29.7.4 と IO-09-D3 を直した）。Contract Probe P1 (a)・P4 は合格（下の Contract Probe）、P1 (b) は未確認のまま。owner の判断事項は無い。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
+5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex は利用上限で 2026-10-24 まで使えず、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `881700ca` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 
 ## Owner Effort Budget
 
@@ -397,4 +398,10 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+round 1（`3d7c0111`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 3 / P3 8）。Codex は利用上限で使えず、§3.3 に従い Claude 側だけで round 1 とした。Coordinator が P2 3 件を現物で確かめ（`src/features/daily-report-import/reducer.ts` の `dismiss_error`、`src-tauri/src/biz/daily_report_import_service/tests.rs` の fixture の精算回数、S6 の外の注記）、11 件を全部採用した。相談役は省いた（R3、指摘が Scope の漏れ・fixture・注記で筋が明確）。是正は起草役の `881700ca`。
+
+- P2: 一覧へ戻る経路（`sd_list` と `sdOrigin` の持ち越し、`dismiss_error` の分岐、写しの失敗の分岐は変えない）、既存の BIZ test 8 本の束を別の精算回数に（assert は変えず、D4 の拒否は意図した変更と失敗定義に添えた）、S6 の外の注記と AC9 の広げ。
+- P3: 版の assert は 3 か所、`cfg(windows)` の FFI を Final Review と L3 の build の前の照合で見る（`THREAD_ERROR_MODE` を許可の列に。起草役が `DRIVE_REMOVABLE` の feature が `Win32_System_WindowsProgramming` にあることを見つけて足した）、path の判定を文字列の規則に、P1 の安全の主張を前提つきに、folder 名の定数を `io/mod.rs` に固定（PR #190 の所有表の文と同じ所）、取消の導線と行の直し方を Residual Risk と Open Questions に（AI review 由来で gate にしない）、L3 の合成の SD の tree を `#[ignore]` の生成の test で、source の検査の red の形を広げた。
+- 起草役が発注の外で直したもの: frontend の file の数（directory の中は 8）、上の feature。
