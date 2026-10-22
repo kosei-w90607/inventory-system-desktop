@@ -52,6 +52,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 3. design → plan-draft（2026-10-22、起草役、本 commit）: 上の 8 つを本 packet と同じ commit で正本に置いた（下の「本 commit で変えた正本」）。製品の振舞いで owner の判断が要る問いは 3 つあり、どれも b1 の契約を決める問いではない（下の「owner の判断事項」。(i) が A なら b1 の Scope を広げて design へ戻す）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-22、Coordinator、本 commit）: owner が判断事項 (i)〜(iii) に答えた（repo 外の回答台帳 TD-377〜TD-379。(i) B: D1 は b1 に入れず v1.0 の前のデザインの刷新で、(ii) A: 振替の `movement_type` は vZ に足さない、(iii) A: 返品・交換の `register_processed` の既定と TD-225 は b1 の外の小さな lane）。どれも推奨どおりで、b1 の Scope・契約は起票のまま。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate のまま是正（round 1、2026-10-22、Coordinator）: round 1 の reject を起草役が `9adc7047`・`097d319c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。owner が過去の取込みを記録から取り消す入口を導入の前の関門に入れた（repo 外の回答台帳 TD-380。b1 の範囲は変えない）。
+6. plan-gate のまま是正（round 2、2026-10-22、Coordinator）: round 2 の reject を起草役が `1688ccb9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 
 ## Owner Effort Budget
 
@@ -63,7 +64,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 |---|---|---|---|---|---|
 | 介入 | 9 | 4（2026-10-22: 起票の owner の判断事項 (i)〜(iii) の 3〈TD-377〜TD-379、1 回の問い合わせに束ねた〉、記録から取り消す入口を関門に入れる判断 1〈TD-380〉） | 4（実装の前の R4 の承認 1、L3 と最後の head の `r4` 1、Ready 1、merge 1） | 1（Plan Review の round の天井の判断か L3 の 2 round 目の 1。予備の 1 を TD-380 に使った） | 9 = 4 + 4 + 1 |
 
-owner の操作の回数を減らす工夫: (1) 起票の判断事項は 1 回の問い合わせに束ね、選択肢に推奨を付け、返事は記号 1 つで済む形にする。(2) L3 と最後の head の `r4` の承認を同じ 1 回で頼む（(a) と同じ）。(3) L3 の入力物（商品 CSV と合成の Z004）は repo の tracked の fixture（`tests/fixtures/z004/` の下。合成の値だけ）にし、Coordinator が Windows の path を省略しない形で台本と一緒に渡す（owner は file を作らない）。(4) L3 の項目を 1 本の通しの台本に並べ、前の段の結果を次の段の入力にする（計数 → 取込み → 要再確認 → 入れ直し → 完了 → 記録の詳細）。(5) L3 Eligibility の (3)（DB の手での改変や PC の時計の変更）に当たる項目は L3 に入れず、自動 test と Coordinator が渡す画面の写しで見る（下の Test Plan）。(6) Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
+owner の操作の回数を減らす工夫: (1) 起票の判断事項は 1 回の問い合わせに束ね、選択肢に推奨を付け、返事は記号 1 つで済む形にする。(2) L3 と最後の head の `r4` の承認を同じ 1 回で頼む（(a) と同じ）。(3) L3 の入力物（商品 CSV と合成の Z004）は S9 の tracked の生成の test から L3 の日に Coordinator が作り、L3 の DB も Coordinator が用意して差し替え（Test Plan の「L3 の DB の用意と差し替え」）、Windows の path を省略しない形で台本と一緒に渡す（owner は file も DB も作らない。round 2 の是正で生成の方式に合わせた）。(4) L3 の項目を 1 本の通しの台本に並べ、前の段の結果を次の段の入力にする（計数 → 取込み → 要再確認 → 入れ直し → 完了 → 記録の詳細）。(5) L3 Eligibility の (3)（DB の手での改変や PC の時計の変更）に当たる項目は L3 に入れず、自動 test と Coordinator が渡す画面の写しで見る（下の Test Plan）。(6) Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
 
 plan-approved は Coordinator が進める（TD-296 の 4a）。介入のたびに、やろうとしていることが全体を顧みない対症療法になっていないかを考え直す（TD-296 の 5a）。
 
@@ -855,3 +856,8 @@ round 1（`5ada58d3`）: Claude 側 fresh Opus 5.5 = reject（P2 4 / P3 4）、C
 - P2: 要再確認の範囲・単位を運ぶ型（`CountRecoveryTarget` に `stock_unit`・`stock`・範囲）、商品の修正では JAN を変えられない（J2 は在庫連動の開始だけ、JAN の向きは一括 import の上書き J3、L3-12 を一括 import の preview に）、L3 の台本を状態遷移の表と fixture の表に（生成は S9 の test、L3 の日に Coordinator が作る）、vZ・内部型で red になる既存 test（Matrix T10〜T12、予定 path 138）、確定の JAN の再照合のための preview の cache の契約（32）、過去の取込みの記録からの取消は正本に入口が無いので Non-scope（L3-10 は結果の画面の取消。TD-380 で関門の項目）、vZ の作り直しの後の失敗（Matrix M8・M9）。
 - P3: Z004 の確定は `insert_movement` → `recompute_stock`、M4 の NULL・`phase = 1` の拒否、`settlement_pending` の回復先の hint、予定 path と数え方と AC6 の rg。
 - 既知: Matrix の Z004 の行の記号 Z1〜Z16 と packet の「横断の約束」の Z1〜Z16 は別の記号系（起票の時点から。Matrix の冒頭に注記）。
+
+round 2（`e16b9eda`）: Claude 側 fresh Opus 5.5 = approve（P3 10）、Codex GPT-6 Astra（発注 497）= reject（P2 4 / P3 2）。重なりは 2 件（S9 の file の数 = Opus #9 / Codex #5、観測できない mutant C2・C5 = Opus #4 / Codex #6）と同じ筋の 1 件（外す出力の assert の移し方 = Opus #2 / Codex #3）。Coordinator が採否を決め、全件を採用した（Codex の P2 4 件と Opus #1・#7・#8 は現物で確かめた）。是正は起草役の `1688ccb9`（同型の穴の洗い出しで、完了を通す test の fixture、X1〜X3 の trace、`key_movement` の fixture、要再確認の一覧の再取得、W3・M7・L12・U15 の観測の手段を足した）。Owner Effort Budget の工夫 (3) の旧い fixture の方式は Coordinator が本 commit で直した。
+
+- P2: 一括 import の確定の TX で当たった行は最初の行を名指して確定全体を戻す（既存の `import_row_commit_error` の形、wire は変えない。30・42・60、J3）、Ordinary Operation と L3 の起点を vB の後に作った DB に（v9 の商品入りの DB は vB で止まり 22 §16 の作り直し）、L3 の DB は Coordinator が demo の seed で用意し差し替える、外す出力の assert を assert の単位で分けた（T2 の表、35 の操作ログの新契約）。
+- P3: C2・C5・K1 の観測の手段（C2 の TX の外は Final Review の code 読みへ）、S9 は 9 file・T7 は 22 か所、T1 の command を広げ 9 行、invalidation の source を D-052 の SSOT に（U15 は 12 entry）、`zero_uncounted_items` は明細を参照する、同じ CSV の新規の行どうしの JAN、`seed_demo` の `delete_all` に `stock_counts`、AC11 を docs 全体に、共有 JAN の拒否を `recount_required` より先に。
