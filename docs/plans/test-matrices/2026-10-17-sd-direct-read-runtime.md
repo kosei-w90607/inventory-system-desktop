@@ -1,6 +1,6 @@
 # Test Design Matrix: SD 直読みの runtime
 
-Plan Packet: [2026-10-17-sd-direct-read-runtime](../2026-10-17-sd-direct-read-runtime.md)。出発点は設計 lane の Matrix（`docs/archive/plans/test-matrices/2026-10-06-sd-direct-read.md`）で、全行を写し、2026-10-17 の HEAD `f5d7aaf4` の正本と現物で確かめ直した。足した行は「2026-10-17 追加」と書いた（IO-07-D5 の `i64` の範囲、§37.3 手順 9 の `sd_source_files`、BIZ-08-D5 の拒んだ束の写し、22 §17 の migration の詳細、UI-07-D16 の選択の一覧の細部、`selectFiles` を外すこと）。37 §37.9 手順 10 と 45 §45.6a 手順 2a（D-117 の占有の照合）の行は持たない（PLU の書出しの見直しの runtime の lane）。test 名は予定（新設）。既存の test として引用するものは `rg` で確かめた。test の SD の tree・Z の bytes はすべて合成で、名前の形だけを 2026-10-06 版での SD の採取（29 §29.7.2）に合わせる。oracle（固定の文・状態・path）は設計正本（29・37・45・55・22）から写し、実装の出力から作らない。2026-10-23 に main `eed07d37` を取り込んで当て直し、29 §29.7.4 手順 1 の 2026-10-23 の文（thread の error mode、71 MNT-01-D10 と共有する folder 名の定数）の行を足した（「2026-10-23 追加」）。
+Plan Packet: [2026-10-17-sd-direct-read-runtime](../2026-10-17-sd-direct-read-runtime.md)。出発点は設計 lane の Matrix（`docs/archive/plans/test-matrices/2026-10-06-sd-direct-read.md`）で、全行を写し、2026-10-17 の HEAD `f5d7aaf4` の正本と現物で確かめ直した。足した行は「2026-10-17 追加」と書いた（IO-07-D5 の `i64` の範囲、§37.3 手順 9 の `sd_source_files`、BIZ-08-D5 の拒んだ束の写し、22 §17 の migration の詳細、UI-07-D16 の選択の一覧の細部、`selectFiles` を外すこと）。37 §37.9 手順 10 と 45 §45.6a 手順 2a（D-117 の占有の照合）の行は持たない（PLU の書出しの見直しの runtime の lane）。test 名は予定（新設）。既存の test として引用するものは `rg` で確かめた。test の SD の tree・Z の bytes はすべて合成で、名前の形だけを 2026-10-06 版での SD の採取（29 §29.7.2）に合わせる。oracle（固定の文・状態・path）は設計正本（29・37・45・55・22）から写し、実装の出力から作らない。2026-10-23 に main `eed07d37` を取り込んで当て直し、29 §29.7.4 手順 1 の 2026-10-23 の文（thread の error mode、71 MNT-01-D10 と共有する folder 名の定数）の行を足した（「2026-10-23 追加」）。同じ日の Plan Review round 1 の是正で、reducer の SD から来たことの持ち越し（55 UI-07-D15 (5)）・path の文字列の判定（29 §29.7.4 手順 4）・source の検査の red の形・folder 名の定数の置き場の行を直し・足した（「round 1」）。
 
 ## Risk
 
@@ -52,8 +52,8 @@ Risk: R3
 | IO-09-D2 | 窓の外を返す・窓の中を落とす | unit | `register_sd::list_filters_by_from_month_and_date` | `from` = 2026-10-03 で `XZ\2026\09\` の Z が返る、`XZ\2026\10\Z001_03 .CSV` が返らない、`XZ` 直下の古い日付の EJ が返らない |
 | IO-09-D2 | `XZ_BKUP` が無いと失敗 / `XZ` が無いのに続ける | unit | `register_sd::list_area_presence` | `XZ_BKUP` の無い tree でエラー、`XZ` の無い tree で `MissingSalesArea` 以外 |
 | IO-09-D3 | SD に書く | unit | `register_sd::scan_leaves_tree_unchanged` | list と read の前後で、一時 tree の全 file の名前・size・内容の hash・更新時刻が 1 つでも変わる |
-| IO-09-D3 | 許可の列にない file system の API を使う | unit（source の検査） | `register_sd::module_uses_only_allowed_fs_api` | `src-tauri/src/io/register_sd.rs` の `std::fs` / `fs::` / `File::` / `OpenOptions` / `std::io::Write` / `windows_sys` の出現のどれかが、29 §29.7.6 IO-09-D3 の許可の列（`File::open`・`read_dir`・`metadata`・型の `File`・`ReadDir`・`DirEntry`・`Metadata`・`FileType`、`windows_sys` の `GetLogicalDrives`・`GetDriveTypeW`・`DRIVE_REMOVABLE`・`SetThreadErrorMode`・`SEM_FAILCRITICALERRORS`）の外にあるとき、または `File` の `set_len`・`set_modified`・`set_times`・`set_permissions` の呼出し、`use std::fs::*`、`use std::fs as` があるとき red にならない。mutant: module に `File::create(…)` を足す、`fs::copy(…)` を足す、`OpenOptions::new()` を足す、`use std::io::Write;` を足す、`file.set_modified(…)` を足す、のどれでも red |
-| 29 §29.7.4 手順 1・71 MNT-01-D10（2026-10-23 追加） | folder 名の文字列を IO-09 と MNT に二重に持つ | unit（source の検査） | `register_sd::register_sd_folder_name_has_one_definition` | `src-tauri/src` の各 `.rs` の `#[cfg(test)]` より前の部分で、文字列 literal の中の `SR500_550_4000` の出現（comment は数えない）が定数の定義の 1 か所でない（`mnt/backup.rs`・`mnt/offsite.rs` か `io/register_sd.rs` の本体に literal を足す mutant で red）。PC の外の控えの runtime が先に merge して同じ検査を置いていれば、その test を使い、本行は足さない |
+| IO-09-D3 | 許可の列にない file system の API を使う | unit（source の検査） | `register_sd::module_uses_only_allowed_fs_api` | `src-tauri/src/io/register_sd.rs` の `std::fs` / `fs::` / `File::` / `OpenOptions` / `std::io::Write` / `windows_sys` の出現のどれかが、29 §29.7.6 IO-09-D3 の許可の列（`File::open`・`read_dir`・`metadata`・型の `File`・`ReadDir`・`DirEntry`・`Metadata`・`FileType`、`windows_sys` の `GetLogicalDrives`・`GetDriveTypeW`・`DRIVE_REMOVABLE`・`SetThreadErrorMode`・`SEM_FAILCRITICALERRORS`・型 `THREAD_ERROR_MODE`〈round 1〉）の外にあるとき、または `File` の `set_len`・`set_modified`・`set_times`・`set_permissions` の呼出し、`use std::fs::*`、`std` の項目を `as` で改名する形（`use std::fs as f`・`use std::{fs as f}`・`use std::fs::{self as f}`・`use std::fs::File as F`・`use std::io::{Write as W}`。round 1）、書く関数を持つ module への参照（`pos_source_copy`・`mnt::`。round 1）があるとき red にならない。mutant: module に `File::create(…)` を足す、`fs::copy(…)` を足す、`OpenOptions::new()` を足す、`use std::io::Write;` を足す、`file.set_modified(…)` を足す、`use std::{fs as f};` を足す、`use std::fs::{self as f};` を足す、`use super::pos_source_copy;` を足す、のどれでも red |
+| 29 §29.7.4 手順 1・71 MNT-01-D10（2026-10-23 追加） | folder 名の文字列を IO-09 と MNT に二重に持つ | unit（source の検査） | `register_sd::register_sd_folder_name_has_one_definition` | `src-tauri/src` の各 `.rs` の `#[cfg(test)]` より前の部分で、文字列 literal の中の `SR500_550_4000` の出現（comment は数えない）が定数の定義の 1 か所（`src-tauri/src/io/mod.rs` の `pub(crate) const`。29 §29.7.4 手順 1、round 1）でない（`mnt/backup.rs`・`mnt/offsite.rs` か `io/register_sd.rs` の本体に literal を足す mutant、定義を `io/register_sd.rs` に移す mutant で red）。PC の外の控えの runtime が先に merge して同じ検査を置いていれば、その test を使い、本行は足さない |
 | IO-09-D3 | root の外を読む | unit | `register_sd::read_rejects_escaping_paths` | `..\x`・`C:\x`・`\x`・空の要素の相対 path で `InvalidPath` にならない |
 | IO-09-D3 | 上限を超えて全部読む | unit | `register_sd::read_stops_at_limit` | `max_bytes` + 1 byte の file で `TooLarge` にならない |
 | IO-09-D4 | 形を直して返す・測らない | unit | `register_sd::read_measures_shape` | BOM 付き・孤立 LF・孤立 CR・最終改行なし・CP932 でない byte 列のそれぞれで、該当の flag が立たない、または bytes が元と違う |
@@ -112,13 +112,16 @@ Risk: R3
 | UI-07-D15 (4) | 「ファイルを選び直す」で最初へ戻る | component（flow） | `DailyReportImportPage.sd.test.tsx` の選び直し | `sd_list` →「確認する」→ preview →「ファイルを選び直す」で `sd_list`（同じ一覧と「SD から読む」）に戻らない、または `idle` に戻る（SD から来たかの分岐を消す mutant で red）。UI は期限を確かめないので、期限の判定を UI に足す mutant も、30 分を過ぎた時刻の mock で一覧に戻らず最初へ行くので red |
 | UI-07-D15 (5) | 期限切れの scan で最初へ戻る・message で分岐する | component（flow） | `DailyReportImportPage.sd.test.tsx` の期限切れ | `parseAndValidateDailyReportFromSd` を kind `import_error`・固定の文「SD を読んでから時間がたちました。もう一度 SD を読んでください。」で失敗させたとき、error に固定の文が出ない、「戻る」で `sd_list` に戻らない、または一覧の上の「SD から読む」で `scanRegisterSd` が呼ばれない。kind `validation`（取り込めない候補）でも同じ `sd_list` に戻らない（kind・message で分岐する mutant で red） |
 | UI-07-D15 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
+| UI-07-D15 (5)（round 1） | SD から来た parse の失敗で最初へ戻る・手で選んだ失敗まで一覧へ戻す | unit | `reducer.test.ts` の `parse_failed` の分岐 | `sdOrigin` を持つ `parsing` で `parse_failed` → recoverTo が `sd_list` でない、previousState が同じ scan と scanToken の `sd_list` でない、`dismiss_error` で `sd_list` に戻らない（`dismiss_error` の `sd_list` の分岐を消す mutant で `idle`、red）。`sdOrigin` の無い `parsing` で recoverTo が `idle` でない |
+| UI-07-D15 (4)・BIZ-08-D5（round 1） | 写しの失敗の後に SD から来たことを落とす | unit | `reducer.test.ts` の `import_failed` の作り直し | `sdOrigin` を持つ `preview` → `confirm_import` → `import_failed`（recoverTo `preview`）→ `dismiss_error` の後の `preview` が同じ `sdOrigin` を持たない、その後の一覧へ戻る action で同じ scan の `sd_list` にならない（`import_failed` の作り直しで `sdOrigin` を落とす mutant で red）。`sdOrigin` の無い preview で一覧へ戻る action が状態を変える |
+| UI-07-D15 (4)・BIZ-08-D5（round 1） | 同上（画面） | component（flow） | `DailyReportImportPage.sd.test.tsx` の写しの失敗からの選び直し | `sd_list` →「確認する」→ preview →「取り込む」（`commitDailyReportImport` を kind `internal`・45 §45.7 の `SourceCopyFailed` の固定の文で失敗）→「戻る」→ 同じ preview →「ファイルを選び直す」の順で、同じ一覧（同じ行と「SD から読む」）に戻らない、file の dialog（`open`）が呼ばれる、または最初の画面に戻る |
 | UI-07-D16 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
 | UI-07-D16 (c)（2026-10-17 追加） | 系列の決まらない file・同じ系列の重複を足す | component | `DailyReportImportPage.files.test.tsx` の拒否 | `notes.CSV` を選ぶと一覧に足される、または「Z001・Z002・Z005 のどれかの名前のファイルを選んでください。」が出ない。1 回の dialog で `Z001_a.CSV` と `z001_b.csv` を選ぶと、どちらかが足される、または「Z001・Z002・Z005 は 1 つずつ選んでください（同じ種類のファイルが 2 つ以上あります）。」が出ない |
 | UI-07-D16 (d)（2026-10-17 追加） | 確かめずに置き換える・キャンセルで変える | component | `DailyReportImportPage.files.test.tsx` の置き換え | Z001 を選んだ後に別の Z001 を選ぶと、title「Z001 のファイルを置き換えますか？」・description「選んであった {前の file 名} を外して、{新しい file 名} を使います。」の dialog が出ない、「キャンセル」で一覧の Z001 の file 名が変わる、「置き換える」で新しい file 名にならない |
 | UI-07-D16 (a)（2026-10-17 追加） | 一覧が preview の後まで残る | component（flow） | `DailyReportImportPage.files.test.tsx` の一覧の寿命 | 3 つ選んで「確認する」→ preview →「ファイルを選び直す」で、前の 3 つが一覧に残っている |
 | UI-07-D16（2026-10-17 追加） | path を持たない `File` の入力が残る | unit（hook） | `useDailyReportImportFlow.test.tsx` の公開の API | hook の戻り値に `selectFiles` がある（55 UI-07-D16 で外した。既存の `selectFiles` を使う test は `chooseFiles` と dialog の mock に書き換え、assert の内容は弱めない） |
 | UI-07-D16 | dialog の path を捨てる | unit（hook） | `useDailyReportImportFlow.test.tsx` の payload | dialog が返した 3 つの path が、`parseAndValidateDailyReport` の各要素の `source_path` に入らない（今の `{ filename, file_bytes }` だけの payload のまま） |
-| IO-09（§29.7.4 手順 4） | SD の root の下かを誤る | unit | `register_sd::locate_in_roots_maps_paths` | root `E:\CASIO\SR500_550_4000` に対し、`e:\casio\sr500_550_4000\XZ\2026\10\Z001_06 .CSV` が `XZ\2026\10\Z001_06 .CSV` にならない。`E:\CASIO\SR500_550_4000X\a.CSV`（名前の前方一致だけ）・`C:\EcrDatas\a.CSV`・相対 path・`..` を含む path・空の root の列のどれかが `None` にならない |
+| IO-09（§29.7.4 手順 4） | SD の root の下かを誤る | unit（OS に依らない文字列の判定。`cfg(windows)` にしない、round 1） | `register_sd::locate_in_roots_maps_paths` | 同じ検査を 2 つの形で行う。Windows の形: root `E:\CASIO\SR500_550_4000` に対し、`e:\casio\sr500_550_4000\XZ\2026\10\Z001_06 .CSV` と `E:/CASIO/SR500_550_4000/XZ/2026/10/Z001_06 .CSV` が `XZ\2026\10\Z001_06 .CSV` にならない。一時 directory の形: root `/tmp/t/CASIO/SR500_550_4000` に対し、`/tmp/t/casio/SR500_550_4000/XZ/2026/10/Z001_06 .CSV` が同じ `relative_path` にならない。どちらの形でも、`…\SR500_550_4000X\a.CSV`（名前の前方一致だけ）・root の外（`C:\EcrDatas\a.CSV`・`/tmp/other/a.CSV`）・相対 path（`XZ\a.CSV`）・`..` を含む path・空の root の列のどれかが `None` にならない（`Path::components` で分ける mutant は Linux で Windows の形が red、`\` だけで分ける mutant は一時 directory の形が red） |
 
 ## State Lifecycle Matrix
 
@@ -162,11 +165,11 @@ Risk: R3
 - producer/consumer: BIZ-08 → CMD-12 → UI-07
 - round-trip token: scan_token、candidate_key（bundle_hash）
 - precision/range: 精算回数の先頭 0
-- cross-language parse: path の区切り `\`（Windows）と test の一時 directory
+- cross-language parse: path の区切り `\`（Windows）と test の一時 directory。`locate_in_register_sd_roots` は `\` と `/` の両方で区切る文字列の判定で、両方の形を同じ test が確かめる（29 §29.7.4 手順 4、round 1）
 
 ## Compatibility Checks
 
-- old schema/input: `settlement_no` NULL の既存行、手で選んだ 3 ファイル（既存の command）
+- old schema/input: `settlement_no` NULL の既存行、手で選んだ 3 ファイル（既存の command）。既存の BIZ の test のうち同じ日に別の bytes の束を取り込む 8 本は、束ごとに精算回数を分け、assert は変えない（packet の S3、round 1。同じ精算回数で別の bytes の束を拒むのは D4 の行が確かめる）
 - new schema/input: SD の候補からの preview
 - output order: 候補の並び（新しい順）
 - optional field behavior: `report_date` は読めた束だけ
@@ -177,7 +180,7 @@ Risk: R3
 - generated outputs: bindings は generator で再生成
 - secrets: 無し
 - local-only files: 実 SD の採取は repo 外
-- synthetic sample boundaries: 合成の Z は layout A の形で、値は合成
+- synthetic sample boundaries: 合成の Z は layout A の形で、値は合成。L3-1・L3-3 の USB の tree も同じ helper から `scan::write_l3_register_sd_tree`（`#[ignore]`、出力先 `INVENTORY_L3_SD_TREE_OUT`）で書く（packet の S3、round 1）
 
 ## Main Wiring / Integration Checks
 
@@ -195,12 +198,13 @@ Risk: R3
 - IO-09-D3 の source の検査は、許可の列の外の API（`File::create`・`fs::copy`・`OpenOptions`・`std::io::Write`・`set_modified`）を 1 つ足すと `module_uses_only_allowed_fs_api` が落ちる。
 - §37.3 手順 1a (iii) の在否の確認を外し、`locate` が `None` の file を PC 扱いにすると `manual_sd_file_removed_before_preview_is_rejected` が落ちる。
 - 写しの失敗を `import_error` に変えると `copy_failure_keeps_preview_token_for_retry` と flow の「写しの失敗からの再試行」が落ちる。
+- reducer の `import_failed` の preview の作り直しで `sdOrigin` を落とすと、`reducer.test.ts` の `import_failed` の作り直しの行と `DailyReportImportPage.sd.test.tsx` の写しの失敗からの選び直しが落ちる。`dismiss_error` の recoverTo `sd_list` の分岐を消すと `parse_failed` の分岐の行が落ちる（round 1）。
 - BIZ-08-D6 の 3 つの検査（scan の手順 7、preview の §37.3 手順 4、commit の §37.4 手順 2a）は、どれか 1 つを消すとその段の行（`bundle_without_settlement_no_is_unreadable`・`sd_bundle_without_settlement_no_is_rejected`・`commit_rejects_sd_cache_without_settlement_no`）が落ちる。検査の条件を「SD の経路」でなく全部の束にすると `manual_bundle_without_settlement_no_still_previews` が落ちる。
 - 大文字小文字の無視を外すと `list_classifies_observed_names` の `ej261004.txt` が落ちる。
 
 ## Residual Test Gaps
 
-- 実 SD の自動の発見（`DRIVE_REMOVABLE`）と、空の読取り機の口で error の dialog が出ないこと（29 §29.7.4 手順 1）は Windows の実機だけ（packet の L3-1）。test は `resolve_register_sd_root` と一時 directory で root を作る。自動 test は許可の列の source の検査が `SetThreadErrorMode` を許すことまでで、元の値へ戻すことは Final Review の source の読みで確かめる。
+- 実 SD の自動の発見（`DRIVE_REMOVABLE`）と、空の読取り機の口で error の dialog が出ないこと（29 §29.7.4 手順 1）は Windows の実機だけ（packet の L3-1）。test は `resolve_register_sd_root` と一時 directory で root を作る。自動 test は許可の列の source の検査が `SetThreadErrorMode` を許すことまでで、元の値へ戻すことは Final Review の source の読みで確かめる。`cfg(windows)` の本体（FFI の型・feature を含む）は hosted CI（ubuntu）でも WSL の `cargo check --release` でも compile されず、Final Review の FFI の読みと、L3 の build の前の Coordinator の照合で抑える（packet の Test Plan と Residual Risk、round 1）。
 - 取込み前の `XZ` の原本の形・精算回数が読めるか、取込みの後の file と同じ bytes か（SD-23）は自動 test にできない。packet の Contract Probe P1: (a)（形と精算回数）は 2026-10-23 に 2026-10-18 版での SD の写しで合格、(b)（bytes の比較）は未確認。
 - 規則に合わない名前の file が送信の失敗で増えるか（P4）は、packet の Contract Probe で 2026-10-23 に合格（増えたのは `XZ`・`XZ_BKUP` の外の file だけで、IO-09 は列挙しない）。設計は分岐しない（`Unknown` として数えるだけ）。
 - 店で読んだ後に SD をレジへ戻して精算できること（IO-09-D3 の実機の確認）は、本番の DB が無い今は店の運用に載らず、導入の時の確認へ送る（packet の L3 の表）。
