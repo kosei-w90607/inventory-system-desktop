@@ -108,6 +108,8 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 4. 行クリックで商品編集画面へ遷移
 5. 「新規登録」ボタンでUI-01bへ遷移（新規モード）
 
+> **runtime の状態**: 上は D-117 の後の形（採用済み）。今の build は、一覧に「PLU」の列（`src/features/products/components/ProductTable.tsx` の `ProductTable`。対象外 / 未反映 / 反映済み の Badge）を持ち、`src/features/products/ProductListPage.tsx` に PLU の絞り込み（URL の `plu`）と、絞り込みに一致する全件の一括更新（`commands.bulkSetPluTarget`、CMD-01 の `bulk_set_plu_target`）がある。外すのは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。
+
 ### UI-01b: 商品登録・修正
 
 **タスク要求**: 商品情報の入力・保存
@@ -135,6 +137,8 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 5. 保存 → バリデーション → 成功トースト → 一覧に戻る
 6. edit は memory No. を表示しない（D-117）。廃番解除で plu_target を自動復帰しない
 7. edit は第 5 セクション「価格履歴」で直近 10 件を表示し、「すべて表示」で 100 件を取得する。create では表示しない
+
+> **runtime の状態**: 上は D-117 の後の形（採用済み）。今の build は、edit で「レジメモリNo.」（`plu_memory_no`）を表示する（`src/features/products/ProductFormPage.tsx`）。外すのは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。
 
 ### UI-14: 一括価格改定
 
@@ -282,6 +286,8 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - `target_product_codes` は prepare 結果から保持し、confirm ではその exact set だけを送る
 - prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active を exact memory No. で確定する
 - Diff / Full とも CV17 へ投入できる。失敗時はどちらかを書き出し直す（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる）
+
+> **runtime の状態**: 上は D-117 の後の形（採用済み）。今の build の `src/features/plu-export/PluExportPage.tsx` は、利用者が `FilePicker`（`@/components/FilePicker`）で選んだ Z004 を `commands.importPluRegisterSnapshot`（CMD-08 の `import_plu_register_snapshot`）へ渡して占有を照合し、`get_plu_slot_summary` の件数の要約（`free_count`・`release_pending_count` ほか）を出し、`prepare_plu_export` の `over_limit_warning` を `overLimitWarning` に持つ。売上データ取込みの SD の読取りでの自動の照合はまだ無い（CMD-12 の `scan_register_sd` が無い）。操作フロー 1 の最終照合日時と操作フロー 2 の UI-08-D5 の SD の設定書込みの案内もまだ無い（今の画面は Z004 の「最終読込み日時」を出す）。撤去と SD の読取りでの照合への切替えは PLU の書出しの見直しの runtime（[33](../function-design/33-biz-plu-export-service.md) §16 の冒頭の「runtime の状態」の注記）。
 
 ### UI-09a/09b: 売上レポート画面群
 
