@@ -742,6 +742,7 @@ mod tests {
                 net_amount: Some(11000),
                 status: "completed".to_string(),
                 note: None,
+                settlement_no: None,
             },
         )
         .unwrap()

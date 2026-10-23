@@ -299,6 +299,7 @@ fn test_daily_report_req401_corrupt_same_date_source_files_metadata_fails_safe()
             net_amount: Some(1),
             status: "completed".to_string(),
             note: None,
+            settlement_no: None,
         },
     )
     .unwrap();

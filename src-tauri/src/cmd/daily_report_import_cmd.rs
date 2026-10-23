@@ -416,6 +416,7 @@ mod tests {
                 net_amount: Some(1),
                 status: "completed".into(),
                 note: None,
+                settlement_no: None,
             },
         )
         .unwrap();

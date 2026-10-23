@@ -11,6 +11,7 @@
 use super::migration_tx;
 use super::schema_v1;
 use super::schema_v10;
+use super::schema_v11;
 use super::schema_v2;
 use super::schema_v3;
 use super::schema_v4;
@@ -89,6 +90,11 @@ fn migrations() -> Vec<Migration> {
             version: 10,
             description: "原価を1/100円の列へ、単位から巻・cmを外す（作り直しの起点）",
             kind: MigrationKind::Custom(schema_v10::apply_v10_cost_centi_origin),
+        },
+        Migration {
+            version: 11,
+            description: "日報の束の精算回数の列（daily_report_imports.settlement_no）",
+            kind: MigrationKind::Sql(schema_v11::get_v11_daily_report_settlement_no_schema()),
         },
     ]
 }
@@ -754,7 +760,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 10);
+        assert_eq!(v1, super::app_max_version());
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -764,15 +770,20 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 10, "バージョンが変わってはいけない");
+        assert_eq!(
+            v2,
+            super::app_max_version(),
+            "バージョンが変わってはいけない"
+        );
 
-        // schema_versionsにレコードが10件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9 + v10）
+        // schema_versionsのレコードは v1 から最新の版までの連番の件数であること
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 10,
-            "マイグレーションレコードは10件（v1+v2+v3+v4+v5+v6+v7+v8+v9+v10）"
+            count,
+            super::app_max_version(),
+            "マイグレーションレコードは v1 から最新の版までの件数"
         );
     }
 
@@ -843,7 +854,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 10);
+        assert_eq!(version, super::app_max_version());
 
         for table_name in &[
             "daily_report_imports",
@@ -907,7 +918,10 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (10, 10));
+        assert_eq!(
+            (max_version, version_count),
+            (super::app_max_version(), super::app_max_version())
+        );
     }
 
     #[test]
@@ -923,7 +937,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 10);
+        assert_eq!(max_version, super::app_max_version());
         assert_eq!(slot_count, 4_784);
     }
 
@@ -1545,7 +1559,10 @@ mod tests {
         // REQ-903 / MNT-03-D13: 新規の DB（v1 から v8）と行 0 の v7 の DB で成功する
         let dir = tempfile::tempdir().unwrap();
         let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(max_version_and_count(&conn), (10, 10));
+        assert_eq!(
+            max_version_and_count(&conn),
+            (super::app_max_version(), super::app_max_version())
+        );
         // v8 の CHECK（12 個）は v8 まで当てた新規の DB で確かめる。最新の版の CHECK は vB の test（Matrix T1 (c)）
         let conn = Connection::open(dir.path().join("fresh-v8.db")).unwrap();
         super::migrate_up_to(&conn, 8).unwrap();
@@ -1684,7 +1701,10 @@ mod tests {
             drop(raw);
             let conn = init_database(dir.path().join("test.db").to_str().unwrap()).unwrap();
             assert_eq!(foreign_keys(&conn), 1);
-            assert_eq!(max_version_and_count(&conn), (10, 10));
+            assert_eq!(
+                max_version_and_count(&conn),
+                (super::app_max_version(), super::app_max_version())
+            );
             assert_eq!(
                 schema_version_rows(&conn)
                     .iter()

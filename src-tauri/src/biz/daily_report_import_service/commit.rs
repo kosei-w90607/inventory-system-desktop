@@ -108,6 +108,7 @@ fn execute_commit(
             net_amount: cached_preview.preview_data.totals.net_amount,
             status: "completed".to_string(),
             note,
+            settlement_no: None,
         },
     )?;
     let summary_rows: Vec<NewDailyReportSummaryLine> = cached_preview
