@@ -106,9 +106,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 値の行き先（変えない。`rg -n 'code_prefix' src-tauri/src src --glob '!src/lib/bindings.ts'` の 2026-10-23 の出力から）:
 
-- 作る所: `src-tauri/src/db/schema_v1.rs` の初期データだけ。`departments` を書く code は `product_repo` の `increment_next_seq`・`raise_next_seq`（`next_seq` だけ）で、`code_prefix` を書く経路は無い（`rg -n 'UPDATE departments' src-tauri/src` の出力は `product_repo.rs` の 2 つと、test の `next_seq` の UPDATE 2 つ）。後の migration（v2〜v10）は `departments` を作り直さない（`rg -n 'departments' src-tauri/src/db/schema_v*.rs` で v1 の外の hit は test の 2 つだけ）。
+- 作る所: `src-tauri/src/db/schema_v1.rs` の初期データだけ。`departments` を書く code は `product_repo` の `increment_next_seq`・`raise_next_seq`（`next_seq` だけ）で、`code_prefix` を書く経路は無い（`rg -n 'UPDATE departments' src-tauri/src` の出力は `product_repo.rs` の 2 つと、test の `next_seq` の UPDATE 2 つ）。後の migration（v2〜v10）は `departments` を作り直さない（`rg -n 'departments' src-tauri/src/db/schema_v*.rs` の v1 の外の hit は test〈v2・v10〉と外部キーの参照〈v4・v8・v10〉だけで、`departments` を書く・作り直す文は無い）。
 - 読む所: `src-tauri/src/db/product_repo.rs` の `Department`（`code_prefix: Option<String>`）と部門の 2 つの SELECT、`src-tauri/src/biz/product_service.rs` の `generate_custom_code`、frontend の `src/features/products/components/ProductForm.tsx`（「（独自コード可）」）と `src/features/products/lib/product-form-request.ts`（JAN が空で `code_prefix` が NULL なら止める）。
-- test の fixture・呼び方: Rust の test は `init_database` で実の v1 を当てる（`product_service.rs` の `setup_test_db`、`migration.rs` の test）。frontend の test は `makeMockDepartment` の mock で部門を作り、宅急便を使わない。`TK-` の商品コードを持つ fixture は無い（`rg -n '\bTK-[0-9]' src-tauri src docs --glob '!docs/archive/**'` は出力なし、exit 1）。demo の seed（`src-tauri/src/seed_demo.rs` の `DEPARTMENT_SEED_PLAN`）は部門 12 を使わない。
+- test の fixture・呼び方: Rust の test は `init_database` で実の v1 を当てる（`product_service.rs` の `setup_test_db`、`migration.rs` の test）。frontend の test は `makeMockDepartment` の mock で部門を作り、宅急便を使わない。`TK-` の商品コードを持つ fixture は無い（2026-10-23、`8748d781` で `rg -n '\bTK-[0-9]' src-tauri src docs --glob '!docs/archive/**' --glob '!docs/plans/**'` は出力なし、exit 1。`docs/plans/**` を除くのは本 packet と Matrix が `TK-0001` を例に書くため）。demo の seed（`src-tauri/src/seed_demo.rs` の `DEPARTMENT_SEED_PLAN`）は部門 12 を使わない。
 
 既存の部門 12 の商品の扱い:
 
@@ -215,7 +215,7 @@ Test Design Matrix: [2026-10-23-dept12-code-prefix](test-matrices/2026-10-23-dep
 - data safety checks: 合成の DB（`tempfile` と `init_database`）だけ。実の DB・店の値を読まない。
 - main wiring/integration checks: C1・C2 は `init_database` で実の v1 を当てた DB で走り、mock の部門を使わない。
 
-L3 は置かない（上の「owner の判断事項」の既定）。`cargo check --release` は L3 の build の前の Writer の完了条件なので、L3 が無い本 lane では要らない。
+L3 は置かない（上の「owner の判断事項」の既定）。Human Visual Confirmation For Screen Changes（`docs/DEV_WORKFLOW.md`）も当たらない: 画面の code・route・文言を変えず、変わるのは部門 12 の option の「（独自コード可）」の有無というデータの値だけで、operator-facing の画面を作る・実質的に変える PR ではない（NULL の部門の表示は C3 が守る）。`cargo check --release` は L3 の build の前の Writer の完了条件なので、L3 が無い本 lane では要らない。
 
 ## Review Focus
 
