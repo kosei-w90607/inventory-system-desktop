@@ -8,7 +8,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 7883545fe67cb8f4d4de8c2de109c5e691c62d05
 - Amendments: none
@@ -31,6 +31,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 7. plan-gate のまま是正（round 3〈天井〉、2026-10-23、Coordinator、本 commit）: round 3 の Claude 側 fresh Opus 5.5 の reject を起草役が `1c154230` で直した（下の Review Response）。round 4 は回さず、Coordinator の disposition（4 件の一括是正）の後に closure（fresh Opus 5.5 + Codex。Codex は round 3 で未実施なので、是正の後の版の全体を見る）に出す。P1/P2 = 0 なら plan-approved へ進める。
 8. plan-gate のまま是正（closure、2026-10-23、Coordinator、本 commit）: closure の Codex 側の reject（P2 1）を起草役が `8fef2a03` で直した（下の Review Response）。path の包含の規則で、`CLAUDE.md` が安全境界（path traversal）の review を Claude の subagent に出さないと定めるので、是正の後の確かめは Codex の closure と Coordinator の inline の review で行う（inline は fresh context でないので Final Review の本数に数えない）。
 9. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: closure は Claude 側 fresh Opus 5.5 = approve（`499da80d`）、Codex = closure 2 回目 approve（`7883545f`、P1/P2/P3 0）、Coordinator の inline の review（`8fef2a03` の link 先の包含）で、P1/P2 = 0（下の Review Response）。Plan Commit は Codex の closure が監査した `7883545f`。Contract Probe P1 (b) は L3 の前の必須（AC10）で、plan-approved の条件ではない。implementing へは、並走の PR #188（migration vZ、同じ file の重なり）と実装の Writer の枠を見て Coordinator が進める。
+10. plan-approved → implementing（2026-10-24、Coordinator、本 commit）: main（`843c4938`、PR #192・#195・#191 と closeout の後）を単段で取り込み（衝突なし。PR #191 で `identifier` が `com.inventory-system.desktop` に変わったが、本 lane の docs・code に前の名の hit は無い）、AC5・AC6・AC9 の rg の baseline を逐語で再測して上の値と一致した（AC5・AC6 は hit 0、AC9 は 14 件・10 件・1 件）。cargo と npm の test の baseline は実装の Writer が着手時に取る。実装の Writer に Scope の S1 から発注する。
 
 ## Owner Effort Budget
 
