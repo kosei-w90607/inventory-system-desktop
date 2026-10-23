@@ -250,7 +250,28 @@ N/A: 外部の library・OS・hardware の前提に依らない。repo の中の
 
 ## Implementation Results
 
-（実装の後に書く。exact-HEAD の SHA と test の数は書かない。）
+2026-10-23、実装の Writer（Opus 5.5 subagent）。
+
+- 実装: `schema_v1.rs` の部門 12 の `'TK'` を `NULL` にした。C1 `test_initial_departments_req903_data`（`migration.rs`、2 行の標本を master-tables §2 から写した 21 行の全列の比較に置き換え）、C2 `test_create_product_req101_takkyubin_rejects_custom_code`（`product_service.rs`、FUNC-4.3 の最初の test 群の後）。本体の code・migration の版は変えていない。
+- 赤の確かめ: C1・C2 を書いて literal を直す前（M1 と同じ状態）に走らせ、両方 FAILED（C2 は `Ok(... product_code: "TK-0001" ...)`、C1 は部門 12 が `Some("TK")`）。literal を直して両方 ok。
+- 感度（AC-4。clean な tree に `schema_v1.rs` の literal を 1 つずつ注入し、`git checkout` で戻して `git diff --exit-code` が 0）: M1（部門 12 を `'TK'`）= C1・C2 FAILED。M2（部門 12 を `''`）= C1・C2 FAILED。M3（部門 2 の `'HZ'` を NULL）= C1 FAILED（C4 の `test_generate_custom_code_req101_normal` も FAILED、C2 は ok）。戻した後は 3 つとも ok。
+- 実装の run で変えた正本: 22 §3.3 MNT-03-D21 の範囲に 1 文（直す前に作った DB を見分けて止まる検査は無く、残す DB の有無は初回の導入の前に確かめる。round 1 の P3 F1）。
+- 申し送り: 初回の導入の前に残す DB が無いことを確かめる手順は、MSI の lane（PR #191）の runbook が所有する（本 lane では書かない。MNT-03-D21 の範囲の文）。
+- 生成物: `cargo run --bin generate_traceability` で `90-traceability.md` を再生成（REQ-101 の行に C2 が加わる 1 行の差分）、別 commit。
+
+| AC | command | 結果 |
+|---|---|---|
+| AC-1 | `rg -n "'TK'" src-tauri/src/db/schema_v1.rs` / `rg -c "\(12, '宅急便', +'宅急便', +NULL," src-tauri/src/db/schema_v1.rs` | 出力なし exit 1 / `1` exit 0。PASS |
+| AC-2 | `cd src-tauri && cargo test --lib test_initial_departments_req903_data` | exit 0、1 passed。PASS |
+| AC-3 | `cd src-tauri && cargo test --lib test_create_product_req101_takkyubin_rejects_custom_code` | exit 0、1 passed。PASS |
+| AC-4 | 上の感度の M1〜M3 | 期待どおり red、戻して green。PASS |
+| AC-5 | `cargo fmt --check` / `cargo clippy --all-targets --all-features -- -D warnings` / `cargo test` / `cargo run --bin generate_traceability -- --check` | 4 つとも exit 0（`cargo test` は全 suite で failed 0、traceability は ERROR 0 / WARN 0）。PASS |
+| AC-6 | `bash scripts/doc-consistency-check.sh` / `--target plan docs/plans/2026-10-23-dept12-code-prefix.md` / `rg -c 'MNT-03-D21' docs/function-design/22-mnt-migration.md` | exit 0（ERROR なし、WARN は 22 の原価の節〈§3.3 の外〉の既存の 12）/ exit 0（ERROR なし、WARN 1 は `## Review Response` の round 1 の段落の M3 マーカー）/ `1`。PASS |
+| AC-7 | `git diff --name-only origin/main...HEAD` | 22・90・本 packet・Matrix・`product_service.rs`・`migration.rs`・`schema_v1.rs` の 7 path。PASS |
+
+追加の検査: `cargo test --test design_compliance_test` exit 0、`bash scripts/check-workflow-git.sh` exit 0。
+
+round 1 の P3 F4（`docs/ARCHITECTURE.md` §4 の宅急便部門の項を外す）は本 run で行っていない: 本 packet の非目的・Non-scope（ARCHITECTURE §4 の決まった項目の整理）と AC-7 の 7 path に当たるため。扱いは Coordinator が決める。
 
 ## Review Response
 
