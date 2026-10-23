@@ -224,6 +224,7 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
 | `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
 | `OffsiteError::Redirected` | `validation` | 「この USB メモリの InventoryBackup フォルダは別の場所へのリンクのため使えません」 |
+| `OffsiteError::BackupDirIsMediumFolder` | `validation` | 「PC の中の保存先が、USB メモリの InventoryBackup フォルダと同じです。「保存先を選ぶ」で PC の中の別のフォルダを選び直してください」（用意・確認と §43.8.8 で同じ文。MNT-01-D11） |
 | `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
 | `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした。「記録を作り直す」を押してください」 |
 | `OffsiteError::StateUnsupported` | `validation` | 「PC の外の控えの記録は新しい版のアプリが書いたものです。新しい版のアプリを入れてください」 |
@@ -235,7 +236,15 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 
 `check_offsite_backup` の失敗の種類は、UI が文言を分けるために `OffsiteBackupStatus.last_failure_kind`（43.8.4）から読む。`CmdError.message` の文字列で分けない（MNT-01-D4 と同じ方針）。
 
-**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field のうち、件数〈`product_count`。1 つの SQLite の DB の行の数で、DB の大きさの上限〈約 281 TB、https://www.sqlite.org/limits.html 〉から 2^53 に届かない〉と日数〈`days_since_last_success`。chrono の日付の差〉は JS の安全な整数の範囲に収まる。版〈`BackupInspection.schema_version`・`app_max_version`〉は外の DB の値で範囲を仮定せず、UI は判定にも表示にも使わない〈戻せるかの判定は MNT の `newer_than_app`、71 §71.12。UI-11b-D15 の文は版の数を出さない〉）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（7 値）・`BackupInspection` は 71 §71.11.1・§71.11.2・§71.11.4・§71.11.5・§71.12 の定義のまま。
+**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field のうち、件数〈`product_count`。1 つの SQLite の DB の行の数で、DB の大きさの上限〈約 281 TB、https://www.sqlite.org/limits.html 〉から 2^53 に届かない〉と日数〈`days_since_last_success`。chrono の日付の差〉は JS の安全な整数の範囲に収まる。版〈`BackupInspection.schema_version`・`app_max_version`〉は外の DB の値で範囲を仮定せず、UI は判定にも表示にも使わない〈戻せるかの判定は MNT の `newer_than_app`、71 §71.12。UI-11b-D15 の文は版の数を出さない〉）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（8 値）・`BackupInspection` は 71 §71.11.1・§71.11.2・§71.11.4・§71.11.5・§71.12 の定義のまま。
+
+### 43.8.8 check_backup_dir_choice（保存先に選ぼうとする folder の確かめ、D-130、MNT-01-D11）
+
+| 入力 → 出力 | 処理 |
+|---|---|
+| `BackupDirChoiceRequest { selected_path: String }` → `null` | `mnt::offsite::check_backup_dir_choice(Path::new(&selected_path))`（71 §71.11.5c）を呼ぶだけ。DB を使わない（lock を取らない）。設定を保存しない（保存は UI が `Ok` の後に §43.4 の `update_setting` で行う、68 §68.4 の backup_path 変更）。空の `selected_path` は `validation`。`OffsiteError::BackupDirIsMediumFolder` は上のエラーの写像の表の同じ行の `validation` |
+
+drive の列挙をするので、§43.8.2〜§43.8.7 の「実行の thread」と同じく `#[tauri::command(async)]` + `#[specta::specta]` で定義する。`update_setting` に `backup_path` の key だけの分岐を足さないのは、`update_setting` が key に依らない設定の保存の入口（BIZ-09）で、main thread で動く既存の command の実行 thread を変えないため。
 
 ---
 
@@ -309,7 +318,7 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
 ])
 ```
 
-D-114 の 6 command（§43.8.2〜§43.8.7）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
+D-114 の 6 command（§43.8.2〜§43.8.7）と D-130 の 1 command（§43.8.8）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 
