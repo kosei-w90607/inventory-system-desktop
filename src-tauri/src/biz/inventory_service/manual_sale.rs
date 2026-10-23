@@ -283,7 +283,6 @@ pub fn create_manual_sale(
             &tx,
             &item.product_code,
             &req.sale_date,
-            None,
             -item.quantity,
             MovementType::SaleManual,
             ReferenceType::ManualSale,

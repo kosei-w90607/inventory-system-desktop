@@ -57,6 +57,8 @@ pub struct CsvParseAndValidateRequest {
     pub file_bytes: Vec<u8>,
     /// ファイル名（csv_imports.filename に記録する表示用）
     pub filename: String,
+    /// CMD が渡す PC の今日（YYYY-MM-DD。精算日が今日より後の知らせ。BIZ は時計を読まない）
+    pub today: String,
 }
 
 /// parse_and_validate の結果
@@ -70,6 +72,8 @@ pub struct ParseValidateResult {
     pub matched_rows: Vec<MatchedRow>,
     /// CMD層がキャッシュに保存する（フロントエンドには返さない）
     pub error_rows: Vec<ErrorRow>,
+    /// CMD層がキャッシュに保存する（順 1 を通った精算の識別メタ）
+    pub settlement: CachedSettlement,
 }
 
 /// フロントエンドに返すプレビューデータ
@@ -78,7 +82,10 @@ pub struct PreviewData {
     pub file_info: FileInfo,
     pub matched_summary: MatchedSummary,
     pub error_summary: ErrorSummary,
-    pub duplicate_check: DuplicateCheck,
+    /// 知らせ (a): 取り込まれていない精算回数の区間（昇順。取込みを止めない）
+    pub settlement_gaps: Vec<SettlementGap>,
+    /// 知らせ (b): 精算日が PC の今日より後
+    pub settlement_date_after_today: bool,
     pub preview_created_at: String,
 }
 
@@ -112,43 +119,20 @@ pub struct ErrorSummary {
     pub items: Vec<ErrorRow>,
 }
 
-/// 重複チェック結果
-#[derive(Debug, Clone, Serialize, specta::Type)]
-pub struct DuplicateCheck {
-    pub status: DuplicateStatus,
-    pub same_date_imports: Vec<SameDateCsvImportSummary>,
-}
-
-#[derive(Debug, Clone, Serialize, specta::Type)]
-pub struct SameDateCsvImportSummary {
-    pub id: i64,
-    pub filename: String,
-    pub total_items: i64,
-    pub total_amount: i64,
-    pub imported_at: String,
-}
-
-/// 重複チェックのステータス
-#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
-pub enum DuplicateStatus {
-    /// 問題なし
-    NoDuplicate,
-    /// 同settlement_date、別ファイル → 追加確認
-    AdditionalImportConfirmationRequired,
-}
-
-/// マスタ照合成功行（サーバ側キャッシュに保持、フロントエンドには送らない）
+/// マスタ照合成功行（サーバ側キャッシュに保持、フロントエンドには送らない。32「preview の cache の契約」）
 #[derive(Debug, Clone)]
 pub struct MatchedRow {
     /// Z004の行番号（1始まり）
     pub line_no: usize,
-    /// 紐付いた商品コード
+    /// IO-02 が正規化した 13 桁の JAN（確定の TX の照合に使う）
+    pub normalized_jan: String,
+    /// preview で引き当てた先頭の商品コード
     pub product_code: String,
-    /// 売上帳票視点の値。正=販売、負=返品
-    pub quantity: i32,
+    /// preview の時点でその JAN を持つ商品が 2 つ以上
+    pub shared_jan: bool,
+    /// 在庫の数量に換えた後の値（長さの商品は × 100 の cm）。売上帳票視点、正=販売、負=返品
+    pub quantity: i64,
     pub amount: i32,
-    /// 紐付いた商品の pos_stock_sync フラグ
-    pub pos_stock_sync: bool,
 }
 
 /// エラー行（フロント送信 + キャッシュ兼用）
@@ -169,10 +153,18 @@ pub struct ErrorRow {
 /// commit_csv_import のリクエスト（CMD層が組み立て）
 #[derive(Debug)]
 pub struct CommitRequest {
-    /// 同日追加取込み確認済みフラグ
-    pub additional_import_confirmed: bool,
     /// CMD層がキャッシュから復元したデータ
     pub cached_data: CachedPreview,
+    /// CMD が渡す PC の今日（知らせのため）
+    pub today: String,
+}
+
+/// 精算の識別メタ（parse の時点で順 1 を通った値。確定の TX はこれで順 1〜5 を取り直す）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedSettlement {
+    pub machine_no: String,
+    pub settlement_no: i64,
+    pub settlement_date: String,
 }
 
 /// サーバ側メモリキャッシュ（CMD層の AppState で管理）
@@ -184,8 +176,7 @@ pub struct CachedPreview {
     pub error_rows: Vec<ErrorRow>,
     /// フロントエンドに返した内容のコピー
     pub preview_data: PreviewData,
-    /// preview 時点の同日 active import ID snapshot（表示順）
-    pub active_same_date_import_ids: Vec<i64>,
+    pub settlement: CachedSettlement,
 }
 
 /// commit_csv_import の結果
@@ -197,6 +188,10 @@ pub struct ImportResult {
     pub total_items: i64,
     pub total_amount: i64,
     pub skipped_count: i64,
+    pub settlement_gaps: Vec<SettlementGap>,
+    pub settlement_date_after_today: bool,
+    /// 求め直しの後に要再確認になった商品（40）
+    pub recheck_targets: Vec<crate::biz::stocktake_service::CountRecoveryTarget>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
@@ -249,19 +244,12 @@ pub struct CsvImportRecordDetail {
     pub movements: Vec<crate::db::inventory_repo::MovementRecord>,
 }
 
-/// rollback_csv_import の結果
+/// rollback_csv_import の結果（補償の movement は作らない。ADR D7）
 #[derive(Debug, Serialize, specta::Type)]
 pub struct RollbackResult {
     pub success: bool,
     pub voided_sale_count: u64,
     pub voided_movement_count: usize,
-    pub stock_corrections: Vec<StockCorrection>,
-}
-
-/// 在庫補正の詳細（rollback結果に含まれる）
-#[derive(Debug, Clone, Serialize, specta::Type)]
-pub struct StockCorrection {
-    pub product_code: String,
-    pub old_stock: i64,
-    pub new_stock: i64,
+    /// 求め直しの後に要再確認になった商品（40）
+    pub recheck_targets: Vec<crate::biz::stocktake_service::CountRecoveryTarget>,
 }

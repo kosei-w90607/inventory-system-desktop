@@ -1102,4 +1102,56 @@ mod tests {
         settlement(&conn, 100, D);
         assert_eq!(derive_stock(&conn, "SL13").unwrap(), derived(5, None, &[]));
     }
+
+    #[test]
+    fn test_stock_ledger_req205_req401_recompute_targets_for_settlement_change() {
+        // REQ-205 / REQ-401 / ADR SPEC-STK-CNT-D2 の横断の表（Z004 の確定・取消の求め直し）/ b1 Matrix L12:
+        // 求め直す商品 = 計数を持つ全ての商品 + その取込みの売上か movement を持つ全ての商品（連動の on / off を問わない）。
+        // 写しをわざと記録から食い違わせ、求め直しの後に derive_stock と一致することで観測する
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "SL12-COUNTED");
+        seed_product(&conn, "SL12-UNLINKED");
+        seed_product(&conn, "SL12-OTHER");
+        insert_count(&conn, "SL12-COUNTED", 5, "2026-04-01", None);
+        let import_id = settlement(&conn, 1, "2026-04-02");
+        z004_sale(&conn, "SL12-UNLINKED", import_id, 1, 100, false);
+        let desync = |conn: &DbConnection| {
+            conn.execute(
+                "UPDATE products SET stock_quantity = 77 WHERE product_code LIKE 'SL12-%'",
+                [],
+            )
+            .unwrap();
+        };
+        let copy = |conn: &DbConnection, code: &str| -> i64 {
+            conn.query_row(
+                "SELECT stock_quantity FROM products WHERE product_code = ?1",
+                [code],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        for rolled_back in [false, true] {
+            if rolled_back {
+                roll_back(&conn, import_id);
+            }
+            desync(&conn);
+            let tx = conn.transaction().unwrap();
+            let codes: Vec<String> = recompute_for_settlement_change(&tx, import_id)
+                .unwrap()
+                .into_iter()
+                .map(|(code, _)| code)
+                .collect();
+            tx.commit().unwrap();
+            assert_eq!(codes, vec!["SL12-COUNTED", "SL12-UNLINKED"]);
+            for code in ["SL12-COUNTED", "SL12-UNLINKED"] {
+                assert_eq!(
+                    copy(&conn, code),
+                    derive_stock(&conn, code).unwrap().stock,
+                    "{code}"
+                );
+            }
+            // 計数も取込みの行も持たない商品は求め直さない
+            assert_eq!(copy(&conn, "SL12-OTHER"), 77);
+        }
+    }
 }

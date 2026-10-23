@@ -109,6 +109,9 @@ pub struct NewCsvImport {
     pub total_amount: i64,
     pub skipped_count: i64,
     pub status: String,
+    /// 精算の鍵（pos-tables。Z004 の確定だけが作る）
+    pub machine_no: String,
+    pub settlement_no: i64,
 }
 
 /// csv_import_errors INSERT用（created_at は自動設定）
@@ -378,8 +381,9 @@ pub(crate) fn list_linked_sale_import_ids(
 pub fn insert_csv_import(conn: &DbConnection, record: &NewCsvImport) -> Result<i64, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at,
+             machine_no, settlement_no)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         rusqlite::params![
             record.filename,
             record.settlement_date,
@@ -389,6 +393,8 @@ pub fn insert_csv_import(conn: &DbConnection, record: &NewCsvImport) -> Result<i
             record.skipped_count,
             record.status,
             now,
+            record.machine_no,
+            record.settlement_no,
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -1617,8 +1623,9 @@ mod tests {
 
         // csv_imports にダミーレコードを作成
         conn.execute(
-            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
-             VALUES ('Z004_test', '2026-04-06', 'abc123', 1, 500, 0, 'completed', '2026-04-06T00:00:00')",
+            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at,
+                 machine_no, settlement_no)
+             VALUES ('Z004_test', '2026-04-06', 'abc123', 1, 500, 0, 'completed', '2026-04-06T00:00:00', '0001', 1)",
             [],
         ).unwrap();
         let csv_id = conn.last_insert_rowid();
@@ -1714,6 +1721,8 @@ mod tests {
             total_amount: 5000,
             skipped_count: 0,
             status: status.to_string(),
+            machine_no: "0001".to_string(),
+            settlement_no: 1,
         };
         insert_csv_import(conn, &record).unwrap()
     }
@@ -1943,8 +1952,8 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
-                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 0)",
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase, settlement_no)
+                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 1, 1)",
                 rusqlite::params![reference_id, is_voided, created_at],
             )
             .unwrap();
@@ -2055,8 +2064,8 @@ mod tests {
 
         // inventory_movements に直接INSERT（テスト用）
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
-             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase, settlement_no)
+             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 1, 1)",
             rusqlite::params![import_id],
         ).unwrap();
 
@@ -2084,8 +2093,8 @@ mod tests {
         seed_product(&conn, "INV7-P1");
 
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
-             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase, settlement_no)
+             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 1, 1)",
             [],
         ).unwrap();
 
