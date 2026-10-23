@@ -12,7 +12,7 @@ Risk: R3
 - `list_movements` が movement と計数を 1 つの履歴に混ぜ、ADR D1 の鍵の降順で返し、業務日と種別で絞り、混ぜた後にページを切り、計数の元記録を棚卸しの記録に結ぶ（44 の D-118 の b2 の節、65 の D-118 の節）。`MovementRecord` の形は変えない。
 - 4 画面（商品一覧・在庫照会の一覧と詳細・商品フォームの修正・在庫変動の見出し）が、要再確認の商品で範囲「{low}〜{high}」と「要再確認」の①状態の badge（文字と icon）を出し、要再確認でない商品は今の 1 つの値のまま（ADR D3、50・51・58・66）。在庫少の判定・並べ替え・ホームの件数は写しのまま（50・58）。
 - 在庫照会の詳細と在庫変動の見出しが、要再確認の商品で理由（b1 の `list_recheck_products` の当該の target）と棚卸しの画面への link の案内を出す（58・66、packet の owner の判断事項 (ii)）。
-- 在庫変動の表が計数の行を 65 の文で出し、「日付」の列に業務日と保存の日時と精算回数を出す（66）。
+- 在庫変動の表が計数の行を 65 の文で出し、計数の数を行の `count.stock_unit` で描き（商品情報の取得が失敗しても単位が付く）、「日付」の列に業務日と保存の日時と精算回数を出す（44・66）。
 
 ## Failure Modes
 
@@ -23,6 +23,7 @@ Risk: R3
 - 計数の元記録が棚卸しの記録でなく架空の link、明細を参照しない計数に link が出る。
 - 要再確認でない商品に範囲や badge が出る、要再確認を色だけで示す、範囲の端で在庫少・在庫切れが決まる、長さの商品の範囲を cm で出す。
 - 業務記録の詳細の `MovementRecord` の形や「関連する在庫変動」の表が変わる。
+- 商品情報の取得（`getStockDetail`）だけが失敗した部分障害で、長さの商品の計数 450 が「450」か「450 個」と出て、「4.5 m」と読めない。
 - 要再確認の案内が出ない、別の商品の理由を出す、一覧の読取りの失敗で詳細が止まる、link が棚卸しの画面の入口に届かない。
 
 ## Test Matrix
@@ -47,13 +48,13 @@ fixture は 1 商品（個）に、次を保存の順に置く（日付と保存
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
-| H1 | 上の fixture の結果の順（新しい順）が、fresh な計数 10 → 取り込み直した精算 102 → 鍵 `(D2,0,NULL,0)` の 3 行（`sale_auto` −1・入庫 +2・既定の計数 9。保存の時刻の新しい順）→ 初期在庫 +10 → 精算 101 → 既定の計数 8、の手で求めた並びと完全一致。各行の `kind`・`business_date`・`settlement_no`・`saved_at` と、`movement` / `count` の片方だけが値。別の商品で、取込みの無いときに保存した fresh な計数（n が NULL、今日 D2）と、その後に取り込んだ精算回数 0 の Z004（精算日 D2）は、Z004 が上（fresh な計数の鍵の 3 つ目は -1 で、精算 0 の 0 より古い） | 鍵の誤り、保存の時刻の順のまま | integration（BIZ、実 SQLite） | `test_list_movements_req303_req205_orders_counts_and_movements_by_ledger_key`（`src-tauri/src/biz/inventory_service/list.rs`） | `created_at` で並べる（既定の計数 8 が先頭近くへ来る）、phase を見ない（精算 102 が同じ日付の入出庫の間に入る）、fresh の `after_settlement` を 0 にする（fresh な計数 10 と取り込み直した精算 102 が同じ鍵 `(D2,1,102,0)` になり、`saved_at` の新しい取り込み直しが fresh な計数 10 より上へ。Plan Review round 1 の是正: 取り込み直しの無い fixture では `saved_at` の順で fresh が上に残り、この mutant が red にならなかった）、計数を末尾にまとめる、n が NULL を 0 とみなす（別の商品の fresh な計数が精算 0 の Z004 より上へ） |
+| H1 | 上の fixture の結果の順（新しい順）が、fresh な計数 10 → 取り込み直した精算 102 → 鍵 `(D2,0,NULL,0)` の 3 行（`sale_auto` −1・入庫 +2・既定の計数 9。保存の時刻の新しい順）→ 初期在庫 +10 → 精算 101 → 既定の計数 8、の手で求めた並びと完全一致。各行の `kind`・`business_date`・`settlement_no`・`saved_at` と、`movement` / `count` の片方だけが値。別の商品で、取込みの無いときに保存した fresh な計数（n が NULL、今日 D2）と、その後に取り込んだ精算回数 0 の Z004（精算日 D2）は、Z004 が上（fresh な計数の鍵の 3 つ目は -1 で、精算 0 の 0 より古い） | 鍵の誤り、保存の時刻の順のまま | integration（BIZ、実 SQLite） | `test_list_movements_req303_req205_orders_counts_and_movements_by_ledger_key`（`src-tauri/src/biz/inventory_service/list.rs`） | `created_at` で並べる（既定の計数 8 が先頭近くへ来る）、fresh の `after_settlement` を 0 にする（fresh な計数 10 と取り込み直した精算 102 が同じ鍵 `(D2,1,102,0)` になり、`saved_at` の新しい取り込み直しが fresh な計数 10 より上へ。Plan Review round 1 の是正: 取り込み直しの無い fixture では `saved_at` の順で fresh が上に残り、この mutant が red にならなかった）、計数を末尾にまとめる、n が NULL を 0 とみなす（別の商品の fresh な計数が精算 0 の Z004 より上へ） |
 | H2 | 鍵の同じ行（既定の計数と入庫が同じ業務日）は `saved_at` の順で、`saved_at` も同じなら movement が計数より前（逆の順で出すので、表示では計数が上）、最後は id | 全順序でない（実行ごとに順が変わる） | integration | `test_list_movements_req303_same_key_rows_break_ties_by_saved_at_kind_and_id`（同上） | 足しの段を落とす（同じ鍵の行の順が読取りの順に依る）、movement と計数の段を逆にする |
 | H3 | 日付の絞り込みは `business_date` の両端を含み、movement と計数の両方に当たる: `created_at` が D3 で業務日が D1 の movement と、日付 D1 の計数は `date_from = date_to = D1` で出て、D3 では出ない | 保存の時刻で絞る、片方だけに当てる | integration | `test_list_movements_req303_date_filter_uses_business_date_for_both_kinds`（同上） | movement を `created_at` で絞る（D1 で movement が消え、D3 で出る）、計数に日付を当てない（D3 で計数が出る）、両端を含めない |
 | H4 | 種別の絞り込み: None で movement と計数の全部、`stocktake` で `movement_type = 'stocktake'` の movement（fixture に 1 行足す）と計数、`receiving` で入庫の movement だけ（計数 0 行） | 計数の含め方の誤り | integration | `test_list_movements_req303_type_filter_includes_counts_only_for_all_and_stocktake`（同上） | `receiving` でも計数を混ぜる、`stocktake` で計数を出さない、None で計数を出さない |
 | H5 | 混ぜた後にページを切る: H1 の fixture を per_page 3 で読み、page 1・2・3 を連結すると H1 の並びと同じで、どのページも `total_count` が H1 の行の数（取り消した movement を除く） | ページを切ってから並べる、件数が movement だけ | integration | `test_list_movements_req303_paginates_after_merging_and_counts_both_kinds`（同上） | movement と計数をそれぞれ `LIMIT` してから混ぜる（page 2 の行が欠ける・重なる）、`total_count` を movement の件数にする |
 | H6 | `is_voided` 1 の movement は出ず、計数は全部出る | 取り消した記録が出る | integration | H1 の fixture の取り消した精算 102 の最初の movement が結果に無いことを H1 で見る | `is_voided = 0` を落とす |
-| H7 | 棚卸しの明細を参照する計数は `stocktake_id` と `source`（label「棚卸し #{id}」、route `/stocktake/records/{id}`）を持ち、参照しない計数は両方 None。movement の `source` は今の `resolve_movement_source` のまま | 架空の link、link の漏れ | integration | `test_list_movements_req207_count_source_links_to_stocktake_record`（同上） | 明細の id を棚卸しの id として出す、参照しない計数に link を作る、label の文字を変える |
+| H7 | 棚卸しの明細を参照する計数は `stocktake_id` と `source`（label「棚卸し #{id}」、route `/stocktake/records/{id}`）を持ち、参照しない計数は両方 None。movement の `source` は今の `resolve_movement_source` のまま。fixture は棚卸しを 2 件置き、1 件目に明細を 2 つ、2 件目に明細を 1 つ作って、計数は 2 件目の棚卸しの明細を参照する（期待の `stocktake_id` は 2 件目の棚卸しの id で、参照する明細の id と違う。test は fixture を作った後に 2 つの id が違うことを前提として assert する） | 架空の link、link の漏れ | integration | `test_list_movements_req207_count_source_links_to_stocktake_record`（同上） | 明細の id を棚卸しの id として出す、参照しない計数に link を作る、label の文字を変える |
 | H8 | 初期在庫の印は `reference_type IS NULL AND movement_type = 'receiving'` だけ: 同じ業務日の `sale_auto`（`reference_type` NULL）は鍵の 4 つ目が 0 で、同じ日付の初期在庫より新しい側に並ぶ（H1 の並びの中で見る） | demo の seed の売上を初期在庫として先頭に置く | integration | H1 の並びの `sale_auto` −1 と初期在庫 +10 の位置 | 印を `reference_type IS NULL` だけで決める（`sale_auto` が初期在庫と同じ -1 になり、表示では既定の計数 9 と入庫 +2 より下へ動く） |
 | H9 | `date_from`・`date_to` が形・暦の外（`2026-4-7`・`2026-02-30`）なら `ValidationFailed`（31 の `validate_business_date` の文）で、何も読まない | 不正な日付を文字列の大小で比べる | unit（BIZ） | `test_list_movements_req303_rejects_invalid_date_filter`（同上） | 日付の検査を落とす（`2026-4-7` が通り、文字列の比べで別の範囲になる） |
 
@@ -66,7 +67,7 @@ fixture は 1 商品（個）に、次を保存の順に置く（日付と保存
 
 ### U: 画面（50・51・58・66、design-system）
 
-画面の test の mock の範囲は 7〜12（例の「4〜5」と違う値）、要再確認でない商品の在庫は 3 にする。「要再確認」の文字は badge の中に 1 件、icon は `aria-hidden`。要再確認の一覧の mock（b1 の `listRecheckProducts`）は、当該の商品の target に理由 2 つ（`undetermined_settlement`・`conflicting_counts`）と、別の商品の target を 1 つ置く。
+画面の test の mock の範囲は 7〜12（例の「4〜5」と違う値）、要再確認でない商品の在庫は 3 にする。「要再確認」の文字は badge の中に 1 件、icon は `aria-hidden`。要再確認の一覧の mock（b1 の `listRecheckProducts`）は、先頭に別の商品の target（理由 `same_date_movement`）を置き、その後に当該の商品の target（理由 2 つ: `undetermined_settlement`・`conflicting_counts`）を置く（先頭の target を読む誤りが別の商品の理由として出る並び）。
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
@@ -75,7 +76,7 @@ fixture は 1 商品（個）に、次を保存の順に置く（日付と保存
 | U3 | 在庫照会の詳細の「在庫数」: 範囲と badge と、その下に要再確認の案内（U10 の部品） | 詳細の漏れ | component | `StockDetailContent.test.tsx` の `U3 detail stock row shows range and recheck badge` | 詳細に部品を使わない、案内を置かない |
 | U4 | 商品フォームの修正: 読取り専用の「現在庫」に「7 個〜12 個」、label の隣に badge。何も変えないと dirty にならない（離脱の確認が出ない）。登録の画面は今のまま | 修正の画面の漏れ、範囲の文字で dirty になる | component | `ProductFormPage.test.tsx` の `U4 edit form shows read-only stock range and recheck badge without dirty state`、`product-form-request.test.ts` の `U4 productToFormValues formats recheck range for read-only stock` | `productToFormValues` が範囲を作らない、baseline と値が違って dirty になる |
 | U5 | 在庫変動の見出しの「現在庫」: 範囲と badge（長さの商品は「4 m〜4.5 m」）と、その下に要再確認の案内（U10 の部品） | 見出しの漏れ、cm で出す | component | `StockMovementsPage.test.tsx` の `U5 header current stock shows range and recheck badge in meters` | 見出しに部品を使わない、案内を置かない、長さの商品で cm の整数を出す |
-| U6 | 計数の行: 既定は「数を確認（{数}、{日付}）」、fresh は「数を入れ直し（{数}、{日付}）」（{数} は `formatStockDisplay` の形。個数の商品の fresh 8 は「数を入れ直し（8 個、…）」、長さの商品の既定 450 は「数を確認（4.5 m、…）」）、「増減」と「変動後在庫」は「—」、`source` があれば link、無ければ「元記録なし」 | 文の誤り、計数に増減を出す | component | `StockHistoryTable.test.tsx` の `U6 count rows show 65 wording with dash quantity and stocktake link` | 種類の文を取り違える、{数} を movement の数量の形で出す（個数で「8」になる）、計数の値を「増減」に出す、link の有無を逆にする |
+| U6 | 計数の行: 既定は「数を確認（{数}、{日付}）」、fresh は「数を入れ直し（{数}、{日付}）」（{数} は `count.count_value` を `count.stock_unit` で `formatStockDisplay` の形にしたもの。個数の商品の fresh 8 は「数を入れ直し（8 個、…）」、長さの商品の既定 450 は「数を確認（4.5 m、…）」）、「増減」と「変動後在庫」は「—」、`source` があれば link、無ければ「元記録なし」。部分障害（UI-06c-D3）: `getStockDetail` が error で、`listMovements` が長さの商品の既定の計数 450（`stock_unit` `m`）を返すと、商品情報の取得の失敗の表示と並んで「数を確認（4.5 m、…）」が出る | 文の誤り、計数に増減を出す、商品情報の取得の失敗で計数の単位が落ちる | component | `StockHistoryTable.test.tsx` の `U6 count rows show 65 wording with dash quantity and stocktake link`、`StockMovementsPage.test.tsx` の `U6 count row keeps meters from its stock_unit when product detail fails` | 種類の文を取り違える、{数} を movement の数量の形で出す（個数で「8」になる）、計数の値を「増減」に出す、link の有無を逆にする、計数の単位を `count.stock_unit` でなく見出しの商品（`product_code → stock_unit` の対応）から引く（部分障害の case で「450」になる） |
 | U7 | 「日付」の列: 業務日（`YYYY-MM-DD`）、Z004 の行は「（精算 {n}）」、下に「保存 {YYYY-MM-DD HH:mm}」。movement の行の種別・増減・元記録は今の `MovementTable` と同じ書き方 | 保存の時刻だけを出す、共有の書き方の食い違い | component | `StockHistoryTable.test.tsx` の `U7 date column shows business date settlement number and saved time` | 「日付」に `created_at` を出す、精算回数を出さない、種別の label を別に持って食い違う |
 | U8 | `formatStockRange`: 個数の単位は「7 個〜12 個」、長さは「4 m〜4.5 m」、負の端は「-1 個〜0 個」 | 書き方の誤り | unit | `format-stock-display.test.ts` の `U8 formatStockRange formats both ends with the stock unit` | 片方の端だけに単位を付ける、長さで cm を出す |
 | U9 | 在庫変動の画面は BIZ の順のまま描く（mock の items の順を変えない）。計数の保存の entry（`stocktakeCountUpdate`）の consumer に在庫変動の key があること（b1 への依存の 5） | 画面で並べ替える、計数の保存の後に履歴が古いまま | component / unit | `StockMovementsPage.test.tsx` の `U9 history rows render in server order`、b1 の `src/lib/invalidation-contract.meta.test.ts` の今の case（contract と oracle の完全一致。b2 は変えない） | 画面で `saved_at` や日付で並べ直す。b1 の entry から在庫変動の key を落とす（b1 の meta test が止める） |
@@ -185,7 +186,7 @@ fixture は 1 商品（個）に、次を保存の順に置く（日付と保存
 
 `rg -n "^\s*(it|test)\(" src/features/stock-movements` → 20 行（`MovementTable.test.tsx` 4・`movement-formatters.test.ts` 2・`StockMovementsPage.test.tsx` 14）と、`src/features/inventory-records/ReturnToFlow.test.tsx` の `listMovements` の mock:
 
-- `StockMovementsPage.test.tsx` の 14: mock の `listMovements` の items を `StockHistoryItem`（`kind: "movement"` と `movement`）に替えて移す。search から `MovementQuery` を作る case・filter・page・表示件数・returnTo の case は期待を変えない。表の日時を見る case（`UI-06c-D5: m の商品の在庫変動は…`）は「日付」の列の形（66 の D-118 の注記）に合わせて期待を変える。
+- `StockMovementsPage.test.tsx` の 14: 14 本とも移す（mock の `listMovements` の items を `StockHistoryItem`〈`kind: "movement"` と `movement`〉に替える。日時を assert する case は無い: `UI-06c-D5: m の商品の在庫変動は…` が見るのは増減・変動後在庫・現在庫の m の書き方で、期待を変えない）。
 - `ReturnToFlow.test.tsx`: `listMovements` の mock を同じく替えて移す（href の期待は変えない）。
 - `MovementTable.test.tsx` の 4・`movement-formatters.test.ts` の 2: 業務記録の詳細のための `MovementTable` と共有の書き方は変えないので、期待を変えずに残す（T3 と同じ）。
 

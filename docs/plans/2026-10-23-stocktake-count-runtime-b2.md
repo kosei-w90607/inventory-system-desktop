@@ -22,9 +22,9 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 | TS の mock の追随 | `ProductWithRelations` の literal 7 file、`listMovements` の mock 2 file（ほかは共有の fixture） | `rg -l 'plu_memory_no:' src --glob '!src/lib/bindings.ts' \| wc -l` → 7。`rg -l 'listMovements' src --glob '!src/lib/bindings.ts'` → `src/features/inventory-records/ReturnToFlow.test.tsx`・`src/features/stock-movements/hooks/useStockMovements.ts`・`src/features/stock-movements/StockMovementsPage.test.tsx` |
 | 既存の `list_movements` の test | 10（Matrix の T1） | `rg -n 'fn test_list_movements' src-tauri/src \| wc -l` → 10 |
 | migration・DB の列 | 0（写しの 3 列と `stock_counts` は v9 にある。ADR D12） | — |
-| 予定 path | 59（Rust 9・TS 30・docs 20。下の「予定 path の一覧」） | 下の一覧の行数 |
+| 予定 path | 60（Rust 9・TS 30・docs 21。下の「予定 path の一覧」） | 下の一覧の行数 |
 
-手法: **1 lane・1 PR のまま S1〜S5 の段に積む。** 理由: 読取りと表示だけで migration も書く経路も無く、b1 と同じ大きさの分割（配布の単位としての安全の検討）が要らない。59 path は b1 の 148 の 4 割で、1 回の L3（4 画面の見た目）で確かめられる。段は compile の単位で切る（S1 IO → S2 BIZ → S3 CMD と wire は 1 つの Rust の検証の単位、S4 画面は frontend の検証の単位、S5 は docs と生成物）。b1 の後に merge するので、b1 の merge の前に実装しない（b1 の merge と同期が実装の開始の前の条件）。
+手法: **1 lane・1 PR のまま S1〜S5 の段に積む。** 理由: 読取りと表示だけで migration も書く経路も無く、b1 と同じ大きさの分割（配布の単位としての安全の検討）が要らない。60 path は b1 の 148 の 4 割で、1 回の L3（4 画面の見た目）で確かめられる。段は compile の単位で切る（S1 IO → S2 BIZ → S3 CMD と wire は 1 つの Rust の検証の単位、S4 画面は frontend の検証の単位、S5 は docs と生成物）。b1 の後に merge するので、b1 の merge の前に実装しない（b1 の merge と同期が実装の開始の前の条件）。
 
 ## Workflow State
 
@@ -117,7 +117,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 同じ | 種別を「棚卸し」にする | 計数の行だけ（棚卸しの movement は D-118 の runtime から作られない） | — | 44 の絞り込み |
 | A を棚卸しの画面で入れ直して要再確認が解けた | 商品一覧に戻る | A の在庫の欄は 1 つの値、badge なし（計数の保存の再取得。b1 の `stocktakeCountUpdate` の entry） | — | b1 への依存の 5 |
 
-失敗と再試行: 読取りの失敗は今のとおり（商品一覧・在庫照会は error の表示、在庫変動は見出しと表が別々に失敗を出す。UI-06c-D3）。日付の絞り込みの値が形・暦の外なら `validation`（画面の route の zod は不正な値を捨てるので、通常は届かない）。
+失敗と再試行: 読取りの失敗は今のとおり（商品一覧・在庫照会は error の表示、在庫変動は見出しと表が別々に失敗を出す。UI-06c-D3）。日付の絞り込みの値の形の外（例 `2026-4-7`）は route の zod が捨てる。暦の外（例 `2026-02-30`）は形を通るので BIZ の `validation` になり、表の所に今の部分障害の Alert（「在庫変動履歴の取得に失敗しました」）を出す（URL を手で直したときだけ。日付の欄は暦の外の値を作らない）。
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
 
@@ -171,8 +171,14 @@ b1 の Plan Commit の版の名前で書く。b1 の実装で名前・形が変�
 
 - code: `src-tauri/src/db/inventory_repo.rs` の `list_movements`（`created_at` の降順・`T23:59:59` の付け足し・SQL の `LIMIT`/`OFFSET`）を、並べない 2 つの読取りに置き換えて外す。`MovementRecord`・`MovementQuery`・`MovementSourceLink`・`resolve_movement_source` は残す（業務記録の詳細と計数の元記録が使う）。
 - b1 だけの版の表示の欠けの注記（b1 の packet の「各 lane の配布の単位としての安全」）: ADR D12 の b1 の版の「b1 の後・b2 の前の版では、商品の画面は写しの値だけを出し…初めて店へ入れる版は b2 まで含む」の文と、ADR の Status の「(b) は実装済みの契約ではない」。b2 で欠けが無くなるので、同期で外して現行の記述にする（b1 の packet の「残りの危険」の 1 つ目の項は、b1 の closeout で archive に移る packet の記録なので書き換えない）。
-- 「proposed・未実装」の注記の b2 の分: 20・21・40・44・50・51・58・65・66・SCREEN_DESIGN の D-118 の節（b1 の S9 で「b2 の分は proposed のまま」と残る所を含む）。
-- `list_movements` の今の振舞いを引く記述: 44 §23.9 の `inventory_repo::list_movements` の SQL 概要と §23.8 の現行の出力型（44 の D-118 の節で置き換えを宣言した）、[74](../function-design/74-ui-operation-logs.md) の UI-11c-D2 と「既存 `list_movements`（`inventory_repo.rs`）は `date_to` に対して…」の段落と比較の表の「期間 predicate」の `StockMovementsPage` の列、[66](../function-design/66-ui-stock-movements.md) の主動線の「日時降順」と §66.5 の「日時」の列と表示規則（D-118 の注記の形へ）、[20](../function-design/20-io-product-repo.md) の `list_operation_logs` の設計判断（UI-11c-D2 との差分メモ）の `list_movements` の `T23:59:59` の文（`list_receivings` ほかは今の形のまま残るので、例をそちらへ替える）、[cmd-task-specs](../architecture/cmd-task-specs.md) の `list_movements` の出力。decision-log の該当の決定の本文は append-only の記録なので書き換えない。
+- 「proposed・未実装」の注記の b2 の分: 20・21・40・44・50・51・58・65・66・SCREEN_DESIGN の D-118 の節と、[ARCHITECTURE](../ARCHITECTURE.md) の D-118 の節（見出しの「(b) は proposed・未実装」と本文の「表のほかの責務は (b)（proposed・未実装）」。b1 の S9 で「b2 の分は proposed のまま」と残る所を含む）。
+- `list_movements` の今の振舞いを引く記述:
+  - [44](../function-design/44-cmd-inventory.md): §23.9 の `inventory_repo::list_movements` の SQL 概要と IO の signature、§23.8 の CMD の signature と現行の出力型（44 の D-118 の節で置き換えを宣言した）、§23.1 のモジュール構成の `inventory_repo.rs -- list_movements を追加` の行（履歴の 2 つの読取りに）、§23.10 の BIZ の `list_movements` の signature（`PaginatedResult<MovementRecord>` を `PaginatedResult<StockHistoryItem>` に）と「repo から得た movement 行に対して…`source` を補完する」の説明（計数の `source` の補い方と並び・絞り込み・ページの順を足した処理に）。
+  - [74](../function-design/74-ui-operation-logs.md) と [20](../function-design/20-io-product-repo.md) の、UI-11c-D2 の対比として `list_movements` の `T23:59:59` を引く文: 20 の `list_operation_logs` の設計判断（UI-11c-D2 との差分メモ）、74 の UI-11c-D2 の行と §74.4.3「既存パターンとの差分」の段落。日付で絞る今の IO で `T23:59:59` を付けるのは `inventory_repo.rs` の `list_movements` だけ（`rg -n 'T23:59:59' src-tauri/src` の実装の行は `inventory_repo.rs` の 2 行。ほかは test）で、入出庫の記録（`list_inventory_records`・`list_receiving_records` ほか）は日付の列を `<= ?` で比べる（`src-tauri/src/db/disposal_repo.rs` の `list_inventory_records` の `{date_expr} <= ?`、`receiving_repo.rs` の `list_receiving_records` の `rr.receiving_date <= ?`）ので、替える例は無い。対比は撤去し、在庫変動は b2 で業務日の両端を含む比べに変わったと 1 文で書く。74 §74.17 の比較の表の「期間 predicate」の行は、`StockMovementsPage` の列を「業務日の両端を含む（b2）」、`InventoryRecordsPage` の列の「同左」を実際の形「日付の列の両端を含む（`<= date_to`）」に。§74.16 の非目的の「movement/records 画面の期間 predicate を JST inclusive/exclusive に統一」の行は、残る対象（records）だけにする。
+  - [66](../function-design/66-ui-stock-movements.md): 主動線の「日時降順」と §66.5 の「日時」の列と表示規則、§66.4 の `PaginatedResult<MovementRecord>`（D-118 の注記の形へ）。
+  - [65](../function-design/65-inventory-record-traceability.md): §65.7.1 の command の表の `listMovements(query)` の行の「商品別 movement。既存 contract を拡張し…」（movement と計数の履歴に。44 を引く）。
+  - [cmd-task-specs](../architecture/cmd-task-specs.md) の `list_movements` の出力。
+  - decision-log の該当の決定（D-037 ほか）の本文は append-only の記録なので書き換えない。
 - 不要にならないと確かめたもの: 整合性の画面と操作ログの画面の `formatStockCopy`（2 つの private の関数。`rg -n 'function formatStockCopy' src` → `src/features/integrity-check/IntegrityCheckPage.tsx`・`src/features/operation-logs/OperationLogsPage.tsx`）は、写しの 4 項目を診断のために並べる別の書き方（75・74）で、b2 の範囲の部品に置き換えない。
 
 ## Scope
@@ -193,8 +199,9 @@ b1 の branch が書き換えた節と、b1 の実装の S9 が書き換える�
 - [21](../function-design/21-io-inventory-repo.md): D-118 の節の「`MovementRecord` の列」「`MovementRecord` に同じ列を返させるのは (b)」を、履歴の 2 つの読取りと初期在庫の印の定数に（44 を引く）。
 - [40](../function-design/40-cmd-product.md): 商品の結果の 3 列の文を現行に（`ProductWithRelations` に足したこと）。
 - [51](../function-design/51-ui-product-form.md): 「在庫数の表示」の項を現行に（修正の画面の読取り専用の「現在庫」）。
-- [65](../function-design/65-inventory-record-traceability.md): D-118 の節の見出しの「proposed・未実装」と 1 つ目・2 つ目の項を現行に（44・66 を引く）。
-- [20](../function-design/20-io-product-repo.md): D-118 の節の商品の読取りの文（b1 の S9 の後に「b2 で入った」）と、`list_operation_logs` の設計判断の `list_movements` の例。
+- [65](../function-design/65-inventory-record-traceability.md): D-118 の節の見出しの「proposed・未実装」と 1 つ目・2 つ目の項を現行に（44・66 を引く）。§65.7.1 の command の表の `listMovements(query)` の行（上の「この変更で不要になるもの」）。
+- [20](../function-design/20-io-product-repo.md): D-118 の節の商品の読取りの文（b1 の S9 の後に「b2 で入った」）と、`list_operation_logs` の設計判断（UI-11c-D2 との差分メモ）の `list_movements` の対比（撤去する。上の「この変更で不要になるもの」）。
+- [ARCHITECTURE](../ARCHITECTURE.md): D-118 の節の見出しと本文の (b) の実装の状態（b1 の S9 の後に b2 の分として残る「proposed・未実装」を現行に。UI の行の「範囲の表示」と 58・66 は b2 で入る）。
 - [SCREEN_DESIGN](../SCREEN_DESIGN.md): D-118 の節の見出しの状態と 51・58・66 の行。
 - [10](../function-design/10-common-rules.md): SPEC-UNIT-D3 の「表示する所」の表の 6（在庫変動の表に計数の行の数を足す。計数の行の数は在庫の欄と同じ `formatStockDisplay` の形で、個数にも単位の語を付ける〈66〉。b1 で棚卸しの記録の詳細の「関連する在庫変動」が外れて経路が 6 になる）と、範囲の書き方の行。
 - [Plans](../Plans.md): `## 次の行動` と `## 導入の前の関門` の 2. の pointer の句（b1 の版の「b2 は同じ packet の『後続の lane』」を本 packet へ）。lane の行は足さない（D-097）。
@@ -205,7 +212,7 @@ b1 の branch が書き換えた節と、b1 の実装の S9 が書き換える�
 | 対象 | 変更 | 作る所 | 読む所・test |
 |---|---|---|---|
 | 商品の結果の写し | `ProductWithRelations` に `stock_recheck: bool`・`stock_range_low: Option<i64>`・`stock_range_high: Option<i64>`。4 つの SELECT（`find_by_product_code`・`search_products`・`get_stock_detail`・`list_low_stock_products`）に 3 列を足し、`row_to_product_with_relations` が読む（`get_stock_detail` の `last_receiving_date`・`last_sale_date` の列の位置がずれる） | `src-tauri/src/db/product_repo.rs` | Matrix の P1・P2 |
-| 履歴の読取り | `list_movements` を外し、`pub(crate)` の 2 つ: 商品と絞り込み（業務日の範囲・種別）に当たる `is_voided = 0` の movement の行（今の列 + `business_date`・`settlement_no`・初期在庫の印）と、商品と業務日の範囲に当たる計数の行（`stock_counts` の id・`count_value`・`count_kind`・`business_date`・`settlement_no`・`counted_at`、`stocktake_items` を LEFT JOIN した `stocktake_id`）。どちらも並べない。初期在庫の印の式を定数にし、`list_ledger_movements_for_product` と共有（b1 への依存の 3） | `src-tauri/src/db/inventory_repo.rs`、`src-tauri/src/db/mod.rs`（re-export） | Matrix の H1〜H8 は BIZ の test で見る。定数の共有は Final Review の code 読み（Matrix の Residual Test Gaps） |
+| 履歴の読取り | `list_movements` を外し、`pub(crate)` の 2 つ: 商品と絞り込み（業務日の範囲・種別）に当たる `is_voided = 0` の movement の行（今の列 + `business_date`・`settlement_no`・初期在庫の印）と、商品と業務日の範囲に当たる計数の行（`stock_counts` の id・`count_value`・`count_kind`・`business_date`・`settlement_no`・`counted_at`、`products` を JOIN した `stock_unit`、`stocktake_items` を LEFT JOIN した `stocktake_id`）。どちらも並べない。初期在庫の印の式を定数にし、`list_ledger_movements_for_product` と共有（b1 への依存の 3） | `src-tauri/src/db/inventory_repo.rs`、`src-tauri/src/db/mod.rs`（re-export） | Matrix の H1〜H8 は BIZ の test で見る。定数の共有は Final Review の code 読み（Matrix の Residual Test Gaps） |
 
 ### S2 BIZ（`inventory_service::list`）
 
@@ -230,19 +237,19 @@ b1 の branch が書き換えた節と、b1 の実装の S9 が書き換える�
 | 商品一覧 | 在庫の列に部品（並べ替えは今のまま写し） | `src/features/products/components/ProductTable.tsx` | Matrix の U1 |
 | 在庫照会 | 一覧の在庫の列と詳細の「在庫数」に部品。詳細に要再確認の案内。状態の badge は写しのまま | `src/features/stock-inquiry/components/ProductListTable.tsx`・`StockDetailContent.tsx` | Matrix の U2・U3 |
 | 商品フォーム | 修正の画面の読取り専用の「現在庫」に範囲の文字（`productToFormValues` の `initialStock`。修正では検証も送信もしない）と、欄の label の隣に badge。登録の画面は変えない | `src/features/products/lib/product-form-request.ts`、`src/features/products/components/ProductForm.tsx` | Matrix の U4 |
-| 在庫変動 | 見出しの「現在庫」に部品と、その下に要再確認の案内。表を新しい `StockHistoryItem` の表で描く（66 の D-118 の注記の表の行の順・「日付」の列・計数の行）。`MovementTable` は業務記録の詳細のために残し、種別の label・増減・元記録の link の書き方を export して共有する（上の「起票時に起草役が決めたこと」の 7）。hook の型 | `src/features/stock-movements/StockMovementsPage.tsx`・`components/StockHistoryTable.tsx`（新設）・`components/MovementTable.tsx`（export だけ）・`hooks/useStockMovements.ts`・`lib/movement-formatters.ts` | Matrix の U5〜U7・U9。業務記録の詳細の `MovementTable` の今の test は期待を変えない（T3） |
+| 在庫変動 | 見出しの「現在庫」に部品と、その下に要再確認の案内。表を新しい `StockHistoryItem` の表で描く（66 の D-118 の注記の表の行の順・「日付」の列・計数の行。計数の行の数は行の `count.stock_unit` で描き、商品情報の取得が失敗しても単位が付く）。`MovementTable` は業務記録の詳細のために残し、種別の label・増減・元記録の link の書き方を export して共有する（上の「起票時に起草役が決めたこと」の 7）。hook の型 | `src/features/stock-movements/StockMovementsPage.tsx`・`components/StockHistoryTable.tsx`（新設）・`components/MovementTable.tsx`（export だけ）・`hooks/useStockMovements.ts`・`lib/movement-formatters.ts` | Matrix の U5〜U7・U9。業務記録の詳細の `MovementTable` の今の test は期待を変えない（T3） |
 | mock の追随 | `ProductWithRelations` の literal に 3 列（共有の fixture 2 と literal を持つ 5 file）、`listMovements` の mock を `StockHistoryItem` に | 下の予定 path の TS の test の file | Matrix の T2・T3 |
 
 ### S5 docs・生成物
 
-- 上の「b1 の merge の後に同期する節」の全部と、44・66 の D-118 の節の「proposed・未実装」を現行に。[50](../function-design/50-ui-product-list.md)・[58](../function-design/58-ui-stock-inquiry.md) の D-118 の注記を現行に（部品は 66 を引く）。[74](../function-design/74-ui-operation-logs.md) の `list_movements` の `T23:59:59` の文（UI-11c-D2、「既存 `list_movements`」の段落、比較の表の「期間 predicate」の `StockMovementsPage` の列）を今の例（`list_receivings` ほか）に。66 の §66.1 の主動線と §66.4・§66.5 を D-118 の注記の形に（注記を本文へ移す）。[02](../design-system/02-component-catalog.md) の①状態の tone family の表の warning の行に「要再確認」（`StockRecheckBadge`）。
+- 上の「b1 の merge の後に同期する節」の全部（[ARCHITECTURE](../ARCHITECTURE.md) の D-118 の節を含む）と、44・66 の D-118 の節の「proposed・未実装」を現行に。[50](../function-design/50-ui-product-list.md)・[58](../function-design/58-ui-stock-inquiry.md) の D-118 の注記を現行に（部品は 66 を引く）。[44](../function-design/44-cmd-inventory.md) の §23.1 のモジュール構成の `inventory_repo.rs` の行、§23.8 の CMD の signature と出力型、§23.9 の IO の signature と SQL 概要、§23.10 の BIZ の `list_movements` の signature と `source` の補完の説明を、D-118 の節の形（履歴の 2 つの読取り、`PaginatedResult<StockHistoryItem>`、BIZ の合成の順）に（D-118 の節を本文へ移す）。[74](../function-design/74-ui-operation-logs.md) と [20](../function-design/20-io-product-repo.md) の UI-11c-D2 の `list_movements` の対比は、例を替えずに撤去し、在庫変動は b2 で業務日の両端を含む比べに変わったと 1 文で書く（`T23:59:59` を付けるのは `list_movements` だけで、入出庫の記録は日付の列を `<= ?` で比べる。上の「この変更で不要になるもの」）。74 §74.17 の比較の表の「期間 predicate」の行と §74.16 の非目的の行も同じ節のとおりに。66 の §66.1 の主動線と §66.4・§66.5 を D-118 の注記の形に（注記を本文へ移す）。[02](../design-system/02-component-catalog.md) の①状態の tone family の表の warning の行に「要再確認」（`StockRecheckBadge`）。
 - 生成物: `src/lib/bindings.ts`（S3）、`docs/function-design/90-traceability.md`（test の REQ の参照が増えるので `cd src-tauri && cargo run --bin generate_traceability`。手で直さない）。
 
 ### 節の所有表（並走の lane と重なる file）
 
-`comm -12` の結果（2026-10-23、本 packet の予定 path 59 と次の各 path の集合。差分は `git diff --name-only --no-renames origin/main...<commit>` を sort したもの、予定 path も sort した。`origin/main` は `eed07d37`）:
+`comm -12` の結果（本 packet の予定 path 60 と次の各 path の集合。2026-10-23 に測り、足した 1 path〈`docs/ARCHITECTURE.md`〉の分を 2026-10-24 に下の同じ commit で取り直した。差分は `git diff --name-only --no-renames origin/main...<commit>` を sort したもの、予定 path も sort した。`origin/main` は `eed07d37`）:
 
-- b1（PR #188）: b1 の Plan Commit `aba17e2e` の packet の「予定 path の一覧」（148）とは 20: `docs/FUNCTION_DESIGN.md`・`docs/Plans.md`・`docs/SCREEN_DESIGN.md`・`docs/adr/2026-10-16-stocktake-count-placement.md`・`docs/architecture/cmd-task-specs.md`・`docs/function-design/10-common-rules.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/21-io-inventory-repo.md`・`docs/function-design/40-cmd-product.md`・`docs/function-design/51-ui-product-form.md`・`docs/function-design/65-inventory-record-traceability.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/mod.rs`・`src-tauri/src/cmd/inventory_cmd.rs`・`src-tauri/src/db/inventory_repo.rs`・`src-tauri/src/db/mod.rs`・`src-tauri/src/db/product_repo.rs`・`src-tauri/src/finite_enum_contract_tests.rs`・`src/features/products/ProductFormPage.test.tsx`・`src/lib/bindings.ts`。ほかに b1 の packet が一覧の外に数える `CmdError` の mock の 34 file のうち 3（b1 への依存の 8）。参考に、remote の b1 の branch（`40ee8de4`、Plan Commit の後の docs の是正だけで差分 23）とは 6（`docs/Plans.md`・ADR・21・40・51・65）で、どれも上の 20 の内。b1 の実装の 1 段目は push の前なので見ていない（L3 を頼む時点の head で取り直す）。
+- b1（PR #188）: b1 の Plan Commit `aba17e2e` の packet の「予定 path の一覧」（148）とは 21: `docs/ARCHITECTURE.md`・`docs/FUNCTION_DESIGN.md`・`docs/Plans.md`・`docs/SCREEN_DESIGN.md`・`docs/adr/2026-10-16-stocktake-count-placement.md`・`docs/architecture/cmd-task-specs.md`・`docs/function-design/10-common-rules.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/21-io-inventory-repo.md`・`docs/function-design/40-cmd-product.md`・`docs/function-design/51-ui-product-form.md`・`docs/function-design/65-inventory-record-traceability.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/mod.rs`・`src-tauri/src/cmd/inventory_cmd.rs`・`src-tauri/src/db/inventory_repo.rs`・`src-tauri/src/db/mod.rs`・`src-tauri/src/db/product_repo.rs`・`src-tauri/src/finite_enum_contract_tests.rs`・`src/features/products/ProductFormPage.test.tsx`・`src/lib/bindings.ts`。ほかに b1 の packet が一覧の外に数える `CmdError` の mock の 34 file のうち 3（b1 への依存の 8）。参考に、remote の b1 の branch（`40ee8de4`、Plan Commit の後の docs の是正だけで差分 23）とは 6（`docs/Plans.md`・ADR・21・40・51・65）で、どれも上の 21 の内。b1 の実装の 1 段目は push の前なので見ていない（L3 を頼む時点の head で取り直す）。
 - PR #172（`9f02ddd7`、差分 9）: 重なり 0。
 - PR #190（`b8b201a5`、差分 7）: `docs/Plans.md` の 1（#190 は `## 導入の前の関門` の 3.、b2 は 2. と `## 次の行動` の句）。
 - PC の外の控え (b)（branch `agent/backup-offsite-runtime-b`）: 起票中で未 push（remote は `eed07d37` のままで差分 0）。予定 path が出たら、L3 を頼む時点の head で取り直す。
@@ -255,15 +262,16 @@ b1 とは stacked で、b2 は b1 の merge の後に `origin/main` を単段で
 | `src-tauri/src/db/product_repo.rs` | b1: 共有 JAN の読取り（S2） | `ProductWithRelations` と 4 つの SELECT（S1） | 別の関数 |
 | `src-tauri/src/cmd/inventory_cmd.rs`・`src-tauri/src/biz/mod.rs`・`src-tauri/src/db/mod.rs`・`src-tauri/src/finite_enum_contract_tests.rs` | b1: `CmdError` の literal・re-export・新しい enum の行 | `list_movements` の型・re-export・`StockHistoryKind` の行 | 別の行。一覧の行は両方を残す |
 | `src/features/products/ProductFormPage.test.tsx` | b1: `recount_required` の test（U12）と `CmdError` の mock | 修正の画面の「現在庫」の表示の test（U4）と mock の 3 列 | 別の case |
-| ADR・21・40・51・65・20・SCREEN_DESIGN・10・FUNCTION_DESIGN・cmd-task-specs | b1: D-118 の節（b1 の分）と停止の記述 | b2 の分の文（上の「b1 の merge の後に同期する節」） | b1 の版を起点に b2 の分だけを直す |
+| ADR・21・40・51・65・20・SCREEN_DESIGN・ARCHITECTURE・10・FUNCTION_DESIGN・cmd-task-specs | b1: D-118 の節（b1 の分）と停止の記述 | b2 の分の文（上の「b1 の merge の後に同期する節」） | b1 の版を起点に b2 の分だけを直す |
 | `docs/Plans.md` | b1: 関門 2. と `## 次の行動` の句。#190: 関門 3. | 関門 2. と `## 次の行動` の句の b2 の pointer（同期の後） | 別の項目 |
 | `src/lib/bindings.ts`・`docs/function-design/90-traceability.md` | 生成物 | 生成物 | 取り込んだ後に再生成 |
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-59 path（Rust 9・TS 30・docs 20）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+60 path（Rust 9・TS 30・docs 21）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
+docs/ARCHITECTURE.md
 docs/FUNCTION_DESIGN.md
 docs/Plans.md
 docs/SCREEN_DESIGN.md
@@ -340,12 +348,12 @@ src/lib/bindings.ts
 - AC2（履歴）: `cd src-tauri && cargo test --lib -- biz::inventory_service cmd::inventory_cmd finite_enum_contract_tests` が全 PASS し、Matrix の H1〜H9・W1・W2 の test 名が見つかる。`rg -c '^export type (StockHistoryItem|StockHistoryKind|StockCountHistory) =' src/lib/bindings.ts` が 3。`rg -c 'ORDER BY created_at DESC, id DESC' src-tauri/src/db/inventory_repo.rs` と `rg -c 'T23:59:59' src-tauri/src/db/inventory_repo.rs` がどちらも exit 1（置き換えた）。`rg -U -c 'export type MovementRecord = \{[^}]*business_date' src/lib/bindings.ts` が exit 1（`MovementRecord` の形は変えない）。
 - AC3（画面）: `npm test -- src/features/stock-inquiry src/features/products src/features/stock-movements src/features/inventory-records src/features/home src/features/backup-restore` が全 PASS し、Matrix の U1〜U10 の test 名が見つかる。
 - AC4（gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`、`cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts`、`cargo run --bin generate_traceability -- --check`、`cargo test --test design_compliance_test`、`npm run typecheck && npm run lint && npm run format:check && npm test && npm run build`、`bash scripts/doc-consistency-check.sh` と `--target plan` が exit 0。L3 を含むので Writer は `cd src-tauri && cargo check --release` を通す。
-- AC5（正本）: `rg -n 'proposed・未実装' docs/function-design/20-io-product-repo.md docs/function-design/21-io-inventory-repo.md docs/function-design/40-cmd-product.md docs/function-design/44-cmd-inventory.md docs/function-design/50-ui-product-list.md docs/function-design/51-ui-product-form.md docs/function-design/58-ui-stock-inquiry.md docs/function-design/65-inventory-record-traceability.md docs/function-design/66-ui-stock-movements.md | rg -v 'D-122|^[^:]+:[0-9]+:\| 20[0-9]{2}-[0-9]{2}-[0-9]{2} \|' | wc -l` が 0（D-118 の (b) の分が全部入る。D-122 の項と変更履歴の行は数えない）。`rg -c 'b1 の後・b2 の前の版' docs/adr/2026-10-16-stocktake-count-placement.md` が exit 1（b1 の merge の後は 1 で、b2 で外す）。``rg -n '`MovementRecord` の並びの鍵|`MovementRecord` に同じ列' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/backlog.md' | wc -l`` が 0。`rg -n 'list_movements.{0,40}T23:59:59|T23:59:59.{0,80}list_movements' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md' | wc -l` が 0。file ごとの撤去: `rg -c 'T23:59:59|created_at DESC, id DESC' docs/function-design/44-cmd-inventory.md`（§23.9 の SQL 概要と D-118 の節の置き換えの宣言）、``rg -c '既存 `list_movements`|^\| 期間 predicate \| `date_to \+ T23:59:59`' docs/function-design/74-ui-operation-logs.md``（UI-11c-D2・「既存 `list_movements`」の段落・比較の表の `StockMovementsPage` の列）、``rg -c '日時降順|日時は `YYYY-MM-DD HH:mm:ss` 表示' docs/function-design/66-ui-stock-movements.md``（主動線の 2. と §66.5 の表示規則）がどれも exit 1。
+- AC5（正本）: `rg -n 'proposed・未実装' docs/ARCHITECTURE.md docs/function-design/20-io-product-repo.md docs/function-design/21-io-inventory-repo.md docs/function-design/40-cmd-product.md docs/function-design/44-cmd-inventory.md docs/function-design/50-ui-product-list.md docs/function-design/51-ui-product-form.md docs/function-design/58-ui-stock-inquiry.md docs/function-design/65-inventory-record-traceability.md docs/function-design/66-ui-stock-movements.md | rg -v 'D-122|^[^:]+:[0-9]+:\| 20[0-9]{2}-[0-9]{2}-[0-9]{2} \|' | wc -l` が 0（D-118 の (b) の分が全部入る。D-122 の項と変更履歴の行は数えない）。`rg -c 'b1 の後・b2 の前の版' docs/adr/2026-10-16-stocktake-count-placement.md` が exit 1（b1 の merge の後は 1 で、b2 で外す）。``rg -n '`MovementRecord` の並びの鍵|`MovementRecord` に同じ列' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/backlog.md' | wc -l`` が 0。`rg -n 'list_movements.{0,40}T23:59:59|T23:59:59.{0,80}list_movements' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md' | wc -l` が 0。file ごとの撤去: `rg -c 'T23:59:59|created_at DESC, id DESC|PaginatedResult<MovementRecord>|list_movements を追加|repo から得た movement 行' docs/function-design/44-cmd-inventory.md`（§23.9 の SQL 概要と IO の signature、D-118 の節の置き換えの宣言、§23.8 の CMD の signature、§23.1 のモジュール構成の行、§23.10 の BIZ の signature と `source` の補完の説明）、``rg -c '既存 `list_movements`|^\| 期間 predicate \| `date_to \+ T23:59:59`|movement/records 画面の期間 predicate' docs/function-design/74-ui-operation-logs.md``（UI-11c-D2・§74.4.3 の段落・§74.17 の比較の表の `StockMovementsPage` の列・§74.16 の非目的の行）、`rg -c '日時降順|日時は .YYYY-MM-DD HH:mm:ss. 表示|PaginatedResult<MovementRecord>' docs/function-design/66-ui-stock-movements.md`（主動線の 2.、§66.5 の表示規則、§66.4 の型）、``rg -c '^\| `listMovements\(query\)` \| 商品別 movement。' docs/function-design/65-inventory-record-traceability.md``（§65.7.1 の command の表の行）がどれも exit 1。
 - AC6（既存の test の移し方）: Matrix の T1〜T3 の command を実装の後に逐語で回し、出力の各行（test の名前）を T1〜T3 の分類（移す / 期待を変える / 契約ごと外す）に当てた表を PR の本文に貼る。「移す」の test で値の期待（`assert` の右辺・件数・文言）が変わっていない。「契約ごと外す」の行に置き換えた正本の節と、代わりに同じ失敗を止める Matrix の行を書く。
 
 AC の数は AC1〜AC6 の 6。
 
-AC の数の baseline（2026-10-23、本 commit の作業木〈HEAD `eed07d37` に本 commit の docs の差分〉で逐語で実行した。code は main と同じ）:
+AC の数の baseline（2026-10-24、本 commit の作業木〈HEAD `d4b9ee3a` に本 commit の docs の差分〉で逐語で実行した。code は main `eed07d37` と同じ）:
 
 ```
 $ rg -U -c 'export type ProductWithRelations = \{[^}]*stock_recheck: boolean' src/lib/bindings.ts
@@ -360,8 +368,8 @@ $ rg -c 'T23:59:59' src-tauri/src/db/inventory_repo.rs
 exit=0
 $ rg -U -c 'export type MovementRecord = \{[^}]*business_date' src/lib/bindings.ts
 exit=1
-$ rg -n 'proposed・未実装' docs/function-design/20-io-product-repo.md docs/function-design/21-io-inventory-repo.md docs/function-design/40-cmd-product.md docs/function-design/44-cmd-inventory.md docs/function-design/50-ui-product-list.md docs/function-design/51-ui-product-form.md docs/function-design/58-ui-stock-inquiry.md docs/function-design/65-inventory-record-traceability.md docs/function-design/66-ui-stock-movements.md | rg -v 'D-122|^[^:]+:[0-9]+:\| 20[0-9]{2}-[0-9]{2}-[0-9]{2} \|' | wc -l
-11
+$ rg -n 'proposed・未実装' docs/ARCHITECTURE.md docs/function-design/20-io-product-repo.md docs/function-design/21-io-inventory-repo.md docs/function-design/40-cmd-product.md docs/function-design/44-cmd-inventory.md docs/function-design/50-ui-product-list.md docs/function-design/51-ui-product-form.md docs/function-design/58-ui-stock-inquiry.md docs/function-design/65-inventory-record-traceability.md docs/function-design/66-ui-stock-movements.md | rg -v 'D-122|^[^:]+:[0-9]+:\| 20[0-9]{2}-[0-9]{2}-[0-9]{2} \|' | wc -l
+13
 exit=0
 $ rg -c 'b1 の後・b2 の前の版' docs/adr/2026-10-16-stocktake-count-placement.md
 exit=1
@@ -371,22 +379,25 @@ exit=0
 $ rg -n 'list_movements.{0,40}T23:59:59|T23:59:59.{0,80}list_movements' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md' | wc -l
 2
 exit=0
-$ rg -c 'T23:59:59|created_at DESC, id DESC' docs/function-design/44-cmd-inventory.md
+$ rg -c 'T23:59:59|created_at DESC, id DESC|PaginatedResult<MovementRecord>|list_movements を追加|repo から得た movement 行' docs/function-design/44-cmd-inventory.md
+8
+exit=0
+$ rg -c '既存 `list_movements`|^\| 期間 predicate \| `date_to \+ T23:59:59`|movement/records 画面の期間 predicate' docs/function-design/74-ui-operation-logs.md
+4
+exit=0
+$ rg -c '日時降順|日時は .YYYY-MM-DD HH:mm:ss. 表示|PaginatedResult<MovementRecord>' docs/function-design/66-ui-stock-movements.md
 3
 exit=0
-$ rg -c '既存 `list_movements`|^\| 期間 predicate \| `date_to \+ T23:59:59`' docs/function-design/74-ui-operation-logs.md
-3
-exit=0
-$ rg -c '日時降順|日時は `YYYY-MM-DD HH:mm:ss` 表示' docs/function-design/66-ui-stock-movements.md
-2
+$ rg -c '^\| `listMovements\(query\)` \| 商品別 movement。' docs/function-design/65-inventory-record-traceability.md
+1
 exit=0
 ```
 
-Plan Review round 1 の是正で、`proposed・未実装` の検索に D-122 の項と変更履歴の行を除く filter を足し（除く前は 18 行で、7 行が D-118 でない）、44・74・66 の file ごとの 3 本を足した（Review Response 参照）。
+`proposed・未実装` の検索は D-122 の項と変更履歴の行を除く（round 1 の是正。Review Response 参照）。`docs/ARCHITECTURE.md` の 2 行（D-118 の節の見出しと本文）と、44・66・74 の file ごとの語、65 の 1 本は round 2 の是正（Review Response 参照）。
 
 main の版の数なので、b1 の merge の後に変わる（`proposed・未実装` は b1 の分が減り、`b1 の後・b2 の前の版` は 1 になる）。同期の後に取り直し、同期の差分を PR の本文に書く。
 
-完了時の期待: AC1 の数が 1。AC2 の数が 3、`ORDER BY created_at DESC, id DESC` と `T23:59:59` と `MovementRecord` の `business_date` が exit 1。AC5 の `proposed・未実装` が 0、`b1 の後・b2 の前の版` が exit 1、`MovementRecord` の並びの鍵の文と `list_movements` の `T23:59:59` の文が 0、44・74・66 の file ごとの 3 本が exit 1。test の本数は AC にしない（PR と runner の出力を参照）。
+完了時の期待: AC1 の数が 1。AC2 の数が 3、`ORDER BY created_at DESC, id DESC` と `T23:59:59` と `MovementRecord` の `business_date` が exit 1。AC5 の `proposed・未実装` が 0、`b1 の後・b2 の前の版` が exit 1、`MovementRecord` の並びの鍵の文と `list_movements` の `T23:59:59` の文が 0、44・74・66・65 の file ごとの 4 本が exit 1。test の本数は AC にしない（PR と runner の出力を参照）。
 
 ## Design Readiness
 
@@ -432,7 +443,7 @@ main の版の数なので、b1 の merge の後に変わる（`proposed・未�
   - `ProductWithRelations` に `stock_recheck: boolean`・`stock_range_low: number | null`・`stock_range_high: number | null`（`Product` には足さない。`StockDetail.product` も同じ型）。
   - `StockHistoryKind = "movement" | "count"`（D-061 の生成の literal union）。
   - `StockHistoryItem { kind: StockHistoryKind, business_date: string, settlement_no: number | null, saved_at: string, movement: MovementRecord | null, count: StockCountHistory | null }`（kind が `movement` なら `movement` だけが値、`count` なら `count` だけが値）。
-  - `StockCountHistory { id: number, count_value: number, count_kind: StockCountKind, stocktake_id: number | null, source: MovementSourceLink | null }`（`StockCountKind` は b1 の生成型）。
+  - `StockCountHistory { id: number, count_value: number, stock_unit: ProductStockUnit, count_kind: StockCountKind, stocktake_id: number | null, source: MovementSourceLink | null }`（`StockCountKind` は b1 の生成型。`stock_unit` は計数の商品の今の `products.stock_unit` で、画面は計数の値をこの単位で描く。商品情報の取得〈`getStockDetail`〉だけが失敗した部分障害〈UI-06c-D3〉でも、長さの商品の計数 450 は「4.5 m」。先例は b1 の `CountRecoveryTarget.stock_unit`）。
   - `listMovements` の戻り値は `PaginatedResult<StockHistoryItem>`（`items`・`total_count`・`page`・`per_page` は今のまま。`total_count` は絞り込みの後の movement と計数の合計）。
   - 変えない型: `MovementRecord`・`MovementQuery`・`MovementSourceLink`・`Product`・業務記録の詳細の型。
 - internal type: IO の履歴の 2 つの行の型（`pub(crate)`、wire に出ない）。BIZ の並びの鍵（`(business_date, phase, settlement_no または -1, after_settlement)` と足しの 3 つ）は関数の中の値で、保存しない。
@@ -456,14 +467,18 @@ L3（Human Gate `manual`。1 回の通しの台本で、各段の PASS / FAIL �
 
 L3 の起点の DB（owner は DB も file も作らない。先例は b1 の packet の Test Plan の「L3 の DB の用意と差し替え」）:
 
-1. 控え（Coordinator、b1 の L3 が PASS した直後）: owner がアプリを止めた状態で、`%APPDATA%\com.kosei.inventory\` の `inventory.db`（と `-wal`・`-shm` があればそれも）を、repo の外の日付の付いた folder（例 `%USERPROFILE%\inventory-db-moved\{b1 の L3 の日}-b1-l3-end\`）へ写す（元は消さない・動かさない）。写しを読み取りだけで開き、下の 2 つの query の結果を控える。
-2. 確かめ（Coordinator、b2 の L3 を頼む前）: owner がアプリを止めた状態で、今の DB の写しを読み取りだけで開き、同じ 2 つの query の結果が 1. の控えと同じことを確かめる（b2 は migration を持たないが、間に merge した lane の migration で版が進むのは差にしない）。違えば（間の lane の L3 で DB を入れ替えた等）、今の data の folder を [22 §16](../function-design/22-mnt-migration.md) の作り直しの手順 2〜4 で日付の付いた folder へ消さずに移し、1. の写しを `%APPDATA%\com.kosei.inventory\inventory.db` に置いて、もう一度確かめる。
-3. 1. の写しも b1 の L3 の後の DB も無いとき: b1 の packet の L3-2〜L3-13 の台本を owner にもう一度頼むか、Writer が `src-tauri/src/biz/l3_b2_db.rs`（`#[cfg(test)]`、BIZ の関数で同じ状態の DB を作る `#[ignore]` の test。先例は b1 の `io::l3_fixtures`）を足して Coordinator が作るかを、Coordinator が owner の手間の少ない方で決める（介入の予備 1 を使う）。
+1. 控え（Coordinator、b1 の L3 が PASS した直後）: owner がアプリを止めた状態で、`%APPDATA%\com.kosei.inventory\` の `inventory.db`（と `-wal`・`-shm` があればそれも）を、repo の外の日付の付いた folder（例 `%USERPROFILE%\inventory-db-moved\{b1 の L3 の日}-b1-l3-end\`）へ写す（元は消さない・動かさない）。写しを読み取りだけで開き、下の 4 つの query の結果を控える（商品の写し、計数〈保存の日時と精算回数と棚卸しの明細を含む〉、履歴の入力になる movement の全部〈取消の印・業務日・精算回数・保存の日時を含む〉、Z004 の取込みの状態）。
+2. 確かめ（Coordinator、b2 の L3 を頼む前）: owner がアプリを止めた状態で、今の DB の写しを読み取りだけで開き、同じ 4 つの query の結果が 1. の控えと行ごとに同じことを確かめる（b2 は migration を持たないが、間に merge した lane の migration で版が進むのは差にしない。query は列を名指すので、足された列は比べない）。写しと計数が同じでも、控えの後に入れた入出庫や取込みの取消があれば movement か取込みの結果が違い、L3-4〜L3-6 の期待の順と合わなくなるので、同じに扱わない。違えば（間の lane の L3 で DB を入れ替えた、控えの後に記録を足した等）、今の data の folder を [22 §16](../function-design/22-mnt-migration.md) の作り直しの手順 2〜4 で日付の付いた folder へ消さずに移し、1. の写しを `%APPDATA%\com.kosei.inventory\inventory.db` に置いて、もう一度確かめる。
+3. 1. の写しも b1 の L3 の後の DB も無いとき: b1 の packet の L3-2〜L3-13 の台本を owner にもう一度頼むか、Writer が `src-tauri/src/biz/l3_b2_db.rs`（`#[cfg(test)]`、BIZ の関数で同じ状態の DB を作る `#[ignore]` の test。先例は b1 の `io::l3_fixtures`）を足して Coordinator が作るかを、Coordinator が owner の手間の少ない方で決める（予備は 0 なので、`Owner Effort Budget` のとおり上限の改定を同じ問い合わせで諮る）。
 
 ```
 SELECT product_code, stock_quantity, stock_recheck, stock_range_low, stock_range_high FROM products ORDER BY product_code;
-SELECT sc.id, sc.product_code, sc.count_kind, sc.count_value, sc.business_date, si.stocktake_id FROM stock_counts sc LEFT JOIN stocktake_items si ON si.id = sc.stocktake_item_id ORDER BY sc.id;
+SELECT sc.id, sc.product_code, sc.count_kind, sc.count_value, sc.business_date, sc.settlement_no, sc.counted_at, sc.stocktake_item_id, si.stocktake_id FROM stock_counts sc LEFT JOIN stocktake_items si ON si.id = sc.stocktake_item_id ORDER BY sc.id;
+SELECT id, product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, business_date, phase, settlement_no, created_at FROM inventory_movements ORDER BY id;
+SELECT id, machine_no, settlement_no, settlement_date, status, imported_at FROM csv_imports ORDER BY id;
 ```
+
+`csv_imports` の `machine_no`・`settlement_no` は b1 の Plan Commit の版の列の名前（[pos-tables](../db-design/pos-tables.md) の b1 の版）で、b1 の merge の後の同期で当て直す（b1 への依存と同じ）。
 
 起点の状態（b1 の packet の L3 の表の後の状態から導いた。Coordinator が 2. の query で確かめる）: P2 は fresh な計数 8（T）の後に同じ日付 T の入庫 +1（b1 の L3-13）があり、写し 9・要再確認・範囲 8〜9（ADR D3 の fresh な計数の行の「i > m のうち E = T は決まらない」）。P1 は写し 9（効く計数は fresh な 9〈T〉）、P4 は写し 450（4.5 m）、P5 は写し 9、P6 は写し 0、どれも要再確認でない。計数は P1 に既定 11（T−3）・既定 10（T−2）・fresh 9（T）、P2 に既定 10（T）・fresh 8（T）、P3 に既定 9（T）、P4 に既定 450（T）、P5 に fresh 9（T、棚卸しの明細を参照しない）・既定 9（T）、P6 に既定 0（T）。P5 の fresh 以外は完了した棚卸し（b1 の L3 で最初に作った棚卸し）の明細を参照する。Z004 の取込みは精算 101（T−3）・102（T−2）・104（T、2 回目）・103（T−1）が active。
 
@@ -535,6 +550,15 @@ Plan Review round 1 の是正（Review Response 参照）で足した・置き�
 - 単位や種類の混在: 理由の文は b1 の label を共有し、商品の画面で別の書き方を持たない。(2) で計数の行の {数} は在庫の欄と同じ形（個数にも単位の語）、movement の行の増減と変動後在庫は今の形（個数は語なし）のままで、同じ表の中で計数と movement の数を取り違えない（計数の行の増減と変動後在庫は「—」）。→ 正本の不足は 66 の {数} の文（表の 6 と食い違っていた）で、本 commit で直した。
 
 この是正で新しい wire の型・field・command は無い。消した記述: 66 の「{数} は movement の数量と同じ単位の書き方」、packet の「(i) が A なら plan-gate の前に」と「plan-gate へは b1 の merge と同期の後」、Non-scope の「要再確認の理由を商品の画面に出すこと」。
+
+Plan Review round 2 の是正（Review Response 参照）で足した契約の文は 1 つ: `StockCountHistory.stock_unit`（計数の商品の今の `products.stock_unit`。44・66・Boundary）。L3 の起点の DB の確かめの query を足したのは手順の直しで、契約の文でない。境界の 4 観点で一巡した:
+
+- 安全な整数の範囲: 新しい数を持たない（単位は生成の enum `ProductStockUnit`）。→ 不足は無かった。
+- 0 の表示: 計数 0 は単位つきで「0 個」「0 m」のまま（単位は行が持つので、商品情報の取得の失敗で語が落ちない）。→ 不足は無かった。
+- 失敗の時点と順序: 単位は履歴と同じ読取りで返るので、`getStockDetail` だけの失敗（UI-06c-D3）で計数の数の意味が決まらなくなることが無い。履歴の読取りの失敗は今の Alert。→ 正本の不足は 44・66（計数の行の単位を商品情報の取得に頼っていた）で、本 commit で直した。
+- 単位や種類の混在: 単位は計数の保存の時点でなく今の商品の単位を読む（写しと同じ。登録の後の単位の変更は個数の単位どうしだけで〈[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D2 の「単位の変更」〉数量の整数の意味を変えないので、今の単位で計数の値を描いてよい）。movement の行は今の `product_code → stock_unit` の対応のまま（UI-06c-D5）。→ 不足は無かった。
+
+この是正で新しい wire の field は `StockCountHistory.stock_unit` の 1 つ。消した記述: 不要になるものの「`list_receivings` ほかは今の形のまま残るので、例をそちらへ替える」（入出庫の記録は `T23:59:59` を使っていないので、対比を撤去する）、Matrix の T2 の「表の日時を見る case は期待を変える」（日時を assert する case は無い）、H1 の Would fail if の「phase を見ない」（CHECK で `settlement_no` の有無と等価）、Test Plan の「介入の予備 1 を使う」（予備は 0）。
 
 ## Contract Probe
 
