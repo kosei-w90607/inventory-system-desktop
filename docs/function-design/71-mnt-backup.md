@@ -71,7 +71,7 @@ fn create_backup(
 ```
 
 **処理ステップ**:
-0. 書く先を固定して確かめる（MNT-01-D10）: `pin_backup_dir(backup_dir)`（下の「書く先の固定」）で実体の path を得る。固定できない・レジの SD の上なら書かずに `DbError::QueryFailed`。手順 1〜4b（folder の作成・作業名の掃除・`VACUUM INTO`・検査・公開・親 directory の sync）は全部この実体の path で行う。返す `BackupResult.file_path` は今までどおり `{backup_dir}/{ファイル名}`（wire の値は変えない）
+0. 書く先を固定して確かめる（MNT-01-D10）: `pin_backup_dir(backup_dir)`（下の「書く先の固定」）で実体の path を得る。固定できない・レジの SD の上なら書かずに `DbError::QueryFailed`。手順 1〜5（folder の作成・作業名の掃除・`VACUUM INTO`・検査・公開・親 directory の sync・metadata の取得）は全部この実体の path で行う。返す `BackupResult.file_path` は今までどおり `{backup_dir}/{ファイル名}`（wire の値は変えない）
 1. `backup_dir` が存在しなければ `std::fs::create_dir_all` で作成
 2. 現在日時からファイル名を生成: `inventory_backup_{YYYYMMDD}_{HHMMSS}.db`
 3. バックアップ先パスを構築: `{backup_dir}/{ファイル名}`。書込みは作業名 `{ファイル名}.partial` へ行う（MNT-01-D7）。`backup_dir` に残った作業名（前回の中断の残り）は先に消す。消すのは `.partial` を除いた名前が §71.3 の規約に完全に合う file（`extract_datetime_from_backup` が日時を返す名前に `.partial` を付けた名前）だけで、ほかの `*.partial`（別用途の file）は消さない（失敗は `tracing::warn!` で続行）
