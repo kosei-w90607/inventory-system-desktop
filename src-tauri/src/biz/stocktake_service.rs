@@ -1498,7 +1498,7 @@ mod tests {
         assert!(matches!(result, Err(BizError::NotFound(_))));
     }
 
-    // ===== update_count テスト =====
+    // ===== 計数の保存のテスト =====
 
     // テストヘルパー: カスタム商品seed
     fn seed_product_custom(

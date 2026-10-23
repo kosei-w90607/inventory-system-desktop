@@ -2,7 +2,7 @@
 //!
 //! 精算日を L3 の日 T からの相対で決めるので file は tracked にせず、ここで T から作る。
 //! 商品一括 import の CSV 2 つと layout A の Z004 7 つ（CP932・CRLF、マシンNo. `0001`）。
-//! 通常の test は固定の T で作って読み戻し（CI で生成の誤りを止める）、`#[ignore]` の test は
+//! 通常の test は固定の T で作って読み戻し（CI で生成の誤りを止める）、手元で走らせる ignore の test は
 //! env の `INVENTORY_L3_DAY`（`YYYY-MM-DD`）と `INVENTORY_L3_OUT`（出力の folder）で手元で作る。
 
 use crate::io::{product_csv_importer, z004_parser};

@@ -441,32 +441,33 @@ mod tests {
 
     #[test]
     fn test_stocktake_cmd_req205_new_commands_registered() {
-        // REQ-205 / 42 / Registration Obligations（b1 Matrix W2）: 新設 4 の command が lib.rs の 2 つの一覧
-        // （collect_commands と generate_handler）にあり、update_count が無い
+        // REQ-205 / 42 / Registration Obligations（b1 Matrix W2）: lib.rs の 2 つの一覧（collect_commands と
+        // generate_handler）の棚卸しの command が 42 の表と完全一致する（新設 4 があり、外した command が無い）
         let source = include_str!("../lib.rs");
-        let block = |anchor: &str| -> &str {
+        let commands = |anchor: &str| -> Vec<&str> {
             let start = source.find(anchor).expect(anchor);
             let end = source[start..].find("])").expect("list end") + start;
-            &source[start..end]
+            source[start..end]
+                .lines()
+                .filter_map(|line| line.trim().strip_prefix("cmd::stocktake_cmd::"))
+                .map(|name| name.trim_end_matches(','))
+                .collect()
         };
-        for list in [
-            block("collect_commands!["),
-            block("tauri::generate_handler!["),
-        ] {
-            for command in [
-                "save_stock_count",
-                "preview_stock_count_placement",
-                "zero_uncounted_items",
-                "list_recheck_products",
-                "complete_stocktake",
-            ] {
-                assert!(
-                    list.contains(&format!("cmd::stocktake_cmd::{command},")),
-                    "{command}"
-                );
-            }
-            assert!(!list.contains("update_count"));
-        }
+        let expected = vec![
+            "get_active_stocktake",
+            "start_stocktake",
+            "get_stocktake_items",
+            "find_stocktake_item",
+            "get_last_completed_stocktake",
+            "get_stocktake_record",
+            "save_stock_count",
+            "preview_stock_count_placement",
+            "zero_uncounted_items",
+            "list_recheck_products",
+            "complete_stocktake",
+        ];
+        assert_eq!(commands("collect_commands!["), expected);
+        assert_eq!(commands("tauri::generate_handler!["), expected);
     }
 
     #[test]

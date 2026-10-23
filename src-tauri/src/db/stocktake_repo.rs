@@ -341,7 +341,7 @@ pub fn count_uncounted_items(conn: &DbConnection, stocktake_id: i64) -> Result<i
     Ok(count)
 }
 
-/// 棚卸し明細を親ステータス付きで取得する（update_count のバリデーション用）
+/// 棚卸し明細を親ステータス付きで取得する（計数の保存の明細の確かめ用。35）
 ///
 /// 20-io-product-repo.md §2.11
 pub fn find_stocktake_item_with_parent_status(
