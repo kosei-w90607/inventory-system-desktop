@@ -6,7 +6,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -23,6 +23,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 1. kickoff → spec-check（2026-10-23、起草役）: 発注書の範囲（店の PC で本物のデータを入れ始める最初の手順〈商品・初期在庫・部門・設定・最初の backup〉の正本の置き場と、アプリの側に足りない機能があるか）を範囲にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-23、起草役）: 引く正本（上の規模と手法の一覧）は各機能の契約として足りるが、初期投入を 1 つに並べた手順が無い（30 BIZ-01-D8 は「Excel から作る CSV の換算は初期投入の作業の範囲」とだけ書く）。手順書を新しく置く。
 3. design → plan-draft（2026-10-23、起草役、同じ commit）: 条件「設計の出力が正本にある」は、手順書 `docs/initial-load-runbook.md` を同じ plan-first の変更に置いて満たす（docs だけの lane の先例 `docs/archive/plans/2026-10-17-msi-distribution-docs.md` と同じ形）。条件「未解決の設計の問いが無い」は、owner の判断が要る 4 問（下の Review Focus の owner の判断事項）に全ての選択肢と推奨を並べ、推奨を既定として手順書を書き、答えで変わる所を手順書の表の「変わる所」に名指したことで満たす（owner の方針、repo 外の回答台帳 TD-401、2026-10-23）。実機でしか分からない点（P1・P2）は手順書に「未確認」と書き、予行演習で確かめる。
+4. plan-draft → plan-gate（2026-10-24、Coordinator の代行）: 条件「packet complete and committed; Test Design Matrix committed for R3」は、packet・Matrix・手順書が起草役の commit `fac7575b` にあり、packet が template の全節と R3 の Contract Ledger・Data Safety・Contract Probe・Design Readiness を持つことで満たす。発注の直前に AC1〜AC6・AC8・AC9 の command を逐語で実行し、上の実測と同じ値（AC1 は exit 0・WARN 12 件、AC2・AC9 は exit 0）を確かめた。Contract Probe の P1・P2 は未実施で、Plan Gate（plan-approved）の前に要るかは Plan Review の問いに渡す。branch の起点 `eed07d37` の後に main が進んだ（#191・#195・#199・#200。`docs/backlog.md` が衝突する）ことは、base 同期の要否とともに Coordinator が決める。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
