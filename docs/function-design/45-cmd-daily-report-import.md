@@ -53,7 +53,7 @@ struct DailyReportSourceFileRequest {
 }
 ```
 
-`source_path` は BIZ-08 §37.3 手順 1a が、選んだ file がレジの SD の上にあるかを確かめるためだけに使う（CMD は path を解釈しない）。CMD は `DailyReportInputFile { filename, bytes, sd_relative_path: None, source_path: source_path.map(PathBuf::from) }` を作って渡す。空文字の `source_path` は `None` と同じに扱う。今の構築（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `parse_and_validate_daily_report` の `DailyReportInputFile`）と test の `request`（同 `tests` の module）に field を足す。
+`source_path` は BIZ-08 §37.3 手順 1a が、選んだ file がレジの SD の上にあるかを確かめるためだけに使う（CMD は path を解釈しない）。CMD は `DailyReportInputFile { filename, bytes, sd_relative_path: None, source_path: source_path.map(PathBuf::from) }` を作って渡す。空文字の `source_path` は `None` と同じに扱う。
 
 **出力型**:
 
@@ -90,7 +90,7 @@ fn commit_daily_report_import(
 ) -> Result<DailyReportImportResult, CmdError>
 ```
 
-今の実装（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `commit_daily_report_import`）は `State<AppState>` だけを受ける。runtime の lane で `app: tauri::AppHandle` を足し、test 用の `commit_daily_report_import_with_state` には解決済みの `app_data_dir: &Path` を引数で渡す（test は一時 directory を渡す）。
+`app` は Tauri が注入する。手順 3a の `app_data_dir` は command が test 用の `commit_daily_report_import_with_state`（`src-tauri/src/cmd/daily_report_import_cmd.rs`）を呼ぶ前に取り、解決済みの `app_data_dir: &Path` を引数で渡す（取れなければ cache に触れずに `internal`。test は一時 directory を渡す）。
 
 **処理ステップ**:
 1. preview_tokenのUUID形式を検証する。
@@ -243,7 +243,7 @@ fn get_ej_record(state: State<AppState>, id: i64) -> Result<EjRecordDetail, CmdE
 
 ### 45.8 生成bindings
 
-SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs` の `export_bindings_to`）と runtime の `tauri::generate_handler!`（同 `run`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。件数は正本に書かず、この 4 つの集合が一致することだけを契約にする）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
+SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の `scan_register_sd` / `parse_and_validate_daily_report_from_sd` は、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs` の `export_bindings_to`）と runtime の `tauri::generate_handler!`（同 `run`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。件数は正本に書かず、この 4 つの集合が一致することだけを契約にする）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
 
 対象:
 - `parse_and_validate_daily_report`
@@ -263,3 +263,4 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | §45.3 の `DailyReportSourceFileRequest.source_path`（手で選んだ SD 上の file を SD の入力にする、37 §37.3 手順 1a）。§45.6a の選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。§45.8 の wire の契約を足す field に合わせた。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | §45.4 の commit に `app: tauri::AppHandle` と `app_data_dir` の取り方（手順 3a）を足した（BIZ-08-D5 の写しの置き場所）。 |
 | 2026-10-17 | sd-bulk-import-design（design、D-121） | §45.6c（CMD-12-D2）: 一括取込みと EJ の控えの command と、scan に後から足す EJ の数え・Z004 の bytes を proposed で足した。§45.6a・§45.6b は変えていない。Plan Review round 2 の是正で、`Failed` の kind と EJ の kind・mode を生成 enum にし、scan の `ej_unreadable_files` と手で選んだ EJ の保留の判定の置き場を書いた。Plan Review round 3 の是正で、一括取込みと手で選ぶ EJ の取込みの後に無効にする控えの query の key を書いた。Final Review の是正で、(B) の scan が返す `z004_unreadable_files` を書いた。あわせて `z004_unreadable_count` を書いた。 |
+| 2026-10-24 | sd-direct-read-runtime（実装、PR #172） | §45.3・§45.4・§45.8 の「今の実装」「runtime の lane で」の注記を実装の記述に直した。§45.4 手順 3a の `app_data_dir` は command が `commit_daily_report_import_with_state` を呼ぶ前に取る。 |

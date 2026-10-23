@@ -214,9 +214,9 @@ CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在�
 
 #### 29.7.1 目的と置き場所
 
-`register_sd`（module `io::register_sd`、未実装）は、レジ（CASIO SR-S4000）の SD を探し、売上の file（Z・EJ）の名前を列挙し、指定された 1 file の生バイトを読取り専用で読む IO 層の関数群である。file の中身の解釈は IO-07（日報）・IO-02（Z004）・IO-08（EJ）が行い、どの file を取込みの候補にするか・取込み済みかの判断は BIZ（日報は BIZ-08 §37.9）が行う。DB を呼ばず、SD に書かない。
+`register_sd`（module `io::register_sd`）は、レジ（CASIO SR-S4000）の SD を探し、売上の file（Z・EJ）の名前を列挙し、指定された 1 file の生バイトを読取り専用で読む IO 層の関数群である。file の中身の解釈は IO-07（日報）・IO-02（Z004）・IO-08（EJ）が行い、どの file を取込みの候補にするか・取込み済みかの判断は BIZ（日報は BIZ-08 §37.9）が行う。DB を呼ばず、SD に書かない。
 
-本節は IO-09 の function-design の正本である。新しい function-design の file を作ると `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` への登録が要り、docs だけの設計 lane では行えないため、IO-07 の文書に置く。runtime の lane は同 map の `29-io-daily-report-parser.md` の行に `io::register_sd` を足す（登録義務）。
+本節は IO-09 の function-design の正本である。新しい function-design の file を作ると `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` への登録が要り、docs だけの設計 lane では行えないため、IO-07 の文書に置く。同 map の `29-io-daily-report-parser.md` の行に `io::register_sd` を登録している。
 
 #### 29.7.2 SD の配置と名前（adapter facts）
 
@@ -407,7 +407,7 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 
 #### 29.8.1 目的と置き場所
 
-`pos_source_copy`（module `io::pos_source_copy`、未実装）は、SD から読んで取り込んだ file の生バイトを、PC 側のアプリのデータ folder に写しとして書く IO 層の関数である。CV17 の取込みをやめると PC 側に原本の写しが無くなる（CV17 は `EcrDatas` に写しを置いていた）ための代わり（owner 決定 2026-10-06）。SD には書かない（書く先はアプリのデータ folder だけ）。どの file をいつ書くか・失敗したらどうするかは BIZ（日報は BIZ-08-D5）が決める。本節も §29.7.1 と同じ理由で IO-07 の文書に置き、runtime の lane は `design_compliance_test.rs` の map の `29-io-daily-report-parser.md` の行に `io::pos_source_copy` を足す。
+`pos_source_copy`（module `io::pos_source_copy`）は、SD から読んで取り込んだ file の生バイトを、PC 側のアプリのデータ folder に写しとして書く IO 層の関数である。CV17 の取込みをやめると PC 側に原本の写しが無くなる（CV17 は `EcrDatas` に写しを置いていた）ための代わり（owner 決定 2026-10-06）。SD には書かない（書く先はアプリのデータ folder だけ）。どの file をいつ書くか・失敗したらどうするかは BIZ（日報は BIZ-08-D5）が決める。本節も §29.7.1 と同じ理由で IO-07 の文書に置き、`design_compliance_test.rs` の map の `29-io-daily-report-parser.md` の行に `io::pos_source_copy` を登録している。
 
 置き場所は既存の規則に合わせ、アプリのデータ folder（`app_data_dir`。DB の `inventory.db` と同じ folder、[71](71-mnt-backup.md) §71.7）の下の相対 path にする。レシート画像の `images/receipts/`（[28](28-io-image-manager.md) IO-06）と同じく、DB には app_data_dir からの相対 path を残す。
 
