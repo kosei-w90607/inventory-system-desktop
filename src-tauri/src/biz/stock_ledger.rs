@@ -1170,6 +1170,22 @@ mod tests {
         // 入れ直すと解ける
         insert_fresh_count(&conn, "SL13B", 5, T);
         assert_eq!(derive_stock(&conn, "SL13B").unwrap(), derived(5, None, &[]));
+
+        // (c) 判定の n でない精算の取り込み直し（Amendment の review の Codex の反例。Gated Amendment の 2 本目）:
+        // 取り込み直した 99 は判定の n の算出に入らないが、n = 100 のままなので k ≤ n で入り、要再確認にならない
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SL13C");
+        let i1 = settlement(&conn, 99, T);
+        z004_movement(&conn, "SL13C", -1, i1);
+        let i2 = settlement(&conn, 100, T);
+        insert_fresh_count(&conn, "SL13C", 5, T);
+        assert_eq!(derive_stock(&conn, "SL13C").unwrap(), derived(5, None, &[]));
+        roll_back(&conn, i1);
+        assert_eq!(derive_stock(&conn, "SL13C").unwrap(), derived(5, None, &[]));
+        let i3 = settlement(&conn, 99, T);
+        z004_movement(&conn, "SL13C", -1, i3);
+        assert_eq!((i1, i2, i3), (1, 2, 3));
+        assert_eq!(derive_stock(&conn, "SL13C").unwrap(), derived(5, None, &[]));
     }
 
     #[test]
