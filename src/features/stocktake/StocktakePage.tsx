@@ -246,6 +246,8 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   const productSuggestRef = useRef<ProductAddSuggestController | null>(null);
   // 「今の数を入れる」の欄の商品（route が別の商品へ変われば読込みの前からその商品）。遅い保存の応答の照合に使う（73）
   const standaloneCodeRef = useRef<string | null>(null);
+  // 今の欄に出ている商品。route の product の読込みが失敗したら照合をこれへ戻す（73）
+  const standaloneFieldCodeRef = useRef<string | null>(null);
   // 欄の読込み（route の product・「入れ直す」）は最後の操作の応答だけを当てる（73）
   const standaloneSeqRef = useRef(0);
 
@@ -254,7 +256,8 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   }, [search]);
 
   useEffect(() => {
-    standaloneCodeRef.current = standaloneTarget?.productCode ?? null;
+    standaloneFieldCodeRef.current = standaloneTarget?.productCode ?? null;
+    standaloneCodeRef.current = standaloneFieldCodeRef.current;
   }, [standaloneTarget]);
 
   const departmentsQuery = useQuery({
@@ -309,7 +312,10 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
         const target = await loadStandaloneTarget(searchProduct, itemId);
         if (!isStale()) setStandaloneTarget(target);
       } catch (error) {
-        if (!isStale()) setErrorMessage(describeError(error));
+        if (isStale()) return;
+        // 欄は前の商品のままなので、遅い保存の応答の照合を今の欄の商品へ戻す
+        standaloneCodeRef.current = standaloneFieldCodeRef.current;
+        setErrorMessage(describeError(error));
       }
     })();
     return () => {

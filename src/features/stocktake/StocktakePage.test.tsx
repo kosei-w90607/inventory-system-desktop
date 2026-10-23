@@ -1568,6 +1568,60 @@ describe("StocktakePage D-118 b1（73）", () => {
     });
   });
 
+  it("U9 count_now save for product A closes A's field after the route's product B fails to load (73, Final Review N1)", async () => {
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(null));
+    mockPreviewPlacement.mockImplementation((productCode) =>
+      Promise.resolve(
+        productCode === "P-005"
+          ? placement({
+              product_name: "連動なしの糸",
+              count_value: null,
+              count_kind: null,
+              count_business_date: null,
+            })
+          : cmdError("not_found", "商品が見つかりません"),
+      ),
+    );
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const { onReturnTo, onSearchChange, queryClient, rerender } = renderWithReturn({
+      product: "P-005",
+      returnTo: "/products/P-005/edit",
+    });
+    const user = userEvent.setup();
+    await screen.findByText("連動なしの糸");
+    await user.type(screen.getByLabelText(/^実際の数/), "9");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+
+    // A の保存の応答の保留中に route の product が B に変わり、B の読込みが失敗する
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <StocktakePage
+          search={{ product: "P-006" }}
+          onSearchChange={onSearchChange}
+          onReturnTo={onReturnTo}
+        />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("商品が見つかりません")).toBeInTheDocument();
+    expect(screen.getByText("連動なしの糸")).toBeInTheDocument();
+    resolveSave(saveResult());
+
+    // 欄は A のままなので、A の保存の成功で欄が閉じ、A の編集画面へ戻る
+    await waitFor(() => {
+      expect(onReturnTo).toHaveBeenCalledWith("/products/P-005/edit");
+    });
+    expect(screen.queryByText("連動なしの糸")).not.toBeInTheDocument();
+  });
+
   it("U8 confirm is locked while a count save is pending (73, Final Review G2)", async () => {
     let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
     mockSave.mockImplementationOnce(
