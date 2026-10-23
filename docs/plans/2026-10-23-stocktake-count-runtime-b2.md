@@ -28,7 +28,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -45,6 +45,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 1. kickoff → spec-check（2026-10-23、起草役）: Coordinator の発注（D-118 の (b) の b2。owner の決定 TD-391 で b1 の実装の間に先に起票）を範囲にし、規模を数えて 1 lane にした（上の「規模と手法」）。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-23、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1・D2・D3・D9・D12、[20](../function-design/20-io-product-repo.md)・[21](../function-design/21-io-inventory-repo.md)・[40](../function-design/40-cmd-product.md)・[44](../function-design/44-cmd-inventory.md)・[50](../function-design/50-ui-product-list.md)・[51](../function-design/51-ui-product-form.md)・[58](../function-design/58-ui-stock-inquiry.md)・[65](../function-design/65-inventory-record-traceability.md)・[66](../function-design/66-ui-stock-movements.md) の D-118 の節。設計の更新が要る点が 2 つあった（`list_movements` の結果の型・並び・絞り込み・合成の置き場、在庫変動の表の計数の行と日付の列。下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の 2 つを b1 が触らない 44・66 に本 packet と同じ commit で置いた。b1 が書き換えた節（ADR D12・21・40・51・65）は main の版で先に直さず、b1 の merge の後の同期で直す節として Scope に挙げた。製品の振舞いで owner の判断が要る問いは 1 つ（下の「owner の判断事項」）で、答えを待たずに推奨で進められる。plan-gate へは b1 の merge と同期の後に Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner の決定（repo 外の回答台帳 TD-402）で、b1 の merge を待たずに Plan Review を前倒しする（本 packet の起票の時は「b1 の merge と同期の後に plan-gate」としていた）。owner の判断事項 (i) は B（TD-397）で、推奨どおり Scope は起票のまま。review の基準は b1 の Plan Commit `aba17e2e` と、その後の Gated Amendment `5b53294040ff38d2aeb8366aefd02142ffb2c764`（fresh な計数の精算の判定を取込み ID のカーソルで求める。wire は変わらない）。b1 の merge の後に main を単段で取り込み、b1 の実装で wire の名前・形が変わった所を当て直す（変われば Gated Amendment）。
 
 ## Owner Effort Budget
 
