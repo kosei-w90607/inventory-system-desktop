@@ -28,9 +28,9 @@ repo の現物で確かめた（2026-10-17、`src-tauri/tauri.conf.json`・`.git
 
 ## 初回の導入の前に決めること
 
-- **製品名と upgrade code を固定する。** upgrade code は今 `productName` から作られる（[今の事実](#今の事実) の upgrade code の行。公式の資料で確かめた）ので、初回の導入の後に製品名を変えると、次の MSI は更新にならず別のアプリとして並んで入る見込み。初回の導入の前に、製品名を決めて、今の upgrade code を公式の CLI の `tauri inspect wix-upgrade-code` で印字し、`bundle.windows.wix.upgradeCode` に書いて固定する（固定が効くことは M4 で確かめる）。これは設定の変更で、本書の外の lane で行う（[backlog](backlog.md) の「MSI 配布手順 docs 化」の項）。決まるまでは店の PC に入れない。
+- **製品名は「在庫管理システム」にし、upgrade code は `9a951e09-cc62-5404-be40-7dfe6250fee3` で固定する（[decision-log](decision-log.md) D-132 (1)(2)）。** upgrade code は指定が無いと `productName` から作られる（[今の事実](#今の事実) の upgrade code の行。公式の資料で確かめた）ので、固定しないまま初回の導入の後に製品名を変えると、次の MSI は更新にならず別のアプリとして並んで入る見込み。固定する値は、製品名を変える前の既定の値（雛形の名から作られた値。公式の CLI の `tauri inspect wix-upgrade-code` の印字）で、`bundle.windows.wix.upgradeCode` に書き、製品名の変更と同じ commit に入れる。以後 upgrade code を変えない（変えた MSI は前の版を置き換えず、別のアプリとして入る）。固定が効くことは M4 で確かめる。日本語の製品名なので WiX の言語を `ja-JP` にする。設定の変更は MSI の固定の lane（[packet](plans/2026-10-23-msi-fix.md)）で行い、済むまでは店の PC に入れない。
 - **初回の導入（リリース）の版は、DB の作り直しの起点の migration を全部含む版にする。** 作り直しの起点の migration（22 §16 の vB と、D-118 の棚卸しの runtime の migration。22 §16 の「DB の作り直しと順」）は、行のある DB で止まり、止まった後の進め方が開発・試験 DB の作り直しになっている。店の PC へ初めて入れる版がそれを含まないと、後の更新がその migration で止まり、店の DB を作り直す経路になる。owner の決定（repo 外の回答台帳 TD-311、2026-10-17）: リリースの前（店の PC への初回の導入の前）は開発・試験 DB を何度作り直してもよい。初回の導入をリリースとし、その版はそれまでの作り直しの起点の migration を全部含む。リリースの後は作り直さない。初回の導入では DB が空から作られるので、それらの migration は行の無い DB に当たって止まらない。
-- **`identifier`（`com.kosei.inventory`）は変えない。** データの folder の名なので、変えた版は前のデータを見ずに空の DB で起動する。
+- **`identifier` は `com.inventory-system.desktop` にし、その後は変えない（[decision-log](decision-log.md) D-132 (3)）。** データの folder（`%APPDATA%` の下の `identifier` の名の folder）と WebView の保存の folder（`%LOCALAPPDATA%` の下の同じ名の folder）の名なので、変えた版は前のデータを見ずに空の DB で起動する。店の PC にまだ入れていない今だけ、前の値から変える。前の値で動かしたことのある開発用の PC のデータの folder は、[22](function-design/22-mnt-migration.md) §16 の作り直しの手順で消さずに移す。
 - **版の付け方。** 配布する MSI ごとに `version` を前より大きくする。版を上げずに作った MSI を入れたときの振舞いは未確認（M5）なので、上げずに配布しない。`1.0.0-rc.1` のような後ろの付いた版は MSI の版の形（数字 4 つまで）に無いので使わない。
 
 ## 配布の記録
