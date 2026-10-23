@@ -318,13 +318,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
         const target = await loadStandaloneTarget(searchProduct, itemId);
         if (!isStale()) setStandaloneTarget(target);
       } catch (error) {
-        if (isStale()) return;
-        // 欄は前の商品のままなので、遅い保存の応答の照合を今の欄の商品へ戻す
-        standaloneCodeRef.current = standaloneFieldCodeRef.current;
-        setErrorMessage(describeError(error));
-        const pending = standalonePendingCloseRef.current;
-        standalonePendingCloseRef.current = null;
-        if (pending !== null && pending.productCode === standaloneCodeRef.current) pending.finish();
+        if (!isStale()) settleStandaloneLoadFailure(error);
       }
     })();
     return () => {
@@ -337,6 +331,16 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     onSearchChange(updater);
   }
 
+  // 欄の読込み（route の product・「入れ直す」）の最後の操作が失敗したら、欄は前の商品のままなので、
+  // 遅い保存の応答の照合を今の欄の商品へ戻し、その商品の閉じ待ちがあれば実行する（73）
+  function settleStandaloneLoadFailure(error: unknown) {
+    standaloneCodeRef.current = standaloneFieldCodeRef.current;
+    setErrorMessage(describeError(error));
+    const pending = standalonePendingCloseRef.current;
+    standalonePendingCloseRef.current = null;
+    if (pending !== null && pending.productCode === standaloneCodeRef.current) pending.finish();
+  }
+
   async function openRecount(target: CountRecoveryTarget) {
     setErrorMessage(null);
     const seq = ++standaloneSeqRef.current;
@@ -344,7 +348,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
       const loaded = await loadStandaloneTarget(target.product_code, target.stocktake_item_id);
       if (seq === standaloneSeqRef.current) setStandaloneTarget(loaded);
     } catch (error) {
-      if (seq === standaloneSeqRef.current) setErrorMessage(describeError(error));
+      if (seq === standaloneSeqRef.current) settleStandaloneLoadFailure(error);
     }
   }
 

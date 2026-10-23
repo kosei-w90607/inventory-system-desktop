@@ -1622,6 +1622,68 @@ describe("StocktakePage D-118 b1（73）", () => {
     expect(screen.queryByText("連動なしの糸")).not.toBeInTheDocument();
   });
 
+  it("U9 count_now save for product A closes A's field after a recount of C supersedes route B and fails to load (73, Final Review N1c)", async () => {
+    mockGetActive.mockResolvedValue(ok(null));
+    mockListRecheck.mockResolvedValue(
+      ok([
+        recheckTarget({
+          product_code: "P-007",
+          product_name: "生成りの紐",
+          stocktake_item_id: null,
+          action: "count_now",
+        }),
+      ]),
+    );
+    mockPreviewPlacement.mockImplementation((productCode) =>
+      productCode === "P-005"
+        ? Promise.resolve(
+            placement({
+              product_name: "連動なしの糸",
+              count_value: null,
+              count_kind: null,
+              count_business_date: null,
+            }),
+          )
+        : productCode === "P-006"
+          ? new Promise(() => undefined)
+          : Promise.resolve(cmdError("not_found", "商品が見つかりません")),
+    );
+    const { onSearchChange, queryClient, rerender } = renderWithReturn({
+      product: "P-005",
+      returnTo: "/products/P-005/edit",
+    });
+    const user = userEvent.setup();
+    await screen.findByText("連動なしの糸");
+
+    // route の product が B に変わり、B の読込みの決着の前に「入れ直す」C を押す。C の読込みは失敗する
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <StocktakePage search={{ product: "P-006" }} onSearchChange={onSearchChange} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(mockPreviewPlacement).toHaveBeenCalledWith("P-006", expect.anything());
+    });
+    const list = await screen.findByRole("region", { name: "数え直しが必要な商品" });
+    await user.click(
+      within(within(list).getByRole("row", { name: /生成りの紐/ })).getByRole("button", {
+        name: "入れ直す",
+      }),
+    );
+    expect(await screen.findByText("商品が見つかりません")).toBeInTheDocument();
+    expect(screen.getByText("連動なしの糸")).toBeInTheDocument();
+
+    // 欄は A のままなので、A の保存の成功で欄が閉じる
+    await user.type(screen.getByLabelText(/^実際の数/), "9");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("連動なしの糸")).not.toBeInTheDocument();
+    });
+  });
+
   // A の保存の応答の保留中に route を B へ変え、B の読込みを保留したまま A の保存を成功させる
   async function saveAThenSettleB(settleB: "fail" | "succeed") {
     let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
