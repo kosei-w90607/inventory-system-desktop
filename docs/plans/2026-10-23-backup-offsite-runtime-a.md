@@ -52,6 +52,7 @@ wave に属さない単独の lane。D-114（design lane = PR #155、[packet](..
 1. kickoff → spec-check（2026-10-23、Writer）: owner の決定（TD-384）と backlog の「PC の外の控えの runtime」・「保存と起動の守りの follow-up」の (2) を起点に Scope を (a) に限り、Risk を R4 と記録した（下の Risk）。
 2. spec-check → plan-draft（2026-10-23、Writer、本 commit）: (a) が触る設計は 71 §71.3・§71.4・§71.4.1・§71.5・§71.8・§71.12、43 §43.6・§43.8.5、68 UI-11b-D13・D15・§68.4・§68.7・§68.11、22 MNT-03-D11 に揃っていて、新しい設計の判断が要らない（下の Design Readiness）。`docs/DEV_WORKFLOW.md` Workflow State の表の唯一の skip（Design Readiness が既存の設計正本で足りると引く）に当たる。owner の判断事項 J1（下）は範囲を足すかの問いで、既定（足さない）で設計は足りる。J1 で足すと決まれば design へ戻る（43 §43.7・68 UI-11b-D13 を直す）。Contract Probe の P7・P8 は未確認で、plan-approved の前に記録する（下の Contract Probe）。plan-gate へは Coordinator が進める。
 3. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner が判断事項 J1 に A（入れない。backlog に残す）と答えた（repo 外の回答台帳 TD-390）。推奨どおりで、Scope・契約は起票のまま。packet と Matrix が揃い commit されている。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
+4. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex は利用上限で 2026-10-24 まで使えず、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `b8b201a5` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 
 ## Owner Effort Budget
 
@@ -383,4 +384,10 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+round 1（`a899a1f1`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 3 / P3 6）。Codex は利用上限で使えず、§3.3 に従い Claude 側だけで round 1 とした。Coordinator が P2 3 件を現物で確かめ（SQLite の URI の `?`・`#`・`%` と `\\?\` の前置、`BackupRestorePage.test.tsx` の D13 の 2 本と `vi.mock("@/lib/bindings")`、復元の card の部品と §68.7・§68.9）、相談役（Fable 5.1、read-only の反例探し）に渡した。相談役は #8 を P2 に上げ、#2 の範囲を広げ（復元へ進む全 test が `inspectBackup` の mock を要る）、新しい P3 2 件を足した。Coordinator は全部を採用した。是正は起草役の `b8b201a5`。
+
+- P2: URI の組立てを 1 文に決めた（path の `%`・`?`・`#` だけを符号化し、`\` を `/` に変えない。71 §71.12 手順 1・S1・Matrix MNT-01-D9 に同じ文）、D13 の page の 2 本は契約ごと hook の test へ移し `mockDefaultCommands` に `inspectBackup` の既定、復元の card の「閉じる」1 つ（§68.7 に `pre_backup_failed` → `ready`、§68.9 に文言）、L3-a2 は USB の新しい空の folder に固定（既存の folder の古い file を掃除が消す筋を断つ）。
+- P3: `restore_failed_recovered`・IPC の例外の後は `ready` へ、`inFlight` の置き場を module scope へ、AC3 の実装の文字列の `rg` を削る、`docs/FUNCTION_DESIGN.md` の MNT-01 の索引の行を S3 に、公開の後の親 directory の sync を Contract Probe P9 に、相談役の新しい P3 2 件（「閉じる」で一覧を invalidate、存在しない path で file を作らない）。
+- Contract Probe P9・P10 は round 1 の是正で足し、owner の Windows の PC で 2026-10-23 に PASS（上の Contract Probe）。流し直しの介入は予備から充てた（上の Owner Effort Budget）。
