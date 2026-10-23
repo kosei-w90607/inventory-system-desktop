@@ -477,7 +477,13 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
           description="棚を今見た数を入れます（今日の日付で保存し、前に保存した数を置き換えます）"
         >
           <div className="flex justify-end">
-            <Button type="button" variant="ghost" size="sm" onClick={closeStandalone}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={countDisabled}
+              onClick={closeStandalone}
+            >
               <X aria-hidden="true" />
               閉じる
             </Button>
@@ -547,7 +553,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
 
           <StocktakeCountEntry
             stocktakeId={activeStocktakeId}
-            disabled={isCompleting}
+            disabled={countDisabled}
             lastSaveDay={lastSaveDay}
             productSuggestRef={productSuggestRef}
             findMutation={findMutation}
@@ -713,6 +719,8 @@ export function StocktakeCountEntry({
   const [targetMessage, setTargetMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<ProductWithRelations[]>([]);
+  // 遅い保存の応答が別の商品の欄を消さないよう、応答の商品と今の欄の商品を照合する（73）
+  const selectedCodeRef = useRef<string | null>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const productSuggest = useProductAddSuggest({
@@ -732,6 +740,10 @@ export function StocktakeCountEntry({
   useEffect(() => {
     codeInputRef.current?.focus({ preventScroll: true });
   }, []);
+
+  useEffect(() => {
+    selectedCodeRef.current = selectedItem?.product_code ?? null;
+  }, [selectedItem]);
 
   function selectItem(item: StocktakeItemDetail) {
     setSelectedItem(item);
@@ -911,9 +923,10 @@ export function StocktakeCountEntry({
                 reasons.length > 0 ? `。要再確認: ${reasons.join("。")}` : ""
               }`,
             );
+            onSaved(selectedItem.product_code);
+            if (selectedCodeRef.current !== selectedItem.product_code) return;
             setCode("");
             setSelectedItem(null);
-            onSaved(selectedItem.product_code);
             window.setTimeout(() => codeInputRef.current?.focus(), 0);
           }}
         />

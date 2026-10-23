@@ -1439,6 +1439,72 @@ describe("StocktakePage D-118 b1（73）", () => {
     ).toBeInTheDocument();
   });
 
+  it("U1 pending count save locks switching the product until the response (73, Final Review F1)", async () => {
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    const user = await selectItemByCode();
+
+    await user.type(screen.getByLabelText(/^実際の数/), "8{Enter}");
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(defaultCount(8));
+    });
+    expect(screen.getByLabelText("商品を検索・スキャン")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "対象を確認" })).toBeDisabled();
+
+    resolveSave(saveResult());
+    expect(await screen.findByText(`赤い糸 を 8 個（${TODAY}）で保存しました`)).toBeInTheDocument();
+    expect(screen.getByLabelText("商品を検索・スキャン")).toBeEnabled();
+  });
+
+  it("U1 late save response for product A keeps product B's field (73, Final Review F1)", async () => {
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    let resolveFind: (value: ReturnType<typeof ok<StocktakeItemDetail>>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    const user = await selectItemByCode();
+    await user.type(screen.getByLabelText(/^実際の数/), "8");
+
+    // B の検索の応答を保留したまま A の数を保存し、A の保存の応答も保留する
+    mockFindItem.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFind = resolve;
+        }),
+    );
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    await user.clear(screen.getByLabelText("商品を検索・スキャン"));
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-003{Enter}");
+    await user.click(screen.getByRole("button", { name: "数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(defaultCount(8));
+    });
+    resolveFind(ok(stocktakeItem({ id: 503, product_code: "P-003", name: "緑の糸" })));
+    await screen.findByText("緑の糸");
+
+    resolveSave(saveResult());
+    expect(await screen.findByText(`赤い糸 を 8 個（${TODAY}）で保存しました`)).toBeInTheDocument();
+    // A の応答は B の欄を消さない
+    await user.type(await screen.findByLabelText(/^実際の数/), "7{Enter}");
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenLastCalledWith({
+        ...defaultCount(7, 503),
+        product_code: "P-003",
+      });
+    });
+  });
+
   it("U2 back-dated count warns when a later count exists", async () => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
     mockPreviewPlacement.mockResolvedValue(placement({ later_count_exists: true }));
