@@ -1,14 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Info,
   Loader2,
   RotateCcw,
   Search,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
 import { EmptyState } from "@/components/patterns/EmptyState";
@@ -55,10 +57,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  formatLengthM,
+  formatLengthOrPlain,
+  formatStockDisplay,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import {
   commands,
+  type CountRecoveryTarget,
   type LastStocktakeSummary,
+  type ProductStockUnit,
   type ProductWithRelations,
+  type RecountReason,
+  type SettlementPendingHint,
+  type StockCountKind,
+  type StockCountSaveResult,
   type StocktakeItemDetail,
+  type StocktakeRecovery,
   type StocktakeResult,
 } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -66,34 +80,37 @@ import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
+import { getLocalDateString } from "@/lib/request-helpers";
+import { parseQuantityInput } from "@/lib/unit-quantity";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 
+import { RecheckTargetList } from "./components/RecheckTargetList";
 import { useCompleteStocktake } from "./hooks/useCompleteStocktake";
 import {
-  computeListDifference,
   formatCountedAt,
   formatListDifference,
+  formatRecountReasons,
+  formatSettlementGap,
+  formatStockOrRange,
+  STOCK_COUNT_FIELD,
 } from "./lib/stocktake-formatters";
 import { useFindStocktakeItem } from "./hooks/useFindStocktakeItem";
 import { useLastCompletedStocktake } from "./hooks/useLastCompletedStocktake";
+import { useSaveStockCount } from "./hooks/useSaveStockCount";
 import { useStocktakeItems } from "./hooks/useStocktakeItems";
 import { useStocktakeStatus } from "./hooks/useStocktakeStatus";
-import { useUpdateCount } from "./hooks/useUpdateCount";
 import {
   refreshStocktakeItemsAfterValidation,
   refreshStocktakeStateAfterConflict,
 } from "./stocktake-error-invalidation";
 import type { StocktakeSearch } from "./types";
 
-/// 旧棚卸しの書く操作（開始・数の保存・確定）の一時停止（SPEC-STOP-D4、73 §73.15）。
-/// UI の定数は安全の根拠にしない（backend も BIZ-06 で停止する）。解除は ⑤ だけ。
-const STOCKTAKE_WRITES_SUSPENDED = true;
-
 interface StocktakePageProps {
   search: StocktakeSearch;
   onSearchChange: (updater: (prev: StocktakeSearch) => StocktakeSearch) => void;
-  writesSuspended?: boolean;
+  /** 73「今の数を入れる」: 保存の後に `returnTo` へ戻る（route の遷移） */
+  onReturnTo?: (to: string) => void;
 }
 
 function formatYen(value: number): string {
@@ -113,6 +130,10 @@ function isStocktakeNotInProgressError(error: unknown): boolean {
 
 const STOCKTAKE_NOT_IN_PROGRESS_MESSAGE = "この棚卸しは既に完了しています";
 
+/** 73 の「完了」の行: アプリが判定できない最後の精算の取込み忘れを問う（ADR D6 の H2） */
+const LAST_SETTLEMENT_QUESTION =
+  "今日の最後の精算（締め）を取り込みましたか。取り込む前に完了すると、その精算の売上は棚卸しに入りません";
+
 const PRODUCT_NAME_SEARCH_QUERY = {
   department_id: null,
   is_discontinued: null,
@@ -122,11 +143,93 @@ const PRODUCT_NAME_SEARCH_QUERY = {
   per_page: 10,
 };
 
-export function StocktakePage({
-  search,
-  onSearchChange,
-  writesSuspended = STOCKTAKE_WRITES_SUSPENDED,
-}: StocktakePageProps) {
+/**
+ * 73「今の数を入れる」の `returnTo` は `/products/{product と同じ商品コード}/edit` だけを受ける
+ * （UI-01b-D2 と同じく許す先を限る）。外れれば null（保存の後も `/stocktake/` に留まる）。
+ */
+export function allowedReturnTo(
+  returnTo: string | undefined,
+  product: string | undefined,
+): string | null {
+  if (returnTo === undefined || product === undefined) return null;
+  const allowed = `/products/${product}/edit`;
+  return returnTo === allowed || returnTo === `/products/${encodeURIComponent(product)}/edit`
+    ? allowed
+    : null;
+}
+
+/** 計数の欄が扱う商品の文脈（棚卸しの明細・要再確認の対象・placement の読取りのどれからも作る） */
+interface CountTarget {
+  productCode: string;
+  name: string;
+  detail: string | null;
+  stockUnit: ProductStockUnit;
+  stock: number;
+  rangeLow: number | null;
+  rangeHigh: number | null;
+  reasons: RecountReason[];
+  countValue: number | null;
+  countKind: StockCountKind | null;
+  countBusinessDate: string | null;
+  stocktakeItemId: number | null;
+  /** 明細の写しがある（既存の「入力済みの数を上書きできます」の表示） */
+  hasItemCount: boolean;
+}
+
+function targetFromItem(item: StocktakeItemDetail): CountTarget {
+  return {
+    productCode: item.product_code,
+    name: item.name,
+    detail: item.department_name,
+    stockUnit: item.stock_unit,
+    stock: item.current_stock,
+    rangeLow: item.stock_range_low,
+    rangeHigh: item.stock_range_high,
+    reasons: item.recount_reasons,
+    countValue: item.count_value,
+    countKind: item.count_kind,
+    countBusinessDate: item.count_business_date,
+    stocktakeItemId: item.id,
+    hasItemCount: item.actual_count !== null,
+  };
+}
+
+function formatTargetStock(target: CountTarget): string {
+  return formatStockOrRange({
+    stock: target.stock,
+    stock_range_low: target.rangeLow,
+    stock_range_high: target.rangeHigh,
+    stock_unit: target.stockUnit,
+  });
+}
+
+/** 「今の数を入れる」の欄の文脈を読む（42 の `preview_stock_count_placement`。読取りだけ） */
+async function loadStandaloneTarget(
+  productCode: string,
+  stocktakeItemId: number | null,
+): Promise<CountTarget> {
+  const preview = await unwrapResult(
+    commands.previewStockCountPlacement(productCode, getLocalDateString()),
+    { source: "commands", cmd: "preview_stock_count_placement" },
+  );
+  return {
+    productCode,
+    name: preview.product_name,
+    detail: null,
+    stockUnit: preview.stock_unit,
+    stock: preview.stock,
+    rangeLow: preview.stock_range_low,
+    rangeHigh: preview.stock_range_high,
+    reasons: preview.recount_reasons,
+    countValue: preview.count_value,
+    countKind: preview.count_kind,
+    countBusinessDate: preview.count_business_date,
+    stocktakeItemId,
+    hasItemCount: false,
+  };
+}
+
+export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakePageProps) {
   const queryClient = useQueryClient();
   const stocktakeStatus = useStocktakeStatus();
   const activeStocktakeId = stocktakeStatus.activeStocktakeId;
@@ -136,6 +239,10 @@ export function StocktakePage({
   const [isStarting, setIsStarting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [completedResult, setCompletedResult] = useState<StocktakeResult | null>(null);
+  const [blocked, setBlocked] = useState<StocktakeRecovery | null>(null);
+  const [standaloneTarget, setStandaloneTarget] = useState<CountTarget | null>(null);
+  // 前の保存の日付（画面を開いたまま日付が変わったら保存の前に確かめる。73 の「日付の変わり目」）
+  const [lastSaveDay, setLastSaveDay] = useState<string | null>(null);
   const [lastStocktakeSnapshot, setLastStocktakeSnapshot] = useState<
     LastStocktakeSummary | null | undefined
   >(undefined);
@@ -150,15 +257,26 @@ export function StocktakePage({
     queryFn: () =>
       unwrapResult(commands.listDepartments(), { source: "commands", cmd: "list_departments" }),
   });
+  const recheckQuery = useQuery({
+    queryKey: queryKeys.stocktake.recheckList(),
+    queryFn: () =>
+      unwrapResult(commands.listRecheckProducts(), {
+        source: "commands",
+        cmd: "list_recheck_products",
+      }),
+    staleTime: 0,
+  });
   const lastCompletedQuery = useLastCompletedStocktake();
   const itemsQuery = useStocktakeItems(activeStocktakeId, effectiveSearch, perPage);
   const findMutation = useFindStocktakeItem();
-  const updateMutation = useUpdateCount();
+  const saveMutation = useSaveStockCount();
   const completeMutation = useCompleteStocktake();
 
   const isCompleting = completeMutation.isPending;
   const itemsData = itemsQuery.data;
   const progress = itemsData?.progress ?? { total_items: 0, counted_items: 0, uncounted_items: 0 };
+  const statusLoaded = !stocktakeStatus.isLoading;
+  const searchProduct = search.product;
 
   useEffect(() => {
     if (!itemsQuery.isError || !isStocktakeNotInProgressError(itemsQuery.error)) return;
@@ -166,9 +284,78 @@ export function StocktakePage({
     void refreshStocktakeStateAfterConflict(queryClient);
   }, [itemsQuery.error, itemsQuery.isError, queryClient]);
 
+  // 73「今の数を入れる」（商品を受けて開く）: 棚卸しの有無によらず fresh な計数の欄を開く。
+  // stocktake_item_id は進行中の棚卸しにその商品の明細があるときだけ送る
+  useEffect(() => {
+    if (searchProduct === undefined || !statusLoaded) return;
+    const run = { cancelled: false };
+    void (async () => {
+      try {
+        const item =
+          activeStocktakeId === null
+            ? null
+            : await unwrapResult(commands.findStocktakeItem(activeStocktakeId, searchProduct), {
+                source: "commands",
+                cmd: "find_stocktake_item",
+              });
+        const itemId = item !== null && item.product_code === searchProduct ? item.id : null;
+        const target = await loadStandaloneTarget(searchProduct, itemId);
+        if (!run.cancelled) setStandaloneTarget(target);
+      } catch (error) {
+        if (!run.cancelled) setErrorMessage(describeError(error));
+      }
+    })();
+    return () => {
+      run.cancelled = true;
+    };
+  }, [searchProduct, activeStocktakeId, statusLoaded]);
+
   function updateSearch(updater: (prev: StocktakeSearch) => StocktakeSearch) {
     setEffectiveSearch((prev) => updater(prev));
     onSearchChange(updater);
+  }
+
+  async function openRecount(target: CountRecoveryTarget) {
+    setErrorMessage(null);
+    try {
+      setStandaloneTarget(
+        await loadStandaloneTarget(target.product_code, target.stocktake_item_id),
+      );
+    } catch (error) {
+      setErrorMessage(describeError(error));
+    }
+  }
+
+  function closeStandalone() {
+    setStandaloneTarget(null);
+    if (search.product !== undefined || search.returnTo !== undefined) {
+      updateSearch((prev) => ({ ...prev, product: undefined, returnTo: undefined }));
+    }
+  }
+
+  async function handleSaved(productCode: string) {
+    setLastSaveDay(getLocalDateString());
+    // 片付いた理由（数え直し・未計数）を完了の拒否の一覧から外す（精算の理由は取込みで解ける）
+    setBlocked((prev) => {
+      if (prev === null) return prev;
+      const targets = prev.targets.filter(
+        (target) =>
+          target.product_code !== productCode || target.block_reason === "settlement_pending",
+      );
+      return targets.length === 0 ? null : { ...prev, targets };
+    });
+    await invalidateByContract(queryClient, invalidationContract.stocktakeCountUpdate());
+  }
+
+  async function handleStandaloneSaved(productCode: string) {
+    const back = allowedReturnTo(search.returnTo, search.product);
+    await handleSaved(productCode);
+    if (back !== null && productCode === search.product) {
+      setStandaloneTarget(null);
+      onReturnTo?.(back);
+      return;
+    }
+    closeStandalone();
   }
 
   async function handleStart() {
@@ -192,16 +379,14 @@ export function StocktakePage({
     }
   }
 
-  async function handleCompleteConfirm(forceFill: boolean) {
+  async function handleCompleteConfirm() {
     productSuggestRef.current?.invalidateAndClose();
     if (activeStocktakeId === null) return;
     setErrorMessage(null);
+    setBlocked(null);
     setIsConfirmOpen(false);
     try {
-      const result = await completeMutation.mutateAsync({
-        stocktakeId: activeStocktakeId,
-        forceFill,
-      });
+      const result = await completeMutation.mutateAsync({ stocktakeId: activeStocktakeId });
       setLastStocktakeSnapshot(lastCompletedQuery.data);
       setCompletedResult(result);
       await invalidateByContract(queryClient, invalidationContract.stocktakeComplete());
@@ -211,9 +396,45 @@ export function StocktakePage({
         await refreshStocktakeStateAfterConflict(queryClient);
         return;
       }
-      // validation エラー（force_fill 未入力超過等）は一覧を invalidate し、
-      // 次回の確定操作で最新の uncounted_items に基づいた判定ができるようにする
+      // 完了の拒否は理由ごとの一覧へ（型で分岐し message を解析しない。未知の code は文を出す。40）
+      if (
+        isInvokeError(error) &&
+        error.cmdError.kind === "stocktake_guard" &&
+        error.cmdError.stocktake_recovery?.code === "completion_blocked"
+      ) {
+        setBlocked(error.cmdError.stocktake_recovery);
+        void refreshStocktakeItemsAfterValidation(queryClient);
+        return;
+      }
+      // validation（合計金額が大きすぎます ほか）は一覧を invalidate し、次の完了で最新の状態を使う
       void refreshStocktakeItemsAfterValidation(queryClient);
+      setErrorMessage(describeError(error));
+    }
+  }
+
+  async function handleZero(productCodes: string[], businessDate: string) {
+    if (activeStocktakeId === null) return;
+    setErrorMessage(null);
+    try {
+      await unwrapResult(
+        commands.zeroUncountedItems(activeStocktakeId, productCodes, businessDate),
+        { source: "commands", cmd: "zero_uncounted_items" },
+      );
+      setBlocked((prev) => {
+        if (prev === null) return prev;
+        const targets = prev.targets.filter(
+          (target) =>
+            !(target.block_reason === "uncounted" && productCodes.includes(target.product_code)),
+        );
+        return targets.length === 0 ? null : { ...prev, targets };
+      });
+      await invalidateByContract(queryClient, invalidationContract.stocktakeCountUpdate());
+    } catch (error) {
+      if (isStocktakeNotInProgressError(error)) {
+        setErrorMessage(STOCKTAKE_NOT_IN_PROGRESS_MESSAGE);
+        await refreshStocktakeStateAfterConflict(queryClient);
+        return;
+      }
       setErrorMessage(describeError(error));
     }
   }
@@ -222,6 +443,8 @@ export function StocktakePage({
     return <StocktakeResultPage result={completedResult} lastStocktake={lastStocktakeSnapshot} />;
   }
 
+  const countDisabled = isCompleting || saveMutation.isPending;
+
   return (
     <PageShell>
       <PageHeader
@@ -229,21 +452,51 @@ export function StocktakePage({
         subtitle="商品コードまたはJANを読み取り、実際の在庫数を入力します"
       />
 
-      {writesSuspended ? (
-        <Alert variant="warning">
-          <AlertTriangle aria-hidden="true" />
-          <AlertTitle>棚卸しの入力は一時停止中です</AlertTitle>
-          <AlertDescription>
-            数えた後の入出庫が、確定のときに在庫から打ち消されてしまう不具合を直しています。直るまで、棚卸しの開始・数の保存・確定はできません。これまでの棚卸しの記録と一覧は見られます。
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       {errorMessage !== null ? (
         <Alert variant="destructive">
           <AlertTitle>操作できませんでした</AlertTitle>
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
+      ) : null}
+
+      <RecheckTargetList
+        title="数え直しが必要な商品"
+        targets={recheckQuery.data ?? []}
+        renderAction={(target) => (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={countDisabled}
+            onClick={() => void openRecount(target)}
+          >
+            入れ直す
+          </Button>
+        )}
+      />
+
+      {standaloneTarget !== null ? (
+        <FormSection
+          title="今の数を入れる"
+          description="棚を今見た数を入れます（今日の日付で保存し、前に保存した数を置き換えます）"
+        >
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={closeStandalone}>
+              <X aria-hidden="true" />
+              閉じる
+            </Button>
+          </div>
+          <CountFields
+            key={standaloneTarget.productCode}
+            target={standaloneTarget}
+            freshOnly
+            disabled={countDisabled}
+            lastSaveDay={lastSaveDay}
+            saveMutation={saveMutation}
+            onError={setErrorMessage}
+            onSaved={() => void handleStandaloneSaved(standaloneTarget.productCode)}
+          />
+        </FormSection>
       ) : null}
 
       {stocktakeStatus.isLoading ? (
@@ -267,7 +520,6 @@ export function StocktakePage({
           lastStocktake={lastCompletedQuery.data}
           isLoadingLast={lastCompletedQuery.isLoading}
           isStarting={isStarting}
-          startDisabled={writesSuspended}
           onStart={() => void handleStart()}
         />
       ) : (
@@ -299,15 +551,23 @@ export function StocktakePage({
 
           <StocktakeCountEntry
             stocktakeId={activeStocktakeId}
-            disabled={isCompleting || writesSuspended}
+            disabled={isCompleting}
+            lastSaveDay={lastSaveDay}
             productSuggestRef={productSuggestRef}
             findMutation={findMutation}
-            updateMutation={updateMutation}
+            saveMutation={saveMutation}
             onError={setErrorMessage}
-            onUpdated={() =>
-              void invalidateByContract(queryClient, invalidationContract.stocktakeCountUpdate())
-            }
+            onSaved={(productCode) => void handleSaved(productCode)}
           />
+
+          {blocked !== null ? (
+            <CompletionBlockedPanel
+              recovery={blocked}
+              disabled={countDisabled}
+              onRecount={(target) => void openRecount(target)}
+              onZero={(codes, businessDate) => void handleZero(codes, businessDate)}
+            />
+          ) : null}
 
           <StocktakeItemList
             items={itemsData?.items ?? []}
@@ -324,7 +584,7 @@ export function StocktakePage({
             <Button
               type="button"
               variant="outline"
-              disabled={isCompleting || writesSuspended}
+              disabled={isCompleting}
               onClick={() => {
                 setIsConfirmOpen(true);
               }}
@@ -342,10 +602,9 @@ export function StocktakePage({
 
           <StocktakeCompleteDialog
             open={isConfirmOpen}
-            uncountedItems={progress.uncounted_items}
             isCompleting={isCompleting}
             onOpenChange={setIsConfirmOpen}
-            onConfirm={(forceFill) => void handleCompleteConfirm(forceFill)}
+            onConfirm={() => void handleCompleteConfirm()}
           />
         </div>
       )}
@@ -357,7 +616,6 @@ interface StocktakeStartPanelProps {
   lastStocktake: LastStocktakeSummary | null | undefined;
   isLoadingLast: boolean;
   isStarting: boolean;
-  startDisabled?: boolean;
   onStart: () => void;
 }
 
@@ -365,7 +623,6 @@ export function StocktakeStartPanel({
   lastStocktake,
   isLoadingLast,
   isStarting,
-  startDisabled = false,
   onStart,
 }: StocktakeStartPanelProps) {
   return (
@@ -386,7 +643,7 @@ export function StocktakeStartPanel({
             )}
           </CardContent>
         </Card>
-        <Button type="button" onClick={onStart} disabled={isStarting || startDisabled}>
+        <Button type="button" onClick={onStart} disabled={isStarting}>
           {isStarting ? <Loader2 className="animate-spin" /> : <ClipboardCheck />}
           棚卸しを開始する
         </Button>
@@ -435,28 +692,30 @@ export function StocktakeProgressHeader({ startedAt, progress }: StocktakeProgre
 interface StocktakeCountEntryProps {
   stocktakeId: number;
   disabled: boolean;
+  lastSaveDay: string | null;
   productSuggestRef: RefObject<ProductAddSuggestController | null>;
   findMutation: ReturnType<typeof useFindStocktakeItem>;
-  updateMutation: ReturnType<typeof useUpdateCount>;
+  saveMutation: ReturnType<typeof useSaveStockCount>;
   onError: (message: string | null) => void;
-  onUpdated: () => void;
+  onSaved: (productCode: string) => void;
 }
 
 export function StocktakeCountEntry({
   stocktakeId,
   disabled,
+  lastSaveDay,
   productSuggestRef,
   findMutation,
-  updateMutation,
+  saveMutation,
   onError,
-  onUpdated,
+  onSaved,
 }: StocktakeCountEntryProps) {
-  const queryClient = useQueryClient();
   const [code, setCode] = useState("");
-  const [quantity, setQuantity] = useState("");
   const [selectedItem, setSelectedItem] = useState<StocktakeItemDetail | null>(null);
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  // 選び直すたびに欄（数量・日付・FieldError）を作り直す
+  const [selection, setSelection] = useState(0);
   const [targetMessage, setTargetMessage] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<ProductWithRelations[]>([]);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
@@ -479,19 +738,19 @@ export function StocktakeCountEntry({
   }, []);
 
   function selectItem(item: StocktakeItemDetail) {
-    setFieldError(null);
     setSelectedItem(item);
-    setQuantity(item.actual_count === null ? "" : String(item.actual_count));
+    setSelection((prev) => prev + 1);
     setCandidates([]);
     setTargetMessage(null);
+    setSavedMessage(null);
     window.setTimeout(() => quantityInputRef.current?.focus(), 0);
   }
 
   async function resolveItem(codeOverride?: string) {
     const trimmed = (codeOverride ?? code).trim();
     if (trimmed.length === 0 || disabled) return;
-    setFieldError(null);
     setTargetMessage(null);
+    setSavedMessage(null);
     setCandidates([]);
     onError(null);
     try {
@@ -507,7 +766,6 @@ export function StocktakeCountEntry({
       );
       if (products.items.length === 0) {
         setSelectedItem(null);
-        setQuantity("");
         setTargetMessage(
           "この商品は棚卸しの対象にありません。商品コードまたはJANを確認してください。新しく登録した商品は自動で追加されます",
         );
@@ -534,39 +792,6 @@ export function StocktakeCountEntry({
       const resolved = await findMutation.mutateAsync({ stocktakeId, code: productCode });
       if (resolved !== null) selectItem(resolved);
     } catch (error) {
-      onError(describeError(error));
-    }
-  }
-
-  async function saveCount() {
-    if (selectedItem === null || disabled) return;
-    if (quantity.trim() === "") {
-      setFieldError("数量を入力してください");
-      return;
-    }
-    const actualCount = Number(quantity);
-    if (!Number.isInteger(actualCount) || actualCount < 0) {
-      setFieldError("0以上の数値を入力してください");
-      return;
-    }
-    setFieldError(null);
-    onError(null);
-    try {
-      await updateMutation.mutateAsync({
-        stocktakeItemId: selectedItem.id,
-        actualCount,
-      });
-      setCode("");
-      setQuantity("");
-      setSelectedItem(null);
-      onUpdated();
-      window.setTimeout(() => codeInputRef.current?.focus(), 0);
-    } catch (error) {
-      if (isStocktakeNotInProgressError(error)) {
-        onError(STOCKTAKE_NOT_IN_PROGRESS_MESSAGE);
-        void refreshStocktakeStateAfterConflict(queryClient);
-        return;
-      }
       onError(describeError(error));
     }
   }
@@ -621,6 +846,13 @@ export function StocktakeCountEntry({
         </p>
       ) : null}
 
+      {savedMessage !== null ? (
+        <p className="mt-2 flex items-center gap-1.5 text-sm" role="status">
+          <CheckCircle2 aria-hidden="true" className="size-4" />
+          {savedMessage}
+        </p>
+      ) : null}
+
       {candidates.length > 0 ? (
         <div className="mt-2 space-y-2">
           <p className="text-sm text-muted-foreground">候補から商品を選んでください</p>
@@ -667,65 +899,318 @@ export function StocktakeCountEntry({
       ) : null}
 
       {selectedItem !== null ? (
-        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_12rem_auto]">
-          <div>
-            <p className="font-medium">{selectedItem.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {selectedItem.product_code} / {selectedItem.department_name} / 現在在庫{" "}
-              {selectedItem.current_stock}
-            </p>
-            {selectedItem.actual_count !== null ? (
-              <p className="text-sm text-muted-foreground">入力済みの数を上書きできます</p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="stocktake-actual-count">実際の数</Label>
-            <Input
-              id="stocktake-actual-count"
-              ref={quantityInputRef}
-              value={quantity}
-              inputMode="numeric"
-              disabled={disabled}
-              onChange={(event) => {
-                setQuantity(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing) return;
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void saveCount();
-                }
-              }}
-            />
-            <div className="min-h-5" aria-live="polite">
-              {fieldError !== null ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {fieldError}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex flex-col items-start gap-2">
-            {/* Gated Amendment 1（S3 追加是正、案 a）: 数量欄 column（Label + Input + FieldError slot）と
-                同じ行構造を持たせる。invisible な Label 高さ分の spacer でボタン上端を Input 上端に揃え、
-                下に min-h-5 の空 slot を置いて行高さも対称にする。 */}
-            <Label className="invisible" aria-hidden="true">
-              実際の数
-            </Label>
-            <Button
-              type="button"
-              disabled={disabled || updateMutation.isPending}
-              onClick={() => void saveCount()}
-            >
-              {updateMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-              数を保存
-            </Button>
-            <div className="min-h-5" aria-hidden="true" />
-          </div>
-        </div>
+        <CountFields
+          key={selection}
+          target={targetFromItem(selectedItem)}
+          freshOnly={false}
+          disabled={disabled}
+          lastSaveDay={lastSaveDay}
+          saveMutation={saveMutation}
+          quantityInputRef={quantityInputRef}
+          onError={onError}
+          onSaved={(result, businessDate, countValue) => {
+            const reasons = formatRecountReasons(result.recount_reasons);
+            setSavedMessage(
+              `${selectedItem.name} を ${formatStockDisplay(countValue, selectedItem.stock_unit)}（${businessDate}）で保存しました${
+                reasons.length > 0 ? `。要再確認: ${reasons.join("。")}` : ""
+              }`,
+            );
+            setCode("");
+            setSelectedItem(null);
+            onSaved(selectedItem.product_code);
+            window.setTimeout(() => codeInputRef.current?.focus(), 0);
+          }}
+        />
       ) : null}
     </FormSection>
   );
+}
+
+interface CountFieldsProps {
+  target: CountTarget;
+  /** 要再確認の一覧・「今の数を入れる」から開いた欄は fresh な計数だけ（日付は今日） */
+  freshOnly: boolean;
+  disabled: boolean;
+  lastSaveDay: string | null;
+  saveMutation: ReturnType<typeof useSaveStockCount>;
+  quantityInputRef?: RefObject<HTMLInputElement | null>;
+  onError: (message: string | null) => void;
+  onSaved: (result: StockCountSaveResult, businessDate: string, countValue: number) => void;
+}
+
+/**
+ * 73 の D-118 の節の計数の欄: 「数を保存」（既定の計数。日付は既定で今日、「前の日の分を入れる」で選ぶ）と
+ * 「入れ直す」（fresh な計数。日付は今日だけ）。保存の前に日付の変わり目を確かめる。
+ */
+function CountFields({
+  target,
+  freshOnly,
+  disabled,
+  lastSaveDay,
+  saveMutation,
+  quantityInputRef,
+  onError,
+  onSaved,
+}: CountFieldsProps) {
+  const queryClient = useQueryClient();
+  const [quantity, setQuantity] = useState("");
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [backDate, setBackDate] = useState<string | null>(null);
+  const [laterCountExists, setLaterCountExists] = useState(false);
+  const [pendingDateChange, setPendingDateChange] = useState<{
+    fresh: boolean;
+    value: number;
+    previous: string;
+    today: string;
+  } | null>(null);
+  const today = getLocalDateString();
+  const isLength = target.stockUnit === "m";
+
+  async function chooseBackDate(value: string) {
+    setBackDate(value);
+    setLaterCountExists(false);
+    if (value === "" || value > getLocalDateString()) return;
+    try {
+      const placement = await unwrapResult(
+        commands.previewStockCountPlacement(target.productCode, value),
+        { source: "commands", cmd: "preview_stock_count_placement" },
+      );
+      setLaterCountExists(placement.later_count_exists);
+    } catch (error) {
+      onError(describeError(error));
+    }
+  }
+
+  async function doSave(fresh: boolean, value: number, businessDate: string) {
+    onError(null);
+    try {
+      const result = await saveMutation.mutateAsync({
+        product_code: target.productCode,
+        count_value: value,
+        fresh,
+        business_date: businessDate,
+        stocktake_item_id: target.stocktakeItemId,
+      });
+      setQuantity("");
+      onSaved(result, businessDate, value);
+    } catch (error) {
+      if (isStocktakeNotInProgressError(error)) {
+        onError(STOCKTAKE_NOT_IN_PROGRESS_MESSAGE);
+        void refreshStocktakeStateAfterConflict(queryClient);
+        return;
+      }
+      onError(describeError(error));
+    }
+  }
+
+  function saveCount(fresh: boolean) {
+    if (disabled || saveMutation.isPending) return;
+    if (quantity.trim() === "") {
+      setFieldError("数量を入力してください");
+      return;
+    }
+    const parsed = parseQuantityInput(quantity, target.stockUnit, STOCK_COUNT_FIELD);
+    if (parsed.error !== null) {
+      setFieldError(parsed.error);
+      return;
+    }
+    const now = getLocalDateString();
+    const businessDate = fresh || backDate === null || backDate === "" ? now : backDate;
+    if (businessDate > now) {
+      setFieldError("未来の日付には保存できません");
+      return;
+    }
+    setFieldError(null);
+    // 前の保存から PC の日付が変わったら、今日の分として保存するかを確かめる（前の日の分は選んだ日付）
+    if (businessDate === now && lastSaveDay !== null && lastSaveDay !== now) {
+      setPendingDateChange({ fresh, value: parsed.value, previous: lastSaveDay, today: now });
+      return;
+    }
+    void doSave(fresh, parsed.value, businessDate);
+  }
+
+  const isBackDated = !freshOnly && backDate !== null;
+  const shownDate = isBackDated && backDate !== "" ? backDate : today;
+
+  return (
+    <div className="mt-4 grid gap-4 md:grid-cols-[1fr_12rem_auto]">
+      <div className="space-y-1">
+        <p className="font-medium">{target.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {target.productCode}
+          {target.detail !== null ? ` / ${target.detail}` : ""} / 現在在庫{" "}
+          {formatTargetStock(target)}
+          {target.rangeLow !== null ? (
+            <Badge variant="outline" tone="warning" className="ml-2">
+              <AlertTriangle aria-hidden="true" />
+              要再確認
+            </Badge>
+          ) : null}
+        </p>
+        {target.reasons.length > 0 ? (
+          <p className="text-sm">{formatRecountReasons(target.reasons).join("。")}</p>
+        ) : null}
+        {target.countValue !== null ? (
+          <p className="text-sm text-muted-foreground">
+            前に保存した数: {formatStockDisplay(target.countValue, target.stockUnit)}（
+            {target.countBusinessDate}
+            {target.countKind === "fresh" ? "、入れ直し" : ""}）
+          </p>
+        ) : null}
+        {target.hasItemCount ? (
+          <p className="text-sm text-muted-foreground">入力済みの数を上書きできます</p>
+        ) : null}
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          <CalendarDays aria-hidden="true" className="size-4" />
+          保存の日付: {shownDate}
+          {shownDate === today ? "（今日）" : ""}
+          {!freshOnly && !isBackDated ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => {
+                setBackDate("");
+              }}
+            >
+              前の日の分を入れる
+            </Button>
+          ) : null}
+        </p>
+        {isBackDated ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor={`stocktake-back-date-${target.productCode}`}>数えた日</Label>
+              <Input
+                id={`stocktake-back-date-${target.productCode}`}
+                type="date"
+                max={today}
+                value={backDate}
+                disabled={disabled}
+                onChange={(event) => void chooseBackDate(event.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={() => {
+                setBackDate(null);
+                setLaterCountExists(false);
+              }}
+            >
+              今日の分に戻す
+            </Button>
+          </div>
+        ) : null}
+        {isBackDated && laterCountExists ? (
+          <p className="flex items-center gap-1.5 text-sm" role="status">
+            <Info aria-hidden="true" className="size-4" />
+            後の数が既にあり、そちらが効きます
+          </p>
+        ) : null}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="stocktake-actual-count">
+          実際の数{isLength ? "（m、小数 2 桁まで）" : ""}
+        </Label>
+        <Input
+          id="stocktake-actual-count"
+          ref={quantityInputRef}
+          value={quantity}
+          inputMode={isLength ? "decimal" : "numeric"}
+          disabled={disabled}
+          onChange={(event) => {
+            setQuantity(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            if (event.key === "Enter") {
+              event.preventDefault();
+              saveCount(freshOnly);
+            }
+          }}
+        />
+        <div className="min-h-5" aria-live="polite">
+          {fieldError !== null ? (
+            <p className="text-sm text-destructive" role="alert">
+              {fieldError}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex flex-col items-start gap-2">
+        {/* Gated Amendment 1（S3 追加是正、案 a）: 数量欄 column（Label + Input + FieldError slot）と
+            同じ行構造を持たせる。invisible な Label 高さ分の spacer でボタン上端を Input 上端に揃え、
+            下に min-h-5 の空 slot を置いて行高さも対称にする。 */}
+        <Label className="invisible" aria-hidden="true">
+          実際の数
+        </Label>
+        <Button
+          type="button"
+          disabled={disabled || saveMutation.isPending}
+          onClick={() => {
+            saveCount(freshOnly);
+          }}
+        >
+          {saveMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+          {freshOnly ? "今の数を保存" : "数を保存"}
+        </Button>
+        {!freshOnly && !isBackDated && target.countValue !== null ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled || saveMutation.isPending}
+            onClick={() => {
+              saveCount(true);
+            }}
+          >
+            <RotateCcw aria-hidden="true" />
+            入れ直す
+          </Button>
+        ) : null}
+        <div className="min-h-5" aria-hidden="true" />
+      </div>
+
+      <AlertDialog
+        open={pendingDateChange !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDateChange(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>日付が変わりました</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDateChange !== null
+                ? `日付が変わりました（${pendingDateChange.previous} → ${pendingDateChange.today}）。今日の分として保存しますか`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const pending = pendingDateChange;
+                setPendingDateChange(null);
+                if (pending !== null) void doSave(pending.fresh, pending.value, pending.today);
+              }}
+            >
+              今日の分として保存する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+/** 差異の符号付きの表示（長さの商品は m の形「-0.5 m」。SPEC-UNIT-D3） */
+function formatDifference(difference: number | null, unit: ProductStockUnit): string {
+  if (difference === null || unit !== "m") return formatListDifference(difference);
+  return `${difference > 0 ? "+" : ""}${formatLengthM(difference)}`;
 }
 
 interface StocktakeItemListProps {
@@ -869,7 +1354,8 @@ export function StocktakeItemList({
             </TableHeader>
             <TableBody>
               {items.map((item) => {
-                const diff = computeListDifference(item);
+                // 差異は BIZ が求めた値（35「読取り」）。画面で計算しない
+                const diff = item.difference;
                 return (
                   <TableRow key={item.id}>
                     <TableCell>{item.product_code}</TableCell>
@@ -882,8 +1368,29 @@ export function StocktakeItemList({
                       ) : null}
                     </TableCell>
                     <TableCell>{item.department_name}</TableCell>
-                    <TableCell className="text-right">{item.current_stock}</TableCell>
-                    <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>
+                    <TableCell className="text-right">
+                      {item.stock_range_low !== null ? (
+                        <>
+                          {formatStockOrRange({
+                            stock: item.current_stock,
+                            stock_range_low: item.stock_range_low,
+                            stock_range_high: item.stock_range_high,
+                            stock_unit: item.stock_unit,
+                          })}
+                          <Badge variant="outline" tone="warning" className="ml-2">
+                            <AlertTriangle aria-hidden="true" />
+                            要再確認
+                          </Badge>
+                        </>
+                      ) : (
+                        formatLengthOrPlain(item.current_stock, item.stock_unit)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.actual_count === null
+                        ? "未入力"
+                        : formatLengthOrPlain(item.actual_count, item.stock_unit)}
+                    </TableCell>
                     <TableCell
                       className={
                         diff === null
@@ -895,7 +1402,7 @@ export function StocktakeItemList({
                               : "text-right text-muted-foreground"
                       }
                     >
-                      {formatListDifference(diff)}
+                      {formatDifference(diff, item.stock_unit)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatCountedAt(item.counted_at)}
@@ -926,54 +1433,220 @@ export function StocktakeItemList({
 
 interface StocktakeCompleteDialogProps {
   open: boolean;
-  uncountedItems: number;
   isCompleting: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (forceFill: boolean) => void;
+  onConfirm: () => void;
 }
 
 export function StocktakeCompleteDialog({
   open,
-  uncountedItems,
   isCompleting,
   onOpenChange,
   onConfirm,
 }: StocktakeCompleteDialogProps) {
-  const hasUncounted = uncountedItems > 0;
   const warningTitle = "確定すると取り消せません";
-  const bodyText = hasUncounted
-    ? `${String(uncountedItems)}件が未入力のまま残っています。確定すると、この${String(uncountedItems)}件は現在の在庫数で棚卸しされます。`
-    : "入力した内容で棚卸しを確定します。";
+  const bodyText = "入力した内容で棚卸しを確定します。";
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {hasUncounted ? "未入力の商品があります" : "棚卸しの確定"}
-          </AlertDialogTitle>
+          <AlertDialogTitle>棚卸しの確定</AlertDialogTitle>
           <AlertDialogDescription className="sr-only">
             {warningTitle}。{bodyText}
+            {LAST_SETTLEMENT_QUESTION}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Alert variant="warning">
           <AlertTriangle />
           <AlertTitle>{warningTitle}</AlertTitle>
-          <AlertDescription>{bodyText}</AlertDescription>
+          <AlertDescription>
+            <p>{bodyText}</p>
+            <p>{LAST_SETTLEMENT_QUESTION}</p>
+          </AlertDescription>
         </Alert>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isCompleting}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={isCompleting}
-            onClick={() => {
-              onConfirm(hasUncounted);
-            }}
-          >
+          <AlertDialogAction variant="destructive" disabled={isCompleting} onClick={onConfirm}>
             確定する
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/** 「取り込んでいない精算がある」の直し方の文（40 の `SettlementPendingHint` から 73 の文） */
+export function settlementPendingHintLines(hint: SettlementPendingHint | null): string[] {
+  if (hint === null) return [];
+  return [
+    ...hint.missing.map((gap) => `${formatSettlementGap(gap)} を取り込んでください`),
+    ...(hint.on_or_after !== null
+      ? [`精算日が ${hint.on_or_after} 以降の精算を取り込んでください`]
+      : []),
+    ...(hint.before !== null
+      ? [`精算日が ${hint.before} より前の精算を 1 本取り込んでください`]
+      : []),
+  ];
+}
+
+interface CompletionBlockedPanelProps {
+  recovery: StocktakeRecovery;
+  disabled: boolean;
+  onRecount: (target: CountRecoveryTarget) => void;
+  onZero: (productCodes: string[], businessDate: string) => void;
+}
+
+/** 73 の「完了」: completion_blocked を block_reason ごとの一覧で出す（理由を 1 つの一覧に混ぜない） */
+function CompletionBlockedPanel({
+  recovery,
+  disabled,
+  onRecount,
+  onZero,
+}: CompletionBlockedPanelProps) {
+  const [zeroDate, setZeroDate] = useState(getLocalDateString());
+  const [confirmZeroAll, setConfirmZeroAll] = useState(false);
+  const recheck = recovery.targets.filter((target) => target.block_reason === "recheck");
+  const uncounted = recovery.targets.filter((target) => target.block_reason === "uncounted");
+  const pending = recovery.targets.filter((target) => target.block_reason === "settlement_pending");
+  const hintLines = settlementPendingHintLines(recovery.settlement_pending);
+  const today = getLocalDateString();
+
+  return (
+    <section
+      aria-label="棚卸しを確定できない理由"
+      className="space-y-4 rounded-md border border-destructive p-4"
+    >
+      <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+        <AlertTriangle aria-hidden="true" className="size-5" />
+        棚卸しを確定できません。次の理由を片付けてください
+      </h2>
+
+      {recheck.length > 0 ? (
+        <BlockGroup title="数え直しが必要">
+          {recheck.map((target) => (
+            <li key={target.product_code} className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{target.product_name}</span>
+              <span className="font-mono text-sm text-muted-foreground">{target.product_code}</span>
+              <span className="tabular-nums">{formatStockOrRange(target)}</span>
+              <span className="text-sm">
+                {formatRecountReasons(target.recount_reasons).join("。")}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                onClick={() => {
+                  onRecount(target);
+                }}
+              >
+                入れ直す
+              </Button>
+            </li>
+          ))}
+        </BlockGroup>
+      ) : null}
+
+      {uncounted.length > 0 ? (
+        <BlockGroup title="まだ数えていない">
+          <li className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="stocktake-zero-date">0 にする日付</Label>
+              <Input
+                id="stocktake-zero-date"
+                type="date"
+                max={today}
+                value={zeroDate}
+                disabled={disabled}
+                onChange={(event) => {
+                  setZeroDate(event.target.value);
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || zeroDate === "" || zeroDate > today}
+              onClick={() => {
+                setConfirmZeroAll(true);
+              }}
+            >
+              残りをまとめて 0 にする
+            </Button>
+          </li>
+          {uncounted.map((target) => (
+            <li key={target.product_code} className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{target.product_name}</span>
+              <span className="font-mono text-sm text-muted-foreground">{target.product_code}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || zeroDate === "" || zeroDate > today}
+                onClick={() => {
+                  onZero([target.product_code], zeroDate);
+                }}
+              >
+                0 にする
+              </Button>
+            </li>
+          ))}
+        </BlockGroup>
+      ) : null}
+
+      {pending.length > 0 ? (
+        <BlockGroup title="取り込んでいない精算がある">
+          {hintLines.map((line) => (
+            <li key={line} className="font-medium">
+              {line}
+            </li>
+          ))}
+          {pending.map((target) => (
+            <li key={target.product_code} className="flex flex-wrap items-center gap-2">
+              <span>{target.product_name}</span>
+              <span className="font-mono text-sm text-muted-foreground">{target.product_code}</span>
+            </li>
+          ))}
+        </BlockGroup>
+      ) : null}
+
+      <AlertDialog open={confirmZeroAll} onOpenChange={setConfirmZeroAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>残りをまとめて 0 にしますか</AlertDialogTitle>
+            <AlertDialogDescription>
+              まだ数えていない {uncounted.length}件を、{zeroDate} の数 0 として保存します。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmZeroAll(false);
+                onZero(
+                  uncounted.map((target) => target.product_code),
+                  zeroDate,
+                );
+              }}
+            >
+              0 にする
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+function BlockGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2" role="group" aria-label={title}>
+      <h3 className="flex items-center gap-1.5 font-semibold">
+        <AlertTriangle aria-hidden="true" className="size-4" />
+        {title}
+      </h3>
+      <ul className="space-y-2 pl-1">{children}</ul>
+    </div>
   );
 }
 
@@ -983,7 +1656,6 @@ interface StocktakeResultPageProps {
 }
 
 export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPageProps) {
-  const adjustedItems = useMemo(() => result.adjusted_items, [result.adjusted_items]);
   return (
     <PageShell>
       <PageHeader title="棚卸し結果" />
@@ -991,8 +1663,13 @@ export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPa
         <CardHeader>
           <CardTitle>仕入原価総額</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <p className="text-3xl font-semibold">{formatYen(result.total_cost)}</p>
+          <p>明細の数: {result.total_items.toLocaleString("ja-JP")}件</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Info aria-hidden="true" className="size-4" />
+            確定では在庫は動きません（数を保存したときに在庫へ入っています）
+          </p>
         </CardContent>
       </Card>
 
@@ -1012,45 +1689,6 @@ export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPa
           </p>
         </CardContent>
       </Card>
-
-      <FormSection title="差異のあった商品">
-        {adjustedItems.length === 0 ? (
-          <p>差異はありませんでした</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>商品コード</TableHead>
-                <TableHead>商品名</TableHead>
-                <TableHead className="text-right">システム在庫</TableHead>
-                <TableHead className="text-right">実際の数</TableHead>
-                <TableHead className="text-right">差異</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {adjustedItems.map((item) => (
-                <TableRow key={item.product_code}>
-                  <TableCell>{item.product_code}</TableCell>
-                  <TableCell>{item.product_name}</TableCell>
-                  <TableCell className="text-right">{item.system_stock}</TableCell>
-                  <TableCell className="text-right">{item.actual_count}</TableCell>
-                  <TableCell
-                    className={
-                      item.difference > 0
-                        ? "text-right text-success-strong"
-                        : item.difference < 0
-                          ? "text-right text-destructive-strong"
-                          : "text-right text-muted-foreground"
-                    }
-                  >
-                    {formatListDifference(item.difference)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </FormSection>
 
       <FormSection title="整合性チェック">
         {result.integrity_result === null ? (
