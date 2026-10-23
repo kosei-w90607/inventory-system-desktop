@@ -11,14 +11,14 @@ repo の現物で確かめた（2026-10-17、`src-tauri/tauri.conf.json`・`.git
 | 項目 | 今の値・振舞い | 出所 |
 |---|---|---|
 | MSI を作れる場所 | Windows の上だけ（WiX は Windows でしか動かない）。CI に Windows の build は無いので、開発用の Windows の clone で作る | [Tauri Windows Installer](https://v2.tauri.app/distribute/windows-installer/)、`.github/workflows/` |
-| 作る installer の種類 | `bundle.targets` が `all`。Windows では MSI と NSIS の setup.exe の両方ができる見込みで、本書は MSI だけを使う（M1） | `src-tauri/tauri.conf.json` |
-| 製品名 | `productName` は `inventory-system-tauri-scaffold`（雛形の名のまま） | `src-tauri/tauri.conf.json` |
-| 更新の判定の鍵（upgrade code） | 指定が無いので、`productName` から作られる（`<productName>.exe.app.x64` の UUID v5）。更新のたびに同じでなければならない | [Tauri config: WixConfig](https://v2.tauri.app/reference/config/) |
+| 作る installer の種類 | `bundle.targets` が `"msi"`（[decision-log](decision-log.md) D-132 (4)）。MSI だけができ、NSIS の setup.exe はできない見込み（M1） | `src-tauri/tauri.conf.json`（2026-10-24 に確かめた） |
+| 製品名 | `productName` と窓の題（`app.windows[0].title`）は「在庫管理システム」、WiX の言語（`bundle.windows.wix.language`）は `ja-JP`（D-132 (1)） | `src-tauri/tauri.conf.json`（2026-10-24 に確かめた） |
+| 更新の判定の鍵（upgrade code） | `bundle.windows.wix.upgradeCode` に `9a951e09-cc62-5404-be40-7dfe6250fee3` を固定した（D-132 (2)。雛形の名 `inventory-system-tauri-scaffold` の `productName` から作られた既定の値）。指定が無いと `productName` から作られる（`<productName>.exe.app.x64` の UUID v5）。更新のたびに同じでなければならない。`npm run tauri -- inspect wix-upgrade-code` は 2 行を出す: `Default WiX Upgrade Code, derived from 在庫管理システム: 0928b25a-2e81-56ce-b22a-c840966cac58`（今の製品名から作った既定の値。使われない）と `Application Upgrade Code override: 9a951e09-cc62-5404-be40-7dfe6250fee3`（設定の固定の値。MSI に使われる）。既定の値へ直さない | `src-tauri/tauri.conf.json`、[Tauri config: WixConfig](https://v2.tauri.app/reference/config/)、tauri-cli 2.11.1 の `inspect wix-upgrade-code`（2026-10-24 に確かめた） |
 | 版 | `version` は `0.1.0`。MSI の版はここから作られ、形は `major.minor.patch.build`（major と minor は 255 まで、patch と build は 65,535 まで） | `src-tauri/tauri.conf.json`、[Tauri config: WixConfig](https://v2.tauri.app/reference/config/) |
 | 古い版の上書き | `allowDowngrades` の既定は `true`（新しい版が入っていても古い版を入れられる）。tauri.conf.json に指定は無い | [Tauri config: WindowsConfig](https://v2.tauri.app/reference/config/) |
 | 署名 | 無い（`certificateThumbprint`・`signCommand` の指定が無い）。署名はアプリの実行には要らない。browser から download した file では SmartScreen の警告が出得る | `src-tauri/tauri.conf.json`、[Tauri Windows code signing](https://v2.tauri.app/distribute/sign/windows/) |
 | WebView2 | 既定の `downloadBootstrapper`（WebView2 が無いときに download して入れる。network が要る）。Windows 11 には WebView2 が入っている | [Tauri Windows Installer](https://v2.tauri.app/distribute/windows-installer/)、[DEV_SETUP_CHECKLIST.md](DEV_SETUP_CHECKLIST.md) §1.2 |
-| データの folder | `identifier`（`com.kosei.inventory`）の名の folder（Windows では `%APPDATA%\com.kosei.inventory`）。DB は `inventory.db`。開発中の `npm run tauri dev` のアプリも同じ folder を使う | `src-tauri/tauri.conf.json`、`src-tauri/src/lib.rs` の `prepare_database_with_init`、68 §68.4「実効保存先の常時表示」 |
+| データの folder | `identifier`（`com.inventory-system.desktop`、D-132 (3)）の名の folder（Windows では `%APPDATA%\com.inventory-system.desktop`）。DB は `inventory.db`。開発中の `npm run tauri dev` のアプリも同じ folder を使う | `src-tauri/tauri.conf.json`、`src-tauri/src/lib.rs` の `prepare_database_with_init`、68 §68.4「実効保存先の常時表示」（2026-10-24 に確かめた） |
 | データの folder に DB が無い起動 | 起動の作業フォルダーに `inventory.db` があれば、それを取り込む。無ければ空の DB を作る | 22 §12、`src-tauri/src/lib.rs` の `prepare_database_with_init` |
 | backup の保存先 | 設定の `backup_path`。未設定ならデータの folder の `backups` | 71 §71.9 |
 | 起動時の自動の backup | migration の後に作られる。その起動で DB の版が前の版の扱える版を超えていれば、その backup は前の版では開けない | 71 §71.9、22 §16「回復」手順 1 |
@@ -28,9 +28,9 @@ repo の現物で確かめた（2026-10-17、`src-tauri/tauri.conf.json`・`.git
 
 ## 初回の導入の前に決めること
 
-- **製品名と upgrade code を固定する。** upgrade code は今 `productName` から作られる（[今の事実](#今の事実) の upgrade code の行。公式の資料で確かめた）ので、初回の導入の後に製品名を変えると、次の MSI は更新にならず別のアプリとして並んで入る見込み。初回の導入の前に、製品名を決めて、今の upgrade code を公式の CLI の `tauri inspect wix-upgrade-code` で印字し、`bundle.windows.wix.upgradeCode` に書いて固定する（固定が効くことは M4 で確かめる）。これは設定の変更で、本書の外の lane で行う（[backlog](backlog.md) の「MSI の製品名と upgrade code の固定」）。決まるまでは店の PC に入れない。
+- **製品名は「在庫管理システム」にし、upgrade code は `9a951e09-cc62-5404-be40-7dfe6250fee3` で固定する（[decision-log](decision-log.md) D-132 (1)(2)）。** upgrade code は指定が無いと `productName` から作られる（[今の事実](#今の事実) の upgrade code の行。公式の資料で確かめた）ので、固定しないまま初回の導入の後に製品名を変えると、次の MSI は更新にならず別のアプリとして並んで入る見込み。固定する値は、製品名を変える前の既定の値（雛形の名から作られた値。公式の CLI の `tauri inspect wix-upgrade-code` の印字）で、`bundle.windows.wix.upgradeCode` に書き、製品名の変更と同じ commit に入れる。以後 upgrade code を変えない（変えた MSI は前の版を置き換えず、別のアプリとして入る）。固定が効くことは M4 で確かめる。日本語の製品名なので WiX の言語を `ja-JP` にする。設定の変更は MSI の固定の lane（[packet](plans/2026-10-23-msi-fix.md)）で行い、済むまでは店の PC に入れない。
 - **初回の導入（リリース）の版は、DB の作り直しの起点の migration を全部含む版にする。** 作り直しの起点の migration（22 §16 の vB と、D-118 の棚卸しの runtime の migration。22 §16 の「DB の作り直しと順」）は、行のある DB で止まり、止まった後の進め方が開発・試験 DB の作り直しになっている。店の PC へ初めて入れる版がそれを含まないと、後の更新がその migration で止まり、店の DB を作り直す経路になる。owner の決定（repo 外の回答台帳 TD-311、2026-10-17）: リリースの前（店の PC への初回の導入の前）は開発・試験 DB を何度作り直してもよい。初回の導入をリリースとし、その版はそれまでの作り直しの起点の migration を全部含む。リリースの後は作り直さない。初回の導入では DB が空から作られるので、それらの migration は行の無い DB に当たって止まらない。
-- **`identifier`（`com.kosei.inventory`）は変えない。** データの folder の名なので、変えた版は前のデータを見ずに空の DB で起動する。
+- **`identifier` は `com.inventory-system.desktop` にし、その後は変えない（[decision-log](decision-log.md) D-132 (3)）。** データの folder（`%APPDATA%` の下の `identifier` の名の folder）と WebView の保存の folder（`%LOCALAPPDATA%` の下の同じ名の folder）の名なので、変えた版は前のデータを見ずに空の DB で起動する。店の PC にまだ入れていない今だけ、前の値から変える。前の値の folder は新しい値の版から読まれないので動かさずに残す。前の値で動かしたことのある開発用の PC では、新しい値の版を初めて起動する前に、起動の作業フォルダーの旧 DB（[今の事実](#今の事実) の「データの folder に DB が無い起動」で取り込まれる物）だけを [22](function-design/22-mnt-migration.md) §16 の作り直しの手順 3 のとおり消さずに移す。
 - **版の付け方。** 配布する MSI ごとに `version` を前より大きくする。版を上げずに作った MSI を入れたときの振舞いは未確認（M5）なので、上げずに配布しない。`1.0.0-rc.1` のような後ろの付いた版は MSI の版の形（数字 4 つまで）に無いので使わない。
 
 ## 配布の記録
@@ -66,7 +66,7 @@ repo の現物で確かめた（2026-10-17、`src-tauri/tauri.conf.json`・`.git
 1. MSI を USB メモリ等で店の PC へ写し、写した file の SHA-256 が配布の記録と同じことを `Get-FileHash` で確かめる。違えば入れない。
 2. MSI を開いて入れる。管理者の確認（UAC）が出るかと、入る場所は未確認（M2）。SmartScreen の警告が出るかは未確認（M3）。警告が出たら、SHA-256 が記録と同じときだけ続ける。
 3. 起動の前に、アプリを起動するショートカットの作業フォルダー（ショートカットのプロパティの「作業フォルダー」。M2）に `inventory.db` が無いことを確かめる。あれば起動せずに止める（データの folder に DB が無い初回の起動は、作業フォルダーの `inventory.db` を取り込む。[今の事実](#今の事実)）。
-4. アプリを起動し、ホームが出ることと、データの folder（`%APPDATA%\com.kosei.inventory`）に `inventory.db` ができたことを確かめる。起動しなければ入力を始めず、画面に出た文言を末尾の詳細まで全文控えて止める。
+4. アプリを起動し、ホームが出ることと、データの folder（`%APPDATA%\com.inventory-system.desktop`）に `inventory.db` ができたことを確かめる。起動しなければ入力を始めず、画面に出た文言を末尾の詳細まで全文控えて止める。
 5. 設定の「バックアップ・復元」で保存先を確かめ、手動バックアップを 1 回作る（68）。
 6. 配布の記録の確認の結果を書く。
 
@@ -142,21 +142,21 @@ DB を戻しても、レジの側（PLU の登録・販売）は戻らない。�
 
 M1〜M8 は開発用の Windows（店の PC ではない）で、試験用のデータだけで確かめる。店のデータを使わない。owner の手が要る操作なので、M1〜M8 を一度の回にまとめる。M9 は店の PC で、初回の導入の前に確かめる。結果は配布の記録と同じ場所に残し、本書の「未確認」を結果で書き換える。
 
-予行演習の準備と片付け（MSI のアプリと開発中のアプリは `identifier` が同じで、同じデータの folder〈`%APPDATA%\com.kosei.inventory`〉と同じ WebView の保存の folder を使う。WebView の保存の folder は `%LOCALAPPDATA%\com.kosei.inventory` の見込みで、場所は未確認（M7。22 §16 の「アプリの data の folder」も確かめていない前提としている）。M7 のアンインストールと試験用のデータの投入が、開発に使っているものに当たらないようにする）:
+予行演習の準備と片付け（MSI のアプリと開発中のアプリは `identifier` が同じで、同じデータの folder〈`%APPDATA%\com.inventory-system.desktop`〉と同じ WebView の保存の folder〈`%LOCALAPPDATA%\com.inventory-system.desktop`。[22](function-design/22-mnt-migration.md) §16 の「確かめた前提」、[packet](plans/2026-10-23-msi-fix.md) の Contract Probe P10〉を使う。M7 のアンインストールと試験用のデータの投入が、開発に使っているものに当たらないようにする）:
 
-- 始める前に: MSI のアプリと開発中のアプリ（`npm run tauri dev`）を全部止め、タスク マネージャーでプロセスが残っていないことを確かめてから、開発用の Windows の `%APPDATA%\com.kosei.inventory` と `%LOCALAPPDATA%\com.kosei.inventory` を、それぞれ（あれば）丸ごと別名（日付の付いた名）へ退避する。
+- 始める前に: MSI のアプリと開発中のアプリ（`npm run tauri dev`）を全部止め、タスク マネージャーでプロセスが残っていないことを確かめてから、開発用の Windows の `%APPDATA%\com.inventory-system.desktop` と `%LOCALAPPDATA%\com.inventory-system.desktop` のそれぞれについて、あったか無かったかを配布の記録と同じ場所に控え、あった物は丸ごと別名（日付の付いた名）へ退避して、その名も控える。
 - 版 A の MSI を入れた後、**最初の起動の前に**、アプリを起動するショートカットの作業フォルダーに `inventory.db` が無いことを確かめる。あれば起動しない（データの folder に DB が無い起動は、作業フォルダーの `inventory.db` を取り込み〈22 §12〉、試験用のデータに混ざる）。M7 の後など、データの folder に `inventory.db` が無い状態で起動する前も毎回同じ。
-- 試験用のデータは、版 A の MSI を一度起動してアプリを止めた後、`src-tauri` で版 A と同じ commit を checkout して `cargo run --bin seed_demo_data -- --db "$env:APPDATA\com.kosei.inventory\inventory.db"` で投入する。版 B の commit で投入すると DB が版 B の版になり、版 A が起動を止める（MNT-03-D11）。
-- 終わった後は次の順で戻す: (1) MSI のアプリと開発中のアプリを全部止め、プロセスが残っていないことを確かめる。(2) 予行演習で出来た `%APPDATA%\com.kosei.inventory` と `%LOCALAPPDATA%\com.kosei.inventory`（試験用の folder）があれば、それぞれ消さずに別の名へ変えて保全する。(3) `%APPDATA%` と `%LOCALAPPDATA%` のどちらにも `com.kosei.inventory` の名の folder が無いことを確かめる。あれば (1) からやり直し、無いと確かめるまで次へ進まない。(4) 退避した folder の名を `com.kosei.inventory` に戻し、`%APPDATA%` 側の中に `inventory.db` があることと、開発中のアプリを起動して開発のデータが出ることを確かめる。
+- 試験用のデータは、版 A の MSI を一度起動してアプリを止めた後、`src-tauri` で版 A と同じ commit を checkout して `cargo run --bin seed_demo_data -- --db "$env:APPDATA\com.inventory-system.desktop\inventory.db"` で投入する。版 B の commit で投入すると DB が版 B の版になり、版 A が起動を止める（MNT-03-D11）。
+- 終わった後は次の順で戻す: (1) MSI のアプリと開発中のアプリを全部止め、プロセスが残っていないことを確かめる。(2) 予行演習で出来た `%APPDATA%\com.inventory-system.desktop` と `%LOCALAPPDATA%\com.inventory-system.desktop`（試験用の folder）があれば、それぞれ消さずに別の名へ変えて保全する。(3) `%APPDATA%` と `%LOCALAPPDATA%` のどちらにも `com.inventory-system.desktop` の名の folder が無いことを確かめる。あれば (1) からやり直し、無いと確かめるまで次へ進まない。(4) 始める前に「あった」と控えた folder だけ、退避した名を `com.inventory-system.desktop` に戻す。「無かった」と控えた folder は戻す物が無いので、(3) で確かめた無い状態のままにする。(5) `%APPDATA%` 側を戻したときは、中に `inventory.db` があることと、開発中のアプリを起動して開発のデータが出ることを確かめる。`%APPDATA%` 側が始める前に無かったときは、開発中のアプリの次の起動は空の DB を作る（片付けの不合格でない。起動の前に、その作業フォルダーに `inventory.db` が無いことを上の 2 つ目の段と同じく確かめる）。
 
 | ID | 確かめること | 確かめ方 | 結果で変わる所 |
 |---|---|---|---|
-| M1 | MSI の出来る場所と file の名前、NSIS も出来るか | 流れ 1 を行い、`src-tauri\target\release\bundle\` の中を見る | 流れ 1 の手順 4 |
+| M1 | MSI の出来る場所と file の名前、MSI だけが出来るか（`bundle.targets` が `"msi"` で NSIS が出来ないか。D-132 (4)） | 流れ 1 を行い、`src-tauri\target\release\bundle\` の中を見る | 流れ 1 の手順 4 |
 | M2 | 入れるときに管理者の確認が出るか、入る場所（全員向けか自分だけか）、ショートカットの作業フォルダー | MSI を入れ、UAC の表示と、スタートメニューと「設定 → アプリ」に出る名前と入った folder を見る。アプリを起動するショートカットのプロパティの「作業フォルダー」を見る | 流れ 2 の手順 2・3 |
 | M3 | USB で写した MSI で SmartScreen の警告が出るか | 流れ 2 の手順 1・2 を、browser を通さずに写した file で行う | 流れ 2 の手順 2 |
-| M4 | 版を上げた MSI が前の版に差し替わり、データの folder と DB が残るか。upgrade code の固定が効くか | 版 A で試験用のデータを入れ、版 B（版 A と同じ migration で版の数だけ上げた）を入れて起動し、データが同じことを見る。upgrade code を固定した設定で、製品名だけを変えて版の数を上げた MSI を入れ、「設定 → アプリ」に 1 つだけ出ることを見る（DB の版は変わらない） | 流れ 4 の手順 3、[初回の導入の前に決めること](#初回の導入の前に決めること) |
+| M4 | 版を上げた MSI が前の版に差し替わり、データの folder と DB が残るか。upgrade code の固定が効くか | 版 A で試験用のデータを入れ、版 B（版 A と同じ migration で版の数だけ上げた）を入れて起動し、データが同じことを見る。upgrade code を固定した設定（`9a951e09-cc62-5404-be40-7dfe6250fee3`、D-132 (2)）で、製品名だけを変えて版の数を上げた MSI を入れ、「設定 → アプリ」に 1 つだけ出ることを見る（DB の版は変わらない） | 流れ 4 の手順 3、[初回の導入の前に決めること](#初回の導入の前に決めること) |
 | M5 | 同じ版の MSI をもう一度入れたときの振舞い | 版 A を入れた上に、同じ版で作り直した MSI を入れる | [初回の導入の前に決めること](#初回の導入の前に決めること) |
 | M6 | 新しい版の上に前の版の MSI を入れられるか（`allowDowngrades`） | 版 B（migration の無い組で）で、試験用のデータの代表の商品・その在庫の数・履歴を控えてからアプリを止め、版 B の上に版 A を入れる。「設定 → アプリ」で版が版 A になり、版 A を起動して控えた商品・在庫の数・履歴が同じであることを見る。両方が合ったときだけ合格 | 流れ 5 の 1 |
-| M7 | アンインストールでデータの folder が残るか。WebView の保存の folder の場所 | 準備で退避した後の試験用のデータで、アンインストールして `%APPDATA%\com.kosei.inventory` を見る。版 A の最初の起動の後とアンインストールの後に、`%LOCALAPPDATA%` の中に `com.kosei.inventory` の folder があるかを見る（準備で退避した後なので、出来ていればアプリが作ったもの） | 流れ 5 の 1（前の版を入れる前の backup）、流れ 5（アンインストールを手順に入れるか）、確かめる項目の準備と片付け |
+| M7 | アンインストールでデータの folder が残るか。MSI で入れた版で WebView の保存の folder が出来るか・残るか（場所は 22 §16 の「確かめた前提」と packet の P10） | 準備で退避した後の試験用のデータで、アンインストールして `%APPDATA%\com.inventory-system.desktop` を見る。版 A の最初の起動の後とアンインストールの後に、`%LOCALAPPDATA%` の中に `com.inventory-system.desktop` の folder があるかだけを見る（準備で退避した後なので、出来ていればアプリが作ったもの） | 流れ 5 の 1（前の版を入れる前の backup）、流れ 5（アンインストールを手順に入れるか）、確かめる項目の準備と片付け |
 | M8 | アプリが動いたまま MSI を開いたときの振舞い | 版 A を起動したまま版 B を入れる | 流れ 4 の手順 3 |
 | M9 | 店の PC に WebView2 が入っているか | 店の PC の「設定 → アプリ」で「Microsoft Edge WebView2 Runtime」を探す（初回の導入の前） | 流れ 2（network の無い所での導入の要否） |
