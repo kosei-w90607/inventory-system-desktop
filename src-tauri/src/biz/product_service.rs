@@ -2190,6 +2190,31 @@ mod tests {
             generate_custom_code as fn(&rusqlite::Transaction<'_>, i64) -> Result<String, BizError>;
     }
 
+    #[test]
+    #[serial]
+    fn test_create_product_req101_takkyubin_rejects_custom_code() {
+        // REQ-101 / FUNC-4.3 処理ステップ 2: 宅急便（部門 12、master-tables §2 で code_prefix=NULL）は
+        // JAN 空の登録で独自コードを発番せず、書込みの前に ValidationFailed で止まる
+        let (_dir, mut conn) = setup_test_db();
+        let req = ProductCreateRequest {
+            department_id: 12,
+            ..default_create_request()
+        };
+
+        let result = create_product(&mut conn, req);
+        match result {
+            Err(BizError::ValidationFailed(msg)) => {
+                assert_eq!(msg, "この部門は独自コード発番に対応していません");
+            }
+            other => panic!("宅急便の JAN 空の登録は ValidationFailed であるべき: {other:?}"),
+        }
+
+        let count = |sql: &str| -> i64 { conn.query_row(sql, [], |row| row.get(0)).unwrap() };
+        assert_eq!(count("SELECT COUNT(*) FROM products"), 0);
+        assert_eq!(count("SELECT COUNT(*) FROM inventory_movements"), 0);
+        assert_eq!(count("SELECT next_seq FROM departments WHERE id = 12"), 1);
+    }
+
     // ===== FUNC-4.2: create_product テスト =====
 
     #[test]

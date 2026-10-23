@@ -82,6 +82,14 @@ fn get_initial_schema() -> &'static str
 1. DB_DESIGN.mdの全18テーブル定義に基づくCREATE TABLE文を文字列定数として返す
 2. CHECK制約、INDEX、初期データINSERT（departments 21件、app_settings初期値）も含む
 
+**MNT-03-D21: 初期データの直しはリリースの前は v1 の literal で行い、migration を足さない（2026-10-23、D-123）**
+
+- 決定: v1 の初期データは正本（`departments` は [master-tables](../db-design/master-tables.md) §2 の「初期データ（全21部門）」）と同じ値にする。リリース（店の PC への初回の導入）の前に食い違いを直すときは `src-tauri/src/db/schema_v1.rs` の `get_initial_schema` の literal を直し、既存の DB を直す migration を足さない。最初の適用は部門 12（宅急便）の `code_prefix` を `'TK'` から NULL にする直し（owner の決定、repo 外の回答台帳 TD-395）。NULL は SQL の NULL で書き、空文字にしない（`generate_custom_code` は `None` だけを拒む。[30 §4.3](30-biz-product-service.md) の処理ステップ 2）
+- 理由: 店の PC の DB は初回の導入で空から作られ v1 が当たる（`init_database` → `migrate`。初めて入れる版の条件は D-123 (4)）ので、literal の直しが店の DB に届く。直す前に作った開発・試験 DB はリリースの前まで作り直してよい（D-123 (1)、§16 の作り直しの手順）。migration にすると、開発・試験 DB のためだけの版がリリースの後も残り、並走の lane の版の番号の取り合いに加わる（D-127）
+- 範囲: 同じ版の DB でも、直す前に作った DB は古い値のまま残る（部門 12 なら `'TK'` のままで独自コードを発番できる。Z005 の部門別売上は `code_prefix` を読まないので記録の意味は変わらない。[pos-tables](../db-design/pos-tables.md) §12e）。作り直しで揃い、legacy の DB の取込み（§12）と復元（[71](71-mnt-backup.md)）は直す前の file を持ち込むので同じ扱い。直す前に作った DB を見分けて止まる検査は無いので、残す DB の有無は初回の導入の前に確かめる。リリースの後は初期データの直しも値のある DB を移す migration で行う（D-123 (5)）
+- 棄却: 既存の DB を直す migration を足す（例 `UPDATE departments SET code_prefix = NULL WHERE id = 12 AND code_prefix = 'TK'`。v1 を直すかどうかに関わらず、上の理由の版が残る）
+- 再検討: リリースの日が決まったとき。作り直さずに残す DB がリリースの前にできたとき（D-123 の Revisit の、店の PC で本番の前に試しに動かす場合）は、その DB に当てる migration を足す
+
 ---
 
 ## 9. MNT-03 追加: migration v2（冪等性カラム）

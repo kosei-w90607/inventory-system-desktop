@@ -377,7 +377,7 @@ COMMIT後に:
 - products.jan_codeで検索（product_codeへのfallbackはしない）
 - ヒット1件 → matched（紐付け成功）
 - ヒット0件 → 前の JAN の別名（[master-tables](master-tables.md) §1a、D-122、proposed・未実装）があればその商品で matched、無ければ unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
-- ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（グループコード商品は色を区別しない方針のため。常に同じ商品に紐付く決定的ルール）
+- ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（常に同じ商品に紐付く決定的ルール。先頭へ割り当てる限界は [backlog](../backlog.md) の DATA-2。共有 JAN の行を在庫連動の外〈売上だけ記録〉にする形は D-118 の Compatibility が決めた後の形〈(b) は proposed・未実装〉で、今の build は先頭へ紐付ける）
 
 **返品の扱い**:
 - quantity < 0 または amount < 0 → 返品として許可（ここで弾かない）

@@ -2009,36 +2009,74 @@ mod tests {
     }
 
     /// departments初期データ（21部門）が正しく投入されていること
+    /// REQ-903: 期待は master-tables §2「初期データ（全21部門）」の表から写す（schema_v1.rs から写さない）。
+    /// code_prefix は SQL の NULL（None）と空文字（Some("")）を区別して比べる。
     #[test]
     fn test_initial_departments_req903_data() {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("test.db");
         let conn = init_database(db_path.to_str().unwrap()).unwrap();
 
-        let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM departments", [], |row| row.get(0))
-            .unwrap();
-        assert_eq!(count, 21, "部門は21件であるべき");
+        // (id, name = z005_name, code_prefix)。next_seq は全行 1
+        let expected: [(i64, &str, Option<&str>); 21] = [
+            (1, "その他小物", Some("KM")),
+            (2, "ヘア雑貨", Some("HZ")),
+            (3, "毛糸", None),
+            (4, "手芸等材料", Some("SY")),
+            (5, "他化粧品", None),
+            (6, "バッグ", Some("BG")),
+            (7, "エプロン", Some("AP")),
+            (8, "布", Some("NU")),
+            (9, "糸", None),
+            (10, "ゴム", Some("GM")),
+            (11, "食品", None),
+            (12, "宅急便", None),
+            (13, "トワニー", None),
+            (14, "雑貨", Some("ZK")),
+            (15, "帽子", None),
+            (16, "ビューティ関連", None),
+            (17, "本", None),
+            (18, "ボタン", Some("BT")),
+            (19, "ファスナー", Some("FS")),
+            (20, "針", None),
+            (21, "ノンリンク", None),
+        ];
+        let expected: Vec<(i64, String, String, Option<String>, i64)> = expected
+            .iter()
+            .map(|(id, name, prefix)| {
+                (
+                    *id,
+                    name.to_string(),
+                    name.to_string(),
+                    prefix.map(str::to_string),
+                    1,
+                )
+            })
+            .collect();
 
-        // code_prefixが設定されている部門の確認
-        let hz_prefix: Option<String> = conn
-            .query_row(
-                "SELECT code_prefix FROM departments WHERE name = 'ヘア雑貨'",
-                [],
-                |row| row.get(0),
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, name, z005_name, code_prefix, next_seq FROM departments ORDER BY id",
             )
             .unwrap();
-        assert_eq!(hz_prefix, Some("HZ".to_string()));
-
-        // code_prefixがNULLの部門の確認
-        let yarn_prefix: Option<String> = conn
-            .query_row(
-                "SELECT code_prefix FROM departments WHERE name = '毛糸'",
-                [],
-                |row| row.get(0),
-            )
+        let actual: Vec<(i64, String, String, Option<String>, i64)> = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            })
+            .unwrap()
+            .collect::<Result<_, _>>()
             .unwrap();
-        assert_eq!(yarn_prefix, None, "毛糸の code_prefix は NULL");
+
+        assert_eq!(
+            actual, expected,
+            "departments の初期データは master-tables §2 の 21 行と一致する"
+        );
     }
 
     /// app_settings初期データが正しく投入されていること
