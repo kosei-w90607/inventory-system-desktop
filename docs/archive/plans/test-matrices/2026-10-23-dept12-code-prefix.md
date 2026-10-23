@@ -8,10 +8,10 @@ Risk: R3
 
 ## Contracts Under Test
 
-- 新しい DB の `departments` の 21 行が [master-tables](../../db-design/master-tables.md) §2 の「初期データ（全21部門）」と一致し、部門 12（宅急便）の `code_prefix` が SQL の NULL（空文字でない）。
-- BIZ-01 FUNC-4.3 処理ステップ 2（[30 §4.3](../../function-design/30-biz-product-service.md)）: 宅急便を選び JAN を空にした `create_product` は `ValidationFailed`（「この部門は独自コード発番に対応していません」）で、書込みの前に止まる。
-- UI-01b-D4・[51](../../function-design/51-ui-product-form.md) のエラーハンドリング: NULL の部門は「（独自コード可）」を付けず、JAN が空なら保存しない（既存の test。変えない）。
-- MNT-03-D21（[22 §3.3](../../function-design/22-mnt-migration.md)）: migration を足さない（packet の AC-7 で path を見る。runtime の test は無い）。
+- 新しい DB の `departments` の 21 行が [master-tables](../../../db-design/master-tables.md) §2 の「初期データ（全21部門）」と一致し、部門 12（宅急便）の `code_prefix` が SQL の NULL（空文字でない）。
+- BIZ-01 FUNC-4.3 処理ステップ 2（[30 §4.3](../../../function-design/30-biz-product-service.md)）: 宅急便を選び JAN を空にした `create_product` は `ValidationFailed`（「この部門は独自コード発番に対応していません」）で、書込みの前に止まる。
+- UI-01b-D4・[51](../../../function-design/51-ui-product-form.md) のエラーハンドリング: NULL の部門は「（独自コード可）」を付けず、JAN が空なら保存しない（既存の test。変えない）。
+- MNT-03-D21（[22 §3.3](../../../function-design/22-mnt-migration.md)）: migration を足さない（packet の AC-7 で path を見る。runtime の test は無い）。
 
 ## Failure Modes
 
@@ -32,7 +32,7 @@ Risk: R3
 
 既存の test の確かめ（2026-10-23、`eed07d37`）: `rg -n 'fn test_initial_departments_req903_data|fn test_generate_custom_code_req101_normal|fn test_generate_custom_code_req101_no_prefix|fn default_create_request' src-tauri/src` で 4 つとも 1 件ずつ、`rg -n 'blocks create submit when JAN is blank and department has no code_prefix' src/features/products/ProductFormPage.test.tsx` と `rg -n 'allows JAN blank only when selected department has code_prefix' src/features/products/lib/product-form-request.test.ts` で 1 件ずつ。
 
-C1 の oracle（[master-tables](../../db-design/master-tables.md) §2 の「初期データ（全21部門）」の表から写す。`schema_v1.rs` から写さない。`name` と `z005_name` は 21 行とも同じ文字列、`next_seq` は 21 行とも 1）:
+C1 の oracle（[master-tables](../../../db-design/master-tables.md) §2 の「初期データ（全21部門）」の表から写す。`schema_v1.rs` から写さない。`name` と `z005_name` は 21 行とも同じ文字列、`next_seq` は 21 行とも 1）:
 
 | id | name / z005_name | code_prefix |
 |---|---|---|
