@@ -7,9 +7,9 @@
 >
 > - 表は履歴の行（`StockHistoryItem`）を描く在庫変動の画面だけの表にする。業務記録の詳細（入庫・返品交換・手動販売・廃棄・CSV 取込み）の「関連する在庫変動」の表（`MovementTable`、`MovementRecord` の一覧、日時は `created_at`）は変えず、種別の label・増減・元記録の書き方を共有する。
 > - 表の行は `StockHistoryItem` を BIZ の順のまま出す（画面で並べ替えない）。列は「日付」「種別」「増減」「変動後在庫」「元記録」「備考」。「日付」は行の `business_date`（`YYYY-MM-DD`）で、Z004 の行（`settlement_no` を持つ movement）は後ろに「（精算 {n}）」、下の行に小さく「保存 {`saved_at` の YYYY-MM-DD HH:mm}」を出す（後から入れた記録が、保存の時刻でなく日付の位置に並ぶことを読めるように）。
-> - 計数の行: 「種別」に 65 の文「数を確認（{数}、{日付}）」（既定の計数）・「数を入れ直し（{数}、{日付}）」（fresh な計数）を出す。{数} は movement の数量と同じ単位の書き方（長さの商品は m。[共通規則](10-common-rules.md) SPEC-UNIT-D3 の表の 6）、{日付} は `business_date`。「増減」と「変動後在庫」は「—」（計数は差分で在庫を動かさず、保存の時点の写しを持たない）。「元記録」は `count.source` があれば label の link、無ければ「元記録なし」。「備考」は「—」。
+> - 計数の行: 「種別」に 65 の文「数を確認（{数}、{日付}）」（既定の計数）・「数を入れ直し（{数}、{日付}）」（fresh な計数）を出す。{数} は在庫の欄と同じ `formatStockDisplay` の形（例「8 個」「4.5 m」。[共通規則](10-common-rules.md) SPEC-UNIT-D3。計数は在庫の数そのものなので、movement の行の増減・変動後在庫の形〈表の 6。個数は単位の語を付けない数〉でなく、在庫の欄に合わせる。b2 の Plan Review round 1 の是正）、{日付} は `business_date`。「増減」と「変動後在庫」は「—」（計数は差分で在庫を動かさず、保存の時点の写しを持たない）。「元記録」は `count.source` があれば label の link、無ければ「元記録なし」。「備考」は「—」。
 > - 種別の絞り込みの選択肢と label は変えない。「すべて」は movement と計数、「棚卸し」は棚卸しの movement と計数、ほかはその種類の movement だけ。日付の絞り込みは業務日（44）。
-> - 見出しの「現在庫」: `getStockDetail` の写しが要再確認（`stock_recheck`）なら、範囲「{low}〜{high}」（両端を `formatStockDisplay` の形で、例「8 個〜9 個」「4 m〜4.5 m」）と、「要再確認」の状態の badge（[02](../design-system/02-component-catalog.md) の①状態。warning の tone と icon と文字で、色だけで示さない）を出す。要再確認でなければ今の `formatStockDisplay`。[50](50-ui-product-list.md)・[58](58-ui-stock-inquiry.md)・[51](51-ui-product-form.md) の在庫の欄と同じ部品を使う。
+> - 見出しの「現在庫」: `getStockDetail` の写しが要再確認（`stock_recheck`）なら、範囲「{low}〜{high}」（両端を `formatStockDisplay` の形で、例「8 個〜9 個」「4 m〜4.5 m」）と、「要再確認」の状態の badge（[02](../design-system/02-component-catalog.md) の①状態。warning の tone と icon と文字で、色だけで示さない）を出す。要再確認でなければ今の `formatStockDisplay`。[50](50-ui-product-list.md)・[58](58-ui-stock-inquiry.md)・[51](51-ui-product-form.md) の在庫の欄と同じ部品を使う。要再確認なら見出しの下に、58 の詳細と同じ要再確認の案内（理由と棚卸しの画面への link）を同じ部品で出す。
 
 ### 66.1 概要
 
