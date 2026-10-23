@@ -14,6 +14,7 @@
 - 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
 - 精算日と精算回数の順の食い違いと欠けた精算回数の知らせは active な取込みの `settlement_date`・`settlement_no` から、別の machine_no は取り消したものを含む全ての Z004 の取込みの `machine_no` から、BIZ が判定する（新しい表を持たない。[32](../function-design/32-biz-csv-import-service.md) の表の順 2）。
 - 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
+- 取込みID（`csv_imports.id`、AUTOINCREMENT）は使い回さない（取消は status を変えるだけで行を消さない）。fresh な計数と棚卸しの完了は、保存・完了の時点の `MAX(csv_imports.id)` を取込みのカーソル（tracking の `stock_counts.seen_import_id`・`stocktakes.cutoff_import_id`）に残し、精算回数ではなく取込みID で「保存・完了の前に取り込んだ精算か」を決める（ADR D3・D6。精算回数は取消の後に別の取込みが再び使う。b1 の Plan Review closure〈Codex〉の是正）。
 - 移行: 既存の取込みがある DB では runtime の migration は止まる（(a) の migration v9 で実装済み。tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)

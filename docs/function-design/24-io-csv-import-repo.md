@@ -9,6 +9,7 @@
 | import の保存 | `NewCsvImport` に `machine_no: String`・`settlement_no: i64` を足す（[POS](../db-design/pos-tables.md) の同名の契約）。既存の active hash の重複の判定と取消済みの再取込みは変えない |
 | active な Z004 の精算の一覧 | (conn) → completed / completed_partial の全件の import ID・`machine_no`・`settlement_no`・`settlement_date`（settlement_no の昇順）。BIZ-03 の識別・順の検査・欠けの知らせと、BIZ-02 の求め直し（取り込み済みの精算の並び）が使う。判定は BIZ が行う |
 | Z004 の取込みの machine_no の照合先 | (conn, machine_no) → 取り消したもの（rolled_back）を含む Z004 の取込みのうち `machine_no` が引数と違うもの 1 件（active な取込みがあれば active を優先し、同じ状態の中では import ID の最大）の import ID・`machine_no`・`settlement_no`・`status`・`imported_at`。無ければ None。新設する（active な精算の一覧は rolled_back を返さず、一覧の行の型 `CsvImport` は新しい列を読まない）。BIZ-03 の順 2（[32](32-biz-csv-import-service.md)）が、違う取込みの有無と、拒否の文で名指す取込みに使う |
+| Z004 の取込みの最大の取込みID | (conn) → 取り消したもの（rolled_back）を含む全ての取込みの `MAX(id)`（無ければ None）。新設する。BIZ-06 が fresh な計数の保存の TX（`stock_counts` の `seen_import_id`）と棚卸しの完了の TX（`stocktakes` の `cutoff_import_id`。[tracking](../db-design/tracking-system-tables.md)）で読む。取込みID は使い回されない（AUTOINCREMENT、取消は行を消さない。[POS](../db-design/pos-tables.md)）ので、このカーソル以下の active な取込みは保存・完了の前に取り込まれて今もある精算になる（ADR D3・D6 の判定の n は BIZ が上の active な一覧から求める） |
 | 同じ精算の active な取込みの取得 | (conn, machine_no, settlement_no) → active な import の ID と hash（0 件か 1 件。2 件以上は DbError ではなく BIZ が不整合として拒む） |
 | movement の保存 | Z004 の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no` を持つ（[21](21-io-inventory-repo.md) の `NewMovement` の並びの鍵） |
 
