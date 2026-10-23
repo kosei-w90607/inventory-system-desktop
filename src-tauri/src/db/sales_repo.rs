@@ -355,22 +355,25 @@ pub(crate) fn list_import_product_codes(
     Ok(rows)
 }
 
-/// 商品の、取込みのときに在庫連動だった有効な売上（個数 ≠ 0 か金額 ≠ 0）を持つ active な取込みの ID
-/// （ADR D3 の理由 1 の行の判定。今の `pos_stock_sync` を見ない）
-pub(crate) fn list_linked_sale_import_ids(
+/// 商品の、取込みのときの連動が `stock_linked` の有効な売上（個数 ≠ 0 か金額 ≠ 0）を持つ active な取込みの ID
+/// （連動 = 1 は ADR D3 の理由 1 の行の判定、連動 = 0 は D8 の在庫連動を始める検査。今の `pos_stock_sync` を見ない）
+pub(crate) fn list_sale_import_ids(
     conn: &DbConnection,
     product_code: &str,
+    stock_linked: bool,
 ) -> Result<Vec<i64>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT DISTINCT s.csv_import_id FROM sale_records s
          JOIN csv_imports c ON c.id = s.csv_import_id
-         WHERE s.product_code = ?1 AND s.is_voided = 0 AND s.stock_linked = 1
+         WHERE s.product_code = ?1 AND s.is_voided = 0 AND s.stock_linked = ?2
            AND (s.quantity <> 0 OR s.amount <> 0)
            AND c.status IN ('completed','completed_partial')
          ORDER BY s.csv_import_id",
     )?;
     let rows = stmt
-        .query_map([product_code], |row| row.get(0))?
+        .query_map(rusqlite::params![product_code, stock_linked], |row| {
+            row.get(0)
+        })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }

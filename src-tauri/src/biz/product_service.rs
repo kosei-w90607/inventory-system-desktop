@@ -7,7 +7,8 @@ use crate::db::product_repo::{self, NewPriceHistory, NewProduct, ProductUpdates}
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{inventory_repo, stocktake_repo, DbConnection, DbError, PaginatedResult};
 
-use super::stock_ledger::recompute_stock;
+use super::stock_ledger::{recompute_stock, unlinked_sales_counted};
+use super::stocktake_service;
 use super::unit_amount::{stock_unit_kind, StockUnitKind};
 use super::{jan_code, BizError};
 use crate::constants::{MAX_COST_PRICE_CENTI, MAX_SELLING_PRICE, MAX_STOCK_QUANTITY};
@@ -238,6 +239,25 @@ pub fn create_product(
         None => generate_custom_code(&tx, req.department_id)?,
     };
 
+    // 3b. 共有 JAN の不変条件（変更の後の状態で、書く前に。30）
+    if let Some(others) = shared_jan_conflict(
+        &tx,
+        &product_code,
+        req.jan_code.as_deref(),
+        req.pos_stock_sync,
+        &JanOverlay::new(),
+    )? {
+        return Err(BizError::ValidationFailedAt {
+            message: shared_jan_message(&others),
+            field: if req.pos_stock_sync {
+                "pos_stock_sync"
+            } else {
+                "jan_code"
+            }
+            .to_string(),
+        });
+    }
+
     // 4. products INSERT
     let new_product = NewProduct {
         product_code: product_code.clone(),
@@ -347,6 +367,29 @@ pub fn update_product(
         .transaction()
         .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
 
+    // 3b. 在庫連動を始める（false → true）保存だけ: 共有 JAN の不変条件を先に、次に連動しない間の売上（30、ADR D4・D8）
+    if req.pos_stock_sync == Some(true) && !existing.product.pos_stock_sync {
+        if let Some(others) = shared_jan_conflict(
+            &tx,
+            product_code,
+            existing.product.jan_code.as_deref(),
+            true,
+            &JanOverlay::new(),
+        )? {
+            return Err(BizError::ValidationFailedAt {
+                message: shared_jan_message(&others),
+                field: "pos_stock_sync".to_string(),
+            });
+        }
+        if !unlinked_sales_counted(&tx, product_code)? {
+            return Err(stocktake_service::recount_required(
+                &tx,
+                product_code,
+                MSG_RECOUNT_REQUIRED,
+            )?);
+        }
+    }
+
     // 4. 価格変更チェック + price_history
     let new_selling = req.selling_price.unwrap_or(existing.product.selling_price);
     let new_cost_centi = req
@@ -398,6 +441,13 @@ pub fn update_product(
     }
 
     product_repo::update_product(&tx, product_code, &updates)?;
+    // 連動の切替の TX はその商品を求め直す（値は変わらない。30）
+    if req
+        .pos_stock_sync
+        .is_some_and(|linked| linked != existing.product.pos_stock_sync)
+    {
+        recompute_stock(&tx, product_code)?;
+    }
     if existing.product.plu_target && req.plu_target == Some(false) {
         if let Some(jan_code) = existing.product.jan_code.as_deref() {
             super::plu_export_service::release_plu_slot_for_jan(&tx, jan_code)?;
@@ -1246,6 +1296,90 @@ fn validate_update_request(
 }
 
 // ---------------------------------------------------------------------------
+// 共有 JAN と在庫連動を始める検査（30「計数の置き場と在庫の求め直しの契約」、ADR SPEC-STK-CNT-D4・D8）
+// ---------------------------------------------------------------------------
+
+/// preview で先の行を当てた仮の状態（商品コード → 変更の後の JAN と在庫連動）
+type JanOverlay = std::collections::HashMap<String, (Option<String>, bool)>;
+
+/// 在庫連動を始める保存の拒否の文（30。一括 import の行の error も同じ文）
+const MSG_RECOUNT_REQUIRED: &str =
+    "連動しない間の売上があります。今の数を入れてから在庫連動にしてください";
+
+fn shared_jan_message(others: &[String]) -> String {
+    format!(
+        "同じ JAN の商品（{}）があるため、在庫連動にできません",
+        others.join("、")
+    )
+}
+
+/// 変更の後に商品 `code` が JAN `jan`・在庫連動 `linked` を持つとき、不変条件（在庫連動の商品と同じ JAN を
+/// 別の商品が持たない）が破れるなら、同じ JAN を持つほかの商品コード（昇順）を返す。
+/// `overlay` は DB の今の状態に重ねる仮の変更（preview の先の行）
+fn shared_jan_conflict(
+    conn: &DbConnection,
+    code: &str,
+    jan: Option<&str>,
+    linked: bool,
+    overlay: &JanOverlay,
+) -> Result<Option<Vec<String>>, BizError> {
+    let Some(jan) = jan else {
+        return Ok(None);
+    };
+    let mut others: Vec<(String, bool)> = product_repo::find_by_jan_code(conn, jan)?
+        .into_iter()
+        .filter(|p| p.product_code != code && !overlay.contains_key(&p.product_code))
+        .map(|p| (p.product_code, p.pos_stock_sync))
+        .collect();
+    others.extend(
+        overlay
+            .iter()
+            .filter(|(other, (other_jan, _))| *other != code && other_jan.as_deref() == Some(jan))
+            .map(|(other, (_, other_linked))| (other.clone(), *other_linked)),
+    );
+    if others.is_empty() || !(linked || others.iter().any(|(_, other_linked)| *other_linked)) {
+        return Ok(None);
+    }
+    let mut codes: Vec<String> = others.into_iter().map(|(other, _)| other).collect();
+    codes.sort();
+    Ok(Some(codes))
+}
+
+/// 一括 import の 1 行の共有 JAN と在庫連動を始める検査（30。preview の行の error と確定の拒否で同じ文）。
+/// 共有 JAN を先に返す（数えても直らない拒否を先に名指す）
+fn import_row_link_error(
+    conn: &DbConnection,
+    row: &ImportRow,
+    existing: Option<&product_repo::Product>,
+    overlay: &JanOverlay,
+) -> Result<Option<String>, BizError> {
+    let linked = row
+        .pos_stock_sync
+        .unwrap_or(existing.is_none_or(|p| p.pos_stock_sync));
+    if let Some(others) = shared_jan_conflict(
+        conn,
+        &row.product_code,
+        row.jan_code.as_deref(),
+        linked,
+        overlay,
+    )? {
+        return Ok(Some(shared_jan_message(&others)));
+    }
+    let starts_link = existing.is_some_and(|p| !p.pos_stock_sync) && linked;
+    if starts_link && !unlinked_sales_counted(conn, &row.product_code)? {
+        return Ok(Some(MSG_RECOUNT_REQUIRED.to_string()));
+    }
+    Ok(None)
+}
+
+/// 一括 import の確定の TX で当たった行の拒否（30。最初に当たった行を名指し、確定全体を戻す）
+fn import_commit_link_error(product_code: &str, message: &str) -> BizError {
+    BizError::ValidationFailed(format!(
+        "商品 {product_code} の行: {message}。読み込みの後に登録か売上が変わったか、上書きを選んだほかの行と重なったため、取込みを止めました（どの行も取り込んでいません）。その行をスキップにするか、ファイルを選び直してもう一度読み込んでください"
+    ))
+}
+
+// ---------------------------------------------------------------------------
 // 一括インポート（BIZ-01 §4.7-4.8）
 // ---------------------------------------------------------------------------
 
@@ -1581,10 +1715,56 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
         }
     }
 
+    // 5. 共有 JAN と在庫連動を始める検査（30）: 新規の行は CSV の順に先の新規の行を当てた状態で、
+    // 重複の行は全ての新規の行を当てた状態で判定し、当たる行だけを error 行にする
+    let raw_data = |line_no: usize| {
+        parse_result
+            .rows
+            .iter()
+            .find(|row| row.line_no == line_no)
+            .map(|row| row.fields.clone())
+            .unwrap_or_default()
+    };
+    let mut overlay = JanOverlay::new();
+    let mut linked_valid_rows = Vec::with_capacity(valid_rows.len());
+    for row in valid_rows {
+        match import_row_link_error(conn, &row, None, &overlay)? {
+            Some(message) => error_rows.push(ImportErrorRow {
+                line_no: row.line_no,
+                raw_data: raw_data(row.line_no),
+                errors: vec![message],
+            }),
+            None => {
+                overlay.insert(
+                    row.product_code.clone(),
+                    (row.jan_code.clone(), row.pos_stock_sync.unwrap_or(true)),
+                );
+                linked_valid_rows.push(row);
+            }
+        }
+    }
+    let mut linked_duplicate_rows = Vec::with_capacity(duplicate_rows.len());
+    for duplicate in duplicate_rows {
+        let existing = product_repo::find_by_product_code(conn, &duplicate.existing_product_code)?;
+        match import_row_link_error(
+            conn,
+            &duplicate.import_row,
+            existing.as_ref().map(|e| &e.product),
+            &overlay,
+        )? {
+            Some(message) => error_rows.push(ImportErrorRow {
+                line_no: duplicate.line_no,
+                raw_data: raw_data(duplicate.line_no),
+                errors: vec![message],
+            }),
+            None => linked_duplicate_rows.push(duplicate),
+        }
+    }
+
     Ok(ImportPreview {
-        valid_rows,
+        valid_rows: linked_valid_rows,
         error_rows,
-        duplicate_rows,
+        duplicate_rows: linked_duplicate_rows,
     })
 }
 
@@ -1631,6 +1811,18 @@ pub fn commit_import(
             }) {
                 return Err(BizError::ValidationFailed(message));
             }
+            // 共有 JAN と在庫連動を始める検査（TX のその時点の状態で、書く前に。30）
+            if let Some(existing) = existing.as_ref() {
+                if let Some(message) =
+                    import_row_link_error(&tx, row, Some(&existing.product), &JanOverlay::new())?
+                {
+                    return Err(import_commit_link_error(&row.product_code, &message));
+                }
+            }
+            let toggles_link = existing.as_ref().is_some_and(|existing| {
+                row.pos_stock_sync
+                    .is_some_and(|linked| linked != existing.product.pos_stock_sync)
+            });
             let old_jan = existing
                 .as_ref()
                 .and_then(|existing| existing.product.jan_code.clone());
@@ -1671,6 +1863,10 @@ pub fn commit_import(
             }
             // #4 (P2): 戻り値チェック。対象が存在しない場合はスキップ
             let updated = product_repo::update_product(&tx, &row.product_code, &updates)?;
+            if updated && toggles_link {
+                // 連動の切替はその商品を求め直す（値は変わらない。30）
+                recompute_stock(&tx, &row.product_code)?;
+            }
             if updated {
                 let target_turned_off = was_plu_target && row.plu_target == Some(false);
                 if target_turned_off || old_jan != row.jan_code {
@@ -1699,6 +1895,9 @@ pub fn commit_import(
         } else {
             if let Some(message) = import_row_commit_error(row, None) {
                 return Err(BizError::ValidationFailed(message));
+            }
+            if let Some(message) = import_row_link_error(&tx, row, None, &JanOverlay::new())? {
+                return Err(import_commit_link_error(&row.product_code, &message));
             }
             // INSERT: デフォルト化は INSERT 時のみ（R2-5対応）
             let stock_unit = row.stock_unit.clone().unwrap_or_else(|| "pcs".to_string());
@@ -3735,7 +3934,7 @@ mod tests {
             &[
                 "PLU-C1-ON,対象商品,1,500,300,10,2000000000039,1",
                 "PLU-C1-OFF,対象外商品,1,500,300,10,,0",
-                "PLU-C1-DEFAULT,既定商品,1,500,300,10,2000000000039,",
+                "PLU-C1-DEFAULT,既定商品,1,500,300,10,2000000000015,",
             ],
         );
 
@@ -4945,7 +5144,8 @@ mod tests {
         }
 
         let mut overwrite = make_import_row("IMP-VALID", "有効JAN更新");
-        overwrite.jan_code = Some("123456789012".to_string());
+        // IMP-SHORT と別の 12 桁（在庫連動の商品どうしで JAN を共有しない。30 の D-118 の節）
+        overwrite.jan_code = Some("123456789013".to_string());
         commit_import(&mut conn, vec![overwrite], vec!["IMP-VALID".to_string()]).unwrap();
 
         let overwritten = product_repo::find_by_product_code(&conn, "IMP-VALID")
@@ -6301,5 +6501,428 @@ mod tests {
         assert_eq!(detail["target_name"], "監査統合先");
         assert_eq!(detail["products_updated"], 2);
         assert_eq!(detail["receiving_records_updated"], 1);
+    }
+
+    // ===== 共有 JAN と在庫連動を始める検査（30「計数の置き場と在庫の求め直しの契約」、ADR D4・D8。b1 Matrix J） =====
+
+    use crate::biz::stock_ledger::settlement_support::{settlement, z004_sale};
+    use crate::biz::stock_ledger::test_support::insert_count;
+    use crate::biz::stocktake_service::{CountRecoveryAction, StocktakeRecoveryCode};
+
+    fn seed_jan_product(conn: &DbConnection, code: &str, jan: Option<&str>, linked: bool) {
+        product_repo::insert_product(
+            conn,
+            &NewProduct {
+                product_code: code.to_string(),
+                jan_code: jan.map(str::to_string),
+                name: format!("商品{code}"),
+                department_id: 1,
+                supplier_id: None,
+                selling_price: 500,
+                cost_price_centi: 300,
+                tax_rate: "10".to_string(),
+                maker_code: None,
+                stock_quantity: 0,
+                stock_unit: "pcs".to_string(),
+                is_discontinued: false,
+                plu_dirty: true,
+                plu_exported_at: None,
+                plu_target: false,
+                pos_stock_sync: linked,
+            },
+        )
+        .unwrap();
+    }
+
+    fn jan(n: u64) -> String {
+        synthetic_ean13_req907(4_900_000_000_000 + n)
+    }
+
+    fn rejected_at(result: Result<impl std::fmt::Debug, BizError>) -> (String, String) {
+        match result {
+            Err(BizError::ValidationFailedAt { message, field }) => (message, field),
+            other => panic!("ValidationFailedAt を期待しました: {other:?}"),
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_product_req101_rejects_shared_jan_with_stock_linked() {
+        // REQ-101 / ADR D4 / 30（b1 Matrix J1）: create は変更の後の状態で共有 JAN の不変条件を検査する
+        let (_dir, mut conn) = setup_test_db();
+        let (linked_jan, unlinked_jan) = (jan(1), jan(2));
+        seed_jan_product(&conn, "B-LINKED", Some(&linked_jan), true);
+        seed_jan_product(&conn, "C-UNLINKED", Some(&unlinked_jan), false);
+        let before = product_count(&conn);
+        // 在庫連動の商品と同じ JAN の新しい商品（連動しない）→ field jan_code
+        let (message, field) = rejected_at(create_product(
+            &mut conn,
+            ProductCreateRequest {
+                jan_code: Some(linked_jan.clone()),
+                pos_stock_sync: false,
+                ..default_create_request()
+            },
+        ));
+        assert_eq!(
+            message,
+            "同じ JAN の商品（B-LINKED）があるため、在庫連動にできません"
+        );
+        assert_eq!(field, "jan_code");
+        // 連動の新しい商品が別の商品と JAN を共有する → field pos_stock_sync
+        let (message, field) = rejected_at(create_product(
+            &mut conn,
+            ProductCreateRequest {
+                jan_code: Some(unlinked_jan.clone()),
+                pos_stock_sync: true,
+                ..default_create_request()
+            },
+        ));
+        assert_eq!(
+            message,
+            "同じ JAN の商品（C-UNLINKED）があるため、在庫連動にできません"
+        );
+        assert_eq!(field, "pos_stock_sync");
+        assert_eq!(product_count(&conn), before);
+        // 連動しない商品どうしの組は作れる
+        create_product(
+            &mut conn,
+            ProductCreateRequest {
+                jan_code: Some(unlinked_jan),
+                pos_stock_sync: false,
+                ..default_create_request()
+            },
+        )
+        .unwrap();
+        assert_eq!(product_count(&conn), before + 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_rejects_stock_link_on_shared_jan() {
+        // REQ-102 / ADR D4 / 30（b1 Matrix J2）: update は在庫連動を始める保存だけを検査する。
+        // 連動しない B と C が同じ JAN を持つとき、C を在庫連動にする保存を拒み、ほかの欄だけの保存は通る
+        let (_dir, mut conn) = setup_test_db();
+        let shared = jan(3);
+        seed_jan_product(&conn, "B-001", Some(&shared), false);
+        seed_jan_product(&conn, "C-001", Some(&shared), false);
+        let (message, field) = rejected_at(update_product(
+            &mut conn,
+            "C-001",
+            &ProductUpdateRequest {
+                pos_stock_sync: Some(true),
+                ..Default::default()
+            },
+        ));
+        assert_eq!(
+            message,
+            "同じ JAN の商品（B-001）があるため、在庫連動にできません"
+        );
+        assert_eq!(field, "pos_stock_sync");
+        let product = product_repo::find_by_product_code(&conn, "C-001")
+            .unwrap()
+            .unwrap();
+        assert!(!product.product.pos_stock_sync);
+        update_product(
+            &mut conn,
+            "C-001",
+            &ProductUpdateRequest {
+                name: Some("名前だけ変える".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+
+    fn import_error_messages(preview: &ImportPreview) -> Vec<(usize, String)> {
+        let mut rows: Vec<(usize, String)> = preview
+            .error_rows
+            .iter()
+            .map(|row| (row.line_no, row.errors.join(" / ")))
+            .collect();
+        rows.sort();
+        rows
+    }
+
+    #[test]
+    #[serial]
+    fn test_import_req104_shared_jan_row_error_both_directions_and_commit_recheck() {
+        // REQ-104 / ADR D4 / 30 の判定の状態と確定の拒否（b1 Matrix J3。round 1・round 2 の是正）
+        let (_dir, mut conn) = setup_test_db();
+        let (ja, jc, jd, jn) = (jan(11), jan(12), jan(13), jan(14));
+        seed_jan_product(&conn, "A-LINK", Some(&ja), true);
+        seed_jan_product(&conn, "C-OFF", Some(&jc), false);
+        seed_jan_product(&conn, "D-OFF", Some(&jd), false);
+        let header = "商品コード,商品名,部門ID,売価,原価,税率,JANコード,POS在庫連動";
+        let csv = make_csv(
+            header,
+            &[
+                &format!("A-LINK,連動の上書き,1,500,300,10,{jc},"),
+                &format!("C-OFF,非連動の上書き,1,500,300,10,{ja},"),
+                &format!("N-1,新規の連動,1,500,300,10,{jd},1"),
+                &format!("N-2,新規の先,1,500,300,10,{jn},1"),
+                &format!("N-3,新規の後,1,500,300,10,{jn},1"),
+                "N-4,正常,1,500,300,10,,",
+            ],
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        let message =
+            |codes: &str| format!("同じ JAN の商品（{codes}）があるため、在庫連動にできません");
+        assert_eq!(
+            import_error_messages(&preview),
+            vec![
+                (2, message("C-OFF")),
+                (3, message("A-LINK")),
+                (4, message("D-OFF")),
+                (6, message("N-2")),
+            ]
+        );
+        let valid: Vec<&str> = preview
+            .valid_rows
+            .iter()
+            .map(|row| row.product_code.as_str())
+            .collect();
+        assert_eq!(valid, vec!["N-2", "N-4"]);
+        assert!(preview.duplicate_rows.is_empty());
+
+        // 確定 (a): preview の後に別の経路で同じ JAN の連動の商品が登録された → 何も書かずに全体を戻す
+        let jx = jan(15);
+        let csv = make_csv(
+            header,
+            &[
+                "N-5,正常,1,500,300,10,,",
+                &format!("X-1,連動,1,500,300,10,{jx},1"),
+            ],
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert_eq!(preview.valid_rows.len(), 2);
+        seed_jan_product(&conn, "Y-LINK", Some(&jx), true);
+        let before = product_count(&conn);
+        let error = commit_import(&mut conn, preview.valid_rows, vec![]).unwrap_err();
+        let BizError::ValidationFailed(text) = error else {
+            panic!("ValidationFailed を期待しました: {error:?}")
+        };
+        assert_eq!(
+            text,
+            format!(
+                "商品 X-1 の行: {}。読み込みの後に登録か売上が変わったか、上書きを選んだほかの行と重なったため、取込みを止めました（どの行も取り込んでいません）。その行をスキップにするか、ファイルを選び直してもう一度読み込んでください",
+                message("Y-LINK")
+            )
+        );
+        assert_eq!(product_count(&conn), before);
+
+        // 確定 (b): 上書きを選んだ 2 行が同じ新しい JAN になり片方が在庫連動 → 後の行を名指して全体を戻す
+        let (jp1, jp2, jz) = (jan(16), jan(17), jan(18));
+        seed_jan_product(&conn, "P-1", Some(&jp1), true);
+        seed_jan_product(&conn, "P-2", Some(&jp2), false);
+        let mut p1 = make_import_row("P-1", "上書き1");
+        p1.jan_code = Some(jz.clone());
+        let mut p2 = make_import_row("P-2", "上書き2");
+        p2.jan_code = Some(jz.clone());
+        let error = commit_import(
+            &mut conn,
+            vec![p1, p2],
+            vec!["P-1".to_string(), "P-2".to_string()],
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&error, BizError::ValidationFailed(text) if text.starts_with(&format!("商品 P-2 の行: {}。", message("P-1")))),
+            "{error:?}"
+        );
+        let p1 = product_repo::find_by_product_code(&conn, "P-1")
+            .unwrap()
+            .unwrap();
+        assert_eq!(p1.product.jan_code.as_deref(), Some(jp1.as_str()));
+    }
+
+    const RECOUNT_REQUIRED: &str =
+        "連動しない間の売上があります。今の数を入れてから在庫連動にしてください";
+
+    fn start_link(conn: &mut DbConnection, code: &str) -> Result<ProductUpdateResult, BizError> {
+        update_product(
+            conn,
+            code,
+            &ProductUpdateRequest {
+                pos_stock_sync: Some(true),
+                ..Default::default()
+            },
+        )
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_start_stock_link_requires_recount() {
+        // REQ-102 / ADR D8 / 30（b1 Matrix J4）: 連動なしの Z004 の売上が全て効く計数に「入る」ときだけ在庫連動を
+        // 始められる。「入らない」「決まらない」・衝突・計数が無く売上がある → recount_required と回復先。
+        // 共有 JAN にも当たる商品は共有 JAN の拒否を先に返す
+        let (_dir, mut conn) = setup_test_db();
+        let shared = jan(21);
+        for code in [
+            "P-NOCOUNT",
+            "P-SAMEDAY",
+            "P-CONFLICT",
+            "P-COUNTED",
+            "P-BOTH",
+        ] {
+            seed_jan_product(
+                &conn,
+                code,
+                (code == "P-BOTH").then_some(shared.as_str()),
+                false,
+            );
+        }
+        seed_jan_product(&conn, "Q-SHARED", Some(&shared), false);
+        seed_jan_product(&conn, "P-ZERO", None, false);
+        let import_id = settlement(&conn, 1, "2026-04-02");
+        for code in [
+            "P-NOCOUNT",
+            "P-SAMEDAY",
+            "P-CONFLICT",
+            "P-COUNTED",
+            "P-BOTH",
+        ] {
+            z004_sale(&conn, code, import_id, 1, 100, false);
+        }
+        // 数量・金額とも 0 の行は売上として数えない
+        z004_sale(&conn, "P-ZERO", import_id, 0, 0, false);
+        insert_count(&conn, "P-SAMEDAY", 5, "2026-04-02", None);
+        insert_count(&conn, "P-CONFLICT", 1, "2026-04-03", None);
+        insert_count(&conn, "P-CONFLICT", 2, "2026-04-03", None);
+        insert_count(&conn, "P-COUNTED", 5, "2026-04-03", None);
+
+        for code in ["P-NOCOUNT", "P-SAMEDAY", "P-CONFLICT"] {
+            match start_link(&mut conn, code) {
+                Err(BizError::StocktakeGuard { message, recovery }) => {
+                    assert_eq!(message, RECOUNT_REQUIRED, "{code}");
+                    assert_eq!(recovery.code, StocktakeRecoveryCode::RecountRequired);
+                    assert_eq!(recovery.targets.len(), 1);
+                    assert_eq!(recovery.targets[0].product_code, code);
+                    assert_eq!(recovery.targets[0].action, CountRecoveryAction::CountNow);
+                    assert_eq!(recovery.targets[0].stocktake_item_id, None);
+                    assert!(recovery.settlement_pending.is_none());
+                }
+                other => panic!("{code}: recount_required を期待しました: {other:?}"),
+            }
+            let product = product_repo::find_by_product_code(&conn, code)
+                .unwrap()
+                .unwrap();
+            assert!(!product.product.pos_stock_sync, "{code}");
+        }
+        let (message, field) = rejected_at(start_link(&mut conn, "P-BOTH"));
+        assert_eq!(
+            message,
+            "同じ JAN の商品（Q-SHARED）があるため、在庫連動にできません"
+        );
+        assert_eq!(field, "pos_stock_sync");
+        start_link(&mut conn, "P-COUNTED").unwrap();
+        start_link(&mut conn, "P-ZERO").unwrap();
+
+        // 進行中の棚卸しに明細があれば回復先は active_count と明細
+        let stocktake = crate::biz::stocktake_service::start_stocktake(&mut conn).unwrap();
+        match start_link(&mut conn, "P-NOCOUNT") {
+            Err(BizError::StocktakeGuard { recovery, .. }) => {
+                let target = &recovery.targets[0];
+                assert_eq!(target.action, CountRecoveryAction::ActiveCount);
+                assert_eq!(target.stocktake_id, Some(stocktake.stocktake_id));
+                assert!(target.stocktake_item_id.is_some());
+            }
+            other => panic!("recount_required を期待しました: {other:?}"),
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_import_req104_start_stock_link_row_error() {
+        // REQ-104 / ADR D8 / 30（b1 Matrix J5）: 一括 import の上書きで連動を始める行も同じ検査で行の error。
+        // 共有 JAN にも当たる行は共有 JAN の文を先に返す。確定の TX で当たれば確定全体を戻す
+        let (_dir, mut conn) = setup_test_db();
+        let shared = jan(31);
+        seed_jan_product(&conn, "C-SALE", None, false);
+        seed_jan_product(&conn, "E-BOTH", Some(&shared), false);
+        seed_jan_product(&conn, "F-SHARED", Some(&shared), false);
+        seed_jan_product(&conn, "G-LATER", None, false);
+        let import_id = settlement(&conn, 1, "2026-04-02");
+        z004_sale(&conn, "C-SALE", import_id, 1, 100, false);
+        z004_sale(&conn, "E-BOTH", import_id, 1, 100, false);
+        let header = "商品コード,商品名,部門ID,売価,原価,税率,JANコード,POS在庫連動";
+        let preview = preview_import(
+            &conn,
+            &make_csv(
+                header,
+                &[
+                    "C-SALE,連動にする,1,500,300,10,,1",
+                    &format!("E-BOTH,連動にする,1,500,300,10,{shared},1"),
+                    "G-LATER,連動にする,1,500,300,10,,1",
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            import_error_messages(&preview),
+            vec![
+                (2, RECOUNT_REQUIRED.to_string()),
+                (
+                    3,
+                    "同じ JAN の商品（F-SHARED）があるため、在庫連動にできません".to_string()
+                ),
+            ]
+        );
+        assert_eq!(preview.duplicate_rows.len(), 1);
+        // preview の後に連動なしの売上を取り込んだ → 確定の TX で当たり全体を戻す
+        z004_sale(&conn, "G-LATER", import_id, 1, 100, false);
+        let rows = preview
+            .duplicate_rows
+            .into_iter()
+            .map(|row| row.import_row)
+            .collect();
+        let error = commit_import(&mut conn, rows, vec!["G-LATER".to_string()]).unwrap_err();
+        assert!(
+            matches!(&error, BizError::ValidationFailed(text)
+                if text.starts_with(&format!("商品 G-LATER の行: {RECOUNT_REQUIRED}。"))),
+            "{error:?}"
+        );
+        let product = product_repo::find_by_product_code(&conn, "G-LATER")
+            .unwrap()
+            .unwrap();
+        assert!(!product.product.pos_stock_sync);
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_toggle_stock_link_recomputes() {
+        // REQ-102 / ADR D8 / 30（b1 Matrix J6）: true → false は記録も確認も要らず、連動の切替の TX で
+        // その商品を求め直す（写しをわざと食い違わせて観測する）
+        let (_dir, mut conn) = setup_test_db();
+        seed_jan_product(&conn, "T-1", None, true);
+        let copy = |conn: &DbConnection| -> i64 {
+            conn.query_row(
+                "SELECT stock_quantity FROM products WHERE product_code = 'T-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        for linked in [false, true] {
+            conn.execute(
+                "UPDATE products SET stock_quantity = 77 WHERE product_code = 'T-1'",
+                [],
+            )
+            .unwrap();
+            update_product(
+                &mut conn,
+                "T-1",
+                &ProductUpdateRequest {
+                    pos_stock_sync: Some(linked),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(copy(&conn), 0, "linked={linked}");
+        }
+        let movements: i64 = conn
+            .query_row("SELECT COUNT(*) FROM inventory_movements", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(movements, 0);
     }
 }

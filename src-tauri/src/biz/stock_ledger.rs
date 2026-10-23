@@ -303,8 +303,39 @@ pub(crate) fn read_ledger(conn: &DbConnection, product_code: &str) -> Result<Led
         counts: inventory_repo::list_stock_counts_for_product(conn, product_code)?,
         movements: inventory_repo::list_ledger_movements_for_product(conn, product_code)?,
         settlements: sales_repo::list_active_settlements(conn)?,
-        linked_sale_imports: sales_repo::list_linked_sale_import_ids(conn, product_code)?,
+        linked_sale_imports: sales_repo::list_sale_import_ids(conn, product_code, true)?,
     })
+}
+
+/// 在庫連動を始めてよいか（ADR SPEC-STK-CNT-D8、30）: 連動なしで取り込んだ Z004 の売上が全て、効く計数に
+/// 「入る」ときだけ true。「入らない」「決まらない」売上・効く計数の衝突・効く計数が無く売上があるときは false
+pub(crate) fn unlinked_sales_counted(
+    conn: &DbConnection,
+    product_code: &str,
+) -> Result<bool, BizError> {
+    let imports = sales_repo::list_sale_import_ids(conn, product_code, false)?;
+    if imports.is_empty() {
+        return Ok(true);
+    }
+    let ledger = read_ledger(conn, product_code)?;
+    let (effective, conflicting) = effective_counts(&ledger.counts)?;
+    let Some(count) = effective.first().filter(|_| !conflicting) else {
+        return Ok(false);
+    };
+    Ok(imports.iter().all(|import_id| {
+        ledger
+            .settlements
+            .iter()
+            .find(|s| s.import_id == *import_id)
+            .is_some_and(|s| {
+                judge_settlement(
+                    count,
+                    s.settlement_no,
+                    &s.settlement_date,
+                    &ledger.settlements,
+                ) == Window::Included
+            })
+    }))
 }
 
 /// 記録から在庫を求める（読取りだけ。整合性の検査が使う。31）

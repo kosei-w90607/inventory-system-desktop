@@ -11,7 +11,7 @@ use std::time::Instant;
 /// JAN付き商品を作成するテストヘルパー
 ///
 /// department_id=1（初期データ「その他小物」）を使用。
-pub(super) fn create_test_product_with_jan(
+pub(crate) fn create_test_product_with_jan(
     conn: &DbConnection,
     product_code: &str,
     jan_code: &str,
@@ -34,7 +34,7 @@ pub(super) fn create_test_product_with_jan(
 /// 従来の形（精算回数の無い file）の Z004 バイト列（32 の順 1 の拒否の入力）
 ///
 /// data_lines: (jan, name, quantity, amount) のスライス
-pub(super) fn make_conventional_z004_bytes(
+pub(crate) fn make_conventional_z004_bytes(
     settlement_date: &str,
     data_lines: &[(&str, &str, i32, i32)],
 ) -> Vec<u8> {
@@ -61,7 +61,7 @@ pub(super) fn make_conventional_z004_bytes(
 }
 
 /// layout A（マシンNo.・精算回数・日付のメタつき）の Z004 バイト列（レジ `machine_no`）
-pub(super) fn make_z004_bytes_for_machine(
+pub(crate) fn make_z004_bytes_for_machine(
     machine_no: &str,
     settlement_no: i64,
     settlement_date: &str,
@@ -76,7 +76,7 @@ pub(super) fn make_z004_bytes_for_machine(
 }
 
 /// layout A の Z004 バイト列（精算回数の欄を文字列のまま書く。32 の順 1 の拒否の入力）
-pub(super) fn make_z004_bytes_raw(
+pub(crate) fn make_z004_bytes_raw(
     machine_no: &str,
     settlement_raw: &str,
     settlement_date: &str,
@@ -93,10 +93,10 @@ pub(super) fn make_z004_bytes_raw(
 }
 
 /// `layout_a_bytes` の最初のデータ行の行番号（メタ 5 行・空行・ヘッダの後）
-pub(super) const LAYOUT_A_FIRST_DATA_LINE: usize = 8;
+pub(crate) const LAYOUT_A_FIRST_DATA_LINE: usize = 8;
 
 /// layout A の Z004 バイト列（データ行は書いた文字列のまま。カンマ付きの値・壊れた行の入力）
-pub(super) fn layout_a_bytes(
+pub(crate) fn layout_a_bytes(
     machine_no: &str,
     settlement_raw: &str,
     settlement_date: &str,
@@ -121,7 +121,7 @@ pub(super) fn layout_a_bytes(
 /// テスト用Z004バイト列（layout A、マシンNo. `0001`、精算回数 `settlement_no`）
 ///
 /// data_lines: (jan, name, quantity, amount) のスライス
-pub(super) fn make_z004_bytes(
+pub(crate) fn make_z004_bytes(
     settlement_no: i64,
     settlement_date: &str,
     data_lines: &[(&str, &str, i32, i32)],
@@ -130,12 +130,12 @@ pub(super) fn make_z004_bytes(
 }
 
 /// test の既定の今日（精算日が今日より後の知らせが出ない日）
-pub(super) const TEST_TODAY: &str = "2099-12-31";
+pub(crate) const TEST_TODAY: &str = "2099-12-31";
 
 /// parse_and_validate を呼んで結果を返す（commit/rollback テストの前段処理用）
 ///
 /// パースが成功することを前提とする。失敗時はpanic。
-pub(super) fn parse_and_build_cache(
+pub(crate) fn parse_and_build_cache(
     conn: &DbConnection,
     file_bytes: Vec<u8>,
     filename: &str,
@@ -152,7 +152,7 @@ pub(super) fn parse_and_build_cache(
 }
 
 /// CachedPreview を構築するヘルパー
-pub(super) fn build_cached(result: ParseValidateResult) -> CachedPreview {
+pub(crate) fn build_cached(result: ParseValidateResult) -> CachedPreview {
     CachedPreview {
         created_at: Instant::now(),
         matched_rows: result.matched_rows,
@@ -163,7 +163,7 @@ pub(super) fn build_cached(result: ParseValidateResult) -> CachedPreview {
 }
 
 /// preview から確定までを通す（既定の今日）
-pub(super) fn commit_bytes(
+pub(crate) fn commit_bytes(
     conn: &mut DbConnection,
     file_bytes: Vec<u8>,
     filename: &str,
@@ -179,7 +179,7 @@ pub(super) fn commit_bytes(
 }
 
 /// 写しの在庫・要再確認の印・範囲（(low, high)）
-pub(super) fn stock_copy(
+pub(crate) fn stock_copy(
     conn: &DbConnection,
     product_code: &str,
 ) -> (i64, bool, Option<(i64, i64)>) {

@@ -384,6 +384,25 @@ pub(crate) fn recheck_targets(
     Ok(targets)
 }
 
+/// 在庫連動を始める保存の拒否（30・40、ADR D8）。回復先は進行中の棚卸しに明細があれば `active_count`、
+/// なければ `count_now`
+pub(crate) fn recount_required(
+    conn: &DbConnection,
+    product_code: &str,
+    message: &str,
+) -> Result<BizError, BizError> {
+    let copy = stocktake_repo::find_stock_copy(conn, product_code)?
+        .ok_or_else(|| product_not_found(product_code))?;
+    Ok(BizError::StocktakeGuard {
+        message: message.to_string(),
+        recovery: StocktakeRecovery {
+            code: StocktakeRecoveryCode::RecountRequired,
+            targets: vec![recovery_target(conn, &copy, None)?],
+            settlement_pending: None,
+        },
+    })
+}
+
 /// 明細の表示用の写し（`actual_count`・`counted_at`）を効く計数に合わせる（35）
 fn sync_item_copy(conn: &DbConnection, item_id: i64, product_code: &str) -> Result<(), BizError> {
     let ledger = read_ledger(conn, product_code)?;
