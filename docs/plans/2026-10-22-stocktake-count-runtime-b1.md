@@ -36,7 +36,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 - Phase: implementing
 - Risk: R4
 - Plan Commit: aba17e2e2422695b2ffff6bcd3fd9bebebf24339
-- Amendments: none
+- Amendments: 5b53294040ff38d2aeb8366aefd02142ffb2c764
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
@@ -56,6 +56,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 7. plan-gate（round 3、上限、2026-10-23、Coordinator）: round 3 は両者 reject（Codex に P1 1）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした。起草役が `8655cb64` で直した（下の Review Response）。plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が P1 / P2 = 0 を報告し、owner が実装の前の R4 を承認した後。
 8. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側の fresh Opus 5.5 が closure で P1・P2 が無いと報告した（Review Response 参照）。Codex の closure は利用上限で 2026-10-24 まで得られず、`docs/AGENT_OPERATING_MANUAL.md` §3.3・座組表の Codex 停止中の列（Plan Review は fresh Opus 5.5 だけで進める）に従い、owner の決定（repo 外の回答台帳 TD-389。TD-387 を見直した）で進めた。closure の P3 4 件は plan-gate のまま起草役が `5c45d253`・`aba17e2e` で直した（Plan Commit は是正の後の版）。owner は同じ回答で実装の前の R4 を承認した（TD-389）。実装の commit はまだ無い。
 9. plan-approved → implementing（2026-10-23、Coordinator、本 commit）: main（`eed07d37`、PR #155・#189 の後）を単段で取り込み（衝突は `docs/Plans.md` の 1 か所）、AC の数の baseline の command 21 本を逐語で再測して上の値と一致した（`rg` の出力の並びだけが違う）。実装の Writer に S1〜S7 と S9 の L3 の fixture の生成から発注する。
+10. implementing のまま Gated Amendment（2026-10-23、Coordinator、本 commit）: closure の Codex 側（owner の決定〈repo 外の回答台帳 TD-389〉で plan-approved の後に流した）が P1 1 件を出した（下の Review Response）。Coordinator が受理し、起草役の直し方の案 1（fresh な計数の精算の判定を取込み ID のカーソルで求める）と owner の答え（TD-400: 取り込み直した精算は要再確認）を `5b532940` に置いた。packet の契約が変わるので Gated Amendment として `Amendments` に登録し、amendment の review（fresh Opus 5.5 + Codex）に出す。Coordinator は review の前に code の実装（1 段目の上の commit）まで同じ発注で進めさせた。review で契約が変われば code も直す。
 
 ## Owner Effort Budget
 
@@ -944,3 +945,5 @@ closure（`995c288b`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 
 - N2: 完了の後の比較の範囲の原則から計数を除く（完了の後に保存した計数は次の観測）。ADR D6、35、tracking、Matrix R2 (d)。
 - N3: Matrix の K2 に取消と取り込み直しの列（完了の (iii) の n を n の active な取込みがあるときだけ使うことを観測する）。発注の初めの列は (iii) でなく (i) が出て観測にならず、起草役が止めて代案を出した（MANUAL §5.6）。
 - N4: 24 の読取りを「新設する」と 1 通りに（取り消したものを含めて探し、active を優先する照合先を返す）。
+
+closure の Codex 側（発注 508、`aba17e2e`。owner の決定 TD-389 で plan-approved の後に流した）: reject（P1 1 / P2 0 / P3 0）。round 3 の P1（取消の後の照合と fresh なカーソル）の残り: 取り消した取込みと同じ精算回数を、レジの初期化の後の新しい系列が使うと、fresh な計数の判定の n が生き返り、計数の後の売上を計数に入っていると扱って黙ってずれる。本 packet の「残りの危険」は n 回の精算の後の話と書いていたが、n = 1 なら初期化の後の最初の精算で起きる。Coordinator が ADR D3 の判定表の下の項と 32 の順 2〜5 で確かめて受理した。read-only の起草役（Opus 5.5）が直し方を 3 案出し、案 1（`stock_counts.seen_import_id` と `stocktakes.cutoff_import_id`。判定の n は「c 以下の今 active な取込みの最大の精算回数」を毎回求める）を採った。owner の判断 (i) は A（TD-400）、(ii)（順 2 の照合を active だけに戻す）は行わない（TD-388 のまま）。Gated Amendment `5b532940`。同じ回に、実装の 1 段目で Matrix の T の表に無いのに期待が旧い契約のままだった test 4 群を、packet の契約に合わせて直し、T の表に行を足した（AGENTS.md の「誤ったテストは設計正本との不一致と理由を示して修正する」）。
