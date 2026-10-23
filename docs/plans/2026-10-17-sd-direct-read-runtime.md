@@ -29,6 +29,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex は利用上限で 2026-10-24 まで使えず、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `881700ca` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 6. plan-gate のまま是正（round 2、2026-10-23、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `b852071f`（Claude 側）と `af0f95b0`（Codex 側）で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
 7. plan-gate のまま是正（round 3〈天井〉、2026-10-23、Coordinator、本 commit）: round 3 の Claude 側 fresh Opus 5.5 の reject を起草役が `1c154230` で直した（下の Review Response）。round 4 は回さず、Coordinator の disposition（4 件の一括是正）の後に closure（fresh Opus 5.5 + Codex。Codex は round 3 で未実施なので、是正の後の版の全体を見る）に出す。P1/P2 = 0 なら plan-approved へ進める。
+8. plan-gate のまま是正（closure、2026-10-23、Coordinator、本 commit）: closure の Codex 側の reject（P2 1）を起草役が `8fef2a03` で直した（下の Review Response）。path の包含の規則で、`CLAUDE.md` が安全境界（path traversal）の review を Claude の subagent に出さないと定めるので、是正の後の確かめは Codex の closure と Coordinator の inline の review で行う（inline は fresh context でないので Final Review の本数に数えない）。
 
 ## Owner Effort Budget
 
@@ -501,3 +502,5 @@ round 3（天井、`2b9cabb6`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2
 
 - P2: L3-2 の到達経路を「L3-1 の USB を抜く → SD から読む → 場所を選ぶ → PC の folder の中の写し」に、合格基準の置き場は `XZ`・`XZ_BKUP` のどちらでも合格に。L3-3 は USB を差し直す経路に（発注の外の波及）。
 - P3: 受入台本の Step 1 と 55 UI-07-D16 の「今の」の 2 文を S6 に、AC9 (3) を足した。folder 名の定数の形を `[&str; 2]` に決めた（PR #190 の packet の書き方と矛盾しない）。`scan.rs` を分けたときの設計照合の登録。
+
+closure（`499da80d`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 1）、Codex（round 3 の Codex 側で closure を兼ねる）= reject（P1 0 / P2 1 / P3 0）。Claude 側の P3（folder 名の定数の名前と形が PR #190 の packet に無い）は Coordinator が #190 の packet の所有表に名前と形を足して閉じた（#190 の branch の `000345f1`）。Codex の P2: path の包含の検査が link 先を解かず、PC の中の SD の写しの `XZ` が root の外への directory の link だと、合法な相対 path が文字列の検査を通り、外の file を読む（Codex が合成の tree で再現）。Coordinator が受理し、是正は起草役の `8fef2a03`（29 IO-09-D5 を新設: 見る path を `std::fs::canonicalize` で実体に解き、解いた root の下かを要素ごとに比べ、外なら `InvalidPath` で開かない。確かめた path をそのまま開く。root の下を指す link は通す。37 §37.9 手順 3 に `InvalidPath` の固定の文。Matrix に link の tree の行と mutant）。Coordinator の inline の review（2026-10-23、fresh context でない）: 規則の筋（両側を同じ関数で解く、確かめた path を開く、確かめから open までの差し替えの余地は SD の写しの用途で受け入れる理由）を読み、書く側の IO-10 を対象外にする判断（書く先はアプリのデータの folder で、link を置けるのは同じ利用者だけ）を受け入れた。
