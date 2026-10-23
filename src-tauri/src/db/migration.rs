@@ -766,7 +766,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 10);
+        assert_eq!(v1, super::app_max_version()); // 最新の版（b1 Matrix T1）
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -776,15 +776,16 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 10, "バージョンが変わってはいけない");
+        assert_eq!(v2, v1, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが10件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9 + v10）
+        // schema_versions のレコードは版ごとに 1 件（v1 から最新の版まで。b1 Matrix T1）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 10,
-            "マイグレーションレコードは10件（v1+v2+v3+v4+v5+v6+v7+v8+v9+v10）"
+            count,
+            super::app_max_version(),
+            "マイグレーションレコードは v1 から最新の版まで 1 件ずつ"
         );
     }
 
@@ -855,7 +856,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 10);
+        assert_eq!(version, super::app_max_version()); // 最新の版（b1 Matrix T1）
 
         for table_name in &[
             "daily_report_imports",
@@ -921,7 +922,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             (max_version, version_count),
-            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+            (super::app_max_version(), super::app_max_version())
         );
     }
 
@@ -938,7 +939,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 10);
+        assert_eq!(max_version, super::app_max_version()); // 最新の版（b1 Matrix T1）
         assert_eq!(slot_count, 4_784);
     }
 
@@ -1562,7 +1563,7 @@ mod tests {
         let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
         assert_eq!(
             max_version_and_count(&conn),
-            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+            (super::app_max_version(), super::app_max_version())
         );
         // v8 の CHECK（12 個）は v8 まで当てた新規の DB で確かめる。最新の版の CHECK は vB の test（Matrix T1 (c)）
         let conn = Connection::open(dir.path().join("fresh-v8.db")).unwrap();
@@ -1704,7 +1705,7 @@ mod tests {
             assert_eq!(foreign_keys(&conn), 1);
             assert_eq!(
                 max_version_and_count(&conn),
-                (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+                (super::app_max_version(), super::app_max_version())
             );
             assert_eq!(
                 schema_version_rows(&conn)

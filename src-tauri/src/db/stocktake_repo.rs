@@ -1575,6 +1575,8 @@ mod tests {
         assert_eq!(detail.header.id, stocktake_id);
         assert_eq!(detail.header.total_cost, Some(600));
         assert_eq!(detail.item_count, 2);
-        assert_eq!(detail.items.len(), 1);
+        // 65 の D-118 の節・packet S2（期待を変えた。b1 Matrix T11）: 明細は補正の movement でなく明細から読む
+        // （補正の movement が 1 行あっても明細の数 2）
+        assert_eq!(detail.items.len(), 2);
     }
 }

@@ -470,7 +470,10 @@ mod tests {
         let conn = crate::db::init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
         assert_eq!(
             version(&conn),
-            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+            (
+                crate::db::migration::app_max_version(),
+                crate::db::migration::app_max_version()
+            )
         );
         let columns = |table: &str| -> Vec<Vec<Value>> {
             dump(

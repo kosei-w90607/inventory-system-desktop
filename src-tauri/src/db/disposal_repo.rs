@@ -1714,8 +1714,9 @@ mod tests {
     }
 
     #[test]
-    fn test_list_inventory_records_req206_in_progress_filter_exclusion() {
-        // REQ-206 / D-i: 進行中棚卸しは明細商品を持っても差異 movement filter には hit しない
+    fn test_list_inventory_records_req206_in_progress_filter_matches_items() {
+        // REQ-206 / 65 の D-118 の節（棚卸しの件数と絞り込みは明細。packet S2）/ b1 Matrix T2（期待を変えた）:
+        // 進行中の棚卸しも明細の商品と部門で絞り込みに当たる（前は差異 movement が無いので当たらなかった）
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "INPROGRESS-TARGET");
         let stocktake_id = seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
@@ -1739,7 +1740,7 @@ mod tests {
             list_inventory_records(&conn, &keyword_query)
                 .unwrap()
                 .total_count,
-            0
+            1
         );
 
         let mut department_query = inventory_query("stocktake");
@@ -1748,7 +1749,7 @@ mod tests {
             list_inventory_records(&conn, &department_query)
                 .unwrap()
                 .total_count,
-            0
+            1
         );
     }
 

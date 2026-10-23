@@ -389,7 +389,10 @@ mod tests {
         let (_dir, conn) = setup_latest();
         assert_eq!(
             version(&conn),
-            (crate::db::VZ_VERSION, crate::db::VZ_VERSION)
+            (
+                crate::db::migration::app_max_version(),
+                crate::db::migration::app_max_version()
+            )
         );
         assert_cost_columns(&conn, NEW_COLUMNS, OLD_COLUMNS);
     }

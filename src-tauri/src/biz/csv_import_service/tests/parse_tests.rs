@@ -263,7 +263,8 @@ fn test_parse_and_validate_req401_parse_errors_merged() {
 
 #[test]
 fn test_parse_and_validate_req401_no_valid_data() {
-    // REQ-401: CSV取込み
+    // REQ-401 / 32「確定」・packet S5・b1 Matrix Z9（期待を変えた。b1 Matrix T2）: 正常な行が全て 0 の
+    // file は拒まず、売上の行も行の error も無い preview になる（精算の識別メタだけを持つ取込みとして確定できる）
     let (_dir, conn) = setup_test_db();
     // 全行が空レコード（qty=0, amt=0）
     let bytes = make_z004_bytes(
@@ -282,11 +283,12 @@ fn test_parse_and_validate_req401_no_valid_data() {
             today: TEST_TODAY.to_string(),
         },
     );
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        BizError::ImportError(msg) => assert!(msg.contains("取込み対象のデータがありません")),
-        e => panic!("Expected ImportError, got {:?}", e),
-    }
+    let result = result.expect("全て 0 の file は拒まない");
+    assert!(result.matched_rows.is_empty());
+    assert!(result.error_rows.is_empty());
+    assert_eq!(result.preview_data.matched_summary.count, 0);
+    assert_eq!(result.preview_data.matched_summary.total_amount, 0);
+    assert_eq!(result.preview_data.error_summary.count, 0);
 }
 
 #[test]

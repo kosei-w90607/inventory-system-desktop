@@ -1215,7 +1215,11 @@ mod bindings_generation_tests {
             crate::db::migrate_legacy_db,
         )
         .unwrap();
-        assert_eq!(version_and_products(&conn), (crate::db::VZ_VERSION, 0));
+        // 最新の版まで当たる（版の定数でなく app_max_version と比べる。b1 Matrix T1）
+        assert_eq!(
+            version_and_products(&conn),
+            (crate::db::migration::app_max_version(), 0)
+        );
         assert_eq!(
             file_hashes(&moved.join("cwd")),
             moved_before,
@@ -1249,7 +1253,11 @@ mod bindings_generation_tests {
             crate::db::migrate_legacy_db,
         )
         .unwrap();
-        assert_eq!(version_and_products(&conn), (crate::db::VZ_VERSION, 0));
+        // 最新の版まで当たる（版の定数でなく app_max_version と比べる。b1 Matrix T1）
+        assert_eq!(
+            version_and_products(&conn),
+            (crate::db::migration::app_max_version(), 0)
+        );
         let restore_logs: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'backup_restore'",
