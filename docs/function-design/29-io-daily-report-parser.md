@@ -296,7 +296,7 @@ enum RegisterSdError {
     // 自動で探して 0 件・2 件以上は error にせず `Ok(vec)` で返す（§29.7.4 手順 2。止めて案内するのは BIZ-08 §37.9 手順 1）
     NotRegisterSd,                  // Selected の path から root を解決できない
     MissingSalesArea,               // root に `XZ` が無い
-    InvalidPath,                    // read の相対 path が root の外を指す
+    InvalidPath,                    // read の相対 path か、列挙・読取りの実体の path（IO-09-D5）が root の外を指す
     TooLarge { relative_path: String },
     Io { relative_path: String, kind: std::io::ErrorKind }, // relative_path は root からの相対 path。ただし `check_selected_file_present`（§29.7.4 手順 5）だけは選んだ file の path の文字列そのもの（root が無いので相対にできない）。どちらも診断にだけ使い、利用者向けの文に入れない（BIZ は固定の文にする）
 }
@@ -345,7 +345,7 @@ fn list_register_sd_entries(root: &RegisterSdRoot, from: NaiveDate) -> Result<Re
    - EJ: `^EJ(\d{2})(\d{2})(\d{2})(_(\d{4}))?\.TXT$`。`XZ` では連番なし、`XZ_BKUP` では連番ありだけを EJ とする。日付は 20yy 年。
    - どれにも当たらない file は `Unknown` として返す（名前と size だけ。中身を読まない）。SD-07 の旧い folder の未知の file はこれに当たる。
 5. `date` が `from` より前の Z・EJ（`XZ` 直下の EJ を除く）は返さない。系列番号（`nnn`）は決め打ちにせず、Z006・Z009・Z011 や未知の番号もそのまま返す（使うかは BIZ が決める）。
-6. 列挙の途中で読めなくなった（SD を抜いた等）ら `Io`。途中までの一覧を返さない。
+6. 列挙の途中で読めなくなった（SD を抜いた等）ら `Io`。入る folder（`XZ`・`XZ_BKUP`・年・月の folder）か返す file（`Unknown` を含む）の実体の path が root の外（IO-09-D5）なら `InvalidPath`。どちらも途中までの一覧を返さない。
 
 **IO-09-D2（名前で分類し、中身で判定する）**: 名前は列挙と組分けの手がかりにだけ使い、取込み済みか・同じ精算かは中身（hash と精算回数）で決める（IO-07-D3 と同じ線引き）。名前が規則に合わない file は読まずに `Unknown` で返し、推測で Z や EJ にしない。年・月の folder の絞り込みは、全期間の `XZ_BKUP` を毎回読まないための列挙の範囲で、取込み済みの判定には使わない。
 
@@ -361,14 +361,21 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 
 **処理ステップ**:
 
-1. `relative_path` を `\` で分け、空・`.`・`..`・drive 指定・絶対 path の要素があれば `InvalidPath`。root と結合した path が root の下でなければ `InvalidPath`。
-2. `std::fs::File::open`（読取り専用）で開き、`max_bytes + 1` byte まで読む。超えたら `TooLarge`（全体を読まない）。開けない・読めないは `Io`。読み終えたら handle を閉じる（関数の外へ handle を持ち出さない）。
+1. `relative_path` を `\` で分け、空・`.`・`..`・drive 指定・絶対 path の要素があれば `InvalidPath`。root に要素ごとに `join` した path を開く前に実体の path に解き、root の下でなければ `InvalidPath` で開かない（IO-09-D5）。
+2. 手順 1 で解いた path を `std::fs::File::open`（読取り専用）で開き、`max_bytes + 1` byte まで読む。超えたら `TooLarge`（全体を読まない）。開けない・読めないは `Io`。読み終えたら handle を閉じる（関数の外へ handle を持ち出さない）。
 3. 形を測る: CP932 の strict decode の成否、先頭の UTF-8 BOM、改行が CRLF だけか、最後が CRLF か。測るだけで、直さない・捨てない。
 4. `RegisterSdFile` を返す。
 
-**IO-09-D3（SD を書き換えない）**: `io::register_sd` は SD への書込み・作成・改名・移動・削除・属性の変更・時刻の変更を行う関数を持たない。そのため、この module が使ってよい file system の API を次の許可の列に限る（列にない API は使わない。禁止の語を数える形にしない）: `std::fs::File::open`（読取り専用で開く）、`std::fs::read_dir`、`std::fs::metadata`、型の `std::fs::{File, ReadDir, DirEntry, Metadata, FileType}`、`std::io::Read` の読取りの method（`read`・`read_to_end`・`take`）、`File::metadata`・`DirEntry::{path, file_name, file_type, metadata}`・`Metadata::{is_file, is_dir, len}`、`std::path` の文字列の操作と `Path::is_dir`・`Path::is_file`（中で `metadata` を読むだけ）、Windows の `windows_sys` の `GetLogicalDrives`・`GetDriveTypeW`（と定数 `DRIVE_REMOVABLE`）と、thread の error mode の `SetThreadErrorMode`（と定数 `SEM_FAILCRITICALERRORS`、引数の型 `THREAD_ERROR_MODE`。§29.7.4 手順 1。file system を変えない。ほかの型〈`BOOL`・`PCWSTR`〉は名指しせず推論で書く）。使わないものの例（許可の列にないので使えない）: `OpenOptions`、`File::create`・`File::create_new`、`fs::write`・`fs::copy`・`fs::rename`・`fs::hard_link`・`fs::soft_link`・`create_dir*`・`remove_*`・`fs::set_permissions`、`File` の `set_len`・`set_modified`・`set_times`・`set_permissions`、`std::io::Write`、`windows_sys` の上の 3 関数以外。runtime の lane が source の検査 test（Matrix の `register_sd::module_uses_only_allowed_fs_api`）で、`src-tauri/src/io/register_sd.rs` の `std::fs` / `fs::` / `File::` / `OpenOptions` / `std::io::Write` / `windows_sys` の出現が許可の列の中だけかを確かめる（`use std::fs::*` と、`std` の項目を `as` で改名する形〈`use std::fs as f`・`use std::{fs as f}`・`use std::fs::{self as f}`・`use std::fs::File as F` など〉も許可の列の外として red。`crate::`・`super::` で始まる path〈`use` の group の中の項目を含む〉は、`super::` の folder 名の定数〈§29.7.4 手順 1〉だけを許し、それ以外〈`super::pos_source_copy`・`super::image_manager`・`crate::db`・`crate::mnt` など〉を red にする。この module から別の module を呼べば、許可の列の外の API を使うのと同じになりうる。書く module を名前で並べる形は、書く module が増えるたびに漏れるので採らない）。file は読取り専用で開き、読んだら閉じる。Windows が読取りで FAT の最終アクセス日を変える・`System Volume Information` を作ることはアプリでは止められないが、店は CV17 の取込みのために毎日この PC で同じ SD を書込み可能なまま差してきており（SD-25）、新しい種類の副作用は増えない。(a) の段階（IO-09 と SD 直読みの runtime の lane）では、CV17 と同じく `XZ` から `XZ_BKUP` へ移す案は採らない（owner 決定 2026-10-06、D-111。この段階では SD は動かさない。移す操作は D-111 (1) の (b) の後続の lane が別の module で作る）。動かさない前提（Z・EJ が `XZ` に残っても精算が続く）は、Z の名前が日付と同じ日の精算ごとの接尾字で決まり別の日の Z とぶつからないこと（SD-02・SD-08）と、EJ が約 1 か月 `XZ` に残っても精算が続いた店の実績（SD-09、repo 外の回答台帳 TD-139）で受け入れた。取込み済みを `XZ_BKUP` へ移す操作（D-111 (1) の (b)、後続の lane）ができるまで店は CV17 の取込みを今の運用のまま続けるので（D-111 の運用の制約）、Z が `XZ` に何日も溜まる状態は生じない。`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）。読んだ原本の写しは PC 側のアプリの folder に書き（§29.8、IO-10）、書く module を `io::register_sd` と分けて、この module に書込みの API が無いことを保つ。
+**IO-09-D3（SD を書き換えない）**: `io::register_sd` は SD への書込み・作成・改名・移動・削除・属性の変更・時刻の変更を行う関数を持たない。そのため、この module が使ってよい file system の API を次の許可の列に限る（列にない API は使わない。禁止の語を数える形にしない）: `std::fs::File::open`（読取り専用で開く）、`std::fs::read_dir`、`std::fs::metadata`、`std::fs::canonicalize`（実体の path を得るだけで、file system を変えない。IO-09-D5）、型の `std::fs::{File, ReadDir, DirEntry, Metadata, FileType}`、`std::io::Read` の読取りの method（`read`・`read_to_end`・`take`）、`File::metadata`・`DirEntry::{path, file_name, file_type, metadata}`・`Metadata::{is_file, is_dir, len}`、`std::path` の文字列の操作と `Path::is_dir`・`Path::is_file`（中で `metadata` を読むだけ）、Windows の `windows_sys` の `GetLogicalDrives`・`GetDriveTypeW`（と定数 `DRIVE_REMOVABLE`）と、thread の error mode の `SetThreadErrorMode`（と定数 `SEM_FAILCRITICALERRORS`、引数の型 `THREAD_ERROR_MODE`。§29.7.4 手順 1。file system を変えない。ほかの型〈`BOOL`・`PCWSTR`〉は名指しせず推論で書く）。使わないものの例（許可の列にないので使えない）: `OpenOptions`、`File::create`・`File::create_new`、`fs::write`・`fs::copy`・`fs::rename`・`fs::hard_link`・`fs::soft_link`・`create_dir*`・`remove_*`・`fs::set_permissions`、`File` の `set_len`・`set_modified`・`set_times`・`set_permissions`、`std::io::Write`、`windows_sys` の上の 3 関数以外。runtime の lane が source の検査 test（Matrix の `register_sd::module_uses_only_allowed_fs_api`）で、`src-tauri/src/io/register_sd.rs` の `std::fs` / `fs::` / `File::` / `OpenOptions` / `std::io::Write` / `windows_sys` の出現が許可の列の中だけかを確かめる（`use std::fs::*` と、`std` の項目を `as` で改名する形〈`use std::fs as f`・`use std::{fs as f}`・`use std::fs::{self as f}`・`use std::fs::File as F` など〉も許可の列の外として red。`crate::`・`super::` で始まる path〈`use` の group の中の項目を含む〉は、`super::` の folder 名の定数〈§29.7.4 手順 1〉だけを許し、それ以外〈`super::pos_source_copy`・`super::image_manager`・`crate::db`・`crate::mnt` など〉を red にする。この module から別の module を呼べば、許可の列の外の API を使うのと同じになりうる。書く module を名前で並べる形は、書く module が増えるたびに漏れるので採らない）。file は読取り専用で開き、読んだら閉じる。Windows が読取りで FAT の最終アクセス日を変える・`System Volume Information` を作ることはアプリでは止められないが、店は CV17 の取込みのために毎日この PC で同じ SD を書込み可能なまま差してきており（SD-25）、新しい種類の副作用は増えない。(a) の段階（IO-09 と SD 直読みの runtime の lane）では、CV17 と同じく `XZ` から `XZ_BKUP` へ移す案は採らない（owner 決定 2026-10-06、D-111。この段階では SD は動かさない。移す操作は D-111 (1) の (b) の後続の lane が別の module で作る）。動かさない前提（Z・EJ が `XZ` に残っても精算が続く）は、Z の名前が日付と同じ日の精算ごとの接尾字で決まり別の日の Z とぶつからないこと（SD-02・SD-08）と、EJ が約 1 か月 `XZ` に残っても精算が続いた店の実績（SD-09、repo 外の回答台帳 TD-139）で受け入れた。取込み済みを `XZ_BKUP` へ移す操作（D-111 (1) の (b)、後続の lane）ができるまで店は CV17 の取込みを今の運用のまま続けるので（D-111 の運用の制約）、Z が `XZ` に何日も溜まる状態は生じない。`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）。読んだ原本の写しは PC 側のアプリの folder に書き（§29.8、IO-10）、書く module を `io::register_sd` と分けて、この module に書込みの API が無いことを保つ。
 
 **IO-09-D4（形は測って BIZ が止める）**: SD-24 の符号化・改行・BOM は「状態」なので IO は決め打ちにせず測って返し、外れた file を取込みの候補にしないのは BIZ（BIZ-08-D3）が決める。行数・列数は各 parser の構造の検査（IO-07 の `invalid_format`、IO-02、IO-08）に任せ、固定の行数を IO で求めない（Z004 の 5,000 枠も含め、レジの設定で変わりうる）。
+
+**IO-09-D5（root の下かは実体の path で比べる）**: `list_register_sd_entries` と `read_register_sd_file` は、file system を見る path（root、入る folder、返す file、開く file）を使う前に `std::fs::canonicalize` で実体の path に解き（symbolic link・junction を辿る。Windows では `\\?\` の前置の付く形になる）、解いた path が解いた root の下か（`Path::starts_with`、要素ごとの比較）を比べる。比べる両側を同じ関数で解くので、前置・大文字小文字・短い名前の形がそろう。下でなければ `InvalidPath` で、その folder に入らず、その file を開かない。解けない（在らない・SD を抜いた）は `Io`。`read_dir`・`metadata`・`File::open` には確かめた解いた path をそのまま渡し、元の path で開き直さない。
+- root そのもの: `find_register_sd_roots`・`resolve_register_sd_root` が返した path を解いたものを root にする。root の folder 自身が link なら、その指す先を SD の root とみなす（選んだ場所、または SD の決まった folder そのものなので、指す先を読むのはその先を選んだのと同じ）。
+- root の下を指す link は通す。実体が root の下なので root の外を読まない。同じ file を 2 つの path で列挙しても、同じ bytes の組は 37 §37.9 手順 6 で 1 つにまとまる。
+- 確かめてから開くまでの間に、path の途中が外を指す link に替わる余地は受け入れる。SD とその写しは利用者の媒体・folder で、アプリが読む間に別の process が link を差し替える相手を想定しない。写しに入った link は読む前から在り、上の比較が止める。
+- `locate_in_register_sd_roots`（§29.7.4 手順 4）は file を開かない文字列の判定のままにする。手で選ぶ経路の bytes は利用者が dialog で選んだ file で、IO-09 は開かない。link の先の file を SD の file と扱っても、写し（BIZ-08-D5）と精算回数の検査（BIZ-08-D6）の効く側に倒れる。
+- 理由: SD card の標準の形式（FAT32・exFAT）は link を持たない（推定。§29.7.2 は形式を採取していない）が、PC の中の SD の写し（§29.7.4 手順 3）は PC の folder で、写した道具や人が link・junction を入れうる。path の文字列だけの比較は、`XZ` が root の外への directory の link のときに通り、open が link の先の file を読む。Windows の通常の open も link の先を開く（[Microsoft: Symbolic Link Effects on File Systems Functions](https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-link-effects-on-file-systems-functions)）。`canonicalize` は Unix の `realpath`、Windows の `CreateFile` と `GetFinalPathNameByHandle` にあたる（[Rust: std::fs::canonicalize](https://doc.rust-lang.org/std/fs/fn.canonicalize.html)）。
 
 #### 29.7.7 エラーハンドリング
 
@@ -378,7 +385,7 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 | （error でない）2 つ以上の列 | 自動で root が 2 つ以上 | 推測で選ばず、売上の SD だけを差すよう案内 |
 | NotRegisterSd | 選んだ folder がレジの SD でない | 選び直しを案内 |
 | MissingSalesArea | `XZ` が無い | 読まずに止める |
-| InvalidPath | 相対 path が root の外 | 内部の誤り。診断ログ |
+| InvalidPath | 読取りの相対 path が root の外（文字列の検査。列挙が作る path では起きない内部の誤り）、または列挙・読取りの実体の path が root の外（root の下の link・junction が外を指す、IO-09-D5） | BIZ-08 §37.9 手順 3 の固定の文で scan 全体を止める（途中の結果を使わない） |
 | TooLarge | 上限を超える | その束・file を候補にしない（読めない） |
 | Io | 列挙・読取りの途中の失敗 | 読み全体を失敗にし、途中の結果を使わない |
 | Io（`check_selected_file_present`） | 手で選んだ file がその時点で無い・読めない・通常の file でない | PC の file として通さず、37 §37.3 手順 1a (iii) の固定の文で止める |
@@ -392,6 +399,9 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 | 改行を正規化して読む前提で形を測らない | 取込み前の原本が取込み後と同じ bytes であることは未確認の前提（SD-23）で、形を観測したのは `XZ_BKUP` の分だけで（SD-24）、形は状態の値なので決め打ちにしない（IO-09-D4）。測らないと、外れた file を黙って読む |
 | `XZ_BKUP` を読まない | CV17 の取込みを誰かが続けると、精算の分が `XZ_BKUP` にしか無い日ができる |
 | 全期間の `XZ_BKUP` を毎回読む | 全期間の Z004 を毎回読むことになり遅い。取込み済みは hash で分かるので、範囲は BIZ の窓で足りる |
+| root の下かを path の文字列だけで比べる | root の下の link・junction が外を指すと、文字列の検査を通って外の file を読む（IO-09-D5） |
+| root の下の link をすべて止める（71 §71.11.3 の媒体の「reparse point を追わない」と同じ形） | link かを見る別の API（`symlink_metadata`・`GetFileAttributesW`）と規則が要り、守る性質（root の外を読まない）は実体の path の比較だけで成り立つ。71 は媒体に書く・消す側で、link を辿ると別の場所に書きうるので追わない。IO-09 は読むだけ |
+| 開いた handle から実体の path を確かめる（Windows の `GetFinalPathNameByHandleW`） | 確かめてから開くまでの link の差し替えを防ぐが、許可の列と `cfg(windows)` の本体が増え、IO-09-D5 の想定（読む間に別の process が差し替えない）では要らない |
 
 ### 29.8 IO-10: SD から読んだ原本の写しの保存（D-111）
 
