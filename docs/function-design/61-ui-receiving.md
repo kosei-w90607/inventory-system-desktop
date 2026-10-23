@@ -172,7 +172,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 | 日付 | 版 | 内容 |
 |---|---|---|
-| 2026-10-23 | docs の小口（[Plan Packet](../plans/2026-10-23-docs-small-batch.md) の S5） | UI-02-D17 を追加: 取り寄せ（客注）の品を入庫に記録しない決まり（TD-350）。 |
+| 2026-10-23 | docs の小口（[Plan Packet](../archive/plans/2026-10-23-docs-small-batch.md) の S5） | UI-02-D17 を追加: 取り寄せ（客注）の品を入庫に記録しない決まり（TD-350）。 |
 | 2026-09-10 | PR #50 | 取引先ピッカー runtime を反映。検索・追加後の自動選択と指定なしへの復帰を実装。 |
 | 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。§61.9 に picker dialog の検索・追加・自動選択で閉じるテスト観点を追加。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-02-D16 を追加し、保存結果 / recent list の詳細導線に入庫画面への `returnTo` 送信契約を設定。 |

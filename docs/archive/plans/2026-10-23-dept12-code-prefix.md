@@ -1,6 +1,6 @@
 # Plan Packet: 部門 12（宅急便）の初期データの `code_prefix` を正本の NULL に合わせる
 
-wave に属さない単独の lane。owner の決定（repo 外の回答台帳 TD-395・TD-402、2026-10-23）で起票した。起源は docs の小口の lane（PR #192、`docs/plans/2026-10-23-docs-small-batch.md` の S7-1）で、同じ PR が `docs/backlog.md` の「着手対象」に項目「部門 12（宅急便）の初期データの `code_prefix` を正本の NULL に合わせる」を足した。branch は `agent/dept12-code-prefix`（main `eed07d37` から）。新しい decision は無い（D-133 は使わない）。新しい設計判断は [22 §3.3](../function-design/22-mnt-migration.md) の MNT-03-D21（本 commit）。本 run は起票（packet・Matrix・plan-first の正本の直し）と Draft PR までで、実装は plan-approved の後の別の run。
+wave に属さない単独の lane。owner の決定（repo 外の回答台帳 TD-395・TD-402、2026-10-23）で起票した。起源は docs の小口の lane（PR #192、`docs/archive/plans/2026-10-23-docs-small-batch.md` の S7-1）で、同じ PR が `docs/backlog.md` の「着手対象」に項目「部門 12（宅急便）の初期データの `code_prefix` を正本の NULL に合わせる」を足した。branch は `agent/dept12-code-prefix`（main `eed07d37` から）。新しい decision は無い（D-133 は使わない）。新しい設計判断は [22 §3.3](../../function-design/22-mnt-migration.md) の MNT-03-D21（本 commit）。本 run は起票（packet・Matrix・plan-first の正本の直し）と Draft PR までで、実装は plan-approved の後の別の run。
 
 **規模と手法（1 lane・1 PR。実装は test を先に赤にしてから literal を直す 1 段）**: 2026-10-23 に本 worktree（HEAD `eed07d37`）で数えた（command と出力は下の AC の baseline と Scope の表）。
 
@@ -10,7 +10,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 8e086991e873c0b0254420e6b030abbbae8cf496
 - Amendments: none
@@ -25,7 +25,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 遷移の記録:
 
 1. kickoff → spec-check（2026-10-23、起草役）: Coordinator の発注（TD-395・TD-402）を Scope にし、規模を数えて 1 lane・1 PR と決め、Risk を R3 と記録した（下の Risk）。
-2. spec-check → design（2026-10-23、起草役）: 対象の正本は [master-tables](../db-design/master-tables.md) の「初期データ（全21部門）」、[ARCHITECTURE](../ARCHITECTURE.md) §4 の宅急便部門の項、[30 §4.3](../function-design/30-biz-product-service.md) の処理ステップ 2、[51](../function-design/51-ui-product-form.md) UI-01b-D4 とエラーハンドリング、[22 §3.3](../function-design/22-mnt-migration.md)、[decision-log](../decision-log.md) D-123。値の正本（NULL）は既にあるが、「既存の DB を直す migration を足すか」の判断の置き場が正本に無い（下の Design Readiness）。
+2. spec-check → design（2026-10-23、起草役）: 対象の正本は [master-tables](../../db-design/master-tables.md) の「初期データ（全21部門）」、[ARCHITECTURE](../../ARCHITECTURE.md) §4 の宅急便部門の項、[30 §4.3](../../function-design/30-biz-product-service.md) の処理ステップ 2、[51](../../function-design/51-ui-product-form.md) UI-01b-D4 とエラーハンドリング、[22 §3.3](../../function-design/22-mnt-migration.md)、[decision-log](../../decision-log.md) D-123。値の正本（NULL）は既にあるが、「既存の DB を直す migration を足すか」の判断の置き場が正本に無い（下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の判断を MNT-03-D21 として 22 §3.3 に置いた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」は推奨を既定にした 1 件）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner の判断事項（L3 を置くか）は、owner の方針（repo 外の回答台帳 TD-401: しばらく問わずに推奨で進め、後でまとめて見せる）で推奨の (a) 置かないを既定にした。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: round 1 は Claude 側 fresh Opus 5.5 = approve（P3 4）、Codex = approve（P3 1）で P1/P2 = 0（下の Review Response）。Plan Commit は両方が監査した `8e086991`。P3 は implementing の run で直す（Plan Commit を動かさない）。
@@ -57,7 +57,7 @@ Risk: R3
 Reason:
 DB の初期データ（`departments` の 1 行）を変え、商品登録の振舞い（宅急便の部門で独自コードを発番できるか）と商品フォームの部門の select の表示が変わる（Risk Tiers の「DB」と「operator workflow」）。値のある DB を移す・消すことは無く（migration を足さない。MNT-03-D21）、R4 の「Destructive data lifecycle」には当たらない。
 
-Rollback notes: PR を revert すると `schema_v1.rs` の literal が `'TK'` に戻る。revert までに作った DB は NULL のまま残るが、違いは宅急便の部門で独自コードを発番できないことだけで、記録の値と意味は変わらない（Z005 の部門別売上は `code_prefix` を読まない。[pos-tables](../db-design/pos-tables.md) §12e）。戻す migration も DB の操作も要らない。
+Rollback notes: PR を revert すると `schema_v1.rs` の literal が `'TK'` に戻る。revert までに作った DB は NULL のまま残るが、違いは宅急便の部門で独自コードを発番できないことだけで、記録の値と意味は変わらない（Z005 の部門別売上は `code_prefix` を読まない。[pos-tables](../../db-design/pos-tables.md) §12e）。戻す migration も DB の操作も要らない。
 
 この変更でどれかの required gate の green / red が変わるか: 変わらない（製品の初期データと test だけで、gate の定義・helper・classifier・CI・workflow の正本を触らない）。
 
@@ -173,7 +173,7 @@ migration を足すかは技術判断として決めた（MNT-03-D21。owner に
 
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。当たらない箇条は 1 行の理由で閉じる。
 
-- 引用する設計正本（節まで）: [master-tables](../db-design/master-tables.md) §2 departments の「初期データ（全21部門）」と `code_prefix` の列の説明（NULL なら独自コード発番対象外）、[ARCHITECTURE](../ARCHITECTURE.md) §4 の宅急便部門の項（在庫管理対象外、`code_prefix=NULL`）、[30 §4.3](../function-design/30-biz-product-service.md) `generate_custom_code` の処理ステップ 2、[51](../function-design/51-ui-product-form.md) UI-01b-D4 と「エラーハンドリング」の JAN 空 + `code_prefix` NULL の文、[pos-tables](../db-design/pos-tables.md) §12e、[22 §3.3](../function-design/22-mnt-migration.md) MNT-03-D21、[decision-log](../decision-log.md) D-123 (1)・(4)・(5)。
+- 引用する設計正本（節まで）: [master-tables](../../db-design/master-tables.md) §2 departments の「初期データ（全21部門）」と `code_prefix` の列の説明（NULL なら独自コード発番対象外）、[ARCHITECTURE](../../ARCHITECTURE.md) §4 の宅急便部門の項（在庫管理対象外、`code_prefix=NULL`）、[30 §4.3](../../function-design/30-biz-product-service.md) `generate_custom_code` の処理ステップ 2、[51](../../function-design/51-ui-product-form.md) UI-01b-D4 と「エラーハンドリング」の JAN 空 + `code_prefix` NULL の文、[pos-tables](../../db-design/pos-tables.md) §12e、[22 §3.3](../../function-design/22-mnt-migration.md) MNT-03-D21、[decision-log](../../decision-log.md) D-123 (1)・(4)・(5)。
 - 必要な設計成果物: 「New or changed table, column, index, migration, … persistence behavior」の行 = updated in this PR（22 §3.3 の MNT-03-D21。migration を足さない判断と、直す前の DB との値の違い）。BIZ・CMD・UI の行は existing sufficient（振舞いの契約は 30 §4.3・51 が既に NULL の部門を定め、本 lane は値を正本に合わせるだけ）。
 - plan にしかない durable な判断の昇格先: MNT-03-D21（22 §3.3）。decision-log に足さない理由: D-123 の (1)・(4)・(5) の当てはめで、新しい横断の決定ではない。
 - 前提・制約と、延期した design gap の follow-up: 直す前の版で作った開発・試験 DB は `'TK'` のまま残る（作り直しで揃う。D-123）。延期した gap は無い。
@@ -262,8 +262,8 @@ N/A: 外部の library・OS・hardware の前提に依らない。repo の中の
 | AC | command | 結果 |
 |---|---|---|
 | AC-1 | `rg -n "'TK'" src-tauri/src/db/schema_v1.rs` / `rg -c "\(12, '宅急便', +'宅急便', +NULL," src-tauri/src/db/schema_v1.rs` | 出力なし exit 1 / `1` exit 0。PASS |
-| AC-2 | `cd src-tauri && cargo test --lib test_initial_departments_req903_data` | exit 0、1 passed。PASS |
-| AC-3 | `cd src-tauri && cargo test --lib test_create_product_req101_takkyubin_rejects_custom_code` | exit 0、1 passed。PASS |
+| AC-2 | `cd src-tauri && cargo test --lib test_initial_departments_req903_data` | exit 0。PASS |
+| AC-3 | `cd src-tauri && cargo test --lib test_create_product_req101_takkyubin_rejects_custom_code` | exit 0。PASS |
 | AC-4 | 上の感度の M1〜M3 | 期待どおり red、戻して green。PASS |
 | AC-5 | `cargo fmt --check` / `cargo clippy --all-targets --all-features -- -D warnings` / `cargo test` / `cargo run --bin generate_traceability -- --check` | 4 つとも exit 0（`cargo test` は全 suite で failed 0、traceability は ERROR 0 / WARN 0）。PASS |
 | AC-6 | `bash scripts/doc-consistency-check.sh` / `--target plan docs/plans/2026-10-23-dept12-code-prefix.md` / `rg -c 'MNT-03-D21' docs/function-design/22-mnt-migration.md` | exit 0（ERROR なし、WARN は 22 の原価の節〈§3.3 の外〉の既存の 12）/ exit 0（ERROR なし、WARN 1 は `## Review Response` の round 1 の段落の M3 マーカー）/ `1`。PASS |
@@ -273,8 +273,16 @@ N/A: 外部の library・OS・hardware の前提に依らない。repo の中の
 
 round 1 の P3 F4（`docs/ARCHITECTURE.md` §4 の宅急便部門の項を外す）は本 run で行っていない: 本 packet の非目的・Non-scope（ARCHITECTURE §4 の決まった項目の整理）と AC-7 の 7 path に当たるため。扱いは Coordinator が決める。
 
+closeout（2026-10-24）:
+
+- 結果: 新しく作る DB で部門 12（宅急便）の `code_prefix` が正本どおり NULL になり、宅急便の部門で JAN を空にした商品登録が BIZ で止まり何も書かないことと、21 部門の初期データの全列を master-tables の表と比べる test で固定した。migration は足さず（MNT-03-D21）、直す前に作った開発・試験 DB は作り直しで揃う（D-123）。画面・command・wire の型は変えない。
+- review・CI・merge: Plan Review round 1（fresh Opus 5.5 と Codex）は両者 approve。Final Review の broad は Claude 側 Fable 5（owner の決定 2026-10-24 で当面 Fable 5.1 でなく 5）が approve（P3 1）。PR #192 の merge の後に `origin/main` を単段 merge で同期し（PR の差分は同期の前と同じ）、同期の closure（fresh Opus 5.5）が approve（相互作用なし）。hosted CI は緑で、helper 経由で squash merge した。PR: [#195](https://github.com/kosei-w90607/inventory-system-desktop/pull/195)
+- 後続: round 1 の P3 F4（`docs/ARCHITECTURE.md` §4 の宅急便部門の項の整理）は `docs/backlog.md` に 1 項目として置いた。初回の導入の前に残す DB が無いことを確かめる手順は MSI の lane（PR #191）の runbook へ申し送り済み。backlog の起源の項目（「部門 12（宅急便）の初期データの `code_prefix` を正本の NULL に合わせる」）は closeout で完了として外した。
+
 ## Review Response
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
 
 round 1（`8e086991`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 4）、Codex = approve（P1 0 / P2 0 / P3 1）。P3: F1（MNT-03-D21 に止まる検査が無いことと、残す DB の有無を初回の導入の前に確かめることを 1 文。runbook の手順は MSI の lane〈PR #191〉か backlog へ）、F2（Human Visual Confirmation が当たらない理由を 1 行）、F3 と Codex #1（「v1 の外の hit は test の 2 つ」を「test と外部キーの参照だけで、departments を書く・作り直す文は無い」に、`TK-` の rg の時点）、F4（`docs/ARCHITECTURE.md` の「未確定事項」の宅急便の項を本 PR で外すか backlog へ）。implementing の run で直す。
+
+Final Review と closeout（2026-10-24）: Final Review（Minimum 1）の broad は Claude 側 Fable 5（owner の決定 2026-10-24 で当面 Fable 5.1 でなく 5。Workflow State の Final Reviewer の行は起票の時点の座組の記録として残す）= approve（P3 1）。PR #192 が先に merge したので `origin/main` を単段 merge で同期し（PR の差分は同期の前と byte で一致）、同期の closure（fresh Opus 5.5）= approve（相互作用なし）。round 1 の P3 F4 は Writer が非目的・Non-scope で止め、Coordinator が backlog の 1 項目へ送った（closeout で足した）。hosted CI は緑で、helper 経由で squash merge した（2026-10-24）。packet の本文（Scope・Contract Ledger・AC）は当時の契約の記録として書き換えない。
