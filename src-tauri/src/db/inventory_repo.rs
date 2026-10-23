@@ -136,7 +136,7 @@ pub(crate) struct LedgerMovementRow {
     pub initial_stock: bool,
 }
 
-/// 計数の保存（21 `insert_stock_count`。`stock_counts` へ 1 行。UPDATE・DELETE の関数は持たない）
+/// 計数の保存（21 `insert_stock_count`。`stock_counts` へ 1 行。書換え・削除の関数は持たない）
 #[derive(Debug, Clone)]
 pub(crate) struct NewStockCount {
     pub product_code: String,

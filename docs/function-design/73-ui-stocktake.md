@@ -31,7 +31,7 @@
 
 ## 73.1 目的
 
-年1回（owner は多くても 2 回と述べた）・大晦日時点の棚卸し（税理士の指示で、報告するのは仕入原価の総額だけ。差異は棚卸しロスとして許容する。店主回答 2026-03、owner 2026-08-27）の作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人で商品マスタ全件（数千点規模）を回り、10月からの準備（値上げ品の原価・売価の訂正、新商品のリストへの追加、原価不明品の問い合わせ。準備の開始は 2026-08-15 の店主回答で前倒しされた）と、年末の正式カウント（大晦日に完了）に分かれる前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20、店の運用の詳細は [project-memory](../project-memory.md) の Store Premises Facts）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加したのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
+年1回（owner は多くても 2 回と述べた）・大晦日時点の棚卸し（税理士の指示で、報告するのは仕入原価の総額だけ。差異は棚卸しロスとして許容する。店主回答 2026-03、owner 2026-08-27）の作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人で商品マスタ全件（数千点規模）を回り、10月からの準備（値上げ品の原価・売価の訂正、新商品のリストへの追加、原価不明品の問い合わせ。準備の開始は 2026-08-15 の店主回答で前倒しされた）と、年末の正式カウント（大晦日に完了）に分かれる前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20、店の運用の詳細は [project-memory](../project-memory.md) の Store Premises Facts）。UI は CMD-10 の 11 command（[42](42-cmd-sales-stocktake.md) の CMD-10。数の保存は `save_stock_count`、未計数の片付けは `zero_uncounted_items`）を生成された bindings から使う（UI-10-D7）。
 
 **カウント対象の母集団（issue #91 owner 回答 2026-08-22）**: 画面がカウントさせる母集団は商品マスタ全件（[35-biz-stocktake-service.md](35-biz-stocktake-service.md) `find_stocktake_eligible_products` が返す全商品）であり、年数による除外はしない。実店舗で現物カウントの対象外になるのは、伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目という原価根拠を欠く現物（例年 1〜2 点、多い年で 4〜5 点）で、これらは単品コードを付与せず商品マスタへ未登録のため、システム上は最初から母集団の外にある。除外を表す専用フラグや画面表示は追加しない。
 
@@ -101,7 +101,7 @@
 
 ### UI-10-D7: specta 化は既存 4 + 新規 3、生 invoke 禁止を維持
 
-- **決定**: 既存 4 コマンド（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）と新規 `get_active_stocktake` / `find_stocktake_item` / `get_last_completed_stocktake` の計 7 本に `#[specta::specta]` を付け、bindings を生成する（b1 で数の上書きの command を外し、計数の 4 command〈42 の D-118 の節〉を足した。実装 PR #159〈private archive〉で付けた。今は `src-tauri/src/cmd/stocktake_cmd.rs` の 7 本に属性があり、`src/lib/bindings.ts` に生成された関数がある。Design Phase の時点では既存 4 本に属性が無かった）。UI からの生 `invoke()` 直呼びは既存の禁止方針（ADR-004）を維持する。
+- **決定**: 既存 4 コマンド（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）と新規 `get_active_stocktake` / `find_stocktake_item` / `get_last_completed_stocktake` の計 7 本に `#[specta::specta]` を付け、bindings を生成する（b1 で数の上書きの command を外し、計数の 4 command〈42 の D-118 の節〉を足した。実装 PR #159〈private archive〉で付けた。今は `src-tauri/src/cmd/stocktake_cmd.rs` の 11 本〈42 の CMD-10〉に属性があり、`src/lib/bindings.ts` に生成された関数がある。Design Phase の時点では既存 4 本に属性が無かった）。UI からの生 `invoke()` 直呼びは既存の禁止方針（ADR-004）を維持する。
 - **Why**: ADR-004 の生 invoke 禁止方針を UI-10 でも一貫させる。既存 4 本が specta 未対応のまま長期間放置されていた事実は本 Design Phase で顕在化したため、実装 PR の Rust 差分に明記する。
 - **Rejected**: 実装 PR 内での暫定的な生 invoke 経由実装（撤去忘れの前例＝ 7-5c fallback を再演する）。
 
@@ -441,3 +441,4 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-09-06 | ⑨ 在庫少一覧の取引先列 + 棚卸し廃番 badge + R2-3（本 PR） | UI-10-D13 追加: `StocktakeItemDetail` に `is_discontinued: bool` を追加し、棚卸しカウント画面の一覧テーブルに廃番 badge（`variant="secondary"` + `border-border`、icon なし）を表示する（§73.3/§73.6）。同一 file 内の既存候補行 badge も同じ commit で `border-border` へ揃える。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §73.15 現行buildの停止の節（SPEC-STOP-D4、案内の見出し・本文の正本、無効にする操作と使える操作）を追加。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§73.15 の停止の節を外し、F4・F5・D4・§73.4〜§73.13 の数の保存・確定・差異・結果の画面を計数の保存・完了の拒否の一覧・在庫を動かさない確定に置き換えた。L3 の (e) を自動 test へ移した（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-24 | stocktake-count-runtime-b1 の Final Review の是正 | §73.1 と UI-10-D7 の現在形の説明を CMD-10 の 11 command（`save_stock_count` ほか）に揃えた（廃止した `update_count` と「7 本」が残っていた）。 |
