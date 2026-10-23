@@ -248,6 +248,11 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   const standaloneCodeRef = useRef<string | null>(null);
   // 今の欄に出ている商品。route の product の読込みが失敗したら照合をこれへ戻す（73）
   const standaloneFieldCodeRef = useRef<string | null>(null);
+  // 欄の商品の保存が、route の別の商品の読込みの決着より先に成功したときの後始末（閉じる・戻る）。
+  // 読込みが失敗して欄がその商品のまま決まれば実行し、別の商品の欄が開けば捨てる（73）
+  const standalonePendingCloseRef = useRef<{ productCode: string; finish: () => void } | null>(
+    null,
+  );
   // 欄の読込み（route の product・「入れ直す」）は最後の操作の応答だけを当てる（73）
   const standaloneSeqRef = useRef(0);
 
@@ -258,6 +263,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   useEffect(() => {
     standaloneFieldCodeRef.current = standaloneTarget?.productCode ?? null;
     standaloneCodeRef.current = standaloneFieldCodeRef.current;
+    standalonePendingCloseRef.current = null;
   }, [standaloneTarget]);
 
   const departmentsQuery = useQuery({
@@ -316,6 +322,9 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
         // 欄は前の商品のままなので、遅い保存の応答の照合を今の欄の商品へ戻す
         standaloneCodeRef.current = standaloneFieldCodeRef.current;
         setErrorMessage(describeError(error));
+        const pending = standalonePendingCloseRef.current;
+        standalonePendingCloseRef.current = null;
+        if (pending !== null && pending.productCode === standaloneCodeRef.current) pending.finish();
       }
     })();
     return () => {
@@ -363,14 +372,23 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   async function handleStandaloneSaved(productCode: string) {
     const back = allowedReturnTo(search.returnTo, search.product);
     await handleSaved(productCode);
-    // 保存の応答の保留中に欄が別の商品へ変わっていれば、その欄（未保存の入力）を閉じない・戻らない
-    if (standaloneCodeRef.current !== productCode) return;
-    if (back !== null && productCode === search.product) {
-      setStandaloneTarget(null);
-      onReturnTo?.(back);
+    const finish = () => {
+      if (back !== null && productCode === search.product) {
+        setStandaloneTarget(null);
+        onReturnTo?.(back);
+        return;
+      }
+      closeStandalone();
+    };
+    if (standaloneCodeRef.current === productCode) {
+      finish();
       return;
     }
-    closeStandalone();
+    // 保存の応答の保留中に欄が別の商品へ変わっていれば、その欄（未保存の入力）を閉じない・戻らない。
+    // 欄がこの商品のまま別の商品の読込みを待っているなら、その読込みが失敗した時点で閉じる
+    if (standaloneFieldCodeRef.current === productCode) {
+      standalonePendingCloseRef.current = { productCode, finish };
+    }
   }
 
   async function handleStart() {
