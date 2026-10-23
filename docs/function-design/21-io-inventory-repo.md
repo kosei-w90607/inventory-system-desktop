@@ -16,7 +16,8 @@
 ```rust
 // その TX で INSERT した movement 1 行の stock_after を書く。更新が 1 行でなければ DbError::QueryFailed
 pub(crate) fn update_movement_stock_after(conn: &DbConnection, movement_id: i64, stock_after: i64) -> Result<(), DbError>
-// stock_counts の商品の行（id・count_value・count_kind・business_date・settlement_no・seen_movement_id。b1 で seen_import_id）を id の順で
+// stock_counts の商品の行（id・count_value・count_kind・business_date・seen_movement_id・seen_import_id）を id の順で。
+// settlement_no（ADR D1 の鍵の n）は計数に入っているかの判定に使わないので読まない（b1。判定の n は seen_import_id から求める）
 pub(crate) fn list_stock_counts_for_product(conn: &DbConnection, product_code: &str) -> Result<Vec<StockCountRow>, DbError>
 // is_voided = 0 の movement（id・quantity・business_date・phase・settlement_no・初期在庫の印）を id の順で。
 // 初期在庫の印は reference_type IS NULL AND movement_type = 'receiving'（ADR D9。b1 で入る〈proposed・未実装〉。(a) の実装は reference_type IS NULL だけを見る。demo の seed の sale_auto は初期在庫にしない）
