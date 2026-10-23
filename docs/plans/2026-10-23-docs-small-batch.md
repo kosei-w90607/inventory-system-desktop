@@ -30,6 +30,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner が S7 に答えた（repo 外の回答台帳 TD-393・TD-395: S7-2・S7-3 は本 lane で直す、S7-1 は別の R3 lane へ送る）。起草役が `1feb4aa8` で S7 を Scope に移し、S7-1 を backlog に足した。owner の判断事項は残らず、packet と Matrix に当たる表が揃い commit されている。Plan Review に出す。Codex が使えれば Codex と fresh Opus 5.5 を同じ round で、使えなければ fresh Opus 5.5 で始め Codex 分を後から足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex 側は未実施で round 2 で足す、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `cc3d7a7d` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 6. plan-gate のまま是正（round 2、2026-10-23、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 だけ。Codex 側は round 3 で足す、§3.3）の reject を起草役が `85ee4756` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
+7. plan-gate のまま是正（round 3〈天井〉、2026-10-23、Coordinator、本 commit）: round 3（Claude 側 fresh Opus 5.5 と Codex）の指摘を起草役が `a4d1bd8b` で一括して直した（下の Review Response）。round 4 は回さず、Coordinator の disposition の後に closure（fresh Opus 5.5 + Codex）に出す。P1/P2 = 0 なら plan-approved へ進める。
 
 ## Owner Effort Budget
 
@@ -455,3 +456,8 @@ round 2（`4b2fe746`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 3 / P3 3
 
 - P2: S4 の前提を事実に合わせた（節は残り、項目が archive の同じ名の節へ移った。DATA-2 だけ今の backlog）。AC と data safety の差分の範囲を `origin/main...HEAD` に。S2-3 を S2-4 と同じ形（37 §37.10・BIZ-08-D7 が決めた）に。
 - P3: S1-14・S1-15 の句を出所として残すと明記、S3 に CMD-01 の行（S3-5）、master-tables の 128 行目はヒアリングの記録として Non-scope に、S7-3c を運用の語に。
+
+round 3（天井、`1fba4d45`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 5）、Codex = reject（P1 0 / P2 1 / P3 1）。Coordinator が Codex の P2 を現物で確かめ（`docs/SCREEN_DESIGN.md` の Phase 3 の画面一覧の UI-04 の行が「PLU 未登録新商品のみ」）、全 7 件を採用した。disposition: round 4 は回さず、一括の是正（起草役の `a4d1bd8b`）の後に closure へ出す。
+
+- Codex 側: S7-3d（SCREEN_DESIGN の UI-04 の使い道を SPEC-UNIT-D4 の既定 (a) を引く形に）と使い道を限る文の sweep。Owner Effort Budget を decision point の単位で（消費 4・残り 2・予備 0）。
+- Claude 側: S7-3c の reason の句を外す、AC-S1-1 に括弧の中の句の検査、backlog の旧名の「〜が引く」の句（本 lane の所有、61 は MSI の lane へ申し送り）、SCREEN_DESIGN の経緯の文は残して今の label を書き添える、PLU の書出しの見直しの runtime の撤去の列挙に注記の撤去を 1 句。
