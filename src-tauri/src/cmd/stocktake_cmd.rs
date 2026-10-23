@@ -3,7 +3,10 @@
 //! docs/function-design/42-cmd-sales-stocktake.md §22.5 に基づく実装。
 
 use crate::biz::stocktake_service::StocktakeRecordDetail;
-use crate::biz::stocktake_service::{self, CompleteStocktakeRequest};
+use crate::biz::stocktake_service::{
+    self, CompleteStocktakeRequest, CountPlacementPreview, CountRecoveryTarget,
+    SaveStockCountRequest, StockCountSaveResult,
+};
 use crate::biz::{LastStocktakeSummary, Stocktake, StocktakeItemDetail, StocktakeProgress};
 use crate::cmd::{AppState, CmdError};
 use tauri::State;
@@ -164,6 +167,70 @@ pub fn complete_stocktake(
         today: today(),
     };
     stocktake_service::complete_stocktake(&mut conn, &req).map_err(CmdError::from)
+}
+
+/// 計数を保存する（既定の計数・fresh な計数。42、35「計数の保存」）。CMD は PC の今日を BIZ へ渡す
+#[tauri::command]
+#[specta::specta]
+pub fn save_stock_count(
+    state: State<AppState>,
+    request: SaveStockCountRequest,
+) -> Result<StockCountSaveResult, CmdError> {
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    stocktake_service::save_stock_count(&mut conn, &request, &today()).map_err(CmdError::from)
+}
+
+/// 後入力の確認と計数の欄の商品の文脈（読取りだけ。42）
+#[tauri::command]
+#[specta::specta]
+pub fn preview_stock_count_placement(
+    state: State<AppState>,
+    product_code: String,
+    business_date: String,
+) -> Result<CountPlacementPreview, CmdError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    stocktake_service::preview_stock_count_placement(&conn, &product_code, &business_date, &today())
+        .map_err(CmdError::from)
+}
+
+/// 未計数の明細を値 0 の既定の計数でまとめて片付ける（42、35「完了」）
+#[tauri::command]
+#[specta::specta]
+pub fn zero_uncounted_items(
+    state: State<AppState>,
+    stocktake_id: i64,
+    product_codes: Vec<String>,
+    business_date: String,
+) -> Result<Vec<StockCountSaveResult>, CmdError> {
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    stocktake_service::zero_uncounted_items(
+        &mut conn,
+        stocktake_id,
+        &product_codes,
+        &business_date,
+        &today(),
+    )
+    .map_err(CmdError::from)
+}
+
+/// 要再確認の一覧（棚卸しが無いときも読める。42）
+#[tauri::command]
+#[specta::specta]
+pub fn list_recheck_products(state: State<AppState>) -> Result<Vec<CountRecoveryTarget>, CmdError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    stocktake_service::list_recheck_products(&conn).map_err(CmdError::from)
 }
 
 // ---------------------------------------------------------------------------
@@ -370,5 +437,115 @@ mod tests {
         assert_eq!(error.kind, CmdErrorKind::NotFound);
         assert_eq!(error.message, "棚卸し記録が見つかりません: 99999");
         assert_eq!(error.field, None);
+    }
+
+    #[test]
+    fn test_stocktake_cmd_req205_new_commands_registered() {
+        // REQ-205 / 42 / Registration Obligations（b1 Matrix W2）: 新設 4 の command が lib.rs の 2 つの一覧
+        // （collect_commands と generate_handler）にあり、update_count が無い
+        let source = include_str!("../lib.rs");
+        let block = |anchor: &str| -> &str {
+            let start = source.find(anchor).expect(anchor);
+            let end = source[start..].find("])").expect("list end") + start;
+            &source[start..end]
+        };
+        for list in [
+            block("collect_commands!["),
+            block("tauri::generate_handler!["),
+        ] {
+            for command in [
+                "save_stock_count",
+                "preview_stock_count_placement",
+                "zero_uncounted_items",
+                "list_recheck_products",
+                "complete_stocktake",
+            ] {
+                assert!(
+                    list.contains(&format!("cmd::stocktake_cmd::{command},")),
+                    "{command}"
+                );
+            }
+            assert!(!list.contains("update_count"));
+        }
+    }
+
+    #[test]
+    fn test_complete_stocktake_cmd_req205_completion_blocked_wire() {
+        // REQ-205 / 42・40（b1 Matrix W4）: complete_stocktake(stocktake_id) の completion_blocked の wire が完全一致
+        let (_dir, conn, stocktake_id, item_id) = setup_in_progress_stocktake();
+        let app = tauri::test::mock_builder()
+            .manage(app_state_for_test(conn))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let error = complete_stocktake(app.state::<AppState>(), stocktake_id).unwrap_err();
+        assert_eq!(
+            serde_json::to_value(&error).unwrap(),
+            serde_json::json!({
+                "kind": "stocktake_guard",
+                "message": "棚卸しを完了できません。数え直し・未計数・取り込んでいない精算のある商品があります",
+                "field": null,
+                "error_id": null,
+                "stocktake_recovery": {
+                    "code": "completion_blocked",
+                    "targets": [{
+                        "product_code": "COUNT-001",
+                        "product_name": "テスト商品",
+                        "stock_unit": "pcs",
+                        "stock": 0,
+                        "stock_range_low": null,
+                        "stock_range_high": null,
+                        "stocktake_item_id": item_id,
+                        "stocktake_id": stocktake_id,
+                        "action": "active_count",
+                        "block_reason": "uncounted",
+                        "recount_reasons": [],
+                    }],
+                    "settlement_pending": null,
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn test_cmd_error_req205_recovery_targets_use_null_for_missing_refs() {
+        // REQ-205 / 40（b1 Matrix W8）: 参照の無い CountRecoveryTarget は null（架空の id を使わない）。
+        // recount_reasons は要再確認の対象のときだけ
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "REF-001");
+        let error: CmdError = crate::biz::stocktake_service::recount_required(
+            &conn,
+            "REF-001",
+            "連動しない間の売上があります。今の数を入れてから在庫連動にしてください",
+        )
+        .unwrap()
+        .into();
+        let target = &serde_json::to_value(&error).unwrap()["stocktake_recovery"]["targets"][0];
+        assert_eq!(target["stocktake_item_id"], serde_json::Value::Null);
+        assert_eq!(target["stocktake_id"], serde_json::Value::Null);
+        assert_eq!(target["block_reason"], serde_json::Value::Null);
+        assert_eq!(target["action"], serde_json::json!("count_now"));
+        assert_eq!(target["recount_reasons"], serde_json::json!([]));
+
+        // 要再確認の対象は理由を持つ（同じ日付の値の違う 2 つの計数 = 理由 3）
+        for value in [3, 4] {
+            crate::biz::stock_ledger::test_support::insert_count(
+                &conn,
+                "REF-001",
+                value,
+                "2026-04-01",
+                None,
+            );
+        }
+        let mut conn = conn;
+        let tx = conn.transaction().unwrap();
+        crate::biz::stock_ledger::recompute_stock(&tx, "REF-001").unwrap();
+        tx.commit().unwrap();
+        let targets = crate::biz::stocktake_service::list_recheck_products(&conn).unwrap();
+        let target = serde_json::to_value(&targets[0]).unwrap();
+        assert_eq!(
+            target["recount_reasons"],
+            serde_json::json!(["conflicting_counts"])
+        );
+        assert_eq!(target["stocktake_item_id"], serde_json::Value::Null);
     }
 }

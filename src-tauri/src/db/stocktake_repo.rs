@@ -621,7 +621,7 @@ pub fn get_stocktake_record_detail(
 }
 
 /// 完了の検査と評価に使う明細を id の順で取得する（35「完了」）
-pub fn list_items_for_completion(
+pub(crate) fn list_items_for_completion(
     conn: &DbConnection,
     stocktake_id: i64,
 ) -> Result<Vec<StocktakeItemForCompletion>, DbError> {
@@ -651,7 +651,7 @@ pub fn list_items_for_completion(
 }
 
 /// 進行中の棚卸しのその商品の明細（明細 ID・棚卸し ID）。無ければ None（40 の回復先）
-pub fn find_active_item_for_product(
+pub(crate) fn find_active_item_for_product(
     conn: &DbConnection,
     product_code: &str,
 ) -> Result<Option<(i64, i64)>, DbError> {
@@ -669,7 +669,7 @@ pub fn find_active_item_for_product(
 }
 
 /// 商品の写し（名前・単位・在庫・要再確認の印と範囲）。無ければ None
-pub fn find_stock_copy(
+pub(crate) fn find_stock_copy(
     conn: &DbConnection,
     product_code: &str,
 ) -> Result<Option<StockCopyRow>, DbError> {
@@ -694,7 +694,7 @@ pub fn find_stock_copy(
 }
 
 /// 写しが要再確認（`stock_recheck = 1`）の商品コードを商品コードの順で返す（35「読取り」）
-pub fn list_recheck_product_codes(conn: &DbConnection) -> Result<Vec<String>, DbError> {
+pub(crate) fn list_recheck_product_codes(conn: &DbConnection) -> Result<Vec<String>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT product_code FROM products WHERE stock_recheck = 1 ORDER BY product_code",
     )?;

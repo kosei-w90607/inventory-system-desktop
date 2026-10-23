@@ -373,4 +373,44 @@ mod tests {
         let cmd_err: CmdError = biz_err.into();
         assert_eq!(cmd_err.kind, CmdErrorKind::IdempotencyConflict);
     }
+
+    #[test]
+    fn test_cmd_error_req205_stocktake_guard_carries_recovery() {
+        // REQ-205 / 40 の回復型（b1 Matrix W1）: StocktakeGuard は kind stocktake_guard と stocktake_recovery を Some で、
+        // 既存の kind では None で運ぶ
+        use crate::biz::stocktake_service::{StocktakeRecovery, StocktakeRecoveryCode};
+        let recovery = StocktakeRecovery {
+            code: StocktakeRecoveryCode::RecountRequired,
+            targets: Vec::new(),
+            settlement_pending: None,
+        };
+        let cmd_err: CmdError = BizError::StocktakeGuard {
+            message: "守りの拒否".to_string(),
+            recovery: recovery.clone(),
+        }
+        .into();
+        assert_eq!(cmd_err.kind, CmdErrorKind::StocktakeGuard);
+        assert_eq!(cmd_err.message, "守りの拒否");
+        assert_eq!(cmd_err.stocktake_recovery, Some(recovery));
+        assert_eq!(
+            serde_json::to_value(&cmd_err).unwrap()["kind"],
+            serde_json::json!("stocktake_guard")
+        );
+        for other in [
+            BizError::ValidationFailed("v".to_string()),
+            BizError::ValidationFailedAt {
+                message: "v".to_string(),
+                field: "pos_stock_sync".to_string(),
+            },
+            BizError::NotFound("n".to_string()),
+            BizError::ImportError("i".to_string()),
+            BizError::StocktakeInProgress("p".to_string()),
+            BizError::StocktakeNotInProgress("p".to_string()),
+            BizError::DatabaseError(DbError::NotFound),
+        ] {
+            let cmd_err: CmdError = other.into();
+            assert_ne!(cmd_err.kind, CmdErrorKind::StocktakeGuard);
+            assert!(cmd_err.stocktake_recovery.is_none(), "{:?}", cmd_err.kind);
+        }
+    }
 }
