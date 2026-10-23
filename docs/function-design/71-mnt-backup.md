@@ -552,7 +552,7 @@ pub fn resolve_backup_dir(conn: &DbConnection, app_data: &Path) -> Result<PathBu
 | MNT-01-D8 保持 | 正式名の写しが `OFFSITE_KEEP` を超えると古い順に消え、今写した file と作業名でない他の file（目印・名前の規約に合わない file）を消さない |
 | MNT-01-D8 状態 | 状態の file が壊れていると写さずに `StateUnreadable` を返し、状態は「控えが古い」側に倒れる（黙って `NotPrepared` にならない）。`OFFSITE_STALE_DAYS` の境界（2 日前は古くない・3 日前は古い）。`local_backup_old` は PC の中の最新の正式名が無い・3 日以上前で `true`、2 日前で `false`、一覧の失敗で `false` |
 | MNT-01-D8 やめる | 状態の file（読める・壊れた・`format: 2` の 3 つ）で `stop_offsite_backup` が、元の bytes を `offsite-backup.json.stopped-*` に残し、`offsite_status` が `prepared = false`・`stale = false`。媒体の `InventoryBackup` の一覧と bytes、PC の中の backup の一覧が前後で同じ。また用意すると同じ `medium_id` で写る。移せない注入で `StopFailed`、状態の file は元のまま。移した後の親 directory の sync の失敗の注入で `StopFailed`・`offsite_status` が `prepared = false` |
-| MNT-01-D8 作り直し | 壊れた状態の file と目印のある媒体で `reset_offsite_state` が、元の bytes を `offsite-backup.json.unreadable-*` に copy し、状態の file を新しい内容に置き換え、媒体を登録し直し、写す（新しい backup があれば `Copied`）。`format` が 1 でない数の状態は `StateUnsupported`、媒体が 0 本なら `NoMediumAttached` で、どちらも状態の file の bytes と app data の一覧が前後で同じ。手順 4〜6 の置き換えまでの各点の失敗の注入で `StateResetFailed`、状態の file の bytes が元のまま、`offsite_status` が `state_unreadable`、押し直しで回復する。置き換えの後の親 directory の sync の失敗の注入で `StateResetFailed`・`offsite_status` が `prepared = true`・`last_failure_kind = None`（`state_unreadable` でない）。手順 7 の写しの失敗の注入で §71.11.4 の失敗・`offsite_status` がその `last_failure_kind`。手順 7 の中の成功の記録の置き換えの後の親 directory の sync の失敗の注入で `Io`・`offsite_status` が `stale = false`・`last_failure_kind = None` |
+| MNT-01-D8 作り直し | 壊れた状態の file と目印のある媒体で `reset_offsite_state` が、元の bytes を `offsite-backup.json.unreadable-*` に copy し、状態の file を新しい内容に置き換え、媒体を登録し直し、写す（新しい backup があれば `Copied`）。`format` が 1 でない数の状態は `StateUnsupported`、媒体が 0 本なら `NoMediumAttached` で、どちらも状態の file の bytes と app data の一覧が前後で同じ。手順 4〜6 の置き換えまでの各点の失敗の注入で `StateResetFailed`、状態の file の bytes が元のまま、`offsite_status` が `state_unreadable`、押し直しで回復する。置き換えの後の親 directory の sync の失敗の注入で `StateResetFailed`・`offsite_status` が `prepared = true`・`last_failure_kind = None`（`state_unreadable` でない）。手順 7 の写しの失敗の注入で §71.11.4 の失敗・`offsite_status` がその `last_failure_kind`。手順 7 の中の成功の記録の置き換えの後の親 directory の sync の失敗の注入で、結果が `Copied`（成功のまま、§71.11.4 のエラーの表）・`offsite_status` が `stale = false`・`last_failure_kind = None` |
 | MNT-01-D9 | 新しすぎる版・`quick_check` の失敗・読めない file の 3 つを `inspect_backup` が区別し、どれも対象の file と folder を変えない（hash と folder の一覧が前後で同じ、journal の file を作らない）。空の file・`schema_versions` の無い DB・版 0 の DB・必須の表の無い DB は `Err`（読めない控え） |
 
 ---
@@ -719,7 +719,10 @@ enum OffsiteCheckResult {
 | 公開の後の失敗: 親 directory の sync | `Io` | `last_failure`。検査済みの正式名は残し、`last_success` は書かない。次の確認は同じ名前・同じ size の正式名があるので手順 4a で写さず `UpToDate`（状態を変えない）。`last_success` は、次に新しい backup を写せた時に直る（それまでの日数は `stale` の判定に入る。安全側） |
 | 読み戻しの不一致 | `VerifyMismatch` | `last_failure`、作業名の file を消す |
 | 掃除の失敗 | 成功のまま | `tracing::warn!` |
-| 状態の file の書込みの失敗 | `Io` | 写しは媒体に残る（次の確認で `UpToDate` になり、状態は次の成功で直る） |
+| 状態の file の書込みの失敗（作業名の書込み・`sync_all`・置き換えそのもの） | `Io` | 写しは媒体に残る（次の確認で `UpToDate` になり、状態は次の成功で直る） |
+| 手順 5 の成功の記録の置き換えの後の親 directory の sync の失敗 | 成功のまま（`Copied`） | `tracing::warn!`。状態の file は成功の記録の内容で読める。電源断で置き換えが戻れば前の記録に戻り、`stale` 側に倒れる（次の確認は `UpToDate` で状態を変えず、次に新しい backup を写せた時に直る。公開の後の親 directory の sync の失敗と同じ扱い） |
+
+成功の記録の置き換えの後の sync の失敗を成功のままにする理由（runtime (b) の起票で決めた、2026-10-23）: 置き換えた後の状態の file は成功の記録を返すので、`Io` を返すと画面とホームは成功の日時を出し、同時に失敗の toast（UI-11b-D16）や作り直しの失敗の文（§71.11.5a、68 §68.4 手順 4）を出して食い違う（design の packet の closeout の申し送り (b)）。写しは照合済みで、戻りうるのは記録の永続化だけで、戻っても知らせる側に倒れる。棄却: `Io` のまま画面で文を消す（失敗の種類から画面の文を推し量らない、68 §68.4）。
 
 #### 71.11.5 offsite_status
 
@@ -766,7 +769,7 @@ fn reset_offsite_state(app_data_dir: &Path, backup_dir: &Path) -> Result<Offsite
 - 手順 4〜6 のどれかが失敗したら（同じ秒の再試行で退避名が既にある場合を含む）`OffsiteError::StateResetFailed`。手順 7 の失敗は §71.11.4 の失敗（`Io`・`StorageFull` 等）をそのまま返す。失敗の後の状態は 1 通りで、画面は失敗の種類でなく取り直した `offsite_status` で決める（68 §68.4 手順 4）:
   - 手順 6 の置き換えより前の失敗: 状態の file は元の読めない file のまま。`offsite_status` は `state_unreadable` を返し続け、ホームの知らせと「記録を作り直す」が残り、押し直せる
   - 手順 6 の置き換えの後の親 directory の sync の失敗: 状態は新しい内容で読め（`media` だけ、`last_success`・`last_failure` なし）、`offsite_status` は `prepared = true`・`stale = true`・`last_failure_kind = None` を返す（画面とホームは UI-11b-D14 の (1) 以外の原因の文、「記録を作り直す」は出ない）。次の確認（60 秒以内）が写して直る
-  - 手順 7 の失敗: 状態は新しい内容で読め、§71.11.4 が `last_failure` を書く（状態の書込みの失敗を除く）。`offsite_status` は §71.11.5 の式どおり（手順 7 の中で成功の記録を置き換えた後の状態の file の親 directory の sync の失敗や、一部の媒体だけ写せたときは `last_success` があり `stale = false` になりうる）。「記録を作り直す」は出ず、原因の文は `stale` のときだけ出る（UI-11b-D14）
+  - 手順 7 の失敗: 状態は新しい内容で読め、§71.11.4 が `last_failure` を書く（状態の書込みの失敗を除く）。`offsite_status` は §71.11.5 の式どおり（一部の媒体だけ写せたときは `last_success` があり `stale = false` になりうる）。手順 7 の中で成功の記録を置き換えた後の状態の file の親 directory の sync の失敗は、失敗でなく成功のまま（`Copied`、§71.11.4 のエラーの表）。「記録を作り直す」は出ず、原因の文は `stale` のときだけ出る（UI-11b-D14）
 - 呼ぶ前に新しい backup を作る（CMD、43 §43.8.6）: 媒体に最新の写しが既にあると手順 7 が `UpToDate` になり、`last_success` が空のまま「まだ写せていません」が残るため。作成に失敗したら CMD は本関数を呼ばない（記録に触れない）
 - 持ち帰っていて見えていない媒体は登録されない。次に差したときに「この USB メモリを控えの保存先にする」で登録し直す（目印の `medium_id` と札を引き継ぐ、§71.11.2 手順 4）。それまで新しい USB メモリを用意しない（札が重なる、§71.13 の本番の復元と同じ）
 - 退避した file は消さない（数は作り直しを試した回数だけ。owner が中身を確かめて消してよい）
