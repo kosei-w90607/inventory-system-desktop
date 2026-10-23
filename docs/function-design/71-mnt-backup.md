@@ -71,7 +71,7 @@ fn create_backup(
 ```
 
 **処理ステップ**:
-0. 書く先を固定して確かめる（MNT-01-D10）: `pin_backup_dir(backup_dir)`（下の「書く先の固定」）で実体の path を得る。固定できない・レジの SD の上なら書かずに `DbError::QueryFailed`。手順 1〜4b（folder の作成・作業名の掃除・`VACUUM INTO`・検査・公開・親 directory の sync）は全部この実体の path で行う。返す `BackupResult.file_path` は今までどおり `{backup_dir}/{ファイル名}`（wire の値は変えない）
+0. 書く先を固定して確かめる（MNT-01-D10）: `pin_backup_dir(backup_dir)`（下の「書く先の固定」）で実体の path を得る。固定できない・レジの SD の上なら書かずに `DbError::QueryFailed`。手順 1〜5（folder の作成・作業名の掃除・`VACUUM INTO`・検査・公開・親 directory の sync・metadata の取得）は全部この実体の path で行う。返す `BackupResult.file_path` は今までどおり `{backup_dir}/{ファイル名}`（wire の値は変えない）
 1. `backup_dir` が存在しなければ `std::fs::create_dir_all` で作成
 2. 現在日時からファイル名を生成: `inventory_backup_{YYYYMMDD}_{HHMMSS}.db`
 3. バックアップ先パスを構築: `{backup_dir}/{ファイル名}`。書込みは作業名 `{ファイル名}.partial` へ行う（MNT-01-D7）。`backup_dir` に残った作業名（前回の中断の残り）は先に消す。消すのは `.partial` を除いた名前が §71.3 の規約に完全に合う file（`extract_datetime_from_backup` が日時を返す名前に `.partial` を付けた名前）だけで、ほかの `*.partial`（別用途の file）は消さない（失敗は `tracing::warn!` で続行）
@@ -700,7 +700,7 @@ enum OffsiteCheckResult {
 
 | 操作 | 競合 | 扱い |
 |---|---|---|
-| 復元（控えの確かめの開始から終わりまで） | 媒体の掃除・PC の中の保持日数の掃除が、選んでいる控えを消す。復元の間に写す | 画面が確かめの開始の前に共通の確認を止め、実行中の回の完了を待つ。取消・復元の終わりまで止めたまま（68 UI-11b-D15・D16） |
+| 復元（控えの確かめの開始から終わりまで） | 媒体の掃除・PC の中の保持日数の掃除が、選んでいる控えを消す。復元の間に写す | 画面が確かめの開始の前に共通の確認を止め、実行中の回の完了を待つ。復元の card の「閉じる」（`ready` へ戻る）か復元の終わりまで止めたまま（68 UI-11b-D15・D16） |
 | 用意（`prepare_offsite_medium`） | 同じ媒体へ同時に書く | 上の `Mutex<()>` |
 | 記録の作り直し（`reset_offsite_state`、§71.11.5a） | 状態の file を退避・作り直す間に写す・状態を書く | 上の `Mutex<()>`（入口で 1 回。手順 7 は lock を取らない内部関数） |
 | やめる（`stop_offsite_backup`、§71.11.5b） | 状態の file を移す間に写す・状態を書く | 上の `Mutex<()>`（入口で 1 回） |
@@ -857,7 +857,7 @@ struct BackupInspection {
 ```
 
 **処理ステップ**:
-1. `backup_path` を読取り専用・作成なし・`immutable=1` の URI で開く（`SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI`。journal・`-wal`・`-shm` を作らず、file と folder を変えない。USB の上でもそのまま開く）
+1. `backup_path` を読取り専用・作成なし・`immutable=1` の URI で開く（journal・`-wal`・`-shm` を作らず、file と folder を変えない。USB の上でもそのまま開く）。URI の組み方: `backup_path` の文字列（Windows は `\` のまま。`\`→`/`・`//` の圧縮・drive 文字の前の `/` を行わない）の `%`・`?`・`#` を 1 回の走査で `%25`・`%3f`・`%23` に置き換え、前に `file:`、後ろに `?immutable=1` を付け、`SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI` で開く。理由: `create_backup` の手順 4a に渡る作業名は Windows では `\\?\Volume{GUID}\…`（§71.4 の「書く先の固定」）で `?` を含み、符号化しないと `?` 以降が query になる。SQLite の URI の解析は `file:` の直後が `//` のときだけ authority を見て、それ以外は `%HH` の復号と `?`・`#` の区切りだけで `\` を触らない（https://www.sqlite.org/uri.html ）。`\` を `/` に変えると `\\?\` の前置が Windows の VFS に認められず別の path に解決する。`SQLITE_OPEN_READ_ONLY` を落とすと `immutable=1` でも無い file を作る。URI を使わない読取り専用の open は WAL の header の file で `-wal`・`-shm` を作りうる（https://www.sqlite.org/wal.html ）ので、URI + `immutable=1` の形に限る
 2. 版を `read_current_version_without_ddl`（22 §3.2 の手順 1。migrate と同じ関数を `pub(crate)` で共有し、同じ判定を二重に書かない）で読み、`app_max_version()` と比べる
 2a. **このアプリの backup か**: 版が 0（`schema_versions` の表が無い〈空の file・別用途の SQLite の DB〉、または表が空。`read_current_version_without_ddl` はどちらも 0 を返す、`db/migration.rs` の `read_current_version_without_ddl`・`get_current_version`）なら `DbError::QueryFailed`（読めない控え）。版が `app_max_version()` 以下なら、必須の表 `products`・`operation_logs`・`app_settings`（v1 から在る表、`db/schema_v1.rs`）が `sqlite_master` に全部あることを確かめ、無ければ `DbError::QueryFailed`。新しすぎる版は表を見ない（新しい版の表の形を古い版が決めつけない）。版 0 を戻すと既存の restore の migrate が新規の DB として表を作り、店の記録の無い DB へ置き換わるため
 3. `PRAGMA quick_check` の結果が 1 行の `ok` なら `quick_check_ok = true`
