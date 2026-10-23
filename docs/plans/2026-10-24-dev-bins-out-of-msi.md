@@ -4,7 +4,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -21,6 +21,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 1. kickoff → spec-check（2026-10-24、Writer、本 commit）: Coordinator の発注（TD-417）を Scope にし、Risk を R3・Final Review Minimum 2 と記録した（下の Risk）。
 2. spec-check → design（2026-10-24、Writer、本 commit）: 外し方は crate の形（`src-tauri/Cargo.toml`）と gate が build する範囲を決める durable な選択で、正本が無い。decision-log に置く（`docs/DEV_WORKFLOW.md` Design artifact selection の「Durable cross-cutting choice, workflow gate change」の行）。tauri-cli と cargo の振舞いを Contract Probe P1〜P5 で確かめた。
 3. design → plan-draft（2026-10-24、Writer、本 commit）: 外し方を D-137 として decision-log に置いた（下の「本 commit で変えた正本」）。owner に聞く判断事項は無い（下の「owner の判断事項」）。未確認の外部前提は P6（実物の build で開発用の bin が bundle に入らない）で、plan-approved の前に owner の手の要らない Linux の deb の build で確かめる。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は無い（外し方は技術の選択で、製品の振舞いは変わらない）。packet と Matrix が揃い commit されている。Contract Probe P6（Linux の deb の build で開発用の bin が bundle に入らないことの実物の確かめ）は plan-approved の前に Coordinator が行う。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 
 本 commit で変えた正本（plan-first）:
 
