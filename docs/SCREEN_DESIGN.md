@@ -261,7 +261,7 @@
   - 詳細カードから「商品修正」「在庫変動履歴」「入庫記録」へ直接遷移
 - **利用者配慮**:
   - 在庫少判定は BIZ が返す `list_low_stock` 結果を正とし、frontend はその集合を `stock_quantity <= 0`（在庫切れ）/ `stock_quantity > 0`（在庫少）に分ける。閾値は frontend に持たない
-  - 2026-06-07 の実利用者 L3 で、赤文字 / 黄文字だけでは在庫ゼロと在庫少の識別が不十分と判明。高視認性 follow-up では状態列を追加し、「在庫切れ」「在庫少」「通常」の日本語ラベル + アイコン / バッジを主情報、在庫数の赤 / amber を補助シグナルにする
+  - 2026-06-07 の実利用者 L3 で、赤文字 / 黄文字だけでは在庫ゼロと在庫少の識別が不十分と判明。高視認性 follow-up では状態列を追加し、「在庫切れ」「在庫少」「通常」の日本語ラベル + アイコン / バッジを主情報、在庫数の赤 / amber を補助シグナルにした。中立の label は今「在庫あり」（`src/features/stock-inquiry/components/StockStatusBadge.tsx` の `StockStatusBadge`）
   - 長さの商品（生地）は「0 m」と m で表示する（[共通規則](function-design/10-common-rules.md) SPEC-UNIT-D3）
   - 廃番商品は在庫切れ一覧に出さない（SP-302-04）
   - 発注判断→入庫記録の動線が詳細カードから1クリック
@@ -446,7 +446,7 @@ Phase 2 完了判断で daily 5 画面の追加実装は不要。H-6 5 画面通
 - UI-01a/b/c 商品検索・一覧 / 登録 / 修正 / 一括インポート（REQ-103/101/102/104）
 - UI-02 入庫記録（REQ-201、バーコードスキャン + 複数商品一括）
 - UI-03 返品・交換（REQ-202、レジ戻し済みフラグ + レシート添付）。詳細な route / command / validation / L3 確認項目は `docs/function-design/63-ui-return-exchange.md` を正とする。
-- UI-04 手動販売出庫（REQ-203、PLU 未登録新商品のみ）
+- UI-04 手動販売出庫（REQ-203。PLU 未登録の新商品と、[10](function-design/10-common-rules.md) SPEC-UNIT-D4 の店に聞いてから決める項の既定 (a) の間の長さの商品）
 - UI-05 廃棄・破損（REQ-204）
 
 UI-04 は `/inventory/manual-sale` で、レジCSVに入らない販売を手入力し、在庫減算と売上記録を同時に残す。PLU 登録済み商品の場合は二重記録を避けるため確認を挟み、保存後は日次売上へ遷移して「手動」Badge を確認できる導線を置く。画面下部には保存直後確認用の `直近の手動販売出庫` を置き、`すべての履歴を見る` と `詳細を見る` から入出庫履歴 / 手動販売詳細へ遷移できるようにする。保存成功、PLU確認待ち、保存系エラーはページ先頭側に出るため、保存応答後はページ先頭へスクロールする。詳細な route / command / validation / recent list / L3 確認項目は `docs/function-design/62-ui-manual-sale.md` を正とする。
