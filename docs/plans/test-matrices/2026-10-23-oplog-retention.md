@@ -1,6 +1,6 @@
 # Test Design Matrix: 操作ログの保持を 7 年程度に延ばす
 
-oracle の正本は [72](../../function-design/72-mnt-log-manager.md) MNT-02-D1 と §72.4 の手順 3・4、[decision-log](../../decision-log.md) D-136。期待の値（2557、0 と読めない値で飛ばす、範囲の外で 0 件）は正本から写し、実装の定数から写さない。test は全て `src-tauri/src/mnt/log_manager.rs` と `src-tauri/src/db/system_repo.rs` の `mod tests`（`setup_test_db` は `db::init_database` で v1 から最新の版までを当てた本物の DB を使い、mock は無い）。
+oracle の正本は [72](../../function-design/72-mnt-log-manager.md) MNT-02-D1 と §72.4 の手順 3・4・6、[20](../../function-design/20-io-product-repo.md) §2.8 の `delete_old_logs`、[decision-log](../../decision-log.md) D-136。期待の値（2557、0 と読めない値で飛ばして日付を変えない、範囲の外で 0 件として日付を今日にする）は正本から写し、実装の定数から写さない。test は全て `src-tauri/src/mnt/log_manager.rs` と `src-tauri/src/db/system_repo.rs` の `mod tests`（`setup_test_db` は `db::init_database` で v1 から最新の版までを当てた本物の DB を使い、mock は無い）。
 
 ## Risk
 
@@ -12,7 +12,7 @@ Risk: R3
 - C2 保持日数が 2557 日のとき、今日から 2557 日前の記録は残り、2558 日前の記録は消える（§72.4 の手順 4 の cutoff は今日から日数を引いた日の 0 時）
 - C3 設定の行が無いときは 2557 日で消す（§72.4 の手順 3 の `None`）
 - C4 設定の値が整数として読めない（`"abc"`・`"-1"`）か 0 のときは、何も消さず、`log_last_cleanup_date` も更新しない（§72.4 の手順 3、MNT-02-D1）
-- C5 日付の範囲の外になる値（`"4294967295"`）では panic せず、何も消さない（§72.4 の手順 4）
+- C5 日付の範囲の外になる値（`"4294967295"`）では panic せず、何も消さない。0 件として通常の道を進み、`log_last_cleanup_date` を今日にする（§72.4 の手順 4→6、20 §2.8 の `None` → `Ok(0)`）
 - C6 1 日 1 回・`log_cleanup` の記録・日付の更新（変えない。§72.4 の手順 1・2・5・6）
 
 ## Failure Modes
@@ -24,6 +24,7 @@ Risk: R3
 - FM5: 飛ばしたのに `log_last_cleanup_date` を更新し、同じ日に直した設定が次の起動まで効かない、または飛ばしたことが記録に残らない（C4）
 - FM6: 大きな値で `NaiveDate` の引き算が panic し、setup の中で起動が止まる（C5）
 - FM7: 直した test が値の境を外し、何も確かめなくなる（C2、mutation で見る）
+- FM8: 範囲の外を C4 と同じ飛ばしにして `log_last_cleanup_date` を更新しない（§72.4 の手順 6 と食い違い、毎回の起動で掃除を試し直す）（C5）
 
 ## Test Matrix
 
@@ -36,7 +37,7 @@ Risk: R3
 | C2 | FM2・FM7 | unit | 直す: `test_cleanup_old_logs_req902_deletes_expired`（2558 日前の 10:00 の記録が消える） | 初期データか cutoff が 2558 日以上、掃除が何も消さない |
 | C3 | FM3 | unit | 足す: 設定の行を DELETE した DB で 2558 日前が消え、2557 日前が残る | `DEFAULT_RETENTION_DAYS` が 2557 でない |
 | C4 | FM4・FM5 | unit（値ごとの 3 case: `"abc"`・`"-1"`・`"0"`） | 足す: 値を UPDATE した DB で、今日から 2558 日前と 1 日前の記録が両方残り、`log_last_cleanup_date` が呼ぶ前と同じ（無い）で、`log_cleanup` の記録が無い | 読めない値・0 を既定か 0 のまま使って消す、飛ばしたのに日付を更新する |
-| C5 | FM6 | unit | 足す: 値が `"4294967295"` の DB で `cleanup_old_logs` が `Ok(())` を返し、2558 日前の記録が残る | `NaiveDate - Duration` の panic、範囲の外を別の日付に丸めて消す |
+| C5 | FM6・FM8 | unit | 足す: 値が `"4294967295"` の DB で `cleanup_old_logs` が `Ok(())` を返し、2558 日前の記録が残り、`log_last_cleanup_date` が今日の日付（`YYYY-MM-DD`）になり、`log_cleanup` の記録が無い | `NaiveDate - Duration` の panic、範囲の外を別の日付に丸めて消す、範囲の外で早く返して日付を更新しない |
 | C5 | FM6 | unit | 足す: `delete_old_logs(&conn, u32::MAX)` が `Ok(0)` を返し、2558 日前の記録が残る | 同上（`system_repo` の側だけで確かめる） |
 | C6 | — | unit（既存、古いログの日付を 2558 日前の相対に直す） | `test_cleanup_old_logs_req902_first_run`・`test_cleanup_old_logs_req902_same_day_skip`・`test_cleanup_old_logs_req902_records_cleanup`、既存 `test_cleanup_old_logs_req902_updates_date` | 1 日 1 回・記録・日付の更新が壊れる（期待は変えない） |
 | C6 | — | unit（既存、変えない） | `test_delete_old_logs_req902_*` 2 本（引数 365） | `delete_old_logs` の cutoff の比べ方が変わる |
@@ -45,7 +46,7 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `log_last_cleanup_date` と操作ログ | 行が無い（新しい DB）か前の日 | 起動の setup | 2557 日より前を消し、`log_cleanup` を記録し、今日にする | — | — | 同じ日の 2 回目の起動は飛ばす（C6） | 次の日の起動でもう一度 | 読めない値・0・範囲の外 → 消さず、日付を変えない（C4・C5） | 設定を直した後の起動で掃除する（C4 の日付が変わらないこと） | Test Matrix の C4〜C6 |
+| `log_last_cleanup_date` と操作ログ | 行が無い（新しい DB）か前の日 | 起動の setup | 2557 日より前を消し、`log_cleanup` を記録し、今日にする | — | — | 同じ日の 2 回目の起動は飛ばす（C6） | 次の日の起動でもう一度 | 読めない値・0 → 消さず、日付を変えない（C4）。範囲の外 → 0 件で通常の道を進み、日付を今日にする（C5、§72.4 の手順 4→6） | C4 は設定を直した後の起動で掃除する（日付が変わらないので同じ日でも）。C5 は次の日の起動で同じく 0 件 | Test Matrix の C4〜C6 |
 
 ## Adjacent Pattern Audit
 
@@ -108,6 +109,7 @@ Risk: R3
 - `DEFAULT_RETENTION_DAYS` を 365 に戻すと C3 が red。
 - 0 と読めない値の分岐を外して既定で掃除すると C4 が red（2558 日前が消える）。分岐で日付を更新すると C4 の日付の assert が red。
 - `delete_old_logs` の `checked_sub_days` を `- Duration::days` に戻すと C5 の 2 本が panic で red。
+- `cleanup_old_logs` で範囲の外を C4 と同じく早く返す（日付を更新しない）と、C5 の `cleanup_old_logs` の日付の assert が red。
 - 期待が空集合だけの case は無い（C4・C5 は「残る」記録を 1 件以上置き、C2・C3 は消える 1 件と残る 1 件の組）。
 
 ## Residual Test Gaps

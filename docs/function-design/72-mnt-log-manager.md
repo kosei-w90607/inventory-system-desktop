@@ -95,4 +95,4 @@ if let Err(e) = mnt::log_manager::cleanup_old_logs(&conn) {
 | `test_cleanup_old_logs_req902_records_cleanup` | 削除後にoperation_type='log_cleanup'のログが記録される |
 | `test_cleanup_old_logs_req902_updates_date` | 実行後にlog_last_cleanup_dateが今日に更新される |
 
-MNT-02-D1 の test（保持の lane で足す。名前は実装の PR で決め、Test Design Matrix `docs/plans/test-matrices/2026-10-23-oplog-retention.md` の行に対応させる）: 新しい DB の `log_retention_days` が `2557`、設定の行が無いときは 2557 日で消す、読めない値・0 では何も消さず `log_last_cleanup_date` も変えない、日付の範囲の外の値で panic せず何も消さない。
+MNT-02-D1 の test（保持の lane で足す。名前は実装の PR で決め、Test Design Matrix `docs/plans/test-matrices/2026-10-23-oplog-retention.md` の行に対応させる）: 新しい DB の `log_retention_days` が `2557`、設定の行が無いときは 2557 日で消す、読めない値・0 では何も消さず `log_last_cleanup_date` も変えない、日付の範囲の外の値で panic せず何も消さず、`log_last_cleanup_date` は今日にする（手順 4 の 0 件から手順 6 へ進む）。
