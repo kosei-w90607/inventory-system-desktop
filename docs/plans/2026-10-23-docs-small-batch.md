@@ -8,9 +8,9 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
-- Plan Commit: pending
+- Plan Commit: e5b6a111470a3c93a365cbbd126dc9173a7c09e7
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は本 run。docs の直しは plan-approved の後の別の run）
@@ -31,6 +31,8 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex 側は未実施で round 2 で足す、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `cc3d7a7d` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 6. plan-gate のまま是正（round 2、2026-10-23、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 だけ。Codex 側は round 3 で足す、§3.3）の reject を起草役が `85ee4756` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
 7. plan-gate のまま是正（round 3〈天井〉、2026-10-23、Coordinator、本 commit）: round 3（Claude 側 fresh Opus 5.5 と Codex）の指摘を起草役が `a4d1bd8b` で一括して直した（下の Review Response）。round 4 は回さず、Coordinator の disposition の後に closure（fresh Opus 5.5 + Codex）に出す。P1/P2 = 0 なら plan-approved へ進める。
+8. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: closure は Claude 側 fresh Opus 5.5 = approve（P3 2）、Codex = approve（P1/P2/P3 0）で、P1/P2 = 0（下の Review Response）。Plan Commit は両方の reviewer が監査した `e5b6a111`。Claude 側の P3 2 件（packet の sweep の記録と所有の確かめの証跡の書き方）は implementing の本体の run で直す（Plan Commit を動かさない）。
+9. plan-approved → implementing（2026-10-23、Coordinator、本 commit）: docs だけの lane で、本体の直しの run を発注する（packet の規則どおり、起票の run は packet だけを置いた）。
 
 ## Owner Effort Budget
 
@@ -461,3 +463,5 @@ round 3（天井、`1fba4d45`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P
 
 - Codex 側: S7-3d（SCREEN_DESIGN の UI-04 の使い道を SPEC-UNIT-D4 の既定 (a) を引く形に）と使い道を限る文の sweep。Owner Effort Budget を decision point の単位で（消費 4・残り 2・予備 0）。
 - Claude 側: S7-3c の reason の句を外す、AC-S1-1 に括弧の中の句の検査、backlog の旧名の「〜が引く」の句（本 lane の所有、61 は MSI の lane へ申し送り）、SCREEN_DESIGN の経緯の文は残して今の label を書き添える、PLU の書出しの見直しの runtime の撤去の列挙に注記の撤去を 1 句。
+
+closure（`e5b6a111`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 2）、Codex = approve（P1 0 / P2 0 / P3 0）。round 3 の 7 件は両方とも全部 closed、C1 の固定の確認も両方で済み（直しを戻すと AC-S7-1 が `docs/SCREEN_DESIGN.md` の行を拾う）。Claude 側の新しい P3: N1（C1 の sweep の記録の「ほかの hit」に、使い道を限らない hit 3 件が仕分けされていない）、N2（O3 の所有の確かめの証跡で「4 つの項目」と「5 つの項目の名」の数が合わず名の一覧が無い）。どちらも packet の証跡の書き方で、implementing の本体の run で直す。
