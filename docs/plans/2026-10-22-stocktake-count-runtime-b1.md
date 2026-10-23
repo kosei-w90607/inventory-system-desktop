@@ -36,7 +36,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 - Phase: implementing
 - Risk: R4
 - Plan Commit: aba17e2e2422695b2ffff6bcd3fd9bebebf24339
-- Amendments: 5b53294040ff38d2aeb8366aefd02142ffb2c764
+- Amendments: 5b53294040ff38d2aeb8366aefd02142ffb2c764, bc0bf2f5d5a6a573bd76cf14e11380d8c407ddbe
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
@@ -57,6 +57,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 8. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側の fresh Opus 5.5 が closure で P1・P2 が無いと報告した（Review Response 参照）。Codex の closure は利用上限で 2026-10-24 まで得られず、`docs/AGENT_OPERATING_MANUAL.md` §3.3・座組表の Codex 停止中の列（Plan Review は fresh Opus 5.5 だけで進める）に従い、owner の決定（repo 外の回答台帳 TD-389。TD-387 を見直した）で進めた。closure の P3 4 件は plan-gate のまま起草役が `5c45d253`・`aba17e2e` で直した（Plan Commit は是正の後の版）。owner は同じ回答で実装の前の R4 を承認した（TD-389）。実装の commit はまだ無い。
 9. plan-approved → implementing（2026-10-23、Coordinator、本 commit）: main（`eed07d37`、PR #155・#189 の後）を単段で取り込み（衝突は `docs/Plans.md` の 1 か所）、AC の数の baseline の command 21 本を逐語で再測して上の値と一致した（`rg` の出力の並びだけが違う）。実装の Writer に S1〜S7 と S9 の L3 の fixture の生成から発注する。
 10. implementing のまま Gated Amendment（2026-10-23、Coordinator、本 commit）: closure の Codex 側（owner の決定〈repo 外の回答台帳 TD-389〉で plan-approved の後に流した）が P1 1 件を出した（下の Review Response）。Coordinator が受理し、起草役の直し方の案 1（fresh な計数の精算の判定を取込み ID のカーソルで求める）と owner の答え（TD-400: 取り込み直した精算は要再確認）を `5b532940` に置いた。packet の契約が変わるので Gated Amendment として `Amendments` に登録し、amendment の review（fresh Opus 5.5 + Codex）に出す。Coordinator は review の前に code の実装（1 段目の上の commit）まで同じ発注で進めさせた。review で契約が変われば code も直す。
+11. implementing のまま Gated Amendment（2 本目、2026-10-24、Coordinator、本 commit）: 1 本目の amendment review の findings を起草役と Writer が直し、取り込み直しの判定を D3 の表に合わせ、検索で開く欄の文を「入れ直す」へ導く形にした（`bc0bf2f5` が packet・ADR・32・73・Matrix、`a6f6cefc`・`0c0dca85` が code と test）。packet の契約が変わるので `bc0bf2f5` を `Amendments` に登録する。2 本目は closure を立てず、Final Review broad（Claude 側 + Codex）で見る（Claude 側は当面 Fable 5。owner の決定 2026-10-24）。Writer の判断 2 つ（T6 を Matrix §T5 の行に置く、欄の文を出す条件を「入れ直す」の button と同じ `canRecount` にする）は受理した。`docs/SCREEN_DESIGN.md`・`docs/FUNCTION_DESIGN.md` の UI-10 の要約に残る「上書き再入力」は変えない（正本の 73 の UI-10-D2 が b1 の注記で導線を「入れ直す」と名指しし、要約はその節を指す）。
 
 ## Owner Effort Budget
 
