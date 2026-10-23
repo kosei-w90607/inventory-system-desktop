@@ -8,7 +8,7 @@
 - (a) の間の書込みの関数: `update_movement_stock_after`（その TX で INSERT した movement の `stock_after` を、求め直しの後の写しの値に書く。[31](31-biz-inventory-service.md) の `apply_stock_change`。シグネチャは下の code block）。
 - 求め直しの読取り（BIZ の `derive_stock`・`recompute_stock` が呼ぶ）: (a) は商品の計数の一覧（`list_stock_counts_for_product`）と、商品の `is_voided=0` の movement（`list_ledger_movements_for_product`）の 2 つ（シグネチャは下の code block。どちらも id の順で返し、窓の判定は BIZ が ADR D3 の表で行う）。active な Z004 の取込みの精算の一覧（`csv_imports` の `settlement_date`・`settlement_no`・`id`）と、決まらない精算の行（その取込みの `sale_records` の商品の個数・金額・`stock_linked`）の読取りは b1 で入った（[24](24-io-csv-import-repo.md) の `list_active_settlements`・`list_sale_import_ids`）。
 - 写しの書込み: `update_stock_quantity` は数量に加えて `stock_recheck`・`stock_range_low`・`stock_range_high` を書く形に変え、呼ぶのは `recompute_stock` だけ（共通入出庫・Z004 の取消・旧棚卸しの確定・整合性の補正は全て `recompute_stock` を通る）。`ProductUpdates` の数量の欄は外した（[20](20-io-product-repo.md)）。和の関数 `sum_movements_by_product`・`sum_movements_for_product` は外した（整合性の検査は [31](31-biz-inventory-service.md) の `derive_stock` と比べる。§10.6）。
-- 計数の保存（b1）: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない。fresh なら `settlement_no`・`seen_movement_id`・`seen_import_id` を書く。取込みのカーソルの読取りは [24](24-io-csv-import-repo.md) の「Z004 の取込みの最大の取込みID」）。`list_stock_counts_for_product` は `seen_import_id` も返す（BIZ が ADR D3 の判定の n を求める）。
+- 計数の保存（b1）: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない。fresh なら `settlement_no`・`seen_movement_id`・`seen_import_id` を書く。取込みのカーソルの読取りは [24](24-io-csv-import-repo.md) の「Z004 の取込みの最大の取込みID」）。`list_stock_counts_for_product` は `seen_import_id` も返す（BIZ が ADR D3 の判定の n を求める）。`counted_at` も返す（明細の写しへ写す。35）。
 - 入出庫の一覧の棚卸し差異の集計は [65](65-inventory-record-traceability.md) の新契約（計数は movement を作らない）。
 
 (a) で足した関数のシグネチャ（D-118 の runtime の (a)。BIZ からだけ呼ぶので `pub(crate)`。`src-tauri/tests/design_compliance_test.rs` の allowlist には足さない）:
@@ -16,7 +16,7 @@
 ```rust
 // その TX で INSERT した movement 1 行の stock_after を書く。更新が 1 行でなければ DbError::QueryFailed
 pub(crate) fn update_movement_stock_after(conn: &DbConnection, movement_id: i64, stock_after: i64) -> Result<(), DbError>
-// stock_counts の商品の行（id・count_value・count_kind・business_date・seen_movement_id・seen_import_id）を id の順で。
+// stock_counts の商品の行（id・count_value・count_kind・business_date・seen_movement_id・seen_import_id・counted_at）を id の順で。
 // settlement_no（ADR D1 の鍵の n）は計数に入っているかの判定に使わないので読まない（b1。判定の n は seen_import_id から求める）
 pub(crate) fn list_stock_counts_for_product(conn: &DbConnection, product_code: &str) -> Result<Vec<StockCountRow>, DbError>
 // is_voided = 0 の movement（id・quantity・business_date・phase・settlement_no・初期在庫の印）を id の順で。
