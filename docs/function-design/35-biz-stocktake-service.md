@@ -40,6 +40,15 @@
 - 明細の一覧は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（効く計数の値 − その計数に入っている記録だけから求めた帳簿。計数が無ければ NULL）を返す。差異は表示用で、在庫を動かさない。
 - 要再確認の一覧 `list_recheck_products(conn) -> Vec<CountRecoveryTarget>`（`stock_recheck=1` の商品。進行中の棚卸しに明細があれば action `active_count` と `stocktake_item_id`、なければ `count_now`）。棚卸しが無いときも読める（取込みの結果と同じ一覧を棚卸しの画面に出す。[73](73-ui-stocktake.md)）。一覧からの保存は fresh な計数で、`stocktake_item_id` があれば渡す（明細の `actual_count`・`counted_at` を置き換わった計数に揃える）。
 
+b1 で足した関数のシグネチャ（`pub`。CMD-10 が呼び、`today` は CMD が渡す PC の今日。[42](42-cmd-sales-stocktake.md)）:
+
+```rust
+pub fn save_stock_count(conn: &mut DbConnection, req: &SaveStockCountRequest, today: &str) -> Result<StockCountSaveResult, BizError>
+pub fn preview_stock_count_placement(conn: &DbConnection, product_code: &str, business_date: &str, today: &str) -> Result<CountPlacementPreview, BizError>
+pub fn zero_uncounted_items(conn: &mut DbConnection, stocktake_id: i64, product_codes: &[String], business_date: &str, today: &str) -> Result<Vec<StockCountSaveResult>, BizError>
+pub fn list_recheck_products(conn: &DbConnection) -> Result<Vec<CountRecoveryTarget>, BizError>
+```
+
 #### 操作ログ（b1 の Plan Review round 2 の是正）
 
 開始と完了は今のとおり COMMIT の後（TX の外）に 1 行ずつ書き、書けなければ警告だけにする。計数の保存と「0 にする」は操作ログを書かない（今の数の入力と同じ。計数は `stock_counts` に残る）。

@@ -141,10 +141,11 @@ enum DuplicateStatus {
 #### MatchedRow構造体（サーバ側キャッシュに保持、フロントエンドには送らない）
 
 - line_no: usize（Z004の行番号。1始まり）
-- product_code: String（紐付いた商品コード）
-- quantity: i32（売上帳票視点の値。正=販売、負=返品）
+- normalized_jan: String（IO-02 が正規化した 13 桁の JAN。確定の TX で今の候補を引き直す）
+- product_code: String（preview で引き当てた先頭の商品コード）
+- shared_jan: bool（preview の時点でその JAN を持つ商品が 2 つ以上）
+- quantity: i64（在庫の数量に換えた後の値。長さの単位は × 100 の cm。正=販売、負=返品）
 - amount: i32
-- pos_stock_sync: bool（紐付いた商品の pos_stock_sync フラグ）
 
 #### ErrorRow構造体
 
@@ -160,13 +161,13 @@ enum DuplicateStatus {
 
 #### CommitRequest構造体
 
-- additional_import_confirmed: bool（同日別hashの追加確認済みフラグ）
-- cached_data: CachedPreview（CMD層がキャッシュから復元したデータ。matched_rows, error_rows, preview_data を含む）
+- cached_data: CachedPreview（CMD層がキャッシュから復元したデータ。matched_rows, error_rows, preview_data, settlement を含む）
+- today: String（CMD が渡す PC の今日。YYYY-MM-DD。知らせのため）
 
 **BIZ-03-D1（commit最小内部契約）**:
 
-- `MatchedRow` はcommitが在庫・売上・監査行の生成に使う `line_no` / `product_code` / `quantity` / `amount` / `pos_stock_sync` だけを保持する。表示専用のJAN・商品名を30分cacheへ複製しない。
-- `CommitRequest` はBIZが判断に使う `additional_import_confirmed` と、CMDがtokenで復元済みの `cached_data` だけを受け取る。tokenのUUID検証・cache対応確認・TTL・成功時削除はCMD-07の責務であり、BIZ requestへ再格納しない。
+- `MatchedRow` はcommitが在庫・売上・監査行の生成と確定の TX の照合に使う `line_no` / `normalized_jan` / `product_code` / `shared_jan` / `quantity` / `amount` だけを保持する（上の「計数の置き場と在庫の求め直しの契約」の preview の cache の契約。`pos_stock_sync` は確定の TX で取り直す）。商品名を30分cacheへ複製しない。
+- `CommitRequest` はCMDがtokenで復元済みの `cached_data` と、CMD が渡す `today` だけを受け取る。tokenのUUID検証・cache対応確認・TTL・成功時削除はCMD-07の責務であり、BIZ requestへ再格納しない。
 
 #### ImportResult構造体
 
@@ -195,7 +196,7 @@ enum DuplicateStatus {
 - matched_rows: Vec\<MatchedRow\>
 - error_rows: Vec\<ErrorRow\>
 - preview_data: PreviewData（フロントエンドに返した内容のコピー）
-- active_same_date_import_ids: Vec\<i64\>（parse時のactive import IDを `imported_at DESC, id DESC` で保持するcommit再検証snapshot）
+- settlement: CachedSettlement（精算の識別メタ。`machine_no`・`settlement_no`・`settlement_date`。parse の時点で順 1 を通った値。確定の TX の順 1〜5 の取り直しに使う）
 
 ---
 

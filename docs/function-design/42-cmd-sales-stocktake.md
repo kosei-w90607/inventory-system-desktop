@@ -19,6 +19,19 @@
 - `run_integrity_check` / `fix_integrity` の command の署名は変えず、結果の型（`IntegrityMismatch`・`StockAdjustment`）は [36](36-biz-integrity-check.md) の新契約の 4 項目と `differing_fields` を透過する（[75](75-ui-integrity-check.md)）。
 - runtime では新しい command の tauri / specta 属性、collect_commands への登録、旧 update_count の公開登録の削除、bindings の生成と全 caller / mock の切替を一緒に行う。
 
+b1 で足した command のシグネチャ（PC の今日は CMD が `chrono::Local` から読んで BIZ へ渡す）:
+
+```
+#[tauri::command]
+fn save_stock_count(state: State<AppState>, request: SaveStockCountRequest) -> Result<StockCountSaveResult, CmdError>
+#[tauri::command]
+fn preview_stock_count_placement(state: State<AppState>, product_code: String, business_date: String) -> Result<CountPlacementPreview, CmdError>
+#[tauri::command]
+fn zero_uncounted_items(state: State<AppState>, stocktake_id: i64, product_codes: Vec<String>, business_date: String) -> Result<Vec<StockCountSaveResult>, CmdError>
+#[tauri::command]
+fn list_recheck_products(state: State<AppState>) -> Result<Vec<CountRecoveryTarget>, CmdError>
+```
+
 ### 22.1 モジュール構成
 
 ```
