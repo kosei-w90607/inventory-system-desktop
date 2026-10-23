@@ -1,6 +1,6 @@
 # UI技術スタック選定書
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み、b2 の商品の画面の範囲の表示は proposed・未実装）
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md) の UI の側。既存のスタックを変えず、[42 の生成 wire](function-design/42-cmd-sales-stocktake.md) と [73 の計数の状態](function-design/73-ui-stocktake.md) へ接続する。未保存の数量は feature-local state、保存済みの計数・写し・履歴は DB と Query を正とし、永続化した画面の draft から古い数量を復活させない。旧 ADR（時点証拠）の token・begin の focus 制御・準備照会の consumer は置き換えた。
 

@@ -1,8 +1,8 @@
 ## 4. BIZ-01: 商品管理ロジック
 
-### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の BIZ-01 の側。旧 ADR（時点証拠）の版・非連動化の記録・`ej_unverified` による有効化の拒否と既定値 false・本番前 preflight は持たない（置き換えた）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1 つ目の項目（`ProductUpdates.stock_quantity` を外し、初期在庫の movement〈業務日は登録した TX の PC の今日〉と `recompute_stock`）。共有 JAN と在庫連動を始める検査の項目は (b)（proposed・未実装）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の BIZ-01 の側。旧 ADR（時点証拠）の版・非連動化の記録・`ej_unverified` による有効化の拒否と既定値 false・本番前 preflight は持たない（置き換えた）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1 つ目の項目（`ProductUpdates.stock_quantity` を外し、初期在庫の movement〈業務日は登録した TX の PC の今日〉と `recompute_stock`）。共有 JAN と在庫連動を始める検査の項目は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。
 
 - 汎用 `ProductUpdates` の `stock_quantity` 欄は外した（[20](20-io-product-repo.md)。production で `Some` を渡す呼出しは無かった）。create と商品一括 import の新規行は、初期数量を初期在庫の movement（`business_date` = 登録日、`phase=0`）として同じ TX で INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書く。商品一括 import の既存商品の上書きは在庫を変えない（今のまま）。
 - 共有 JAN（SPEC-STK-CNT-D4）: 不変条件は 1 つ。変更の後に、在庫連動の商品と同じ JAN を持つ別の商品があってはならない。create・update（在庫連動の変更。update は JAN を変えない: `ProductUpdateRequest` に `jan_code` は無く、商品フォームの edit の JAN 欄は読取専用〈BIZ-01-D1 の「edit は jan_code 変更不可」、[51](51-ui-product-form.md) UI-01b-D5〉。update の検査は在庫連動を始める〈false → true〉保存だけで、ほかの欄だけの保存は組を新しく作らないので検査しない〈移行の前からある組の商品の修正も通る。組は [36](36-biz-integrity-check.md) の整合性の画面で知らせる〉）・商品一括 import（新規の行と、JAN と在庫連動を書く上書きの行。JAN が変わる経路は上書きの行だけ）の TX の中で、変更の後の状態でこれを検査し、どの経路でも、どちらの商品を変える場合でも（例: 一括 import の上書きで在庫連動の商品 A の JAN を非連動の C と同じ値に変える、一括 import の上書きで非連動の C の JAN を A と同じ値に変える、商品の修正か一括 import の上書きで C を在庫連動にする）拒否する（JAN の経路の書き分けは b1 の Plan Review round 1 の是正、2026-10-22）（既存の `validation` kind、field `pos_stock_sync` か `jan_code`、message「同じ JAN の商品（{同じ JAN を持つほかの商品コード}）があるため、在庫連動にできません」。`ValidationFailedAt`。回復型〈`stocktake_guard`〉には載せない）。商品一括 import では当該行だけを error 行にし、他の正常行は続ける。preview だけの検証で確定を通さない。
@@ -563,7 +563,7 @@ struct ImportResult {
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
 - 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
-- （proposed・未実装、D-118 の b1）共有 JAN の不変条件か在庫連動を始める検査に当たる行（preview の後に DB が変わったか、上書きを選んだ行どうしが当たった場合）→ 上の「計数の置き場と在庫の求め直しの契約」の節の形で `BizError::ValidationFailed`（field なし、最初に当たった行を名指す）、TX 全体を戻す
+- （D-118 の b1）共有 JAN の不変条件か在庫連動を始める検査に当たる行（preview の後に DB が変わったか、上書きを選んだ行どうしが当たった場合）→ 上の「計数の置き場と在庫の求め直しの契約」の節の形で `BizError::ValidationFailed`（field なし、最初に当たった行を名指す）、TX 全体を戻す
 - （proposed・未実装、D-122）前の JAN の答えの形・別名の判定を満たさない → §4.9.2 の判定表の行の error（step 0b の行は DB を変えず、step 2 e. の行は TX 全体を戻す）
 
 **設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。

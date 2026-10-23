@@ -1,8 +1,8 @@
 # テーブル定義（マスタ）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1・2 つ目の項目（写しの 3 列は migration v9〈[22 §19](../function-design/22-mnt-migration.md)〉、写しを書くのは `biz::stock_ledger` の `recompute_stock` だけ）。3・4 つ目の項目（在庫連動を始める検査と共有 JAN の不変条件）は (b)（proposed・未実装）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1・2 つ目の項目（写しの 3 列は migration v9〈[22 §19](../function-design/22-mnt-migration.md)〉、写しを書くのは `biz::stock_ledger` の `recompute_stock` だけ）。3・4 つ目の項目（在庫連動を始める検査と共有 JAN の不変条件）は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。
 
 - products へ写しの列を足す: `stock_recheck INTEGER NOT NULL DEFAULT 0`（0/1 の CHECK。要再確認なら 1）、`stock_range_low INTEGER NULL`・`stock_range_high INTEGER NULL`（`stock_recheck=1` なら両方 NOT NULL で low ≤ high、0 なら両方 NULL。table の CHECK）。`stock_quantity` と合わせて、BIZ の求め直しの関数だけが書く（[tracking](tracking-system-tables.md) の同名の契約）。
 - `stock_quantity` は記録から求め直した写しで、既存の行の更新は求め直しの関数だけを通す（`update_stock_quantity` の呼出し元はこの関数 1 つ）。新しい商品の INSERT の初期数量は、同じ TX で作る初期在庫の movement から求め直した値と等しい。
@@ -70,7 +70,7 @@
 - **jan_codeのUNIQUE制約をつけない理由**: 同じJANを複数商品が共有するケースがある（グループコード）。UNIQUE制約をつけると登録できなくなる
 - **jan_code の形式 validation を DB に置かない理由（2026-08-11、JAN 専用欄正規化 change）**: 手入力 create 経路の JAN-8/13 + チェックディジット検証は BIZ 保存時（BIZ-01-D1）と frontend（51 UI-01b-D17）が所有し、DB CHECK は追加しない。既存 DB 行と CSV/Z004 import 経路には非 JAN 値・非 13 桁値が実在し得るため（既存データ互換）、DB 制約は既存データの migration を強制してしまう。UNIQUE を付けない既存判断も不変。
 - **selling_price / cost_price_centi をINTEGERにした理由**: 浮動小数点の丸め誤差を避ける。売価は円の整数、原価はばらした商品の 1 個の原価を小数第 2 位まで持つので 1/100 円の整数（共通規則 SPEC-UNIT-D5）
-- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price_centi は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、個数の 9 単位 = 1（1 個あたり）、`m` = 100（1 m あたり。[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D4）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額、入庫の原価小計、廃棄のロス原価、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D18）はこの基準数量で割る（共通規則 SPEC-UNIT-D6・D7）。棚卸し記録詳細のロス原価は `数量 × 原価` のままで、長さ商品では 100 倍になる（既知の不整合、Backlog。BIZ へ移すのは棚卸しの再開〈⑤〉）
+- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price_centi は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、個数の 9 単位 = 1（1 個あたり）、`m` = 100（1 m あたり。[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D4）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額、入庫の原価小計、廃棄のロス原価、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D18）はこの基準数量で割る（共通規則 SPEC-UNIT-D6・D7）。棚卸し記録詳細のロス原価も BIZ が同じ基準数量で割る（D-118 の b1。[35](../function-design/35-biz-stocktake-service.md) §20.5a）
 - **plu_dirtyフラグの理由**: 「レジ登録データ作成」画面の差分書出しモード（REQ-402）で「前回以降に変更があった商品」を高速に抽出するため。売価変更・新規登録でON、TSV生成だけではOFFにせず、UI-08で保存後に利用者が書出し済み確認した時点でOFFにする（D-027）。
 - **plu_exported_atの理由**: plu_dirtyだけでは「未書出し」と「アプリ側では書出し済み」の区別がつかない。書出し済み確認日時を記録しておけば「最後にアプリでPLU TSVを作成・保存済みにしたのはいつか」が分かる。ただしPCツール受理やレジ側反映はこの値では証明しない（コードと名称の反映は次の締めの Z004 の照合で分かるが、単価などは分からない。D-117 (7)）。
 - **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。長さの単位（`m`）だけで判定すると長さの商品でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する

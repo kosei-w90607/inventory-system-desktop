@@ -1,10 +1,10 @@
 # タスク仕様（UI層）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-SPEC-STK-CNT-D3〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、整合性検証（[75](../function-design/75-ui-integrity-check.md)）と操作ログ（[74](../function-design/74-ui-operation-logs.md) UI-11c-D14）の表示だけで、以下の棚卸しの操作は (b)（proposed・未実装）。新方式の操作の契約は [73](../function-design/73-ui-stocktake.md)（検索 → 数を入れて即保存、日付の表示と前の日の分、要再確認の一覧と入れ直し、完了の拒否の一覧と「0 にする」）、[55](../function-design/55-ui-csv-import.md)（Z004 の preview の拒否と知らせ、取込みの結果の要再確認の一覧）、[65](../function-design/65-inventory-record-traceability.md) / [66](../function-design/66-ui-stock-movements.md)（計数の行を履歴に混ぜる、今の数を入れ直す）を正とする。[51](../function-design/51-ui-product-form.md) / [58](../function-design/58-ui-stock-inquiry.md) は要再確認の在庫を範囲で出し、51 / [60](../function-design/60-ui-product-import.md) は共有 JAN と在庫連動を始めるときの拒否を示す。
+SPEC-STK-CNT-D3〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、整合性検証（[75](../function-design/75-ui-integrity-check.md)）と操作ログ（[74](../function-design/74-ui-operation-logs.md) UI-11c-D14）の表示。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で 73・55・51 の在庫連動の拒否・60・65 の棚卸しの記録の詳細・75 の共有 JAN の一覧が入った。51・58 の範囲の表示と 65・66 の計数の行は b2（proposed・未実装）。新方式の操作の契約は [73](../function-design/73-ui-stocktake.md)（検索 → 数を入れて即保存、日付の表示と前の日の分、要再確認の一覧と入れ直し、完了の拒否の一覧と「0 にする」）、[55](../function-design/55-ui-csv-import.md)（Z004 の preview の拒否と知らせ、取込みの結果の要再確認の一覧）、[65](../function-design/65-inventory-record-traceability.md) / [66](../function-design/66-ui-stock-movements.md)（計数の行を履歴に混ぜる、今の数を入れ直す）を正とする。[51](../function-design/51-ui-product-form.md) / [58](../function-design/58-ui-stock-inquiry.md) は要再確認の在庫を範囲で出し、51 / [60](../function-design/60-ui-product-import.md) は共有 JAN と在庫連動を始めるときの拒否を示す。
 
-未保存の入力だけを画面の状態に置き、保存済みの計数と写しは DB / query から取り直す。要再確認の理由を UI で推測せず、BIZ が返す型付きの理由と次の操作を示す。日本語と非色シグナルで表示する。既存の route / returnTo、IME、focus とページの器を保つ。実装・Windows L3 は未実施。旧 ADR（時点証拠）の begin・保留・準備照会・非連動化の未調整の案内は置き換えた。
+未保存の入力だけを画面の状態に置き、保存済みの計数と写しは DB / query から取り直す。要再確認の理由を UI で推測せず、BIZ が返す型付きの理由と次の操作を示す。日本語と非色シグナルで表示する。既存の route / returnTo、IME、focus とページの器を保つ。b1 の Windows L3 は b1 の packet の台本で行う（b2 の分は未実施）。旧 ADR（時点証拠）の begin・保留・準備照会・非連動化の未調整の案内は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 

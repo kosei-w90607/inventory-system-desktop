@@ -1,12 +1,12 @@
 # テーブル定義（在庫追跡・棚卸し・システム）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D3・D9・D10）の保存の形。配布の単位 (a)（ADR SPEC-STK-CNT-D12）の列・表・index と移行は migration v9（[22 §19](../function-design/22-mnt-migration.md)、`src-tauri/src/db/schema_v9.rs`）で今の schema にある。(b) の分（下の各節に書く）は proposed・未実装の論理の列と制約で、列と CHECK は b1 の migration（[22 §20](../function-design/22-mnt-migration.md)、MNT-03-D18）が足す（版の番号は merge の時点の次）。旧 ADR（時点証拠）の `stocktake_recounts`・`stocktake_recount_flags`・`reconciliation_version`・observation_kind 以下の証拠の列・`stocktake_adjustment_kind`・`stocktake_recount_id`・`stocktake_legacy_movement_ceiling` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D3・D9・D10）の保存の形。配布の単位 (a)（ADR SPEC-STK-CNT-D12）の列・表・index と移行は migration v9（[22 §19](../function-design/22-mnt-migration.md)、`src-tauri/src/db/schema_v9.rs`）で今の schema にある。b1 の分（下の各節に書く）は migration v11（[22 §20](../function-design/22-mnt-migration.md)、`src-tauri/src/db/schema_v11.rs`）で入った。
 
 ### 並びの鍵と計数（SPEC-STK-CNT-D1・D3）
 
-(a) で入ったのは、`inventory_movements` の 3 列と phase・settlement_no の対の CHECK、`stock_counts` の表と index（v9）。`reference_type` と phase を結ぶ CHECK と、`stock_counts` へ保存する経路（計数の入力）は (b)。
+(a) で入ったのは、`inventory_movements` の 3 列と phase・settlement_no の対の CHECK、`stock_counts` の表と index（v9）。`reference_type` と phase を結ぶ CHECK と、`stock_counts` へ保存する経路（計数の入力）は b1（migration v11 と BIZ-06）で入った。
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
@@ -20,7 +20,7 @@
 
 ### 求め直しと写し（SPEC-STK-CNT-D2・D3）
 
-(a) で入ったのは、この節の全部（求め直しは `biz::stock_ledger`。計数の行は (b) が保存を入れるまで test の fixture だけが入れる）。精算 k の窓と要再確認の理由 1 は (b)（ADR D12）。
+(a) で入ったのは、この節の全部（求め直しは `biz::stock_ledger`）。精算 k の窓と要再確認の理由 1 は b1 で入った（ADR D12）。
 
 - 写しは [master](master-tables.md) の `products.stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`。BIZ の求め直しの関数だけが書く（[31](../function-design/31-biz-inventory-service.md) の同名の節）。
 - 求め方: 効く計数（ADR D3 の「計数どうし」）の値 + ADR D3 の判定表でその計数に「入っていない」`is_voided=0` の movement の quantity の和。計数が無ければ全ての `is_voided=0` の movement の和。決まらない記録は写しの値では適用し、範囲は適用する・しないの最小と最大。計数の衝突は、計数値が最小のものを写しの土台にする。
@@ -29,7 +29,7 @@
 
 ### 棚卸し（SPEC-STK-CNT-D6）
 
-この節は全部 (b)（proposed・未実装）。
+この節は全部 b1 で入った（migration v11 の列と BIZ-06 の完了）。
 
 - `stocktakes` と `stocktake_items` は対象の一覧と評価の保存に残す。`stocktake_items.actual_count`・`counted_at` は、その明細の効く計数を表示のために写す（計数の値の正本は stock_counts）。`system_stock` は明細を作った時点の帳簿で、差異の計算に使わない参考値（表示する差異は 35 の新契約）。
 - 完了の TX で `valuation_cost_price_centi`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_import_id`・`cutoff_count_id`・`cutoff_movement_id`（INTEGER NULL。完了の時点の `MAX(csv_imports.id)`〈取り消したものを含む。取込みが無ければ NULL〉・`stock_counts` の最大 id・`inventory_movements` の最大 id〈無ければ 0〉。完了の前は NULL）。完了の後の比較は、完了の時点にあった記録（カーソル以下）に、完了の後に入れた完了の前の入出庫・初期在庫・精算の記録を足して求める（計数はカーソル以下だけ。精算は、完了の時点の精算の n〈`cutoff_import_id` 以下の取込みID を持つ、今 active な取込みの最大の精算回数〉以下の精算回数のものと、精算日が完了日より前のもの。ADR D6）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
@@ -140,6 +140,9 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | started_at | TEXT | NOT NULL | 開始日時 |
 | completed_at | TEXT | NULLABLE | 完了日時。NULLなら作業中 |
 | status | TEXT | NOT NULL, DEFAULT 'in_progress' | 状態。'in_progress' / 'completed' |
+| cutoff_import_id | INTEGER | NULLABLE | 完了の時点の `MAX(csv_imports.id)`（取り消したものを含む。無ければ NULL。v11、D-118 の b1） |
+| cutoff_count_id | INTEGER | NULLABLE | 完了の時点の `MAX(stock_counts.id)`（v11） |
+| cutoff_movement_id | INTEGER | NULLABLE | 完了の時点の `MAX(inventory_movements.id)`（無ければ 0。v11） |
 | total_cost | INTEGER | NULLABLE | 仕入原価総額（円、税理士報告用）。確定時に計算。商品別の金額を1/100円で求めて合計し、円未満を四捨五入する（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D3 / D4） |
 
 ### stocktake_items カラム定義
@@ -153,11 +156,12 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | actual_count | INTEGER | NULLABLE | 実カウント数。NULLなら未入力（D-118 の runtime からは、その明細の効く計数〈`stock_counts`〉を表示のために写した値） |
 | valuation_cost_price_centi | INTEGER | NULLABLE | 確定時の評価原価（1/100 円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
 | counted_at | TEXT | NULLABLE | カウント日時（YYYY-MM-DDTHH:MM:SS）。NULLなら未入力 |
+| valuation_quantity | INTEGER | NULLABLE | 完了で固定した評価数量 `max(写しの在庫, 0)`（v11、D-118 の b1。完了の前は NULL） |
 
 ### 設計意図
 - **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。
-- **system_stockの時点**（2026-10-16、D-118 で改めた。それまでの SPEC-STK-TIME-D8-L1 は置き換えた）: 明細を作った時点（棚卸しの開始時、または棚卸し中の商品登録時）の帳簿で、差異の計算に使わない参考値。計数の値の正本は `stock_counts`、差異の表示は [35](../function-design/35-biz-stocktake-service.md) の新契約（効く計数の値と、ADR D3 の判定表でその計数に入っている記録だけから求めた帳簿の差）。現行 build（旧本体）の明細も同じ意味で、旧本体のカウント（35 §20.4 の update_count）では更新しない。
-- **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。NULLの件数が「未入力」の件数として進捗バーに使われる
+- **system_stockの時点**（2026-10-16、D-118 で改めた。それまでの SPEC-STK-TIME-D8-L1 は置き換えた）: 明細を作った時点（棚卸しの開始時、または棚卸し中の商品登録時）の帳簿で、差異の計算に使わない参考値。計数の値の正本は `stock_counts`、差異の表示は [35](../function-design/35-biz-stocktake-service.md) の新契約（効く計数の値と、ADR D3 の判定表でその計数に入っている記録だけから求めた帳簿の差）。計数の保存（35 §20.4）でも更新しない。
+- **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。進捗バーの「未入力」は、その明細を参照する計数（`stock_counts.stocktake_item_id`）が無い明細の数（D-118 の b1。actual_count は表示用の写し）
 - **valuation_cost_price_centiの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_price_centiの値をコピーしてくる
 - **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price_centi・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
 
