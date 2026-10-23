@@ -89,6 +89,8 @@ pub(crate) fn validate_business_date(date: &str) -> Result<(), BizError> {
 /// INSERT した movement だけに、直後の求め直しの写しの値を書く（同じ要求の同じ商品の明細は途中の値）。
 ///
 /// 31-biz-inventory-service.md §12.2 と「計数の置き場と在庫の求め直しの契約」
+// 並びの鍵の業務日を持つ 8 引数（b1 で settlement_no を外した。31）
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_stock_change(
     conn: &rusqlite::Transaction<'_>,
     product_code: &str,

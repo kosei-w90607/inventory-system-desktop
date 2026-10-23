@@ -141,7 +141,7 @@ fn execute_commit(conn: &mut DbConnection, req: &CommitRequest) -> Result<Import
         // 数量 0 で金額が 0 でない行は売上だけ
         if *linked && row.quantity != 0 {
             let current = product_repo::find_by_product_code(&tx, &row.product_code)?
-                .ok_or_else(|| registration_changed())?
+                .ok_or_else(registration_changed)?
                 .product
                 .stock_quantity;
             // INV-1: 売上帳票視点→在庫視点。常に符号反転

@@ -395,11 +395,11 @@ pub(crate) fn recount_required(
         .ok_or_else(|| product_not_found(product_code))?;
     Ok(BizError::StocktakeGuard {
         message: message.to_string(),
-        recovery: StocktakeRecovery {
+        recovery: Box::new(StocktakeRecovery {
             code: StocktakeRecoveryCode::RecountRequired,
             targets: vec![recovery_target(conn, &copy, None)?],
             settlement_pending: None,
-        },
+        }),
     })
 }
 
@@ -423,7 +423,7 @@ fn save_result(
     let saved = counts
         .iter()
         .find(|count| count.id == id)
-        .ok_or_else(|| BizError::DatabaseError(DbError::NotFound))?;
+        .ok_or(BizError::DatabaseError(DbError::NotFound))?;
     let (low, high) = range_ends(derived.range);
     Ok(StockCountSaveResult {
         id,
@@ -1079,7 +1079,7 @@ pub fn complete_stocktake(
         if item.stock_recheck {
             blocks.push(CompletionBlockReason::Recheck);
         }
-        if !item.counted && !(item.is_discontinued && item.stock_quantity == 0) {
+        if !(item.counted || item.is_discontinued && item.stock_quantity == 0) {
             blocks.push(CompletionBlockReason::Uncounted);
         }
         if settlement_pending(&effective, &settlements, &mut hint) {
@@ -1103,11 +1103,11 @@ pub fn complete_stocktake(
             .any(|t| t.block_reason == Some(CompletionBlockReason::SettlementPending));
         return Err(BizError::StocktakeGuard {
             message: COMPLETION_BLOCKED_MESSAGE.to_string(),
-            recovery: StocktakeRecovery {
+            recovery: Box::new(StocktakeRecovery {
                 code: StocktakeRecoveryCode::CompletionBlocked,
                 targets,
                 settlement_pending: has_pending.then_some(hint),
-            },
+            }),
         });
     }
 
@@ -1258,7 +1258,7 @@ mod tests {
             Err(BizError::StocktakeGuard { message, recovery }) => {
                 assert_eq!(message, COMPLETION_BLOCKED_MESSAGE);
                 assert_eq!(recovery.code, StocktakeRecoveryCode::CompletionBlocked);
-                recovery
+                *recovery
             }
             other => panic!("StocktakeGuard を期待: {other:?}"),
         }

@@ -79,7 +79,8 @@ pub struct CmdError {
     /// 診断ログとの相関 ID（internal / restore_* 系のみ）
     pub error_id: Option<String>,
     /// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
-    pub stocktake_recovery: Option<crate::biz::stocktake_service::StocktakeRecovery>,
+    /// 大きいので Box（serde と specta は中身の型として書くので wire は変わらない）
+    pub stocktake_recovery: Option<Box<crate::biz::stocktake_service::StocktakeRecovery>>,
 }
 
 impl CmdError {
@@ -386,12 +387,12 @@ mod tests {
         };
         let cmd_err: CmdError = BizError::StocktakeGuard {
             message: "守りの拒否".to_string(),
-            recovery: recovery.clone(),
+            recovery: Box::new(recovery.clone()),
         }
         .into();
         assert_eq!(cmd_err.kind, CmdErrorKind::StocktakeGuard);
         assert_eq!(cmd_err.message, "守りの拒否");
-        assert_eq!(cmd_err.stocktake_recovery, Some(recovery));
+        assert_eq!(cmd_err.stocktake_recovery, Some(Box::new(recovery)));
         assert_eq!(
             serde_json::to_value(&cmd_err).unwrap()["kind"],
             serde_json::json!("stocktake_guard")

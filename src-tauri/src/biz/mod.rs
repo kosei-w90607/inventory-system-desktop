@@ -79,7 +79,8 @@ pub enum BizError {
     /// 棚卸しの守りの拒否と回復先（40。完了の拒否・在庫連動を始める拒否）
     StocktakeGuard {
         message: String,
-        recovery: stocktake_service::StocktakeRecovery,
+        /// 大きいので Box（`Result<_, BizError>` の Err を小さく保つ。wire の形は変わらない）
+        recovery: Box<stocktake_service::StocktakeRecovery>,
     },
 }
 
