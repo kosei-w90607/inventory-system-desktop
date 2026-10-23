@@ -22,6 +22,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 2. spec-check → design（2026-10-24、Writer、本 commit）: 外し方は crate の形（`src-tauri/Cargo.toml`）と gate が build する範囲を決める durable な選択で、正本が無い。decision-log に置く（`docs/DEV_WORKFLOW.md` Design artifact selection の「Durable cross-cutting choice, workflow gate change」の行）。tauri-cli と cargo の振舞いを Contract Probe P1〜P5 で確かめた。
 3. design → plan-draft（2026-10-24、Writer、本 commit）: 外し方を D-137 として decision-log に置いた（下の「本 commit で変えた正本」）。owner に聞く判断事項は無い（下の「owner の判断事項」）。未確認の外部前提は P6（実物の build で開発用の bin が bundle に入らない）で、plan-approved の前に owner の手の要らない Linux の deb の build で確かめる。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は無い（外し方は技術の選択で、製品の振舞いは変わらない）。packet と Matrix が揃い commit されている。Contract Probe P6（Linux の deb の build で開発用の bin が bundle に入らないことの実物の確かめ）は plan-approved の前に Coordinator が行う。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
+5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1 は Claude 側 fresh Opus 5.5 だけ（Codex は owner の席外しで起動できず、`docs/AGENT_OPERATING_MANUAL.md` §3.3 の Codex を使えない間の扱い〈SD 直読みの lane の round 1 の先例〉で Claude 側だけで進めた）。reject を起草役が `0c324191` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 
 本 commit で変えた正本（plan-first）:
 
@@ -317,3 +318,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+round 1（`864bd013`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 4）。Codex 側は owner の席外しで起動できず、round 2 で足す。Coordinator は全 6 件を採用した。是正は起草役の `0c324191`。
+
+- P2: `default-run` を残す（外すと `default-members` の下で `cargo run` と `npm run tauri dev` が曖昧で止まる。toy で再現、tauri-cli の `desktop.rs` の `cargo_command` は `--bin` を渡さない）。AC10 の式で新しい path を除く。
+- P3: traceability が変わらない根拠を走査の式に、AC6 の `git diff` を root 起点の形に、`docs/Plans.md` の lane の行を消して関門 5 に 1 句、dev-tools の bin が Windows の resource（manifest）を受けない件を D-137 の Compatibility に書き L3-3（観測）で `seed_demo_data` を 1 回動かす。
