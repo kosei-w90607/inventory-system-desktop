@@ -294,6 +294,12 @@ pub(crate) fn list_active_settlements(conn: &DbConnection) -> Result<Vec<Settlem
     Ok(rows)
 }
 
+/// 取り消したものを含む全ての Z004 の取込みの最大の取込みID（無ければ None。24「Z004 の取込みの最大の取込みID」）。
+/// fresh な計数と棚卸しの完了の取込みのカーソル（ADR D3・D6）
+pub(crate) fn max_csv_import_id(conn: &DbConnection) -> Result<Option<i64>, DbError> {
+    Ok(conn.query_row("SELECT MAX(id) FROM csv_imports", [], |row| row.get(0))?)
+}
+
 /// 取り消したものを含む Z004 の取込みのうち machine_no が引数と違うもの 1 件（active を優先し、
 /// 同じ状態の中では import ID の最大）。無ければ None（24。BIZ-03 の順 2）
 pub(crate) fn find_machine_no_mismatch(

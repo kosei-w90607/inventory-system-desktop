@@ -114,8 +114,11 @@ pub(crate) struct StockCountRow {
     /// `true` なら fresh（「入れ直す」）、`false` なら default（「数を保存」「0 にする」）
     pub fresh: bool,
     pub business_date: String,
-    pub settlement_no: Option<i64>,
+    // 保存した settlement_no（ADR D1 の鍵の n）は判定に使わないので読まない（取り違えを型で作れないようにする）
     pub seen_movement_id: Option<i64>,
+    /// fresh だけ。保存の時点の `MAX(csv_imports.id)`（取り消したものを含む。無ければ NULL）。
+    /// ADR D3 の判定の n はこれ以下の取込みID を持つ active な取込みから求める
+    pub seen_import_id: Option<i64>,
 }
 
 /// 求め直しが読む有効な movement の 1 行（21 `list_ledger_movements_for_product`）
@@ -139,10 +142,12 @@ pub(crate) struct NewStockCount {
     /// `true` なら fresh（「入れ直す」）
     pub fresh: bool,
     pub business_date: String,
-    /// fresh だけ。保存の時点の active な Z004 の最大の精算回数（取込みが無ければ NULL）
+    /// fresh だけ。保存の時点の active な Z004 の最大の精算回数（取込みが無ければ NULL。ADR D1 の鍵の n）
     pub settlement_no: Option<i64>,
     /// fresh だけ。保存の時点の `MAX(inventory_movements.id)`（無ければ 0）
     pub seen_movement_id: Option<i64>,
+    /// fresh だけ。保存の時点の `MAX(csv_imports.id)`（取り消したものを含む。無ければ NULL。24）
+    pub seen_import_id: Option<i64>,
     pub stocktake_item_id: Option<i64>,
 }
 
@@ -238,7 +243,7 @@ pub(crate) fn list_stock_counts_for_product(
     product_code: &str,
 ) -> Result<Vec<StockCountRow>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, count_value, count_kind, business_date, settlement_no, seen_movement_id
+        "SELECT id, count_value, count_kind, business_date, seen_movement_id, seen_import_id
          FROM stock_counts WHERE product_code = ?1 ORDER BY id",
     )?;
     let rows = stmt
@@ -248,8 +253,8 @@ pub(crate) fn list_stock_counts_for_product(
                 count_value: row.get(1)?,
                 fresh: row.get::<_, String>(2)? == "fresh",
                 business_date: row.get(3)?,
-                settlement_no: row.get(4)?,
-                seen_movement_id: row.get(5)?,
+                seen_movement_id: row.get(4)?,
+                seen_import_id: row.get(5)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -289,8 +294,8 @@ pub(crate) fn insert_stock_count(
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
         "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
-             settlement_no, seen_movement_id, stocktake_item_id, counted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+             settlement_no, seen_movement_id, seen_import_id, stocktake_item_id, counted_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         rusqlite::params![
             count.product_code,
             count.count_value,
@@ -298,6 +303,7 @@ pub(crate) fn insert_stock_count(
             count.business_date,
             count.settlement_no,
             count.seen_movement_id,
+            count.seen_import_id,
             count.stocktake_item_id,
             now,
         ],

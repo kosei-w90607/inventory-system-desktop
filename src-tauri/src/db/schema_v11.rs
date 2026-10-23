@@ -2,7 +2,7 @@
 //!
 //! docs/function-design/22-mnt-migration.md §20 / MNT-03-D18 に基づく実装。
 //! `inventory_movements` を作り直して Z004 の movement と phase を結ぶ CHECK を足し、
-//! `csv_imports`・`sale_records`・`stocktake_items`・`stocktakes` に列を足す。
+//! `csv_imports`・`sale_records`・`stocktake_items`・`stocktakes`・`stock_counts` に列を足す。
 //! どの表も `inventory_movements` を外部キーで参照しないので `foreign_keys` は変えない。
 //! 1 つの TX で、止まる検査は全て書込みの前に置く。
 
@@ -50,15 +50,17 @@ CREATE INDEX idx_inventory_movements_ledger ON inventory_movements(product_code,
     )
 }
 
-/// 手順 5 の列の追加（行の無い表なので値を持つことは CHECK で書く。Contract Probe P1・P2）
+/// 手順 5 の列の追加（行の無い表なので値を持つことは CHECK で書く。Contract Probe P1・P2）。
+/// `stock_counts.seen_import_id` は行のある表にも足せる（既存の行は NULL = 保存の時点に取込みが無かった。P4）
 const ADD_COLUMNS_SQL: &str = "
 ALTER TABLE csv_imports ADD COLUMN machine_no TEXT CHECK(machine_no IS NOT NULL AND machine_no <> '');
 ALTER TABLE csv_imports ADD COLUMN settlement_no INTEGER CHECK(settlement_no IS NOT NULL AND settlement_no >= 0);
 ALTER TABLE sale_records ADD COLUMN stock_linked INTEGER NOT NULL DEFAULT 0 CHECK(stock_linked IN (0,1));
 ALTER TABLE stocktake_items ADD COLUMN valuation_quantity INTEGER;
-ALTER TABLE stocktakes ADD COLUMN cutoff_settlement_no INTEGER;
+ALTER TABLE stocktakes ADD COLUMN cutoff_import_id INTEGER;
 ALTER TABLE stocktakes ADD COLUMN cutoff_count_id INTEGER;
-ALTER TABLE stocktakes ADD COLUMN cutoff_movement_id INTEGER;";
+ALTER TABLE stocktakes ADD COLUMN cutoff_movement_id INTEGER;
+ALTER TABLE stock_counts ADD COLUMN seen_import_id INTEGER CHECK(seen_import_id IS NULL OR (count_kind = 'fresh' AND seen_import_id >= 1));";
 
 /// v11 マイグレーション（MNT-03-D18 の vZ）
 pub(crate) fn apply_v11_z004_settlement_key(
@@ -379,7 +381,7 @@ mod tests {
             last("stocktakes", 3),
             vec![
                 vec![
-                    text("cutoff_settlement_no"),
+                    text("cutoff_import_id"),
                     text("INTEGER"),
                     Value::Integer(0),
                     Value::Null
@@ -397,6 +399,15 @@ mod tests {
                     Value::Null
                 ],
             ]
+        );
+        assert_eq!(
+            last("stock_counts", 1),
+            vec![vec![
+                text("seen_import_id"),
+                text("INTEGER"),
+                Value::Integer(0),
+                Value::Null
+            ]]
         );
         assert_eq!(column_names(&conn, "inventory_movements").len(), 13);
         let sql: String = conn
@@ -637,7 +648,7 @@ mod tests {
             .execute("UPDATE sale_records SET stock_linked = 1", [])
             .is_ok());
         conn.execute(
-            "INSERT INTO stocktakes (started_at, status, cutoff_settlement_no, cutoff_count_id, cutoff_movement_id)
+            "INSERT INTO stocktakes (started_at, status, cutoff_import_id, cutoff_count_id, cutoff_movement_id)
              VALUES ('2026-04-01T09:00:00', 'in_progress', NULL, NULL, NULL)",
             [],
         )
@@ -649,10 +660,53 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "UPDATE stocktakes SET cutoff_settlement_no = 3, cutoff_count_id = 4, cutoff_movement_id = 5",
+            "UPDATE stocktakes SET cutoff_import_id = 3, cutoff_count_id = 4, cutoff_movement_id = 5",
             [],
         )
         .unwrap();
+
+        // stock_counts.seen_import_id（Codex の closure の Gated Amendment。packet の Contract Probe P4）:
+        // 直前の版で fresh と default の行がある表にも足せて、既存の行は NULL
+        let (_dir, conn) = setup_before_vz();
+        seed_product(&conn, "VZ-2");
+        conn.execute_batch(
+            "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
+                 seen_movement_id, counted_at)
+             VALUES ('VZ-2', 5, 'fresh', '2026-04-01', 0, '2026-04-01T10:00:00'),
+                    ('VZ-2', 4, 'default', '2026-04-01', NULL, '2026-04-01T11:00:00');",
+        )
+        .unwrap();
+        migrate_up_to(&conn, VZ_VERSION).unwrap();
+        assert_eq!(
+            dump(
+                &conn,
+                "SELECT count_kind, seen_import_id FROM stock_counts ORDER BY id"
+            ),
+            vec![
+                vec![Value::Text("fresh".into()), Value::Null],
+                vec![Value::Text("default".into()), Value::Null],
+            ]
+        );
+        // fresh の NULL と 1 以上を受け、default の行の値と 0 を拒む
+        let insert = |kind: &str, seen_import_id: Option<i64>| {
+            conn.execute(
+                "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
+                     seen_movement_id, seen_import_id, counted_at)
+                 VALUES ('VZ-2', 1, ?1, '2026-04-02', CASE ?1 WHEN 'fresh' THEN 0 END, ?2,
+                         '2026-04-02T10:00:00')",
+                rusqlite::params![kind, seen_import_id],
+            )
+        };
+        assert!(insert("fresh", None).is_ok());
+        assert!(insert("fresh", Some(1)).is_ok());
+        assert!(insert("default", None).is_ok());
+        for (kind, value) in [("fresh", 0), ("default", 1)] {
+            let error = insert(kind, Some(value)).unwrap_err().to_string();
+            assert!(
+                error.contains("CHECK constraint failed"),
+                "{kind} {value}: {error}"
+            );
+        }
     }
 
     #[test]

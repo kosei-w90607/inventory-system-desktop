@@ -107,7 +107,8 @@ pub struct StockCopyRow {
 /// 完了の時点のカーソル（tracking。完了していなければ全て None）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct StocktakeCutoff {
-    pub settlement_no: Option<i64>,
+    /// 完了の時点の `MAX(csv_imports.id)`（取り消したものを含む。無ければ NULL。ADR D6）
+    pub import_id: Option<i64>,
     pub count_id: Option<i64>,
     pub movement_id: Option<i64>,
 }
@@ -276,12 +277,12 @@ pub fn complete_stocktake(
 ) -> Result<(), DbError> {
     let affected = conn.execute(
         "UPDATE stocktakes SET status = 'completed', total_cost = ?1, completed_at = ?2,
-             cutoff_settlement_no = ?3, cutoff_count_id = ?4, cutoff_movement_id = ?5
+             cutoff_import_id = ?3, cutoff_count_id = ?4, cutoff_movement_id = ?5
          WHERE id = ?6 AND status = 'in_progress'",
         rusqlite::params![
             total_cost,
             completed_at,
-            cutoff.settlement_no,
+            cutoff.import_id,
             cutoff.count_id,
             cutoff.movement_id,
             id
@@ -580,12 +581,12 @@ pub fn get_stocktake_record_detail(
         |row| row.get(0),
     )?;
     let cutoff = conn.query_row(
-        "SELECT cutoff_settlement_no, cutoff_count_id, cutoff_movement_id
+        "SELECT cutoff_import_id, cutoff_count_id, cutoff_movement_id
          FROM stocktakes WHERE id = ?1",
         [stocktake_id],
         |row| {
             Ok(StocktakeCutoff {
-                settlement_no: row.get(0)?,
+                import_id: row.get(0)?,
                 count_id: row.get(1)?,
                 movement_id: row.get(2)?,
             })
@@ -1131,7 +1132,7 @@ mod tests {
         let id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
 
         let cutoff = StocktakeCutoff {
-            settlement_no: Some(7),
+            import_id: Some(7),
             count_id: None,
             movement_id: Some(0),
         };

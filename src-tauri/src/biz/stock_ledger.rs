@@ -69,14 +69,27 @@ pub(crate) enum Window {
     NotIncluded,
 }
 
-/// fresh な計数の n（精算回数 n の active な取込みがあるときだけ使う。無ければ NULL とみなす。ADR D3）
+/// 取込みのカーソル以下の取込みID を持つ active な取込みの最大の精算回数（ADR D3 の判定の n と、
+/// D6 の完了の時点の精算の n）。カーソルが NULL か、その中に active な取込みが無ければ None。
+/// 取込みID は使い回されないので、取消の後に同じ番号を使う取込みを数えない
+pub(crate) fn settlement_no_within(
+    settlements: &[SettlementRow],
+    import_cursor: Option<i64>,
+) -> Option<i64> {
+    let cursor = import_cursor?;
+    settlements
+        .iter()
+        .filter(|s| s.import_id <= cursor)
+        .map(|s| s.settlement_no)
+        .max()
+}
+
+/// fresh な計数の判定の n（ADR D3）。保存した `settlement_no`（D1 の鍵の n）は使わない
 pub(crate) fn usable_cursor(count: &StockCountRow, settlements: &[SettlementRow]) -> Option<i64> {
     if !count.fresh {
         return None;
     }
-    count
-        .settlement_no
-        .filter(|n| settlements.iter().any(|s| s.settlement_no == *n))
+    settlement_no_within(settlements, count.seen_import_id)
 }
 
 fn by_date(date: &str, count_date: &str) -> std::cmp::Ordering {
@@ -483,20 +496,23 @@ pub(crate) mod settlement_support {
         .unwrap();
     }
 
-    /// 精算のカーソル n を持つ fresh な計数を直に入れる
+    /// fresh な計数を直に入れる。カーソルは保存と同じく今の DB から読む（active な最大の精算回数〈鍵の n〉、
+    /// `MAX(inventory_movements.id)`、取り消したものを含む `MAX(csv_imports.id)`）
     pub(crate) fn insert_fresh_count(
         conn: &DbConnection,
         code: &str,
         value: i64,
         today: &str,
-        settlement_no: Option<i64>,
     ) -> i64 {
         conn.execute(
             "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
-                 settlement_no, seen_movement_id, counted_at)
-             VALUES (?1, ?2, 'fresh', ?3, ?4,
-                     (SELECT COALESCE(MAX(id), 0) FROM inventory_movements), ?3 || 'T10:00:00')",
-            rusqlite::params![code, value, today, settlement_no],
+                 settlement_no, seen_movement_id, seen_import_id, counted_at)
+             VALUES (?1, ?2, 'fresh', ?3,
+                     (SELECT MAX(settlement_no) FROM csv_imports
+                      WHERE status IN ('completed','completed_partial')),
+                     (SELECT COALESCE(MAX(id), 0) FROM inventory_movements),
+                     (SELECT MAX(id) FROM csv_imports), ?3 || 'T10:00:00')",
+            rusqlite::params![code, value, today],
         )
         .unwrap();
         conn.last_insert_rowid()
@@ -924,7 +940,7 @@ mod tests {
         let s2 = settlement(&conn, 2, D);
         z004_movement(&conn, "SL3", -1, s1);
         z004_movement(&conn, "SL3", -2, s2);
-        insert_fresh_count(&conn, "SL3", 10, D, Some(2));
+        insert_fresh_count(&conn, "SL3", 10, D);
         let s3 = settlement(&conn, 3, D);
         let s4 = settlement(&conn, 4, "2026-05-11");
         z004_movement(&conn, "SL3", -4, s3);
@@ -939,7 +955,7 @@ mod tests {
         seed_product(&conn, "SL3B");
         let s1 = settlement(&conn, 1, "2026-05-09");
         z004_movement(&conn, "SL3B", -1, s1);
-        insert_fresh_count(&conn, "SL3B", 10, D, Some(1));
+        insert_fresh_count(&conn, "SL3B", 10, D);
         let s2 = settlement(&conn, 2, "2026-05-12");
         let s3 = settlement(&conn, 3, "2026-05-13");
         z004_movement(&conn, "SL3B", -2, s2);
@@ -955,7 +971,7 @@ mod tests {
         // REQ-205 / SPEC-STK-CNT-D3（n が NULL なら全ての精算を日付で判定。精算 0 は入らない）/ b1 Matrix L4
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "SL4");
-        insert_fresh_count(&conn, "SL4", 10, D, None);
+        insert_fresh_count(&conn, "SL4", 10, D);
         let s0 = settlement(&conn, 0, "2026-05-11");
         z004_movement(&conn, "SL4", -3, s0);
         assert_eq!(
@@ -1113,25 +1129,47 @@ mod tests {
     }
 
     #[test]
-    fn test_stock_ledger_req205_fresh_cursor_requires_active_settlement() {
-        // REQ-205 / SPEC-STK-CNT-D3（fresh な計数の n は n の active な取込みがあるときだけ使う）/ b1 Matrix L13
+    fn test_stock_ledger_req205_fresh_settlement_cursor_uses_import_ids() {
+        // REQ-205 / SPEC-STK-CNT-D3・D7（fresh な計数の判定の n は、取込みのカーソル c 以下の取込みID を持つ
+        // 今 active な取込みの最大の精算回数。Codex の closure の Gated Amendment）/ b1 Matrix L13
+        const T: &str = D;
+        // (a) Codex の反例: 精算 1（T−1）→ 入れ直す → 取消 → 新しい精算 1（T+1）
         let (_dir, conn) = setup_test_db();
-        seed_product(&conn, "SL13");
-        let s99 = settlement(&conn, 99, D);
-        z004_movement(&conn, "SL13", -1, s99);
-        let s100 = settlement(&conn, 100, D);
-        insert_fresh_count(&conn, "SL13", 5, D, Some(100));
-        // 対照: n の取込みが active な間は 99 が入る
-        assert_eq!(derive_stock(&conn, "SL13").unwrap(), derived(5, None, &[]));
-        // n を取り消すと n を NULL とみなし、99 は日付 T で決まらない
-        roll_back(&conn, s100);
+        seed_product(&conn, "SL13A");
+        let i1 = settlement(&conn, 1, "2026-05-09");
+        insert_fresh_count(&conn, "SL13A", 5, T);
+        roll_back(&conn, i1);
+        let i2 = settlement(&conn, 1, "2026-05-11");
+        z004_movement(&conn, "SL13A", -1, i2);
+        // 判定の n は NULL（c 以下の active な取込みが無い）。i2 は T より後の最初の 1 本で決まらない
         assert_eq!(
-            derive_stock(&conn, "SL13").unwrap(),
+            derive_stock(&conn, "SL13A").unwrap(),
             derived(4, Some((4, 5)), &[US])
         );
-        // 取り込み直すと n をまた使う
-        settlement(&conn, 100, D);
-        assert_eq!(derive_stock(&conn, "SL13").unwrap(), derived(5, None, &[]));
+
+        // (b) 取消と取り込み直し。精算回数（99・100）と取込みID（1〜3）を離しておく
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SL13B");
+        let i1 = settlement(&conn, 99, T);
+        z004_movement(&conn, "SL13B", -1, i1);
+        let i2 = settlement(&conn, 100, T);
+        insert_fresh_count(&conn, "SL13B", 5, T);
+        // 対照: 取消の前は 99・100 とも入る
+        assert_eq!(derive_stock(&conn, "SL13B").unwrap(), derived(5, None, &[]));
+        // 100 を取り消すと判定の n は c 以下に残る 99 で、99 は入ったまま
+        roll_back(&conn, i2);
+        assert_eq!(derive_stock(&conn, "SL13B").unwrap(), derived(5, None, &[]));
+        // 正しい版の 100 は保存の後の取込みなので判定の n にならず、精算日 T で決まらない（過剰側。TD-400）
+        let i3 = settlement(&conn, 100, T);
+        z004_movement(&conn, "SL13B", -1, i3);
+        assert_eq!((i1, i2, i3), (1, 2, 3));
+        assert_eq!(
+            derive_stock(&conn, "SL13B").unwrap(),
+            derived(4, Some((4, 5)), &[US])
+        );
+        // 入れ直すと解ける
+        insert_fresh_count(&conn, "SL13B", 5, T);
+        assert_eq!(derive_stock(&conn, "SL13B").unwrap(), derived(5, None, &[]));
     }
 
     #[test]

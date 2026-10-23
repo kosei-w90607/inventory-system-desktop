@@ -10,8 +10,8 @@
 use crate::biz::csv_import_service::{missing_ranges, SettlementGap};
 use crate::biz::inventory_service::validate_business_date;
 use crate::biz::stock_ledger::{
-    self, is_after, read_ledger, recompute_stock, representative_count, usable_cursor,
-    DerivedStock, Ledger, RecheckReason,
+    self, is_after, read_ledger, recompute_stock, representative_count, settlement_no_within,
+    usable_cursor, DerivedStock, Ledger, RecheckReason,
 };
 use crate::biz::unit_amount::{
     check_safe_integer, cost_line_centi, cost_total_yen, price_basis_quantity,
@@ -560,12 +560,12 @@ pub fn get_last_completed_stocktake(
 }
 
 /// 完了の時点の入力に絞る（計数・movement・精算をカーソル以下に。`after` があれば、完了の後に入れた
-/// 完了の前の入出庫・初期在庫・精算の記録を足す。計数はカーソル以下だけ。35「完了」）
+/// 完了の前の入出庫・初期在庫・精算の記録を足す。計数はカーソル以下だけ。35「完了」）。
+/// 精算は完了の時点の精算の n（取込みのカーソル以下の今 active な取込みの最大の精算回数。ADR D6）以下で決める
 fn ledger_at_cutoff(ledger: &Ledger, cutoff: StocktakeCutoff, after: Option<&str>) -> Ledger {
+    let settlement_n = settlement_no_within(&ledger.settlements, cutoff.import_id);
     let settlement_kept = |settlement: &SettlementRow| {
-        cutoff
-            .settlement_no
-            .is_some_and(|no| settlement.settlement_no <= no)
+        settlement_n.is_some_and(|no| settlement.settlement_no <= no)
             || after.is_some_and(|date| settlement.settlement_date.as_str() < date)
     };
     let settlements: Vec<SettlementRow> = ledger
@@ -817,16 +817,17 @@ pub fn save_stock_count(
             ));
         }
     }
-    // fresh のカーソルは INSERT と同じ TX で読む（ADR D3・D9）
-    let (settlement_no, seen_movement_id) = if req.fresh {
+    // fresh のカーソルは INSERT と同じ TX で読む（ADR D3・D9。精算回数は鍵の n、判定の n は取込みのカーソルから）
+    let (settlement_no, seen_movement_id, seen_import_id) = if req.fresh {
         (
             sales_repo::list_active_settlements(&tx)?
                 .last()
                 .map(|settlement| settlement.settlement_no),
             Some(inventory_repo::max_movement_id(&tx)?),
+            sales_repo::max_csv_import_id(&tx)?,
         )
     } else {
-        (None, None)
+        (None, None, None)
     };
     let id = inventory_repo::insert_stock_count(
         &tx,
@@ -837,6 +838,7 @@ pub fn save_stock_count(
             business_date: req.business_date.clone(),
             settlement_no,
             seen_movement_id,
+            seen_import_id,
             stocktake_item_id: req.stocktake_item_id,
         },
     )?;
@@ -866,8 +868,8 @@ pub fn preview_stock_count_placement(
         count_value: 0,
         fresh: false,
         business_date: business_date.to_string(),
-        settlement_no: None,
         seen_movement_id: None,
+        seen_import_id: None,
     };
     let later_count_exists = ledger.counts.iter().any(|count| is_after(count, &planned));
     let derived = stock_ledger::derive_ledger(&ledger)?;
@@ -920,6 +922,7 @@ pub fn zero_uncounted_items(
                 business_date: business_date.to_string(),
                 settlement_no: None,
                 seen_movement_id: None,
+                seen_import_id: None,
                 stocktake_item_id: Some(item_id),
             },
         )?;
@@ -1132,7 +1135,7 @@ pub fn complete_stocktake(
 
     // 3. カーソルと header（完了日は CMD が渡す今日）
     let cutoff = StocktakeCutoff {
-        settlement_no: settlements.last().map(|s| s.settlement_no),
+        import_id: sales_repo::max_csv_import_id(&tx)?,
         count_id: inventory_repo::max_stock_count_id(&tx)?,
         movement_id: Some(inventory_repo::max_movement_id(&tx)?),
     };
@@ -2003,14 +2006,17 @@ mod tests {
 
     #[test]
     fn test_save_stock_count_req205_fresh_stores_cursor_in_same_tx() {
-        // REQ-205 / SPEC-STK-CNT-D3・D9 / Matrix C2: fresh は今日だけ、カーソルは最大の精算回数（無ければ NULL）と MAX(id)
+        // REQ-205 / SPEC-STK-CNT-D3・D9 / Matrix C2: fresh は今日だけ、カーソルは最大の精算回数（無ければ NULL。
+        // 鍵の n）と MAX(id) と取り消したものを含む MAX(csv_imports.id)（無ければ NULL。Codex の closure の Gated Amendment）
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "C2-A", 10);
-        let cursor = |conn: &DbConnection, id: i64| -> (String, Option<i64>, Option<i64>) {
+        type Cursor = (String, Option<i64>, Option<i64>, Option<i64>);
+        let cursor = |conn: &DbConnection, id: i64| -> Cursor {
             conn.query_row(
-                "SELECT count_kind, settlement_no, seen_movement_id FROM stock_counts WHERE id = ?1",
+                "SELECT count_kind, settlement_no, seen_movement_id, seen_import_id
+                 FROM stock_counts WHERE id = ?1",
                 [id],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
             )
             .unwrap()
         };
@@ -2022,22 +2028,42 @@ mod tests {
         assert_eq!(first.count_kind, StockCountKind::Fresh);
         assert_eq!(
             cursor(&conn, first.id),
-            ("fresh".into(), None, Some(max_id))
+            ("fresh".into(), None, Some(max_id), None)
         );
         // 取込みと movement のある DB
         settlement(&conn, 7, D1);
         let moved = receive(&conn, "C2-A", 1, D1);
-        settlement(&conn, 3, D2);
+        let last_import = settlement(&conn, 3, D2);
         let second = save(&mut conn, "C2-A", 9, D, true, None).unwrap();
         assert_eq!(
             cursor(&conn, second.id),
-            ("fresh".into(), Some(7), Some(moved))
+            ("fresh".into(), Some(7), Some(moved), Some(last_import))
         );
         // 今日以外の日付は拒む
         assert!(matches!(
             save(&mut conn, "C2-A", 9, D1, true, None),
             Err(BizError::ValidationFailed(_))
         ));
+
+        // 列: 精算 100 = I1 → 99（A × −1）= I2 → fresh（c = I2）→ 100 を取消で、判定の n = 99（99 は入る）
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "C2-B", 10);
+        let i1 = settlement(&conn, 100, D);
+        let i2 = settlement(&conn, 99, D);
+        let sold = z004_movement(&conn, "C2-B", -1, i2);
+        let saved = save(&mut conn, "C2-B", 9, D, true, None).unwrap();
+        assert_eq!(
+            cursor(&conn, saved.id),
+            ("fresh".into(), Some(100), Some(sold), Some(i2))
+        );
+        roll_back(&conn, i1);
+        recompute(&mut conn, "C2-B");
+        assert_eq!(copy(&conn, "C2-B"), (9, false, None, None));
+        // 最大の id の取込みが取り消されていても、取込みのカーソルはその id（取り消したものを含む MAX）
+        let i3 = settlement(&conn, 101, D);
+        roll_back(&conn, i3);
+        let again = save(&mut conn, "C2-B", 9, D, true, None).unwrap();
+        assert_eq!(cursor(&conn, again.id).3, Some(i3));
     }
 
     #[test]
@@ -2401,6 +2427,9 @@ mod tests {
         seed_product(&conn, "K1-A", 10);
         seed_product(&conn, "K1-B", 5);
         let st_id = start_and_count_all(&mut conn, &[("K1-A", 8), ("K1-B", 5)]);
+        // 取込みのカーソルは取り消したものを含む MAX(csv_imports.id)（最大の精算回数 2 と値を離す）
+        let rolled = settlement(&conn, 9, D2);
+        roll_back(&conn, rolled);
         // 写しをわざと記録から食い違わせる（求め直すと 8 に戻る）
         conn.execute(
             "UPDATE products SET stock_quantity = 99 WHERE product_code = 'K1-A'",
@@ -2438,9 +2467,15 @@ mod tests {
             valuations,
             vec![("K1-A".into(), 99, 300), ("K1-B".into(), 5, 300)]
         );
-        let header: (String, Option<i64>, Option<i64>, Option<i64>, Option<String>) = conn
+        let header: (
+            String,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<String>,
+        ) = conn
             .query_row(
-                "SELECT status, cutoff_settlement_no, cutoff_count_id, cutoff_movement_id, completed_at
+                "SELECT status, cutoff_import_id, cutoff_count_id, cutoff_movement_id, completed_at
                  FROM stocktakes WHERE id = ?1",
                 [st_id],
                 |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
@@ -2448,7 +2483,12 @@ mod tests {
             .unwrap();
         assert_eq!(
             (&header.0[..], header.1, header.2, header.3),
-            ("completed", Some(2), Some(max_count), Some(max_movement))
+            (
+                "completed",
+                Some(rolled),
+                Some(max_count),
+                Some(max_movement)
+            )
         );
         assert!(header.4.unwrap().starts_with(D), "完了日は CMD が渡す今日");
 
@@ -2459,7 +2499,7 @@ mod tests {
         complete(&mut conn, st_id).unwrap();
         let cursors: (Option<i64>, Option<i64>, Option<i64>) = conn
             .query_row(
-                "SELECT cutoff_settlement_no, cutoff_count_id, cutoff_movement_id FROM stocktakes WHERE id = ?1",
+                "SELECT cutoff_import_id, cutoff_count_id, cutoff_movement_id FROM stocktakes WHERE id = ?1",
                 [st_id],
                 |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
@@ -2548,37 +2588,58 @@ mod tests {
     }
 
     #[test]
-    fn test_complete_stocktake_req205_settlement_pending_fresh_cursor_requires_active_settlement() {
-        // REQ-205 / SPEC-STK-CNT-D3・D6（完了の (iii) の n は n の active な取込みがあるときだけ）/ Matrix K2 の列
+    fn test_complete_stocktake_req205_settlement_pending_fresh_cursor_uses_import_ids() {
+        // REQ-205 / SPEC-STK-CNT-D3・D6・D7（完了の (iii) の判定の n は取込みのカーソルから求める。
+        // Codex の closure の Gated Amendment）/ Matrix K2 の列
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "K2N-A", 10);
         let st_id = start_stocktake(&mut conn).unwrap().stocktake_id;
         let item = item_id(&conn, st_id, "K2N-A");
-        settlement(&conn, 99, D);
-        let s100 = settlement(&conn, 100, D);
+        let i1 = settlement(&conn, 100, D);
         save(&mut conn, "K2N-A", 10, D, true, Some(item)).unwrap();
-        roll_back(&conn, s100);
-        recompute(&mut conn, "K2N-A");
-        let recovery = guard(complete(&mut conn, st_id));
-        assert_eq!(
-            recovery
-                .targets
-                .iter()
-                .map(|t| t.block_reason)
-                .collect::<Vec<_>>(),
-            vec![Some(CompletionBlockReason::SettlementPending)],
-            "A は 99 に行が無いので要再確認にならない"
-        );
-        assert_eq!(
-            pending_hint(&recovery),
-            SettlementPendingHint {
+        let pending = |conn: &DbConnection| -> bool {
+            let ledger = read_ledger(conn, "K2N-A").unwrap();
+            let (effective, _) = stock_ledger::effective_counts(&ledger.counts).unwrap();
+            let mut hint = SettlementPendingHint {
                 missing: vec![],
                 on_or_after: None,
-                before: Some(D.into())
-            }
-        );
-        // 取り込み直すと n をまた使い (iii) を見ない
+                before: None,
+            };
+            settlement_pending(&effective, &ledger.settlements, &mut hint)
+        };
+        // 99 を後追いで取り込んでも判定の n = 100 なので (iii) は出ない
+        settlement(&conn, 99, D);
+        assert!(!pending(&conn));
+        // 100 を取り消すと判定の n は NULL（99 は保存の後の取込み）で (iii)
+        roll_back(&conn, i1);
+        recompute(&mut conn, "K2N-A");
+        let expect_pending = |conn: &mut DbConnection| {
+            let recovery = guard(complete(conn, st_id));
+            assert_eq!(
+                recovery
+                    .targets
+                    .iter()
+                    .map(|t| t.block_reason)
+                    .collect::<Vec<_>>(),
+                vec![Some(CompletionBlockReason::SettlementPending)],
+                "A は 99・100 に行が無いので要再確認にならない"
+            );
+            assert_eq!(
+                pending_hint(&recovery),
+                SettlementPendingHint {
+                    missing: vec![],
+                    on_or_after: None,
+                    before: Some(D.into())
+                }
+            );
+        };
+        expect_pending(&mut conn);
+        // 100 を取り込み直しても、取り込み直した取込みは保存の後なので (iii) が残る
         settlement(&conn, 100, D);
+        recompute(&mut conn, "K2N-A");
+        expect_pending(&mut conn);
+        // 入れ直すと判定の n = 100 になり完了できる
+        save(&mut conn, "K2N-A", 10, D, true, Some(item)).unwrap();
         complete(&mut conn, st_id).unwrap();
     }
 
@@ -2829,6 +2890,81 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.items[0].item_count, 3);
         assert_eq!(record(&conn, st_id).item_count, 3);
+    }
+
+    #[test]
+    fn test_get_stocktake_record_req206_after_completion_includes_backfilled_settlement() {
+        // REQ-206 / SPEC-STK-CNT-D6（完了の後に埋めた欠けは、完了の時点の精算の n 以下なら範囲に入る。
+        // 精算日を完了日と同じにして「精算日 < 完了日」の項では入らないようにする）/ Matrix R2 (e)
+        const D3: &str = "2026-10-18";
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "R2E-C", 10);
+        let st_id = start_stocktake(&mut conn).unwrap().stocktake_id;
+        let item = item_id(&conn, st_id, "R2E-C");
+        save(&mut conn, "R2E-C", 5, D, false, Some(item)).unwrap();
+        for (no, date) in [(4, D1), (5, D), (6, D_NEXT), (8, D3)] {
+            settlement(&conn, no, date);
+        }
+        recompute(&mut conn, "R2E-C");
+        complete_stocktake(
+            &mut conn,
+            &CompleteStocktakeRequest {
+                stocktake_id: st_id,
+                today: D3.to_string(),
+            },
+        )
+        .unwrap();
+        // 欠けた 7（精算日 D3、C × 1）を後追いで取り込む。7 は A1 で計数に入らない
+        let s7 = settlement(&conn, 7, D3);
+        z004_movement(&conn, "R2E-C", -1, s7);
+        assert_eq!(
+            record(&conn, st_id).after_completion.unwrap(),
+            AfterCompletionDiff {
+                confirmed: vec![AfterCompletionDiffItem {
+                    product_code: "R2E-C".into(),
+                    product_name: "商品R2E-C".into(),
+                    stock_unit: ProductStockUnit::Pcs,
+                    valuation_quantity: 5,
+                    stock_at_completion: 4,
+                    stock_at_completion_low: None,
+                    stock_at_completion_high: None,
+                    valuation_diff_yen: "-3".into(),
+                    valuation_diff_low_yen: None,
+                    valuation_diff_high_yen: None,
+                }],
+                recheck: vec![],
+                confirmed_total_yen: "-3".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_get_stocktake_record_req206_after_completion_ignores_reused_settlement_numbers() {
+        // REQ-206 / SPEC-STK-CNT-D6（完了の後の差の範囲の精算は完了の時点の精算の n で決め、取消の後に
+        // 同じ番号を使う取込みを数えない。Codex の closure の Gated Amendment）/ Matrix R6
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "R6-A", 10);
+        let st_id = start_stocktake(&mut conn).unwrap().stocktake_id;
+        let item = item_id(&conn, st_id, "R6-A");
+        save(&mut conn, "R6-A", 5, D, false, Some(item)).unwrap();
+        let i1 = settlement(&conn, 1, D1);
+        let i2 = settlement(&conn, 2, D);
+        complete(&mut conn, st_id).unwrap();
+        // 完了の前の取込みを全て取り消し、初期化の後の新しい系列の精算 1・2 を取り込む
+        roll_back(&conn, i1);
+        roll_back(&conn, i2);
+        let i3 = settlement(&conn, 1, D_NEXT);
+        z004_movement(&conn, "R6-A", -1, i3);
+        let i4 = settlement(&conn, 2, "2026-10-17");
+        z004_movement(&conn, "R6-A", -1, i4);
+        assert_eq!(
+            record(&conn, st_id).after_completion.unwrap(),
+            AfterCompletionDiff {
+                confirmed: vec![],
+                recheck: vec![],
+                confirmed_total_yen: "0".into(),
+            }
+        );
     }
 
     #[test]

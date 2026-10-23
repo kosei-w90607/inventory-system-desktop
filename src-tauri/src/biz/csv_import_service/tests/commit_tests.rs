@@ -702,8 +702,9 @@ fn test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlemen
 
 #[test]
 fn test_commit_req401_settlement_no_reset_after_rollback_falls_back_to_dates() {
-    // REQ-401 / REQ-205 / ADR D3・D7（Matrix Z23。round 3 の是正）: 取消で n の active な取込みが無くなった後に
-    // 番号の戻った精算 1 を確定すると、n を NULL とみなし日付で判定して要再確認にする
+    // REQ-401 / REQ-205 / ADR D3・D7（Matrix Z23。round 3 の是正）: 取消で判定の n の取込みが無くなった後に
+    // 番号の戻った精算 1 を確定すると、判定の n は NULL（取込みのカーソル以下の active な取込みが無い。
+    // Codex の closure の Gated Amendment）で、日付で判定して要再確認にする
     let today = "2026-05-10";
     let (_dir, mut conn) = setup_test_db();
     create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
@@ -734,4 +735,82 @@ fn test_commit_req401_settlement_no_reset_after_rollback_falls_back_to_dates() {
         result.recheck_targets[0].recount_reasons,
         vec![RecountReason::UndeterminedSettlement]
     );
+}
+
+#[test]
+fn test_commit_req401_reused_settlement_no_after_rollback_falls_back_to_dates() {
+    // REQ-401 / REQ-205 / ADR D3・D6・D7（Matrix Z24。Codex の closure の P1 の反例、Gated Amendment）:
+    // 精算 1 の後に入れ直し、精算 1 を取り消して同じ番号の新しい精算 1 を確定すると、番号の active な取込みが
+    // あっても判定の n は取込みのカーソルから NULL になり、日付で判定して要再確認にする。完了も拒む
+    use crate::biz::stocktake_service::{
+        complete_stocktake, start_stocktake, CompleteStocktakeRequest, CompletionBlockReason,
+    };
+    let today = "2026-05-10";
+    let (_dir, mut conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    let one = [("4912345678901", "商品A", 1, 100)];
+    let first = commit_bytes(&mut conn, make_z004_bytes(1, "2026-05-09", &one), "a").unwrap();
+    let stocktake_id = start_stocktake(&mut conn).unwrap().stocktake_id;
+    let item: i64 = conn
+        .query_row(
+            "SELECT id FROM stocktake_items WHERE stocktake_id = ?1 AND product_code = 'TEST-001'",
+            [stocktake_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    save_stock_count(
+        &mut conn,
+        &SaveStockCountRequest {
+            product_code: "TEST-001".to_string(),
+            count_value: 5,
+            fresh: true,
+            business_date: today.to_string(),
+            stocktake_item_id: Some(item),
+        },
+        today,
+    )
+    .unwrap();
+    crate::biz::csv_import_service::rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
+    assert_eq!(stock_copy(&conn, "TEST-001"), (5, false, None));
+    // 同じレジの同じ番号の精算 1（精算日 T+1）は順 1〜5 を通る（順 4 は取り消した取込みを比べず、
+    // 順 5 は比べる active な取込みが無い）
+    let cached = preview_cached(&conn, make_z004_bytes(1, "2026-05-11", &one));
+    let result = commit_cached(&mut conn, cached, today).unwrap();
+    assert_eq!(stock_copy(&conn, "TEST-001"), (4, true, Some((4, 5))));
+    assert_eq!(result.recheck_targets.len(), 1);
+    let target = &result.recheck_targets[0];
+    assert_eq!(target.product_code, "TEST-001");
+    assert_eq!(
+        (
+            target.stock,
+            target.stock_range_low,
+            target.stock_range_high
+        ),
+        (4, Some(4), Some(5))
+    );
+    assert_eq!(
+        target.recount_reasons,
+        vec![RecountReason::UndeterminedSettlement]
+    );
+    // 完了は要再確認と (iii)（計数の日より前の精算が無い）で拒む
+    match complete_stocktake(
+        &mut conn,
+        &CompleteStocktakeRequest {
+            stocktake_id,
+            today: today.to_string(),
+        },
+    ) {
+        Err(BizError::StocktakeGuard { recovery, .. }) => assert_eq!(
+            recovery
+                .targets
+                .iter()
+                .map(|t| t.block_reason)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(CompletionBlockReason::Recheck),
+                Some(CompletionBlockReason::SettlementPending)
+            ]
+        ),
+        other => panic!("StocktakeGuard を期待: {other:?}"),
+    }
 }

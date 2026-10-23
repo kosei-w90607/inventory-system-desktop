@@ -6750,6 +6750,29 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_update_product_req102_start_stock_link_judges_settlements_by_import_cursor() {
+        // REQ-102 / ADR D3・D8（在庫連動を始める検査の判定の n も取込みのカーソルで求める。
+        // Codex の closure の Gated Amendment）/ b1 Matrix J7: 精算 1 の後の入れ直し → 取消 → 同じ番号の
+        // 新しい精算 1 の連動なしの売上は、計数に「入る」と確かめられないので在庫連動を始められない
+        use crate::biz::stock_ledger::settlement_support::{insert_fresh_count, roll_back};
+        let (_dir, mut conn) = setup_test_db();
+        seed_jan_product(&conn, "P-REUSED", None, false);
+        let i1 = settlement(&conn, 1, "2026-05-09");
+        insert_fresh_count(&conn, "P-REUSED", 5, "2026-05-10");
+        roll_back(&conn, i1);
+        let i2 = settlement(&conn, 1, "2026-05-11");
+        z004_sale(&conn, "P-REUSED", i2, 1, 100, false);
+        match start_link(&mut conn, "P-REUSED") {
+            Err(BizError::StocktakeGuard { message, recovery }) => {
+                assert_eq!(message, RECOUNT_REQUIRED);
+                assert_eq!(recovery.code, StocktakeRecoveryCode::RecountRequired);
+            }
+            other => panic!("recount_required を期待しました: {other:?}"),
+        }
+    }
+
+    #[test]
+    #[serial]
     fn test_update_product_req102_start_stock_link_requires_recount() {
         // REQ-102 / ADR D8 / 30（b1 Matrix J4）: 連動なしの Z004 の売上が全て効く計数に「入る」ときだけ在庫連動を
         // 始められる。「入らない」「決まらない」・衝突・計数が無く売上がある → recount_required と回復先。
