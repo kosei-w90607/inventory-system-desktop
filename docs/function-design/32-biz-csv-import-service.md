@@ -501,6 +501,38 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 
 ---
 
+### 15.6b preview_rollback_csv_import（取消の前の読取り、BIZ-03-D2、proposed・未実装）
+
+取消（上の「計数の置き場と在庫の求め直しの契約」の取消、SPEC-STK-CNT-D7）の runtime（D-118 の (b) の b1）の後に入る。取込みの結果の画面と CSV取込みの詳細の取消の確認（[55](55-ui-csv-import.md) UI-07-D18、[65](65-inventory-record-traceability.md) §65.5a）が、取り消す前に何が起きるかを名指すために読む。
+
+**関数要求**: 指定した取込みを取り消したら、どの商品が要再確認になるか・取り込み直す精算の番号・評価に効く完了した棚卸しを返す。何も書かない（売上・movement・写し・取込みの状態・操作ログ・preview の cache のどれも変えない）。
+
+**シグネチャ**:
+```
+pub fn preview_rollback_csv_import(
+    conn: &mut DbConnection,
+    csv_import_id: i64,
+) -> Result<RollbackPreview, BizError>
+```
+
+**RollbackPreview 構造体**（wire DTO。CSV import family の他 wire 型と同じく BIZ-03 が所有する）:
+- csv_import_id: i64
+- settlement_no: i64（取り込み直す精算の番号。この取込みの精算回数）
+- recheck_targets: Vec\<CountRecoveryTarget\>（取り消した後に要再確認になる商品。取消の結果の `RollbackResult.recheck_targets` と同じ作り方。[40](40-cmd-product.md) の CountRecoveryTarget）
+- affected_stocktakes: Vec\<AffectedStocktake\>（取り消すと完了の後の差〈参考〉が変わる完了した棚卸し。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
+
+**処理ステップ**:
+1. sales_repo::find_csv_import_by_id。None → BizError::NotFound（「CSV取込み記録が見つかりません: ID {csv_import_id}」）。rolled_back → BizError::ValidationFailed（「この取込みは取り消し済みです」）
+2. 精算回数: [24](24-io-csv-import-repo.md) の「active な Z004 の精算の一覧」から import ID の一致する行を引く
+3. 評価に効く完了した棚卸し: 完了した棚卸しのうち、この取込みの精算が [35](35-biz-stocktake-service.md) の「完了の後の比較の範囲」（完了の時点のカーソルと完了日で決める範囲）に入るもの。範囲の規則は BIZ-06 の共有の関数で判定し、BIZ-03 に写さない
+4. TX を開き、取消の本体と同じ関数（売上と movement の無効化、取込みの状態、ADR D2 の求め直す商品の `recompute_stock`、要再確認の商品の一覧。取消と preview で 1 つの関数を使う）を当てて recheck_targets を得る
+5. TX を明示の rollback で戻す（drop の振舞いに頼らない）。戻せなければ BizError::DatabaseError
+6. RollbackPreview を返す（操作ログを書かない）
+
+**設計判断 — 取消を同じ TX で当てて戻す（BIZ-03-D2）**: 取り消した後の要再確認は、精算の一覧が変わったことで ADR D3 の判定の n・「D に精算があるか」・「最初の 1 本」が変わる商品に出る（取消の前に要再確認でなかった商品にも出る）。取消と同じ関数を TX の中で当てれば、preview と取消は同じ規則で同じ商品を出す。棄却: (a) 求め直しに「この取込みを除く」引数を通して書かずに求める（`biz::stock_ledger` の全ての経路に引数が増え、取消の規則を 2 か所に持つ）。(b) 取消の結果だけで知らせる（取り消す前に名指せない。取り消してから要再確認に気づく形になる）。制約: preview は SQLite の書込みの TX を開くが、CMD の 1 本の接続（`AppState.db` の Mutex）で他の command と順に走り、戻すまで他の書込みと交わらない。preview と取消の間に記録が変われば、取消の結果（`RollbackResult.recheck_targets`）が正で、画面は結果の一覧を出し直す。見直しの契機: preview の待ち時間が利用者に見えるほど長くなったとき（求め直しは計数を持つ全ての商品に当たるので、商品と計数が増えたとき）。
+
+---
+
 ### 15.7 非目的
 
 このモジュールが**やらないこと**を明示する。責務境界の誤解を防ぐため。
