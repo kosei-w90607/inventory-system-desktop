@@ -337,7 +337,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 対象はWindowsの**専用local development/demo DB（synthetic dataのみ）**であり、実店舗DBでは実行しない。appを開いたまま、別のPowerShell windowで次を実行する。SQLite WALでも`PRAGMA locking_mode=EXCLUSIVE`と`BEGIN EXCLUSIVE`の組み合わせは、既に開いている別connectionのreadを`database is locked`にすることをsynthetic WAL DBで確認済みである。`BEGIN IMMEDIATE`だけではWAL read failureを再現しないため使わない。
 
 ```powershell
-$db = Join-Path $env:APPDATA 'com.kosei.inventory\inventory.db'
+$db = Join-Path $env:APPDATA 'com.inventory-system.desktop\inventory.db'
 if (-not (Test-Path $db)) { throw "development/demo DB not found: $db" }
 sqlite3 $db
 ```
@@ -370,7 +370,7 @@ live codeでは、初期schemaの`app_settings.key='backup_enabled'`は`value='1
 
 ```powershell
 # 1. アプリを停止してDB lockを解放する。
-$db = Join-Path $env:APPDATA 'com.kosei.inventory\inventory.db'
+$db = Join-Path $env:APPDATA 'com.inventory-system.desktop\inventory.db'
 if (-not (Test-Path $db)) { throw "development/demo DB not found: $db" }
 
 # 実店舗DBへの誤適用防止。専用demo DBだと人が確認できる場合だけ続行する。

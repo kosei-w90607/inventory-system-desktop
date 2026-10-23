@@ -1440,8 +1440,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // app_data_dir: tauri.conf.json の identifier から自動解決
-            // Linux: ~/.local/share/com.kosei.inventory/
-            // Windows: C:\Users\{user}\AppData\Roaming\com.kosei.inventory\
+            // Linux: ~/.local/share/com.inventory-system.desktop/
+            // Windows: C:\Users\{user}\AppData\Roaming\com.inventory-system.desktop\
             let app_data = run_startup_step(
                 StartupFailureKind::AppDataDir,
                 || app.path().app_data_dir(),

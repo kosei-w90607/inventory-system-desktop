@@ -185,7 +185,7 @@ SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの 
 **【制御構造】**
 - 全初期化処理はTauri 2.0のsetup hook内で実行する。setup hookはウィンドウ作成前に実行されるため、ログ初期化→DB初期化の順序が保証される
 - 起動シーケンスの順序（setup hook内）: app_data_dir取得 → MNT-04（ログ初期化）→ IO-01（DB初期化、app_data_dir配下）→ MNT-03（マイグレーション）→ State管理
-- app_data_dirは `app.path().app_data_dir()` で取得。tauri.conf.jsonのidentifierから自動解決（Linux: `~/.local/share/com.kosei.inventory/`）
+- app_data_dirは `app.path().app_data_dir()` で取得。tauri.conf.jsonのidentifierから自動解決（Linux: `~/.local/share/com.inventory-system.desktop/`）
 - ログ初期化自体が失敗した場合はstderrに出力してアプリ起動を続行する（ログが書けなくてもアプリは動く）
 - DB初期化失敗はsetup hookからエラーを返し、アプリ起動を中断する（データなしでは業務不可のため）
 - operation_logs（MNT-02）とは独立して共存する。診断ログはファイル、操作ログはSQLite。両者は異なる目的・読者・保持期間を持つ
