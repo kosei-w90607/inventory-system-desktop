@@ -446,7 +446,7 @@ Phase 2 完了判断で daily 5 画面の追加実装は不要。H-6 5 画面通
 - UI-01a/b/c 商品検索・一覧 / 登録 / 修正 / 一括インポート（REQ-103/101/102/104）
 - UI-02 入庫記録（REQ-201、バーコードスキャン + 複数商品一括）
 - UI-03 返品・交換（REQ-202、レジ戻し済みフラグ + レシート添付）。詳細な route / command / validation / L3 確認項目は `docs/function-design/63-ui-return-exchange.md` を正とする。
-- UI-04 手動販売出庫（REQ-203、PLU 未登録新商品のみ）
+- UI-04 手動販売出庫（REQ-203。PLU 未登録の新商品と、[10](function-design/10-common-rules.md) SPEC-UNIT-D4 の店に聞いてから決める項の既定 (a) の間の長さの商品）
 - UI-05 廃棄・破損（REQ-204）
 
 UI-04 は `/inventory/manual-sale` で、レジCSVに入らない販売を手入力し、在庫減算と売上記録を同時に残す。PLU 登録済み商品の場合は二重記録を避けるため確認を挟み、保存後は日次売上へ遷移して「手動」Badge を確認できる導線を置く。画面下部には保存直後確認用の `直近の手動販売出庫` を置き、`すべての履歴を見る` と `詳細を見る` から入出庫履歴 / 手動販売詳細へ遷移できるようにする。保存成功、PLU確認待ち、保存系エラーはページ先頭側に出るため、保存応答後はページ先頭へスクロールする。詳細な route / command / validation / recent list / L3 確認項目は `docs/function-design/62-ui-manual-sale.md` を正とする。
