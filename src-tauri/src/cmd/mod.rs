@@ -79,7 +79,7 @@ pub struct CmdError {
     /// 診断ログとの相関 ID（internal / restore_* 系のみ）
     pub error_id: Option<String>,
     /// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
-    /// 大きいので Box（serde と specta は中身の型として書くので wire は変わらない）
+    // 大きいので Box（serde と specta は中身の型として書くので wire は変わらない）
     pub stocktake_recovery: Option<Box<crate::biz::stocktake_service::StocktakeRecovery>>,
 }
 
