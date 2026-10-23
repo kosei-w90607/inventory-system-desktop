@@ -407,8 +407,12 @@ pub(crate) fn recount_required(
 fn sync_item_copy(conn: &DbConnection, item_id: i64, product_code: &str) -> Result<(), BizError> {
     let ledger = read_ledger(conn, product_code)?;
     if let Some((rep, _)) = representative_count(&ledger)? {
-        let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
-        stocktake_repo::update_stocktake_item_count(conn, item_id, rep.count_value, &now)?;
+        stocktake_repo::update_stocktake_item_count(
+            conn,
+            item_id,
+            rep.count_value,
+            &rep.counted_at,
+        )?;
     }
     Ok(())
 }
@@ -870,6 +874,7 @@ pub fn preview_stock_count_placement(
         business_date: business_date.to_string(),
         seen_movement_id: None,
         seen_import_id: None,
+        counted_at: String::new(),
     };
     let later_count_exists = ledger.counts.iter().any(|count| is_after(count, &planned));
     let derived = stock_ledger::derive_ledger(&ledger)?;
@@ -2134,28 +2139,48 @@ mod tests {
 
     #[test]
     fn test_save_stock_count_req205_item_copy_follows_effective_count() {
-        // REQ-205 / 35「計数の保存」/ Matrix C6: 明細の actual_count は効く計数に揃う
+        // REQ-205 / 35「計数の保存」/ Matrix C6: 明細の actual_count・counted_at は効く計数に揃う
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "C6-A", 10);
         let st_id = start_stocktake(&mut conn).unwrap().stocktake_id;
         let item = item_id(&conn, st_id, "C6-A");
-        let actual = |conn: &DbConnection| -> Option<i64> {
+        let copy = |conn: &DbConnection| -> (Option<i64>, Option<String>) {
             conn.query_row(
-                "SELECT actual_count FROM stocktake_items WHERE id = ?1",
+                "SELECT actual_count, counted_at FROM stocktake_items WHERE id = ?1",
                 [item],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap()
+        };
+        let counted_at = |conn: &DbConnection, id: i64| -> String {
+            conn.query_row(
+                "SELECT counted_at FROM stock_counts WHERE id = ?1",
+                [id],
                 |r| r.get(0),
             )
             .unwrap()
         };
-        save(&mut conn, "C6-A", 8, D, false, Some(item)).unwrap();
-        assert_eq!(actual(&conn), Some(8));
-        // 後入力の古い日付の計数は効かない
+        // 効く計数（今日の 8）。保存の時刻を後の入力の時刻と区別できる過去の時刻にする
+        conn.execute(
+            "INSERT INTO stock_counts (product_code, count_value, count_kind, business_date,
+                 stocktake_item_id, counted_at)
+             VALUES ('C6-A', 8, 'default', ?1, ?2, '2026-10-15T10:00:00')",
+            rusqlite::params![D, item],
+        )
+        .unwrap();
+        // 後入力の古い日付の計数は効かない（値も時刻も先の効く計数のまま）
         let back = save(&mut conn, "C6-A", 9, D1, false, Some(item)).unwrap();
         assert!(back.later_count_exists);
-        assert_eq!(actual(&conn), Some(8));
+        assert_eq!(
+            copy(&conn),
+            (Some(8), Some("2026-10-15T10:00:00".to_string()))
+        );
         // fresh は先の計数を置き換える
-        save(&mut conn, "C6-A", 7, D, true, Some(item)).unwrap();
-        assert_eq!(actual(&conn), Some(7));
+        let fresh = save(&mut conn, "C6-A", 7, D, true, Some(item)).unwrap();
+        assert_eq!(copy(&conn), (Some(7), Some(counted_at(&conn, fresh.id))));
+        // 今日の既定の計数は後の計数として効く
+        let latest = save(&mut conn, "C6-A", 6, D, false, Some(item)).unwrap();
+        assert_eq!(copy(&conn), (Some(6), Some(counted_at(&conn, latest.id))));
     }
 
     #[test]

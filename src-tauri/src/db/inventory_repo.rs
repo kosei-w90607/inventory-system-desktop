@@ -119,6 +119,8 @@ pub(crate) struct StockCountRow {
     /// fresh だけ。保存の時点の `MAX(csv_imports.id)`（取り消したものを含む。無ければ NULL）。
     /// ADR D3 の判定の n はこれ以下の取込みID を持つ active な取込みから求める
     pub seen_import_id: Option<i64>,
+    /// 保存の時刻（判定には使わない。明細の表示用の写しへ写す。35）
+    pub counted_at: String,
 }
 
 /// 求め直しが読む有効な movement の 1 行（21 `list_ledger_movements_for_product`）
@@ -243,7 +245,8 @@ pub(crate) fn list_stock_counts_for_product(
     product_code: &str,
 ) -> Result<Vec<StockCountRow>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, count_value, count_kind, business_date, seen_movement_id, seen_import_id
+        "SELECT id, count_value, count_kind, business_date, seen_movement_id, seen_import_id,
+                counted_at
          FROM stock_counts WHERE product_code = ?1 ORDER BY id",
     )?;
     let rows = stmt
@@ -255,6 +258,7 @@ pub(crate) fn list_stock_counts_for_product(
                 business_date: row.get(3)?,
                 seen_movement_id: row.get(4)?,
                 seen_import_id: row.get(5)?,
+                counted_at: row.get(6)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
