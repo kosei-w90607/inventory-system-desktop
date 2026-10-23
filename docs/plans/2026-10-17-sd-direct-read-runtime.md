@@ -27,6 +27,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 3. design → plan-draft（2026-10-17、起草役）: 上の更新は正本にあり、D-111 の決定の向きを変えない。未解決の設計の問いは無い。残る P1・P4（Contract Probe）は設計の問いではなく、L3 の前に確かめる未確認の前提（下の Contract Probe）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: main（`eed07d37`）への同期と、Scope・AC を今の code と migration の版へ当て直した（D-114 の 71 MNT-01-D10・§71.11.3 を前提として 29 §29.7.4 と IO-09-D3 を直した）。Contract Probe P1 (a)・P4 は合格（下の Contract Probe）、P1 (b) は未確認のまま。owner の判断事項は無い。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex は利用上限で 2026-10-24 まで使えず、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `881700ca` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
+6. plan-gate のまま是正（round 2、2026-10-23、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `b852071f`（Claude 側）と `af0f95b0`（Codex 側）で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
 
 ## Owner Effort Budget
 
@@ -459,3 +460,8 @@ round 1（`3d7c0111`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 3 / P3 8
 - P2: 一覧へ戻る経路（`sd_list` と `sdOrigin` の持ち越し、`dismiss_error` の分岐、写しの失敗の分岐は変えない）、既存の BIZ test 8 本の束を別の精算回数に（assert は変えず、D4 の拒否は意図した変更と失敗定義に添えた）、S6 の外の注記と AC9 の広げ。
 - P3: 版の assert は 3 か所、`cfg(windows)` の FFI を Final Review と L3 の build の前の照合で見る（`THREAD_ERROR_MODE` を許可の列に。起草役が `DRIVE_REMOVABLE` の feature が `Win32_System_WindowsProgramming` にあることを見つけて足した）、path の判定を文字列の規則に、P1 の安全の主張を前提つきに、folder 名の定数を `io/mod.rs` に固定（PR #190 の所有表の文と同じ所）、取消の導線と行の直し方を Residual Risk と Open Questions に（AI review 由来で gate にしない）、L3 の合成の SD の tree を `#[ignore]` の生成の test で、source の検査の red の形を広げた。
 - 起草役が発注の外で直したもの: frontend の file の数（directory の中は 8）、上の feature。
+
+round 2（`9f02ddd7`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 6）、Codex = reject（P1 0 / P2 4 / P3 1）。重なりは 2 件（P1 (b) の安全の説明、手で選んだ preview の選び直し）。Coordinator が Claude 側の P2 2 件を現物で確かめ（`src-tauri/src/db/schema_v10.rs` の 3 本と `src-tauri/src/lib.rs` の 2 本が全 migration の後に `VB_VERSION` を期待、37 §37.9 手順 2 の窓）、全件を採用した。Coordinator の追加 1 件（L3-2 の置き場がアプリのデータの folder の名を直書きし、PR #191 の `identifier` の変更〈repo 外の回答台帳 TD-392〉に当たる）も入れた。是正は起草役の `b852071f`（Claude 側 8 件と追加）と `af0f95b0`（Codex 側 5 件。522 で閉じていた所は閉じた文を確かめて残りだけ）。
+
+- Claude 側: 最新の版の期待は `app_max_version()` と比べる形にし（版が増えても直さずに済む。洗い直しで `schema_v2.rs` の 1 本を足した）、vB の後の形は `migrate_up_to`。L3 の合成の日付は生成の日から決める。手で選んだ preview の選び直しは `idle` の一覧へ戻す（55 UI-07-D16 (a)）。flow test の移し方、P1 の (i)・(ii) の分け、error mode の guard を file system を見る 5 関数に、source の検査を `crate::`・`super::` の参照で、folder 名の検査から test module の file を外す。
+- Codex 側: P1 (b) を L3 の前の必須の確かめに戻した（D-111 の Guarantee range と 29 SD-23 に合わせ、不一致なら L3 を頼まず design へ戻る）。取込みの結果から同じ scan の一覧へ戻る遷移（55 UI-07-D15 (6)）。読んだ byte の数を数える reader で上限の test を固める。介入は decision point の単位で数える。
