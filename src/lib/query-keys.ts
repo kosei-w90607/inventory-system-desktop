@@ -138,5 +138,7 @@ export const queryKeys = {
       ["stocktake", "items", { stocktakeId, ...search }] as const,
     departments: () => ["stocktake", "departments"] as const,
     lastCompleted: () => ["stocktake", "last-completed"] as const,
+    // 要再確認の一覧（D-118、UI_TECH_STACK の D-118 の段落）
+    recheckList: () => ["stocktake", "recheck-list"] as const,
   },
 } as const;
