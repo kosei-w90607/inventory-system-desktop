@@ -28,6 +28,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 2. spec-check → plan-draft（2026-10-23、起草役、同じ commit）: 表の唯一の skip。直す先の設計正本（下の Design Readiness の一覧）は契約として足りていて、本 lane は新しい設計の選択をしない。S1〜S4・S6 は文を code（実装の現物）・正本・decision-log の規則に合わせるだけ、S5 は owner の決定（TD-350）を入庫の正本に書き写すだけで、決定の中身は決まっている。
 3. plan-draft に留まる: 下の S7（owner の判断事項 3 つ）の答えを待つ。答えの後に Coordinator が packet を直して plan-gate へ進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner が S7 に答えた（repo 外の回答台帳 TD-393・TD-395: S7-2・S7-3 は本 lane で直す、S7-1 は別の R3 lane へ送る）。起草役が `1feb4aa8` で S7 を Scope に移し、S7-1 を backlog に足した。owner の判断事項は残らず、packet と Matrix に当たる表が揃い commit されている。Plan Review に出す。Codex が使えれば Codex と fresh Opus 5.5 を同じ round で、使えなければ fresh Opus 5.5 で始め Codex 分を後から足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
+5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex 側は未実施で round 2 で足す、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `cc3d7a7d` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 
 ## Owner Effort Budget
 
@@ -374,5 +375,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+round 1（`217c8906`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 1 / P3 6）。Codex 側は未実施で round 2 で足す（§3.3）。Coordinator は全 7 件を採用した。是正は起草役の `cc3d7a7d`。
+
+- P2: S3 の task-spec の注記は、その task-spec が D-117 で外すと書く物を全部挙げ、build に残る物の symbol を付ける（一部だけ挙げると、挙げなかった物を撤去済みと読ませる）。AC-S3-2 を外す物ごとの `rg` に。
+- P3: S1 の括弧の中に残す物と外す物の基準を 1 段で書き S1-6 を同じ基準に、S4 の link の親と anchor、S7-3 を同じ節の 3 行に、`docs/SCREEN_DESIGN.md` の在庫状態の label（S6-4）、`docs/Plans.md` の名前の引用は closeout で外す、S7-2a の列の名。
