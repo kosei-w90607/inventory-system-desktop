@@ -18,7 +18,9 @@ pub mod settings_cmd;
 pub mod stocktake_cmd;
 
 use crate::biz::csv_import_service::CachedPreview;
-use crate::biz::daily_report_import_service::CachedDailyReportPreview;
+use crate::biz::daily_report_import_service::{
+    CachedDailyReportPreview, DailyReportSdScanSnapshot,
+};
 use crate::biz::{BizError, DbConnection};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -38,6 +40,8 @@ pub struct AppState {
     pub preview_cache: Mutex<HashMap<String, CachedPreview>>,
     /// 日報取込みPreviewキャッシュ（token → CachedDailyReportPreview）
     pub daily_report_preview_cache: Mutex<HashMap<String, CachedDailyReportPreview>>,
+    /// レジの SD の scan の snapshot（scan_token → snapshot。最新の 1 つだけ、CMD-12-D1）
+    pub register_sd_scan_cache: Mutex<HashMap<String, DailyReportSdScanSnapshot>>,
 }
 
 // ---------------------------------------------------------------------------

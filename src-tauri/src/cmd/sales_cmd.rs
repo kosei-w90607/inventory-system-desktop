@@ -118,6 +118,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -335,6 +336,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         };
 
         let conn = state.db.lock().unwrap();
@@ -354,6 +356,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         };
 
         // Mutex を poison させる
