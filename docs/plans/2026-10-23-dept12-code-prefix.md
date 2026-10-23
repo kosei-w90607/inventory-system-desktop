@@ -10,7 +10,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -27,6 +27,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 1. kickoff → spec-check（2026-10-23、起草役）: Coordinator の発注（TD-395・TD-402）を Scope にし、規模を数えて 1 lane・1 PR と決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-23、起草役）: 対象の正本は [master-tables](../db-design/master-tables.md) の「初期データ（全21部門）」、[ARCHITECTURE](../ARCHITECTURE.md) §4 の宅急便部門の項、[30 §4.3](../function-design/30-biz-product-service.md) の処理ステップ 2、[51](../function-design/51-ui-product-form.md) UI-01b-D4 とエラーハンドリング、[22 §3.3](../function-design/22-mnt-migration.md)、[decision-log](../decision-log.md) D-123。値の正本（NULL）は既にあるが、「既存の DB を直す migration を足すか」の判断の置き場が正本に無い（下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の判断を MNT-03-D21 として 22 §3.3 に置いた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」は推奨を既定にした 1 件）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner の判断事項（L3 を置くか）は、owner の方針（repo 外の回答台帳 TD-401: しばらく問わずに推奨で進め、後でまとめて見せる）で推奨の (a) 置かないを既定にした。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 
 本 commit で変えた正本（plan-first）:
 
