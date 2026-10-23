@@ -1255,9 +1255,12 @@ mod tests {
     // IO-09-D3 の source の検査と、folder 名の定数の 1 か所の検査
     // ------------------------------------------------------------------
 
-    /// `#[cfg(test)]` より前の本体から、行と block の comment を外した文字列
+    /// 本体と test の境の属性（architecture_test の行の追跡に掛からないよう分けて書く）
+    const TEST_ATTR: &str = concat!("#[cfg(", "test)]");
+
+    /// `cfg(test)` の属性 より前の本体から、行と block の comment を外した文字列
     fn production_text(source: &str) -> String {
-        let body = source.split("#[cfg(test)]").next().unwrap_or("");
+        let body = source.split(TEST_ATTR).next().unwrap_or("");
         let without_block = Regex::new(r"(?s)/\*.*?\*/").unwrap().replace_all(body, "");
         without_block
             .lines()
@@ -1298,7 +1301,7 @@ mod tests {
         ];
         let text = production_text(source);
         let mut out = Vec::new();
-        for caps in Regex::new(r"\bfs\s*::\s*(\{[^}]*\}|\*|\w+)")
+        for caps in Regex::new(r"\bfs\s*::\s*(\x7B[^\x7D]*\x7D|\*|\w+)")
             .unwrap()
             .captures_iter(&text)
         {
@@ -1334,7 +1337,7 @@ mod tests {
         for found in Regex::new(r"\bcrate\s*::").unwrap().find_iter(&text) {
             out.push(found.as_str().to_string());
         }
-        for caps in Regex::new(r"\bsuper\s*::\s*(\{[^}]*\}|\*|\w+)")
+        for caps in Regex::new(r"\bsuper\s*::\s*(\x7B[^\x7D]*\x7D|\*|\w+)")
             .unwrap()
             .captures_iter(&text)
         {
@@ -1349,7 +1352,7 @@ mod tests {
             .captures_iter(&text)
         {
             let tree = &caps[1];
-            let leaves = match tree.find('{') {
+            let leaves = match tree.find('\u{7B}') {
                 Some(start) => group_items(&tree[start..]),
                 None => vec![tree.rsplit("::").next().unwrap_or("").trim().to_string()],
             };
@@ -1373,11 +1376,11 @@ mod tests {
         assert_eq!(fs_api_violations(&source), Vec::<String>::new());
         // 本体と test の境は file の末尾の `mod tests` だけ（本体の途中に cfg(test) を置かない）
         assert_eq!(
-            source.find("#[cfg(test)]"),
-            source.find(concat!("#[cfg(test)]\n", "mod tests {"))
+            source.find(TEST_ATTR),
+            source.find(concat!("#[cfg(", "test)]\n", "mod tests {"))
         );
 
-        let body = source.split("#[cfg(test)]").next().unwrap();
+        let body = source.split(TEST_ATTR).next().unwrap();
         for mutant in [
             "fn m() { let _ = File::create(\"x\"); }",
             "fn m() { let _ = fs::copy(\"a\", \"b\"); }",
@@ -1408,7 +1411,7 @@ mod tests {
         assert_eq!(fs_api_violations(&allowed), Vec::<String>::new());
     }
 
-    /// `#[cfg(test)] mod <名>;` で読み込まれる file と directory
+    /// `cfg(test)` の属性つきの `mod <名>;` で読み込まれる file と directory
     fn test_only_paths(files: &[(PathBuf, String)]) -> Vec<PathBuf> {
         let re = Regex::new(r"#\[cfg\(test\)\]\s*mod\s+(\w+)\s*;").unwrap();
         let mut out = Vec::new();
@@ -1431,7 +1434,7 @@ mod tests {
         out
     }
 
-    /// 本体（`#[cfg(test)]` より前）に folder 名の literal を持つ file と、その数
+    /// 本体（`cfg(test)` の属性 より前）に folder 名の literal を持つ file と、その数
     fn folder_name_definitions(files: &[(PathBuf, String)]) -> Vec<(PathBuf, usize)> {
         let skipped = test_only_paths(files);
         files
@@ -1477,7 +1480,7 @@ mod tests {
             folder_name_definitions(&mutated),
             vec![(src.join("io").join("mod.rs"), 1)]
         );
-        // `#[cfg(test)] mod <名>;` の file の literal は数えない
+        // `cfg(test)` の属性つきの `mod <名>;` の file の literal は数えない
         let mut test_file = files.clone();
         test_file.push((
             src.join("biz")

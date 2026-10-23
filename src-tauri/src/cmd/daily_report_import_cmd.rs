@@ -11,7 +11,8 @@ use crate::biz::PaginatedResult;
 use crate::cmd::{AppState, CmdError, CmdErrorKind};
 use crate::constants;
 use std::collections::HashMap;
-use tauri::State;
+use std::path::Path;
+use tauri::{Manager, State};
 
 #[derive(Debug, serde::Deserialize, specta::Type)]
 pub struct DailyReportSourceFileRequest {
@@ -43,6 +44,8 @@ pub fn parse_and_validate_daily_report(
             .map(|file| DailyReportInputFile {
                 filename: file.filename,
                 bytes: file.file_bytes,
+                sd_relative_path: None,
+                source_path: None,
             })
             .collect();
         daily_report_import_service::parse_and_validate_daily_report(&conn, source_files)
@@ -69,14 +72,26 @@ pub fn parse_and_validate_daily_report(
 #[specta::specta]
 pub fn commit_daily_report_import(
     state: State<AppState>,
+    app: tauri::AppHandle,
     preview_token: String,
     additional_import_confirmed: bool,
 ) -> Result<DailyReportImportResult, CmdError> {
-    commit_daily_report_import_with_state(&state, preview_token, additional_import_confirmed)
+    // §45.4 手順 3a: 写しの置き場所（BIZ-08-D5）。失敗しても preview の cache は残る
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| CmdError::internal("アプリデータの保存先を取得できませんでした", e))?;
+    commit_daily_report_import_with_state(
+        &state,
+        &app_data_dir,
+        preview_token,
+        additional_import_confirmed,
+    )
 }
 
 fn commit_daily_report_import_with_state(
     state: &AppState,
+    app_data_dir: &Path,
     preview_token: String,
     additional_import_confirmed: bool,
 ) -> Result<DailyReportImportResult, CmdError> {
@@ -115,6 +130,7 @@ fn commit_daily_report_import_with_state(
         &mut conn,
         cached_preview,
         additional_import_confirmed,
+        app_data_dir,
     ) {
         Ok(result) => {
             drop(conn);
@@ -268,6 +284,8 @@ mod tests {
                 },
                 preview_created_at: "2026-03-21T10:00:00".to_string(),
             },
+            settlement_no: None,
+            sd_source_files: Vec::new(),
             summary_lines: Vec::new(),
             payment_lines: Vec::new(),
             department_lines: Vec::new(),
@@ -332,8 +350,9 @@ mod tests {
         // REQ-401 / CMD-12: cache miss / 期限切れ token は import_error
         let (_dir, state) = app_state();
         let missing_token = uuid::Uuid::new_v4().to_string();
-        let missing = commit_daily_report_import_with_state(&state, missing_token, false)
-            .expect_err("cache miss should fail");
+        let missing =
+            commit_daily_report_import_with_state(&state, _dir.path(), missing_token, false)
+                .expect_err("cache miss should fail");
         assert_eq!(missing.kind, CmdErrorKind::ImportError);
 
         let expired_token = uuid::Uuid::new_v4().to_string();
@@ -341,8 +360,13 @@ mod tests {
             expired_token.clone(),
             cached(Instant::now() - Duration::from_secs(constants::PREVIEW_CACHE_TTL_SECS + 1)),
         );
-        let expired = commit_daily_report_import_with_state(&state, expired_token.clone(), false)
-            .expect_err("expired cache should fail");
+        let expired = commit_daily_report_import_with_state(
+            &state,
+            _dir.path(),
+            expired_token.clone(),
+            false,
+        )
+        .expect_err("expired cache should fail");
         assert_eq!(expired.kind, CmdErrorKind::ImportError);
         assert!(!state
             .daily_report_preview_cache
@@ -362,7 +386,8 @@ mod tests {
             .unwrap()
             .insert(success_token.clone(), cached(Instant::now()));
 
-        commit_daily_report_import_with_state(&state, success_token.clone(), false).unwrap();
+        commit_daily_report_import_with_state(&state, _dir.path(), success_token.clone(), false)
+            .unwrap();
         assert!(!state
             .daily_report_preview_cache
             .lock()
@@ -375,8 +400,13 @@ mod tests {
             cached_with_status(Instant::now(), DailyReportDuplicateStatus::AlreadyImported),
         );
 
-        let failed = commit_daily_report_import_with_state(&state, failure_token.clone(), false)
-            .expect_err("BIZ failure should keep cache");
+        let failed = commit_daily_report_import_with_state(
+            &state,
+            _dir.path(),
+            failure_token.clone(),
+            false,
+        )
+        .expect_err("BIZ failure should keep cache");
         assert_eq!(failed.kind, CmdErrorKind::IdempotencyConflict);
         assert!(state
             .daily_report_preview_cache
@@ -428,7 +458,8 @@ mod tests {
             .insert(token.clone(), cached(Instant::now()));
 
         let error =
-            commit_daily_report_import_with_state(&state, token.clone(), false).unwrap_err();
+            commit_daily_report_import_with_state(&state, _dir.path(), token.clone(), false)
+                .unwrap_err();
         assert_eq!(
             error.message,
             "同日の取込み状況が変わりました。再度プレビューしてください"
@@ -438,7 +469,8 @@ mod tests {
             .lock()
             .unwrap()
             .contains_key(&token));
-        let retry = commit_daily_report_import_with_state(&state, token, false).unwrap_err();
+        let retry =
+            commit_daily_report_import_with_state(&state, _dir.path(), token, false).unwrap_err();
         assert_eq!(retry.kind, CmdErrorKind::ImportError);
 
         let new_token = uuid::Uuid::new_v4().to_string();
@@ -454,7 +486,8 @@ mod tests {
             .unwrap()
             .insert(new_token.clone(), fresh);
         let committed =
-            commit_daily_report_import_with_state(&state, new_token.clone(), true).unwrap();
+            commit_daily_report_import_with_state(&state, _dir.path(), new_token.clone(), true)
+                .unwrap();
         assert_eq!(committed.status, "completed");
         assert!(!state
             .daily_report_preview_cache

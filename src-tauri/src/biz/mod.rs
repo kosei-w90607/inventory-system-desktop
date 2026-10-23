@@ -76,6 +76,8 @@ pub enum BizError {
     StocktakeInProgress(String),
     /// 棚卸し未進行（BIZ-06）
     StocktakeNotInProgress(String),
+    /// SD から読んだ原本の写しを保存できなかった（BIZ-08-D5）。io error の種類は診断にだけ使う
+    SourceCopyFailed(std::io::ErrorKind),
 }
 
 impl fmt::Display for BizError {
@@ -95,6 +97,7 @@ impl fmt::Display for BizError {
             BizError::IdempotencyConflict(msg) => write!(f, "冪等性キー競合: {}", msg),
             BizError::StocktakeInProgress(msg) => write!(f, "棚卸し進行中: {}", msg),
             BizError::StocktakeNotInProgress(msg) => write!(f, "棚卸し未進行: {}", msg),
+            BizError::SourceCopyFailed(kind) => write!(f, "SD の写しの保存に失敗: {:?}", kind),
         }
     }
 }

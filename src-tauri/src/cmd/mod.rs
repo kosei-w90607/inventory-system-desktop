@@ -135,6 +135,13 @@ impl From<BizError> for CmdError {
                 detail,
             );
         }
+        // 45 §45.7: 写しの失敗は internal（UI が preview に戻り、同じ token で再試行できる）
+        if let BizError::SourceCopyFailed(kind) = &err {
+            return CmdError::internal(
+                "SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。",
+                format!("{kind:?}"),
+            );
+        }
         tracing::error!(error = %err, "CMD層エラー");
         match err {
             BizError::ValidationFailed(msg) => CmdError {
@@ -161,7 +168,9 @@ impl From<BizError> for CmdError {
                 field: None,
                 error_id: None,
             },
-            BizError::DatabaseError(_) => unreachable!("handled before generic logging"),
+            BizError::DatabaseError(_) | BizError::SourceCopyFailed(_) => {
+                unreachable!("handled before generic logging")
+            }
             BizError::ImportError(msg) => CmdError {
                 kind: CmdErrorKind::ImportError,
                 message: msg,

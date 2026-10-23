@@ -208,6 +208,7 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
             "biz::daily_report_import_service::commit",
             "biz::daily_report_import_service::rollback",
             "biz::daily_report_import_service::list",
+            "biz::daily_report_import_service::scan",
         ],
     );
 
