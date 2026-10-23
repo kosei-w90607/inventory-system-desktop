@@ -64,21 +64,21 @@ Phase 2 8-2 UI-07 CSV 取込み画面 (PR #62) の残検証 8/10 (3/10〜10/10) 
 
 ### Step 0: 実 DB パス (`$DB_PATH`) を 1 つ定義
 
-Tauri app が実 startup で開く `app_data_dir/inventory.db` を 1 変数に固定し、Step 1 (seed_demo) と Step 2 (setup-products.sql) で同一 DB を共有する。`src-tauri/tauri.conf.json` の `identifier` は `com.kosei.inventory` (確認: `rg identifier src-tauri/tauri.conf.json`)。
+Tauri app が実 startup で開く `app_data_dir/inventory.db` を 1 変数に固定し、Step 1 (seed_demo) と Step 2 (setup-products.sql) で同一 DB を共有する。`src-tauri/tauri.conf.json` の `identifier` は `com.inventory-system.desktop` (確認: `rg identifier src-tauri/tauri.conf.json`)。
 
 **Windows native (CMD):**
 ```cmd
-set DB_PATH=%APPDATA%\com.kosei.inventory\inventory.db
+set DB_PATH=%APPDATA%\com.inventory-system.desktop\inventory.db
 ```
 
 **Windows native (PowerShell):**
 ```ps
-$env:DB_PATH = "$env:APPDATA\com.kosei.inventory\inventory.db"
+$env:DB_PATH = "$env:APPDATA\com.inventory-system.desktop\inventory.db"
 ```
 
 **WSL2 dev (bash):**
 ```bash
-DB_PATH=~/.local/share/com.kosei.inventory/inventory.db
+DB_PATH=~/.local/share/com.inventory-system.desktop/inventory.db
 ```
 
 ### Step 1: seed_demo で 100 商品 + 6 部門 + suppliers / sale_records / inventory_movements 投入
@@ -132,7 +132,7 @@ sqlite3 "$DB_PATH" < tests/fixtures/z004/setup-products.sql
 
 ```bash
 # WSL2 ターミナルで repo root から実行
-sqlite3 "/mnt/c/Users/<USER>/AppData/Roaming/com.kosei.inventory/inventory.db" < tests/fixtures/z004/setup-products.sql
+sqlite3 "/mnt/c/Users/<USER>/AppData/Roaming/com.inventory-system.desktop/inventory.db" < tests/fixtures/z004/setup-products.sql
 ```
 
 確認:
