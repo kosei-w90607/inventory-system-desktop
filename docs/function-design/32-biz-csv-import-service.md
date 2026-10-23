@@ -505,7 +505,7 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 
 取消（上の「計数の置き場と在庫の求め直しの契約」の取消、SPEC-STK-CNT-D7）の runtime（D-118 の (b) の b1）の後に入る。取込みの結果の画面と CSV取込みの詳細の取消の確認（[55](55-ui-csv-import.md) UI-07-D18、[65](65-inventory-record-traceability.md) §65.5a）が、取り消す前に何が起きるかを名指すために読む。
 
-**関数要求**: 指定した取込みを取り消した後に、どの商品が要再確認か（取り消す前から要再確認の商品を含む）・取り込み直す精算の番号・参考の差が変わることがある完了した棚卸しを返す。何も書かない（売上・movement・写し・取込みの状態・操作ログ・preview の cache のどれも変えない）。
+**関数要求**: 指定した取込みを取り消した後に、どの商品が要再確認か（取り消す前から要再確認の商品を含む）・取り込み直す精算の番号・記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸しを返す。何も書かない（売上・movement・写し・取込みの状態・操作ログ・preview の cache のどれも変えない）。
 
 **シグネチャ**:
 ```
@@ -519,12 +519,12 @@ pub fn preview_rollback_csv_import(
 - csv_import_id: i64
 - settlement_no: i64（取り込み直す精算の番号。この取込みの精算回数）
 - recheck_targets: Vec\<CountRecoveryTarget\>（取り消した後に要再確認である商品。取消の結果の `RollbackResult.recheck_targets` と同じ作り方で、求め直した商品〈計数を持つ全ての商品とこの取込みの商品〉のうち要再確認のものなので、取り消す前から要再確認の商品も入る。[40](40-cmd-product.md) の CountRecoveryTarget）
-- affected_stocktakes: Vec\<AffectedStocktake\>（この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し。範囲の判定による候補で、取り消すと参考の差が変わることがある〈その精算が明細の商品を売っていなければ変わらない〉。差が実際に変わるかは求めない。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
+- affected_stocktakes: Vec\<AffectedStocktake\>（この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し。範囲の判定による候補で、取り消すと記録の詳細の明細の差異・ロス原価〈完了の時点の精算の n 以下の精算から求める〉と参考の差が変わることがある〈その精算が明細の商品を売っていなければ変わらない〉。範囲〈精算回数 ≤ 完了の時点の精算の n、または精算日 < 完了日〉は差異・ロス原価が使う精算を含むので、名指す集合を広げなくてよい。どの数が実際に変わるかは求めない。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
 
 **処理ステップ**:
 1. sales_repo::find_csv_import_by_id。None → BizError::NotFound（「CSV取込み記録が見つかりません: ID {csv_import_id}」）。rolled_back → BizError::ValidationFailed（「この取込みは取り消し済みです」）
 2. 精算回数: [24](24-io-csv-import-repo.md) の「active な Z004 の精算の一覧」から import ID の一致する行を引く
-3. 参考の差が変わることがある完了した棚卸し: 完了した棚卸しのうち、この取込みの精算が [35](35-biz-stocktake-service.md) の「完了の後の比較の範囲」（完了の時点のカーソルと完了日で決める範囲）に入るもの。範囲の規則は BIZ-06 の共有の関数で判定し、BIZ-03 に写さない
+3. 記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し: 完了した棚卸しのうち、この取込みの精算が [35](35-biz-stocktake-service.md) の「完了の後の比較の範囲」（完了の時点のカーソルと完了日で決める範囲）に入るもの。範囲の規則は BIZ-06 の共有の関数で判定し、BIZ-03 に写さない
 4. TX を開き、取消の本体と同じ関数（売上と movement の無効化、取込みの状態、ADR D2 の求め直す商品の `recompute_stock`、要再確認の商品の一覧。取消と preview で 1 つの関数を使う）を当てて recheck_targets を得る
 5. TX を明示の rollback で戻す（drop の振舞いに頼らない）。戻せなければ BizError::DatabaseError
 6. RollbackPreview を返す（操作ログを書かない）

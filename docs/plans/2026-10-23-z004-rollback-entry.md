@@ -21,9 +21,9 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 | destructive の確認 dialog の今の置き場 | 11 file（`AlertDialogAction` を使う production の file） | `rg -l 'AlertDialogAction' src -g '!*.test.*'` → 11（下の Matrix の Adjacent Pattern Audit） |
 | 画面 | 3（CSV取込みの詳細〈65〉、Z004 タブの結果の画面と上の導線〈55〉、`/csv-import` の search） | 下の Scope の S3 |
 | migration・DB の列 | 0（取消の本体と列は b1。preview は書かない） | — |
-| 予定 path | 38（Rust 10・TS 15・docs 13〈packet と Matrix を含む〉。下の「予定 path の一覧」） | 下の一覧の行数 |
+| 予定 path | 39（Rust 10・TS 16・docs 13〈packet と Matrix を含む〉。下の「予定 path の一覧」） | 下の一覧の行数 |
 
-手法: **1 lane・1 PR のまま S1〜S4 の段に積む。** 理由: 新しい書く経路は無く（取消の本体は b1）、足すのは読取り 1 つ（取消を TX の中で当てて戻す preview）と、順 4 の拒否の文、入口・確認・導線の画面だけで、38 path は 1 回の L3（10 分の見込み）で確かめられる。段は検証の単位で切る（S1 BIZ・IO と S2 CMD・wire は 1 つの Rust の検証の単位、S3 画面は frontend の検証の単位、S4 は docs と生成物）。b1 の後に merge するので、実装は b1 の merge と同期の後に着手する（b1 の取消の本体と `RollbackResult.recheck_targets`・要再確認の一覧の部品に依る）。
+手法: **1 lane・1 PR のまま S1〜S4 の段に積む。** 理由: 新しい書く経路は無く（取消の本体は b1）、足すのは読取り 1 つ（取消を TX の中で当てて戻す preview）と、順 4 の拒否の文、入口・確認・導線の画面だけで、39 path は 1 回の L3（10 分の見込み）で確かめられる。段は検証の単位で切る（S1 BIZ・IO と S2 CMD・wire は 1 つの Rust の検証の単位、S3 画面は frontend の検証の単位、S4 は docs と生成物）。b1 の後に merge するので、実装は b1 の merge と同期の後に着手する（b1 の取消の本体と `RollbackResult.recheck_targets`・要再確認の一覧の部品に依る）。
 
 ## Workflow State
 
@@ -46,6 +46,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の 3 つを 32・41・55・65 の新しい節（BIZ-03-D2・CMD-07 の command・UI-07-D18・TRACE-D13）に本 packet と同じ commit で置いた。b1 が書き換える節（55 §55.4 の手順 18、65 §65.10 の 4b、32 の順 4 の message ほか）は main の版で先に直さず、b1 の merge の後の同期で直す節として Scope に挙げた。製品の振舞いで owner の判断が要る問いは 3 つ（下の「owner の判断事項」）で、推奨を既定に書き進めた（owner の方針、repo 外の回答台帳 TD-401）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-404。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: なし）。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `fd2c1f8c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
+6. plan-gate のまま是正（round 2、2026-10-24、Coordinator の代行、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を Coordinator の裁定に沿って直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（fresh Opus 5.5 + Codex。Plan Review round 天井の 3 回目）で再 review する。
 
 ## Owner Effort Budget
 
@@ -89,7 +90,7 @@ Goal Invariant:
 ### 最小完了条件
 
 - 取り込んだ後に結果の画面を離れても、入出庫履歴（種別「CSV取込み」）か Z004 タブの「取り込んだ記録を見る」から CSV取込みの詳細を開き、「この取込みを取り消す」で取り消せる（[65](../function-design/65-inventory-record-traceability.md) §65.5a）。取消は今の取消と同じ経路（ADR SPEC-STK-CNT-D7、b1 の新しい経路）で、売上と movement を無効にし、在庫を記録から求め直す。
-- 取り消す前の確認が、取り消した後に要再確認である商品（商品・範囲・理由。取り消す前から要再確認の商品を含む）、取り込み直す精算の番号、参考の差が変わることがある完了した棚卸し（この取込みの精算が完了の後の比較の範囲に入る棚卸し）を名指し、取込みの結果の画面の「取り消す」も同じ確認になる（[55](../function-design/55-ui-csv-import.md) UI-07-D18、[32](../function-design/32-biz-csv-import-service.md) §15.6b）。
+- 取り消す前の確認が、取り消した後に要再確認である商品（商品・範囲・理由。取り消す前から要再確認の商品を含む）、取り込み直す精算の番号、記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し（この取込みの精算が完了の後の比較の範囲に入る棚卸し）を名指し、取込みの結果の画面の「取り消す」も同じ確認になる（[55](../function-design/55-ui-csv-import.md) UI-07-D18、[32](../function-design/32-biz-csv-import-service.md) §15.6b）。
 - 取り消した後に、その画面で要再確認の一覧（入れ直しへの導線）と、正しい版を取り込む導線（Z004 タブを直接開く）が出る。
 
 ### 失敗定義
@@ -122,7 +123,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 同じ | 「取り消す」 | Toast「取込みを取り消しました」。詳細は「この取込みは取消済みです」になり、取消の入口が消える。同じ画面に取消の結果（取り消した件数、A の要再確認と「棚卸しの画面で入れ直す」）と「商品別CSV取込み（Z004）を開く」 | — | 65 §65.5a、b1 の `RollbackResultCard` |
 | 同じ | 「商品別CSV取込み（Z004）を開く」→ 正しい版の 101 を取り込む | Z004 タブが直接開き、取り込める（取り消した取込みは同じ精算の比べる先にならない。ADR D7）。10-01 に精算が戻り 102 は数に入らない側に決まり、A の要再確認が解ける | — | 55 UI-07-D18 の `tab`、32 の順 3〜5 |
 | 10-02 の取込みの結果の画面にいる | 「取り消す」 | 上と同じ確認（読取り・名指し・押せる条件が同じ） | — | 55 UI-07-D18 |
-| 年末の棚卸しを 12-31 に完了した後、12-30 の取込みが誤った版だったと気づいた | 詳細の「この取込みを取り消す」 | 確認に「完了した棚卸し（12-31）の評価額は変わりません。棚卸しの記録の詳細の「完了の後に入った記録による差（参考）」が変わることがあります。」（名指すのは、12-30 の精算が完了の後の比較の範囲に入るから。その精算が棚卸しの明細の商品を売っていなければ、取り消しても参考の差は変わらないが、同じく名指す） | 取り消して正しい版を取り込み直す | ADR D6 の非遡及、35 の完了の後の比較の範囲 |
+| 年末の棚卸しを 12-31 に完了した後、12-30 の取込みが誤った版だったと気づいた | 詳細の「この取込みを取り消す」 | 確認に「完了した棚卸し（12-31）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差（参考）」が変わることがあります。」（名指すのは、12-30 の精算が完了の後の比較の範囲に入るから。12-31 の計数で完了したので 12-30 の精算は計数に入り、取り消すと 12-30 に売れた明細の商品の差異〈計数 − 帳簿〉とロス原価が変わり、参考の差〈完了の時点の在庫 = 計数〉は変わらない。記録の詳細は差異とロス原価を今 active な精算から求め直すため〈b1 の `stocktake_service.rs` の 720 行の `ledger_at_cutoff` と 724 行のロス原価〉。その精算が明細の商品を売っていなければどれも変わらないが、同じく名指す） | 取り消して正しい版を取り込み直す | ADR D6 の非遡及、35 の完了の後の比較の範囲 |
 
 失敗と再試行: 確認の読取りの失敗は dialog の中の文で、「取り消す」を押せない（閉じて開き直すと読み直す）。取消済みの取込みを古い画面から開いた確認は、BIZ の文（「この取込みは取り消し済みです」）で「取り消す」を押せない。取消の失敗は Toast で、同じ取込みID のまま再試行できる（55 §55.9）。
 
@@ -145,9 +146,9 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - B（推奨）: 並べず、「取り込み直した結果に、数え直しが必要な商品が出ることがあります」と書く。どの商品かは取り込み直した取込みの結果の要再確認の一覧（b1 の `ImportResult.recheck_targets`）で名指す。理由: 見込みは取り消す誤った版の行から求めるので、取り込み直す正しい版の行で外れうる（誤った版と正しい版で売れた商品が違うことが、取り消す理由そのもの）。確かな一覧は取り込み直した結果にあり、その画面で入れ直しへ進める。
 - 答えで変わる所: A なら S1 に読取り、`RollbackPreview` に field（32 §15.6b の field と処理ステップ、41 の出力型、Boundary の wire type、AC2 の型の rg）、55 §55.11 の「取り込み直し」の項の文、Matrix の RB と U3 に行が加わり、Goal の非目的と Non-scope と残りの危険の 4 つ目から外す。
 
-(iii) 参考の差が変わることがある完了した棚卸しを、確認で名指すか（ADR D6 の非遡及。取り消しても完了した評価額は変わらず、記録の詳細の参考の差が変わることがある）。
+(iii) 記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸しを、確認で名指すか（ADR D6 の非遡及。取り消しても完了した評価額は変わらず、記録の詳細の明細の差異・ロス原価と参考の差が変わることがある）。
 
-- A（推奨）: 名指す（`RollbackPreview.affected_stocktakes`、35 の完了の後の比較の範囲の規則で決める）。名指すのは範囲の判定による候補で、参考の差が実際に変わるかは見ない（例: 精算 101・102 が明細の商品を売っておらず、全商品を fresh に数えて 12-31 に完了した後に 101 を取り消すと、101 は範囲に入るので名指すが、差は変わらない）。だから文は「変わることがあります」と書く。理由: 年末の棚卸しの後に年末の取込みの誤りに気づく場面で、取り消すと棚卸しの評価額が変わるのかを利用者が心配せずに済む。範囲の規則は BIZ-06 の共有の関数を使い、写さない。
+- A（推奨）: 名指す（`RollbackPreview.affected_stocktakes`、35 の完了の後の比較の範囲の規則で決める）。名指すのは範囲の判定による候補で、記録の詳細のどの数が実際に変わるかは見ない（例: 精算 101・102 が明細の商品を売っておらず、全商品を fresh に数えて 12-31 に完了した後に 101 を取り消すと、101 は範囲に入るので名指すが、差異・ロス原価・参考の差のどれも変わらない）。だから文は「変わることがあります」と書く。理由: 年末の棚卸しの後に年末の取込みの誤りに気づく場面で、取り消すと棚卸しの評価額が変わるのかを利用者が心配せずに済み、記録の詳細のどの数（「差異」「ロス原価」と参考の差）が変わりうるかを確認の画面で知れる。範囲の規則は BIZ-06 の共有の関数を使い、写さない。
 - B: 名指さず、確認に常に「完了した棚卸しの評価額は変わりません」と書く（読取りは要らないが、棚卸しの無い店の毎回の確認に要らない文が出る）。
 - C: 何も書かない。
 - 答えで変わる所: B・C なら、S1 の stocktake_repo の読取りと BIZ-06 の共有の関数の公開、`AffectedStocktake` と `RollbackPreview.affected_stocktakes`（Boundary の wire type、41 の出力型）、AC2 の `rg -c '^export type AffectedStocktake =' src/lib/bindings.ts`、32 §15.6b の `affected_stocktakes` の field と処理ステップの手順 3、65 §65.5a の「確認」の項の名指し、Matrix の RB6 と U3 の棚卸しの case、「b1 の merge の後に同期する節」の 35・20 の行、予定 path の `src-tauri/src/biz/stocktake_service.rs`・`src-tauri/src/db/stocktake_repo.rs`・`docs/function-design/35-biz-stocktake-service.md`・`docs/function-design/20-io-product-repo.md`（20・35 は所有表の行も）、Goal の最小完了条件の 2 つ目と Ordinary Operation の最後の行、Contract Ledger の `affected_stocktakes` の行を外す。55 §55.11 の「完了した棚卸し」の項は、B なら常に出す 1 文（「完了した棚卸しの評価額は変わりません」）に、C なら外す（U3 の期待も同じに）。
@@ -168,7 +169,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 2. preview の wire は `RollbackPreview { csv_import_id, settlement_no, recheck_targets, affected_stocktakes }`。取込みID・精算日・ファイル名・件数・金額は呼ぶ側が既に持つ（結果の画面は `ImportResult` と preview の file 名、詳細は `CsvImportRecordDetail`）ので preview に写さない。精算回数は今の 2 つの型に無いので preview が返す（`CsvImport`・`CsvImportRecordDetail` は新しい列を読まない b1 の決定を変えない）。
 3. 取消済みの取込みの preview は `ValidationFailed`（「この取込みは取り消し済みです」）にする。取消の本体の冪等の Ok（取消済みには 0 件で成功）は変えない（2 つの画面の間の競合で、押した側を失敗にしないため）。
 4. 確認の部品は 1 つ（`src/features/csv-import/components/RollbackConfirmDialog.tsx`）で、取込みの結果の画面と CSV取込みの詳細が使う。取消の mutation（成功の Toast の表示時間 8 秒・D-052 C9 の再取得・失敗の Toast）は `src/features/csv-import/hooks/useRollbackCsvImport.ts` の 1 つにし、`useCsvImportFlow` は成功の後の reducer の dispatch と b1 の `rollbackResult` の保持だけを持つ。
-5. Z004 タブを直接開く search `tab`（`daily-report` | `z004`）は `src/routes/csv-import/index.tsx` の `validateSearch`（zod の `.catch(undefined)`、DSR-15 の検証の形）で受け、`Tabs` の `defaultValue` にだけ使う（タブの切替で URL を書き換えない）。route の新設は無い。
+5. Z004 タブを直接開く search `tab`（`daily-report` | `z004`）の値の集合は、feature の `src/features/csv-import/types.ts` が readonly tuple `CSV_IMPORT_TAB_VALUES` と Zod schema `csvImportSearchSchema`（`tab: z.enum(CSV_IMPORT_TAB_VALUES).optional().catch(undefined)`）と型 `CsvImportSearch` で持つ（UI_TECH_STACK UI-STATE-D2〈`docs/UI_TECH_STACK.md` の 316〜320 行〉。同じ形の先例は `src/features/daily-sales/types.ts` の `dailySalesSearchSchema` と `src/routes/reports/daily.tsx` の import）。`src/routes/csv-import/index.tsx` はその schema を import して `validateSearch` に渡すだけで、値の集合を持たない。`CsvImportPage` の `Tabs` の `value` と取消の結果の link の `tab` も同じ tuple・型から取る。`tab` は `Tabs` の `defaultValue` にだけ使う（初期選択だけ。タブの切替で URL を書き換えず、同じ mount の間に戻る・進むで search が変わってもタブの状態を保つ）。route の新設は無い。
 6. 32 の順 4 の拒否の文に取込みID を足す（「同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）」。取込みID の書き方は順 2 の文と同じ）。理由: 誤った版に気づくのはこの拒否のときが多く、入出庫履歴の「記録ID」の絞り込み（§65.4.1）でその取込みを開ける（順 2 の拒否の文は取込みID を名指す。b1 の closure の是正と同じ形）。文を作るのは b1 の `src-tauri/src/biz/csv_import_service/parse.rs` の `check_settlement_rules`（`c667d52c` の 95〜98 行は「精算 {}」だけ）で、preview（`parse_and_validate`）と確定の TX の取り直しの両方がこの関数を通る。名指す ID は `sales_repo::find_active_imports_for_settlement`（`c667d52c` の 328 行。`(id, file_hash)` を id の昇順で返す）の先頭の行の id（順 4 があるので同じ精算の active な取込みは通常 1 つ）。b1 の file と b1 が持つ表の文なので、b1 の merge の後に本 lane の S1 で code・既存 test の期待・32 の表を直す（Scope の S1、Matrix の RB7）。
 7. preview の query key は `queryKeys.inventoryRecords.csvImportRollbackPreview(importId)`（`inventoryRecords.root()` の下）。D-052 の C9（`csvImportRollback`）は `inventoryRecords.root()` を含むので、SSOT の entry を変えずに取消の後に残らない（`src/lib/invalidation-contract.ts` は変えない）。
 
@@ -202,7 +203,7 @@ b1 の Plan Commit と Gated Amendment の版の名前で書き、b1 の `a7912e
 
 - [32](../function-design/32-biz-csv-import-service.md) §15.6b（新設、BIZ-03-D2）: `preview_rollback_csv_import` の関数要求・シグネチャ・`RollbackPreview`・処理ステップ・設計判断（同じ TX で当てて戻す理由と棄却案）。
 - [41](../function-design/41-cmd-pos.md) §17.5 の `preview_rollback_csv_import`（新設）: CMD の薄い command と error の kind。
-- [55](../function-design/55-ui-csv-import.md) §55.11（新設、UI-07-D18）: 2 つの入口に共通の確認の中身・押せる条件・読取りの cache の扱い、取消の mutation の共有、Z004 タブの「取り込んだ記録を見る」、`/csv-import` の `tab`。
+- [55](../function-design/55-ui-csv-import.md) §55.11（新設、UI-07-D18）: 2 つの入口に共通の確認の中身・押せる条件・読取りの cache の扱い、取消の mutation の共有、Z004 タブの「取り込んだ記録を見る」、`/csv-import` の `tab`（初期選択だけ。値の集合は feature の `types.ts` が持つ。UI-STATE-D2）。
 - [65](../function-design/65-inventory-record-traceability.md) §65.5a（新設、TRACE-D13）: CSV取込みの詳細の取消の入口（表示条件・確認・成功と失敗・到達・理由と棄却案）。
 
 ### b1 の merge の後に同期する節（本 commit では直さない）
@@ -224,9 +225,9 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 |---|---|---|---|
 | 取消の本体の切り出し | b1 の `rollback_csv_import` の TX の中の手順（無効化・状態・求め直し・`recheck_targets`）を、`&Transaction` を受ける `pub(crate)` の関数 1 つに切り出す。`rollback_csv_import` はそれを呼んで COMMIT と操作ログ（今のまま） | `src-tauri/src/biz/csv_import_service/rollback.rs` | Matrix の T1（今の取消の test は期待を変えない） |
 | preview | `pub fn preview_rollback_csv_import(conn: &mut DbConnection, csv_import_id: i64) -> Result<RollbackPreview, BizError>`（32 §15.6b の手順 1〜6。手順 4 は上の切り出した関数、手順 5 は `tx.rollback()`） | `rollback.rs`、`src-tauri/src/biz/csv_import_service/mod.rs`（`RollbackPreview`・`AffectedStocktake` の型と re-export） | Matrix の RB1〜RB6 |
-| 参考の差が変わることがある完了した棚卸し | 35 の完了の後の比較の範囲の判定（その取込みの精算が範囲に入るか。範囲による候補で、差が実際に変わるかは見ない）を `pub(crate)` の関数にし、完了した棚卸しの一覧の読取りを足す | `src-tauri/src/biz/stocktake_service.rs`、`src-tauri/src/db/stocktake_repo.rs` | Matrix の RB6 |
+| 記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し | 35 の完了の後の比較の範囲の判定（その取込みの精算が範囲に入るか。範囲による候補で、どの数が実際に変わるかは見ない）を `pub(crate)` の関数にし、完了した棚卸しの一覧の読取りを足す | `src-tauri/src/biz/stocktake_service.rs`、`src-tauri/src/db/stocktake_repo.rs` | Matrix の RB6 |
 | test | Matrix の RB1〜RB6 | `src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs` | 既存の test の fixture（b1 の `make_z004_bytes` ほか）を使う |
-| 順 4 の拒否の文（b1 の file を本 lane で変える） | `check_settlement_rules` の順 4 の文を「同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）」に（`find_active_imports_for_settlement` の先頭の行の id。上の「起票時に起草役が決めたこと」の 6）。既存の test の期待を、固定の文から実際の取込みID を入れた文へ当て直す（preview の経路: `parse_tests.rs` の `test_parse_req401_rejects_other_version_of_same_settlement_and_allows_after_rollback`〈`c667d52c` の 664 行〉。確定の経路: `commit_tests.rs` の `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache`〈682 行〉と `csv_import_cmd.rs` の `test_csv_cmd_req401_commit_keeps_token_on_rejection_and_removes_on_success`〈341 行〉） | `src-tauri/src/biz/csv_import_service/parse.rs`、`tests/parse_tests.rs`・`tests/commit_tests.rs`、`src-tauri/src/cmd/csv_import_cmd.rs` | Matrix の RB7（契約の変更: 32 の表の順 4。期待を変える理由は Matrix の T5） |
+| 順 4 の拒否の文（b1 の file を本 lane で変える） | `check_settlement_rules` の順 4 の文を「同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）」に（`find_active_imports_for_settlement` の先頭の行の id。上の「起票時に起草役が決めたこと」の 6）。既存の test の期待を、固定の文から実際の取込みID を入れた文へ当て直し、3 test とも順 4 が名指す取込みの ID が 1 以外になるように、その取込みの前に別の取込みを 1 件入れる（b1 の 3 test は名指す取込みが DB の最初の取込み〈ID 1〉なので、ID を固定値 1 にする誤実装が通る。形は Matrix の RB7）（preview の経路: `parse_tests.rs` の `test_parse_req401_rejects_other_version_of_same_settlement_and_allows_after_rollback`〈`c667d52c` の 664 行〉。確定の経路: `commit_tests.rs` の `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache`〈682 行〉と `csv_import_cmd.rs` の `test_csv_cmd_req401_commit_keeps_token_on_rejection_and_removes_on_success`〈341 行〉） | `src-tauri/src/biz/csv_import_service/parse.rs`、`tests/parse_tests.rs`・`tests/commit_tests.rs`、`src-tauri/src/cmd/csv_import_cmd.rs` | Matrix の RB7（契約の変更: 32 の表の順 4。期待を変える理由は Matrix の T5） |
 
 ### S2 CMD と wire
 
@@ -244,10 +245,10 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 | 要再確認の一覧の部品（b1 の file を本 lane で変える） | `RecheckTargetListProps.renderAction` を任意にする。省略したときは「操作」列（見出しと各行の cell）と「棚の数を確かめて入れ直してください。」を出さない（確認の中では入れ直しへ進めないため。55 UI-07-D18）。渡したときの表示は今のまま。今の 2 つの呼出し元（`ResultStep.tsx` の `RecheckTargets`、`StocktakePage.tsx`）は変えない | `src/features/stocktake/components/RecheckTargetList.tsx` | Matrix の U3（省略の形）。渡す形の回帰は b1 の今の test（`ResultStep.test.tsx` の 143〜148 行の入れ直しの文と link、`StocktakePage.test.tsx` の 1667〜1671 行の「入れ直す」）を期待を変えずに通す |
 | 取消の mutation | `useRollbackCsvImport({ onSuccess })`: `commands.rollbackCsvImport`、成功の Toast（8 秒）、`invalidateByContract(queryClient, invalidationContract.csvImportRollback())`、失敗の Toast | `src/features/csv-import/hooks/useRollbackCsvImport.ts`（新設）、`src/features/csv-import/hooks/useCsvImportFlow.ts`（共有の hook を使い、成功で dispatch と `rollbackResult`） | Matrix の U5・U6・U9 |
 | 取込みの結果の画面 | 「取り消す」の確認を共有の部品に（中身の文と dl を外す） | `src/features/csv-import/components/ResultStep.tsx` | Matrix の U7 |
-| Z004 タブ | 上に「取り込んだ記録を見る（取り消すときはここから）」（`/inventory/records` へ `recordType: "csv_import"`）、`tab` の search を `Tabs` の `defaultValue` に | `src/features/csv-import/CsvImportPage.tsx`、`src/routes/csv-import/index.tsx` | Matrix の U8 |
+| Z004 タブ | 上に「取り込んだ記録を見る（取り消すときはここから）」（`/inventory/records` へ `recordType: "csv_import"`）、`tab` の search を `Tabs` の `defaultValue` に（初期選択だけ） | `src/features/csv-import/CsvImportPage.tsx` | Matrix の U8 |
+| `tab` の値の集合（UI-STATE-D2） | feature が readonly tuple `CSV_IMPORT_TAB_VALUES`・Zod schema `csvImportSearchSchema`・型 `CsvImportSearch` を持ち（上の「起票時に起草役が決めたこと」の 5）、route は schema を import して `validateSearch` に渡すだけ（route に `z.enum` を書かない）。`Tabs` の値と取消の結果の link の `tab` も同じ tuple・型から取る | `src/features/csv-import/types.ts`（b1 の file を本 lane で変える）、`src/routes/csv-import/index.tsx` | Matrix の U8、AC3 の 3 つの `rg` |
 | CSV取込みの詳細 | header の操作に「この取込みを取り消す」（状態が `completed`・`completed_partial` のときだけ）、確認、成功の後に取消の結果（b1 の `RollbackResultCard`）と「商品別CSV取込み（Z004）を開く」（`/csv-import` へ `tab: "z004"`） | `src/features/inventory-records/CsvImportRecordDetailPage.tsx` | Matrix の U1・U5・U6 |
-| query key | `queryKeys.inventoryRecords.csvImportRollbackPreview(importId)` | `src/features/stocktake/components/RecheckTargetList.tsx`（b1 の file を本 lane で変える） | b1: 要再確認の一覧の部品（棚卸しの画面と取込み・取消の結果が `renderAction` を渡して使う） | `renderAction` を任意にし、省略したときは「操作」列と入れ直しの文を出さない | b1 の版を起点に props の 1 つと省略の分岐だけを足す。今の 2 つの呼出し元は変えない（b1 への依存の 3） |
-| `src/lib/query-keys.ts` | Matrix の U10 |
+| query key | `queryKeys.inventoryRecords.csvImportRollbackPreview(importId)` | `src/lib/query-keys.ts` | Matrix の U10 |
 | test | Matrix の U1〜U10 | `CsvImportRecordDetailPage.test.tsx`・`RollbackConfirmDialog.test.tsx`（新設）・`ResultStep.test.tsx`・`useCsvImportFlow.test.tsx`・`CsvImportPage.test.tsx` | 既存の test は Matrix の T2〜T4 |
 
 ### S4 docs・生成物
@@ -257,9 +258,9 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 
 ### 節の所有表（並走の lane と重なる file）
 
-`comm -12` の結果（2026-10-24、Plan Review round 1 の是正で予定 path が 38 になったので取り直した。本 packet の予定 path 38 と次の各 path の集合を `LC_ALL=C sort -u` して突き合わせた。差分は `gh pr diff <番号> --name-only`、括弧の中は remote-tracking の head）:
+`comm -12` の結果（2026-10-24、Plan Review round 1 の是正で予定 path が 38 になったので取り直した。round 2 の是正で足した `src/features/csv-import/types.ts` の 1 path は下の b1 の行に足し、ほかの lane の差分に無いことを 2026-10-24 の remote-tracking の head〈`git diff --name-only origin/main...origin/<branch>`〉で確かめた。本 packet の予定 path 39 と次の各 path の集合を `LC_ALL=C sort -u` して突き合わせた。差分は `gh pr diff <番号> --name-only`、括弧の中は remote-tracking の head）:
 
-- b1（PR #188、`agent/stocktake-count-runtime-b`、`c667d52c`）: 差分（176）とは 31: `docs/FUNCTION_DESIGN.md`・`docs/SCREEN_DESIGN.md`・`docs/architecture/cmd-task-specs.md`・`docs/architecture/ui-task-specs.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/32-biz-csv-import-service.md`・`docs/function-design/35-biz-stocktake-service.md`・`docs/function-design/41-cmd-pos.md`・`docs/function-design/55-ui-csv-import.md`・`docs/function-design/65-inventory-record-traceability.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/csv_import_service/mod.rs`・`src-tauri/src/biz/csv_import_service/parse.rs`・`src-tauri/src/biz/csv_import_service/rollback.rs`・`src-tauri/src/biz/csv_import_service/tests/commit_tests.rs`・`src-tauri/src/biz/csv_import_service/tests/parse_tests.rs`・`src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs`・`src-tauri/src/biz/stocktake_service.rs`・`src-tauri/src/cmd/csv_import_cmd.rs`・`src-tauri/src/db/stocktake_repo.rs`・`src-tauri/src/lib.rs`・`src/features/csv-import/CsvImportPage.test.tsx`・`src/features/csv-import/CsvImportPage.tsx`・`src/features/csv-import/components/ResultStep.test.tsx`・`src/features/csv-import/components/ResultStep.tsx`・`src/features/csv-import/hooks/useCsvImportFlow.test.tsx`・`src/features/csv-import/hooks/useCsvImportFlow.ts`・`src/features/inventory-records/CsvImportRecordDetailPage.test.tsx`・`src/features/stocktake/components/RecheckTargetList.tsx`・`src/lib/bindings.ts`・`src/lib/query-keys.ts`。round 1 の是正で足した 4 path（`parse.rs`・`parse_tests.rs`・`commit_tests.rs`・`RecheckTargetList.tsx`）は全部 b1 の差分にある（b1 の file を本 lane で変える。下の表）。b1 の packet の「予定 path の一覧」（148）とは 29（上の 31 から `CsvImportRecordDetailPage.test.tsx` と `RecheckTargetList.tsx` を除いたもの）。
+- b1（PR #188、`agent/stocktake-count-runtime-b`、`c667d52c`）: 差分（176）とは 32: `docs/FUNCTION_DESIGN.md`・`docs/SCREEN_DESIGN.md`・`docs/architecture/cmd-task-specs.md`・`docs/architecture/ui-task-specs.md`・`docs/function-design/20-io-product-repo.md`・`docs/function-design/32-biz-csv-import-service.md`・`docs/function-design/35-biz-stocktake-service.md`・`docs/function-design/41-cmd-pos.md`・`docs/function-design/55-ui-csv-import.md`・`docs/function-design/65-inventory-record-traceability.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/csv_import_service/mod.rs`・`src-tauri/src/biz/csv_import_service/parse.rs`・`src-tauri/src/biz/csv_import_service/rollback.rs`・`src-tauri/src/biz/csv_import_service/tests/commit_tests.rs`・`src-tauri/src/biz/csv_import_service/tests/parse_tests.rs`・`src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs`・`src-tauri/src/biz/stocktake_service.rs`・`src-tauri/src/cmd/csv_import_cmd.rs`・`src-tauri/src/db/stocktake_repo.rs`・`src-tauri/src/lib.rs`・`src/features/csv-import/CsvImportPage.test.tsx`・`src/features/csv-import/CsvImportPage.tsx`・`src/features/csv-import/components/ResultStep.test.tsx`・`src/features/csv-import/components/ResultStep.tsx`・`src/features/csv-import/hooks/useCsvImportFlow.test.tsx`・`src/features/csv-import/hooks/useCsvImportFlow.ts`・`src/features/csv-import/types.ts`・`src/features/inventory-records/CsvImportRecordDetailPage.test.tsx`・`src/features/stocktake/components/RecheckTargetList.tsx`・`src/lib/bindings.ts`・`src/lib/query-keys.ts`。round 1 の是正で足した 4 path（`parse.rs`・`parse_tests.rs`・`commit_tests.rs`・`RecheckTargetList.tsx`）は全部 b1 の差分にある（b1 の file を本 lane で変える。下の表）。round 2 の是正で足した `types.ts` も b1 の差分と b1 の packet の予定 path〈b1 の packet の 484 行〉にある。b1 の packet の「予定 path の一覧」（148）とは 30（上の 32 から `CsvImportRecordDetailPage.test.tsx` と `RecheckTargetList.tsx` を除いたもの）。
 - PR #172（`agent/sd-direct-read-runtime`、`f140526b`、差分 9）: 差分とは 1（`docs/function-design/55-ui-csv-import.md`。#172 は UI-07-D16 と更新履歴）。packet が名を挙げる path を足すと 5（ほかは `docs/SCREEN_DESIGN.md`・`90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`）。
 - PR #190（`agent/backup-offsite-runtime`、`000345f1`、差分 7）: 差分とは 0。packet が名を挙げる path とは 4（`docs/FUNCTION_DESIGN.md`・`90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`）。
 - PR #193（b2、`agent/stocktake-count-runtime-b2`、`abec3f50`、差分 5）: 差分とは 0。packet の「予定 path の一覧」を含む名を挙げる path とは 8（`docs/FUNCTION_DESIGN.md`・`docs/SCREEN_DESIGN.md`・`cmd-task-specs.md`・`20-io-product-repo.md`・`65-inventory-record-traceability.md`・`90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`）。
@@ -280,7 +281,8 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 | `src-tauri/src/biz/stocktake_service.rs`・`src-tauri/src/db/stocktake_repo.rs` | b1: 計数・完了・記録の詳細 | 完了の後の比較の範囲の判定の公開、完了した棚卸しの一覧の読取り | 別の関数（b1 への依存の 5） |
 | `src-tauri/src/biz/csv_import_service/parse.rs`・`tests/parse_tests.rs`・`tests/commit_tests.rs`（b1 の file を本 lane で変える） | b1: 順 1〜5 の拒否（`check_settlement_rules`）と、その test | 順 4 の拒否の文に取込みID を入れ、既存の test の期待を当て直す（S1 の順 4 の行） | b1 の版を起点に順 4 の文と期待だけを直す（起票時に起草役が決めたことの 6） |
 | `src-tauri/src/cmd/csv_import_cmd.rs`・`src-tauri/src/lib.rs` | b1: Z004 の command の入出力と、その test（順 4 の文の期待を含む）。#172・#190・#194・#198・#201: 各 lane の packet が名指す `lib.rs` の変更 | preview の command と登録の 2 行、`csv_import_cmd.rs` の test の順 4 の文の期待 | 一覧の行は両方を残す |
-| `src/features/csv-import/*`（`CsvImportPage`・`ResultStep`・`useCsvImportFlow` と test） | b1: 停止の Alert を外す、取消の結果、`confirmImport` の引数、`rollbackResult` | 確認の部品・mutation の共有・Z004 タブの導線・`tab` | b1 の版を起点に直す（b1 への依存の 3・7） |
+| `src/features/csv-import/*`（`CsvImportPage`・`ResultStep`・`useCsvImportFlow`・`types.ts` と test） | b1: 停止の Alert を外す、取消の結果、`confirmImport` の引数、`rollbackResult`、`types.ts` の state と action の型（`additionalImportConfirmed` を外す） | 確認の部品・mutation の共有・Z004 タブの導線・`tab`（`types.ts` には `tab` の tuple・schema・型を足すだけ） | b1 の版を起点に直す（b1 への依存の 3・7） |
+| `src/features/stocktake/components/RecheckTargetList.tsx`（b1 の file を本 lane で変える） | b1: 要再確認の一覧の部品（棚卸しの画面と取込み・取消の結果が `renderAction` を渡して使う） | `renderAction` を任意にし、省略したときは「操作」列と入れ直しの文を出さない | b1 の版を起点に props の 1 つと省略の分岐だけを足す。今の 2 つの呼出し元は変えない（b1 への依存の 3） |
 | `src/lib/query-keys.ts` | b1: `stocktake.recheckList`。#194: backup の key | `inventoryRecords.csvImportRollbackPreview` | 別の key |
 | 32・41・55・65 | b1: D-118 の節・停止の節・取消と確定の手順。#172: 55 の UI-07-D16 と更新履歴 | 本 commit の新しい節と、上の「b1 の merge の後に同期する節」 | 新しい節は hunk が重ならない。同期する節は b1 の版を起点に本 lane の分だけ直す |
 | 20・35・SCREEN_DESIGN・FUNCTION_DESIGN・cmd-task-specs・ui-task-specs | b1: D-118 の節と停止の記述。b2: 20・65・SCREEN_DESIGN の b2 の分。#192: task-specs の注記 | 上の「b1 の merge の後に同期する節」 | b1・b2 の版を起点に本 lane の分だけ直す |
@@ -288,7 +290,7 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-38 path（Rust 10・TS 15・docs 13）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+39 path（Rust 10・TS 16・docs 13）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
 docs/FUNCTION_DESIGN.md
@@ -323,6 +325,7 @@ src/features/csv-import/components/RollbackConfirmDialog.tsx
 src/features/csv-import/hooks/useCsvImportFlow.test.tsx
 src/features/csv-import/hooks/useCsvImportFlow.ts
 src/features/csv-import/hooks/useRollbackCsvImport.ts
+src/features/csv-import/types.ts
 src/features/inventory-records/CsvImportRecordDetailPage.test.tsx
 src/features/inventory-records/CsvImportRecordDetailPage.tsx
 src/features/stocktake/components/RecheckTargetList.tsx
@@ -343,7 +346,7 @@ src/routes/csv-import/index.tsx
 
 - AC1（BIZ）: `cd src-tauri && cargo test --lib biz::csv_import_service` が全 PASS し、Matrix の RB1〜RB6 の test 名が `rg -n 'fn <名前>' src-tauri/src/biz/csv_import_service` で 1 件ずつ見つかる。`rg -c 'pub fn preview_rollback_csv_import\(' src-tauri/src/biz/csv_import_service` が 1、`rg -c 'tx.rollback\(\)' src-tauri/src/biz/csv_import_service/rollback.rs` が 1（preview が明示の rollback で戻す）。b1 の取消の test（Matrix の T1）が期待を変えずに PASS する。順 4 の拒否の文: `rg -c '既に取り込まれています（精算 \{\}、取込みID: \{\}）' src-tauri/src/biz/csv_import_service/parse.rs` が 1、`rg -c '既に取り込まれています（精算 \{\}）' src-tauri/src/biz/csv_import_service/parse.rs` が 0（exit 1）で、Matrix の RB7 の 3 つの test が PASS する（preview と確定の両方の経路で実際の取込みID が文に出る）。
 - AC2（CMD と wire）: `rg -c 'preview_rollback_csv_import' src-tauri/src/lib.rs` が 2（2 つの一覧に 1 つずつ）、`rg -c '^export type RollbackPreview =' src/lib/bindings.ts` が 1、`rg -c '^export type AffectedStocktake =' src/lib/bindings.ts` が 1。`cd src-tauri && cargo test --lib cmd::csv_import_cmd` が全 PASS し、Matrix の W1 の test 名が見つかる。`bash scripts/check-command-drift.sh` が exit 0（宣言・runtime の登録・Specta の登録・bindings の wire 名の 4 面が一致。Matrix の W2）。
-- AC3（画面）: `npm test -- src/features/csv-import src/features/inventory-records src/lib` が全 PASS し、Matrix の U1〜U10 の test 名が見つかる。`rg -c 'この取込みを取り消す' src/features/inventory-records/CsvImportRecordDetailPage.tsx` が 1 以上、`rg -l 'commands.rollbackCsvImport' src --glob '!src/lib/bindings.ts' --glob '!*.test.*'` が `src/features/csv-import/hooks/useRollbackCsvImport.ts` の 1 行だけ（取消の mutation を 2 つ持たない）、`rg -c 'validateSearch' src/routes/csv-import/index.tsx` が 1、`rg -c 'renderAction\?: ' src/features/stocktake/components/RecheckTargetList.tsx` が 1（`renderAction` が任意）、`rg -c 'recordType: "csv_import"' src/features/csv-import/CsvImportPage.tsx` が 1 以上。
+- AC3（画面）: `npm test -- src/features/csv-import src/features/inventory-records src/lib` が全 PASS し、Matrix の U1〜U10 の test 名が見つかる。`rg -c 'この取込みを取り消す' src/features/inventory-records/CsvImportRecordDetailPage.tsx` が 1 以上、`rg -l 'commands.rollbackCsvImport' src --glob '!src/lib/bindings.ts' --glob '!*.test.*'` が `src/features/csv-import/hooks/useRollbackCsvImport.ts` の 1 行だけ（取消の mutation を 2 つ持たない）、`rg -c 'validateSearch: csvImportSearchSchema' src/routes/csv-import/index.tsx` が 1、`rg -c 'export const CSV_IMPORT_TAB_VALUES = \[' src/features/csv-import/types.ts` が 1、`rg -c 'z\.enum\(' src/routes/csv-import/index.tsx` が 0（exit 1。route が値の集合を持たない。UI-STATE-D2）、`rg -c 'renderAction\?: ' src/features/stocktake/components/RecheckTargetList.tsx` が 1（`renderAction` が任意）、`rg -c 'recordType: "csv_import"' src/features/csv-import/CsvImportPage.tsx` が 1 以上。
 - AC4（gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`、`cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts`、`cargo run --bin generate_traceability -- --check`、`cargo test --test design_compliance_test`、`npm run typecheck && npm run lint && npm run format:check && npm test && npm run build`（`src/routeTree.gen.ts` は `.gitignore` の 33 行で追跡外なので diff を AC にしない。`tab` の search の型は typecheck と Matrix の U8 で見る）、`bash scripts/doc-consistency-check.sh` と `--target plan` が exit 0。L3 を含むので Writer は `cd src-tauri && cargo check --release` を通す。
 - AC5（正本）: `rg -c 'rollback CTA は置かず' docs/function-design/65-inventory-record-traceability.md` が 0（exit 1）、`rg -c 'TRACE-D13、proposed・未実装|UI-07-D18、proposed・未実装|BIZ-03-D2、proposed・未実装' docs/function-design` が 0（exit 1）、`rg -c 'preview_rollback_csv_import（proposed・未実装）' docs/function-design/41-cmd-pos.md` が 0（exit 1）、`rg -l '取消の画面入口は結果 step だけ' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` が 0 件（exit 1。b1 が外す記述が残っていない）。`rg -c '既に取り込まれています（精算 \{n\}、取込みID: \{id\}）' docs/function-design/32-biz-csv-import-service.md` が 1（順 4 の拒否の文）。
 
@@ -396,6 +399,19 @@ exit=0
 
 （main の版の `parse.rs` には順 4 の文が無く〈b1 が足す〉、`RecheckTargetList.tsx` は b1 が作る。どちらも b1 の merge の後に本 lane の head で 1・0 と 1 になる。）
 
+Plan Review round 2 の是正で足した AC3 の baseline（2026-10-24、本 worktree の HEAD `fe7d10fd`。scratch の shell〈repo の外〉で逐語に回した）:
+
+```
+$ rg -c 'export const CSV_IMPORT_TAB_VALUES = \[' src/features/csv-import/types.ts
+exit=1
+$ rg -c 'validateSearch: csvImportSearchSchema' src/routes/csv-import/index.tsx
+exit=1
+$ rg -c 'z\.enum\(' src/routes/csv-import/index.tsx
+exit=1
+```
+
+（`z.enum(` の 0 は今の route が `validateSearch` を持たないことによる。完了の時点の 0 は route が feature の schema を import して値の集合を持たないことを示す。AC3 の `validateSearch` の数は `validateSearch: csvImportSearchSchema` の数に置き換えた。上の起票の baseline の `rg -c 'validateSearch'` はその前の式の記録。）
+
 AC5 の baseline（同じ日、本 commit の docs の差分を当てた作業木で逐語に回した）:
 
 ```
@@ -416,13 +432,13 @@ exit=1
 
 （`rg -c 'rollback CTA は置かず'` は上の baseline で 1。`取消の画面入口は結果 step だけ` の 1 件は §55.0 の停止の節で、b1 が節ごと外す。）
 
-完了時の期待: AC1 の 2 つの数が 1 と 1。AC2 が 2・1・1。AC1 の順 4 の文が新しい形 1・古い形 0（exit 1）。AC2 の `check-command-drift.sh` が exit 0。AC3 の詳細の文が 1 以上、取消の mutation の file が `useRollbackCsvImport.ts` の 1 つ、`validateSearch` が 1、`renderAction?: ` が 1、`recordType` が 1 以上。AC5 の「置かず」・「proposed・未実装」の 2 本・「結果 step だけ」が exit 1、順 4 の文が 1。test の本数は AC にしない（PR と runner の出力を参照）。
+完了時の期待: AC1 の 2 つの数が 1 と 1。AC2 が 2・1・1。AC1 の順 4 の文が新しい形 1・古い形 0（exit 1）。AC2 の `check-command-drift.sh` が exit 0。AC3 の詳細の文が 1 以上、取消の mutation の file が `useRollbackCsvImport.ts` の 1 つ、`validateSearch: csvImportSearchSchema` が 1、`CSV_IMPORT_TAB_VALUES` の定義が 1、route の `z.enum(` が 0（exit 1）、`renderAction?: ` が 1、`recordType` が 1 以上。AC5 の「置かず」・「proposed・未実装」の 2 本・「結果 step だけ」が exit 1、順 4 の文が 1。test の本数は AC にしない（PR と runner の出力を参照）。
 
 ## Design Readiness
 
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。
 
-- 引用する設計正本（節まで）: ADR SPEC-STK-CNT-D2（求め直す商品）・D3（判定の n、A1、「D に精算があるか」「最初の 1 本」）・D6（非遡及と完了の後の差）・D7（取消と取り込み直し）と Consequences（Gated Amendment の版）、[32](../function-design/32-biz-csv-import-service.md) の冒頭の D-118 の節の取消と表の順 2〜5・§15.5・§15.6a・§15.6b（本 commit）、[41](../function-design/41-cmd-pos.md) §17.4・§17.5、[55](../function-design/55-ui-csv-import.md) 冒頭の D-118 の表の「取消の結果」・UI-07-D14・§55.4 の手順 18・§55.5・§55.9・§55.11（本 commit）、[65](../function-design/65-inventory-record-traceability.md) §65.4.1・§65.5・§65.5a（本 commit）・§65.8.1・§65.8.2・§65.10 の 4b、[35](../function-design/35-biz-stocktake-service.md) の D-118 の節の「完了」の後半（完了の後の比較の範囲）、[40](../function-design/40-cmd-product.md) の CountRecoveryTarget、design-system [01](../design-system/01-decision-rules.md) の DSR-07・DSR-08・DSR-15・DSR-18・DSR-20、[04](../design-system/04-backbone.md) の「同じ操作は同じ顔と挙動」、D-052（C9）、D-127。
+- 引用する設計正本（節まで）: ADR SPEC-STK-CNT-D2（求め直す商品）・D3（判定の n、A1、「D に精算があるか」「最初の 1 本」）・D6（非遡及と完了の後の差）・D7（取消と取り込み直し）と Consequences（Gated Amendment の版）、[32](../function-design/32-biz-csv-import-service.md) の冒頭の D-118 の節の取消と表の順 2〜5・§15.5・§15.6a・§15.6b（本 commit）、[41](../function-design/41-cmd-pos.md) §17.4・§17.5、[55](../function-design/55-ui-csv-import.md) 冒頭の D-118 の表の「取消の結果」・UI-07-D14・§55.4 の手順 18・§55.5・§55.9・§55.11（本 commit）、[65](../function-design/65-inventory-record-traceability.md) §65.4.1・§65.5・§65.5a（本 commit）・§65.8.1・§65.8.2・§65.10 の 4b、[35](../function-design/35-biz-stocktake-service.md) の D-118 の節の「完了」の後半（完了の後の比較の範囲）、[40](../function-design/40-cmd-product.md) の CountRecoveryTarget、design-system [01](../design-system/01-decision-rules.md) の DSR-07・DSR-08・DSR-15・DSR-18・DSR-20、[04](../design-system/04-backbone.md) の「同じ操作は同じ顔と挙動」、D-052（C9）、[UI_TECH_STACK](../UI_TECH_STACK.md) の UI-STATE-D2（有限 URL search 値の feature-local SSOT）、D-127。
 - 必要な設計成果物（状態）: (1) 取消の前の読取りの関数と wire（Design artifact selection の「New or changed BIZ … behavior」と「Tauri command, DTO」の行）= updated in this PR（32 §15.6b、41）。(2) CSV取込みの詳細の取消の入口（「operator workflow」の行）= updated in this PR（65 §65.5a）。(3) 2 つの入口に共通の確認・取消の mutation の共有・Z004 タブの導線・`/csv-import` の `tab`（「operator workflow, route/search state, Japanese wording」の行）= updated in this PR（55 §55.11）。(4) 35・20 の共有の判定と読取り、SCREEN_DESIGN の画面の行 = 実装の PR で同期（b1 の版を起点に。規則は変えない）。
 - plan にしかない durable な判断の昇格先: 上の (1)〜(3) は正本に置いた。packet にだけあるのは、規模と手法、S1〜S4 の順、所有表、既存の test の移し方（Matrix の T1〜T5）、L3 の台本、「起票時に起草役が決めたこと」の 6・7（実装の PR で 32・55 へ）。
 - 前提・制約と、延期した design gap の follow-up: owner の判断事項 (i)〜(iii) は推奨を既定にした（答えで変わる所を各項に書いた）。取消の本体は b1 に依る（b1 への依存）。日報の取消の入口と業務記録の取消は非目的。
@@ -450,7 +466,7 @@ exit=1
 | Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 当たる。締め → SD → Z004 の取込み → 結果の画面を離れる → 誤りに気づく（preview の拒否・売上レポート・棚卸し）→ Z004 タブの「取り込んだ記録を見る」か入出庫履歴 → 詳細 → 確認 → 取消 → 入れ直し → 正しい版の取り込み直し | L3 の台本 |
 | Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | 当たらない。レジが替わっても取消は取込みの単位の無効化のまま | — |
 | Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 当たる。fixture は全部合成（b1 の L3 の fixture と Rust・TS の test）。L3 の DB は Coordinator が空の DB に差し替え、owner の今の DB は消さずに移して残す | Data Safety |
-| Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 当たる。取消は売上と movement を無効にし（補償の movement を作らない）、完了した評価額を変えない（非遡及）。確認は「評価額は変わらず、参考の差が変わることがある」と分けて書く（名指すのは比較の範囲による候補） | RB6、55 §55.11 |
+| Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 当たる。取消は売上と movement を無効にし（補償の movement を作らない）、完了した評価額を変えない（非遡及）。確認は「評価額は変わらず、記録の詳細の「差異」「ロス原価」と参考の差が変わることがある」と分けて書く（名指すのは比較の範囲による候補） | RB6、55 §55.11 |
 | Manual verification | Which assertions cannot be proven by automated tests and require Windows native L3, external tool import, or real-device confirmation? | Plan Packet, Test Matrix, PR body | 当たる。Windows native の dialog の見た目と destructive の配置、通しの操作列（下の L3 の台本）。完了した棚卸しの名指しは台本を長くしないために自動 test と画面の写しで見る | Test Plan の L3 |
 | 環境・再現性 | 新設の環境依存（toolchain / CI runner / OS 差異等）を repo-pinned config で強制するか、明示的に defer するか | repo-pinned config, Plan Packet | 当たらない。新しい依存は無い（TX の rollback は同梱の SQLite と rusqlite 0.31 の今の振舞い。`src-tauri/Cargo.toml` の `rusqlite = { version = "0.31", features = ["bundled"] }`） | — |
 
@@ -460,7 +476,7 @@ exit=1
 - consumer: 確認の部品 `RollbackConfirmDialog`（取込みの結果の画面と CSV取込みの詳細）、`describeError`（preview の失敗の文）。
 - wire type（新しい型）: `RollbackPreview { csv_import_id: number, settlement_no: number, recheck_targets: CountRecoveryTarget[], affected_stocktakes: AffectedStocktake[] }`、`AffectedStocktake { stocktake_id: number, completed_at: string }`。command `previewRollbackCsvImport(csvImportId: number)`。error は今の `CmdError`（kind `not_found` / `validation` / `internal`）。
 - internal type: Rust の `RollbackPreview`・`AffectedStocktake`（`specta::Type`、`csv_import_service` の型）。取消の本体を切り出した `pub(crate)` の関数（TX を受け、無効にした件数と `recheck_targets` を返す）。
-- route / search: `/csv-import/` の `tab?: "daily-report" | "z004"`（zod の `.catch(undefined)`。欠落・ほかの値は既定の日報取込み）。`/inventory/records` へは今の search の `recordType: "csv_import"` を渡すだけ（search の型は変えない）。
+- route / search: `/csv-import/` の `tab?: "daily-report" | "z004"`（zod の `.catch(undefined)`。欠落・ほかの値は既定の日報取込み）。値の集合は `src/features/csv-import/types.ts` の `CSV_IMPORT_TAB_VALUES` と `csvImportSearchSchema` が持ち、route は import する（UI-STATE-D2）。`/inventory/records` へは今の search の `recordType: "csv_import"` を渡すだけ（search の型は変えない）。
 - precision/range: `settlement_no` は精算回数の範囲（b1 の 32 の順 1: 0 以上 `9007199254740991` 以下）で wire の number で正確。`csv_import_id`・`stocktake_id` は SQLite の id。`recheck_targets` の数は b1 の `CountRecoveryTarget` の範囲（b1 の packet の Z4・Z18）。`completed_at` は棚卸しの完了の日時の文字列（今の `Stocktake.completed_at` と同じ形）で、確認は日付の部分を出す。
 - round-trip path: DB → BIZ（TX で当てて戻す）→ specta → bindings → 確認の部品。search: 取消の結果の link `{ to: "/csv-import", search: { tab: "z004" } }` → route の `validateSearch` → `Tabs` の `defaultValue`。
 - invalid input: 無い取込みID は `not_found`（「CSV取込み記録が見つかりません: ID {id}」）、取消済みは `validation`（「この取込みは取り消し済みです」）。確認はどちらも「取り消す」を押せない。不正な `tab` は既定に落ちる（拒否の画面を出さない）。
@@ -477,6 +493,7 @@ Test Design Matrix: [2026-10-23-z004-rollback-entry](test-matrices/2026-10-23-z0
 - negative tests: Matrix の RB3（無い ID・取消済み）、RB2（何も書かない）、U4（preview の失敗・取消済みで押せない）、U6（取消の失敗と再試行）、U8（不正な `tab`）。
 - compatibility checks: b1 の取消の test を期待を変えずに通す（Matrix の T1）。今の結果の画面の取消の flow の test は確認の中身の case だけを契約の変更（55 UI-07-D18）として直す（T2）。
 - data safety checks: fixture は全部合成。
+- mutation の確かめ: RB7 は 3 test とも順 4 が名指す取込みの ID が 1 以外になる fixture で、production の側で ID を固定値 1 にする mutant を当て、3 test とも red になることを確かめる（b1 の今の fixture は名指す取込みが ID 1 なので、この mutant でも 3 test とも GREEN になる）。
 - main wiring/integration checks: W2（command の登録）、RB1（preview と取消が同じ商品を名指す）、U5（詳細の取消の後の D-052 C9 の再取得）、U7（結果の画面が同じ確認を使う）。
 
 L3（Human Gate `manual`。owner は 2026-10-21 から数日、手が使いにくい〈左手だけ〉。1 回の通しの台本で、各段の PASS / FAIL を返してもらう。起動は今の L3 と同じく Windows native の `npm run tauri dev`）。L3 の日を T と書く（PC の今日）。入力物は b1 の S9 の生成の test が T から作る合成の file（**Coordinator** が L3 を頼む日に `cd src-tauri && INVENTORY_L3_DAY=その日 INVENTORY_L3_OUT=repo の外の folder CARGO_TARGET_DIR=/tmp/shared-cargo-target cargo test --lib -- --ignored io::l3_fixtures` で作り、Windows の path を省略せずに渡す）。
@@ -511,7 +528,7 @@ L3 の DB（Coordinator、L3 を頼む前）: owner がアプリを止めた状�
 
 ## Contract Ledger
 
-触る設計正本の節の契約を行にした（隣接の契約の sweep: ADR D2・D3・D6・D7、32 の D-118 の節の取消と順 2〜5・§15.5・§15.6a・§15.6b、41 §17.4・§17.5、55 の D-118 の表・UI-07-D13・D14・§55.4 の手順 18・§55.5・§55.7・§55.9・§55.11、65 §65.4.1・§65.5・§65.5a・§65.7.2・§65.8.1・§65.8.2・§65.8.3・§65.10、35 の完了の後の比較の範囲、DSR-07・08・15・18・20、D-052 C9 を当て、本 lane の Scope が触り得ないものは下の「除外」に理由つきで書いた）。
+触る設計正本の節の契約を行にした（隣接の契約の sweep: ADR D2・D3・D6・D7、32 の D-118 の節の取消と順 2〜5・§15.5・§15.6a・§15.6b、41 §17.4・§17.5、55 の D-118 の表・UI-07-D13・D14・§55.4 の手順 18・§55.5・§55.7・§55.9・§55.11、65 §65.4.1・§65.5・§65.5a・§65.7.2・§65.8.1・§65.8.2・§65.8.3・§65.10、35 の完了の後の比較の範囲、DSR-07・08・15・18・20、UI_TECH_STACK の UI-STATE-D2、D-052 C9 を当て、本 lane の Scope が触り得ないものは下の「除外」に理由つきで書いた）。
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
@@ -529,7 +546,8 @@ L3 の DB（Coordinator、L3 を頼む前）: owner がアプリを止めた状�
 | §65.5・DSR-18（詳細の戻り導線 `returnTo`） | 65 §65.5、DSR-18 | 変えない | T4（今の test） | — |
 | UI-07-D18（共通の確認の中身と押せる条件、読取りの cache） | 55 §55.11 | S3 | U2〜U4・U7・U10 | R-4・R-7 |
 | UI-07-D18（取消の mutation を 1 つに） | 55 §55.11、§55.9 | S3 | U5・U6・U9 | R-5 |
-| UI-07-D18（Z004 タブの導線と `tab`） | 55 §55.11、DSR-15 | S3 | U8 | R-3・R-6 |
+| UI-07-D18（Z004 タブの導線と `tab`。`tab` は初期選択だけ） | 55 §55.11、DSR-15 | S3 | U8 | R-3・R-6 |
+| UI-STATE-D2（有限 URL search 値は feature の `types.ts` が tuple と schema を持ち、route は import する） | UI_TECH_STACK の UI-STATE-D2、55 §55.11 | S3（`src/features/csv-import/types.ts`・`src/routes/csv-import/index.tsx`） | U8、AC3 の 3 つの `rg` | — |
 | UI-07-D14（正確な import ID、確認の項目、失敗で同じ ID の再試行） | 55 UI-07-D14 | S3 | U3・U6 | R-4 |
 | §55.5・§55.9（取消の失敗は Toast だけ、state を変えない） | 55 §55.5・§55.9 | S3 | U6・T2 | — |
 | 55 冒頭の表の「取消の結果」（取消の完了と要再確認の一覧） | 55 の D-118 の表 | 変えない（b1 の部品を詳細でも使う） | U5 | R-5 |
@@ -592,3 +610,12 @@ round 1（`d4183273`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 1 / P3 7
 - P2: `RecheckTargetList` の `renderAction` を任意にして省略時は操作の列と入れ直しの文を出さない（b1 の file を本 lane で変える）、名指す棚卸しを比較の範囲の候補と定義し「変わることがあります」に、確認の文を因果を言わない形に（取消の前から要再確認の商品を含む）、順 4 の拒否で取込み ID を名指す実装と既存 test の期待の更新を Scope・Matrix（RB7）に、L3 の保全の path を `tauri.conf.json` の identifier と 22 §16 を引く形に。
 - P3: Specta と runtime の登録の 2 面と W2 を command drift の静的な検証に、正本の読みの基準に Gated Amendment `bc0bf2f5` を、routeTree の AC を外す、判断事項の答えで変わる所の列挙、RB1 の mutant の帰属を RB5 へ、U10 に 2 回目の読取りの間の disabled。
 - 起草役の見送り（Coordinator が受理）: 32 §15.6b の求め直しの理由の文（取消の前に要再確認でなかった商品にも出る）は、確認の文の因果の言い切りとは別なので残す。
+
+round 2（`fe7d10fd`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 1 / P3 1）、Codex = reject（P1 0 / P2 2 / P3 2）。重なりは 1 件（S3 の query key の行の崩れ）。Coordinator は全 5 件（重なりを 1 件に数えて）を受理し、最小の修正案に沿って是正した（是正は Coordinator の代行の Opus 5.5 subagent、本 commit）。
+
+- P2（Opus #1）完了した棚卸しの確認の文が、取消で変わりうる記録の詳細の「差異」「ロス原価」を名指さない（b1 の `stocktake_service.rs` の 720 行の `ledger_at_cutoff` と 724 行のロス原価で確かめた）: 文を「完了した棚卸し（{完了の日付}）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差（参考）」が変わることがあります。」に。反映: 55 §55.11 の「完了した棚卸し」の項と理由、65 §65.5a の「確認」、32 §15.6b の関数要求・`affected_stocktakes`・手順 3、packet の Goal の最小完了条件の 2 つ目・Ordinary Operation の最後の行・owner の判断事項 (iii) の問いと A の説明・S1 の行・Reporting の lens、Matrix の Contracts Under Test・Failure Modes・RB6（範囲が差異・ロス原価の使う精算を含む理由の 1 行）・U3（新しい文の exact と旧い文の 0）。名指す集合（35 の範囲）は変えない。owner の判断事項 (iii) は推奨 A の中身（範囲で名指す）を変えず、起草役が書いた問いと説明の語だけを揃えた。
+- P2（Codex #1）RB7 の固定 `1` の mutant が b1 の今の fixture では red にならない（3 test とも名指す取込みが ID 1）: 3 test とも名指す取込みの前に別の取込みを 1 件入れて ID を 1 以外にし、ID が 1 でないことを assert し、固定 `1` の mutant で 3 test とも red を求める。反映: Matrix の RB7・T5・Mutation-style の 1 つ目、packet の S1 の順 4 の行・Test Plan の「mutation の確かめ」。
+- P2（Codex #2）`tab` の値の集合の所有が UI-STATE-D2 に繋がらない: feature の `src/features/csv-import/types.ts` が tuple `CSV_IMPORT_TAB_VALUES`・schema `csvImportSearchSchema`・型 `CsvImportSearch` を持ち、route は import する形に（先例 `src/features/daily-sales/types.ts` と `src/routes/reports/daily.tsx`）。反映: 55 §55.11 の `tab` の項、packet の「起票時に起草役が決めたこと」の 5・S3 の新しい行・Boundary の route / search・Contract Ledger の UI-STATE-D2 の行と sweep の一覧・Design Readiness の引用・AC3 の 3 つの `rg` と round 2 の baseline・予定 path（39。`types.ts` は b1 の差分と b1 の packet の予定 path にある）と所有表、Matrix の Contracts Under Test・Failure Modes・U8・Adjacent Pattern Audit。
+- P3（Opus #2・Codex #3、重なり）S3 の query key の行に `RecheckTargetList` の所有表の行が混ざった: query key を `src/lib/query-keys.ts`・U10 の 1 行に戻し、`RecheckTargetList.tsx` の行を「節の所有表」へ移した。
+- P3（Codex #4）Matrix の「戻る・進むで search のとおり」が、`defaultValue` の初期選択だけという正本と合わない: Matrix の State Lifecycle の Revisit を「再 mount 時は search のとおり、同じ mount の間はタブの状態を保つ」に。55 §55.11 の `tab` の項と packet の「起票時に起草役が決めたこと」の 5 にも初期選択だけであることを書いた。
+- Gated Amendment: 無し（plan-gate のままの是正で、Plan Commit は pending）。
