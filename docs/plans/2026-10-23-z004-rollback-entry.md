@@ -45,6 +45,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 2. spec-check → design（2026-10-23、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D2・D3・D6・D7（Gated Amendment の版）、[32](../function-design/32-biz-csv-import-service.md) の取消と §15.5・§15.6a、[41](../function-design/41-cmd-pos.md) §17.5、[55](../function-design/55-ui-csv-import.md) の冒頭の D-118 の表・UI-07-D14・§55.4 の手順 18・§55.9、[65](../function-design/65-inventory-record-traceability.md) §65.5・§65.8.1・§65.10 の 4b、[35](../function-design/35-biz-stocktake-service.md) の完了の後の比較の範囲、design-system の DSR-07・DSR-08・DSR-20。設計の更新が要る点が 3 つあった（取消の前の読取りの関数と wire、CSV取込みの詳細の取消の入口、2 つの入口に共通の確認と導線。下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の 3 つを 32・41・55・65 の新しい節（BIZ-03-D2・CMD-07 の command・UI-07-D18・TRACE-D13）に本 packet と同じ commit で置いた。b1 が書き換える節（55 §55.4 の手順 18、65 §65.10 の 4b、32 の順 4 の message ほか）は main の版で先に直さず、b1 の merge の後の同期で直す節として Scope に挙げた。製品の振舞いで owner の判断が要る問いは 3 つ（下の「owner の判断事項」）で、推奨を既定に書き進めた（owner の方針、repo 外の回答台帳 TD-401）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-404。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: なし）。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
+5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `fd2c1f8c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 
 ## Owner Effort Budget
 
@@ -585,3 +586,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
 
 （Plan Review の後に書く。）
+
+round 1（`d4183273`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 1 / P3 7）、Codex = reject（P1 0 / P2 4 / P3 1）。重なりは 2 件（`RecheckTargetList` の `renderAction`、「参考の差が変わります」の言い切り）。Coordinator は全 11 件を採用した。是正は起草役の `fd2c1f8c`。
+
+- P2: `RecheckTargetList` の `renderAction` を任意にして省略時は操作の列と入れ直しの文を出さない（b1 の file を本 lane で変える）、名指す棚卸しを比較の範囲の候補と定義し「変わることがあります」に、確認の文を因果を言わない形に（取消の前から要再確認の商品を含む）、順 4 の拒否で取込み ID を名指す実装と既存 test の期待の更新を Scope・Matrix（RB7）に、L3 の保全の path を `tauri.conf.json` の identifier と 22 §16 を引く形に。
+- P3: Specta と runtime の登録の 2 面と W2 を command drift の静的な検証に、正本の読みの基準に Gated Amendment `bc0bf2f5` を、routeTree の AC を外す、判断事項の答えで変わる所の列挙、RB1 の mutant の帰属を RB5 へ、U10 に 2 回目の読取りの間の disabled。
+- 起草役の見送り（Coordinator が受理）: 32 §15.6b の求め直しの理由の文（取消の前に要再確認でなかった商品にも出る）は、確認の文の因果の言い切りとは別なので残す。
