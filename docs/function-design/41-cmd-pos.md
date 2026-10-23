@@ -452,7 +452,7 @@ fn preview_rollback_csv_import(
 4. Err(BizError::NotFound) → kind `not_found`、Err(BizError::ValidationFailed)（取消済み）→ kind `validation`
 5. Err(other) → 17.4 の変換表に従い CmdError に変換して返す
 
-preview キャッシュ・idempotency・operation log 記録には関与しない（get_csv_import_record と同じ）。登録は §17.9 の一覧（`src-tauri/src/lib.rs` の `collect_commands` と、その test の一覧）。
+preview キャッシュ・idempotency・operation log 記録には関与しない（get_csv_import_record と同じ）。登録は §17.9 の 2 面（`src-tauri/src/lib.rs` の Specta の登録〈`collect_commands!`〉と runtime の登録〈`tauri::generate_handler!`〉）。2 面と宣言・bindings の wire 名の一致は `scripts/check-command-drift.sh` が静的に確かめる。
 
 ---
 
