@@ -6,7 +6,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -23,6 +23,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 1. kickoff → spec-check（2026-10-23、起草役）: 発注書の範囲（保持の既定の値の変更だけか、掃除の仕組みも変えるか、既存の設定値を持つ DB の扱い、7 年分の大きさの見積り）を範囲にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-23、起草役）: 72 §72.4 の保持日数の取得（読めない値は既定 365 日で消す）と、DB_DESIGN の D-5・tracking-system-tables の初期データ・ARCHITECTURE の MNT-02 の行・74 の 365 日の記述・D-051 の Retention を変える必要がある。
 3. design → plan-draft（2026-10-23、起草役、同じ commit）: 設計の出力（72 MNT-02-D1、decision-log D-136、上の各文書の直し）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 1 問は推奨を既定にした。下の Review Focus。owner の方針、repo 外の回答台帳 TD-401）。
+4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-407。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: decision-log の 1 か所（D-132 と D-136 が同じ末尾に足された。番号の順に両方を残した））。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 
 ## Owner Effort Budget
 
