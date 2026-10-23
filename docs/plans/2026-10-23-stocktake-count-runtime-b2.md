@@ -46,6 +46,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 2. spec-check → design（2026-10-23、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1・D2・D3・D9・D12、[20](../function-design/20-io-product-repo.md)・[21](../function-design/21-io-inventory-repo.md)・[40](../function-design/40-cmd-product.md)・[44](../function-design/44-cmd-inventory.md)・[50](../function-design/50-ui-product-list.md)・[51](../function-design/51-ui-product-form.md)・[58](../function-design/58-ui-stock-inquiry.md)・[65](../function-design/65-inventory-record-traceability.md)・[66](../function-design/66-ui-stock-movements.md) の D-118 の節。設計の更新が要る点が 2 つあった（`list_movements` の結果の型・並び・絞り込み・合成の置き場、在庫変動の表の計数の行と日付の列。下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の 2 つを b1 が触らない 44・66 に本 packet と同じ commit で置いた。b1 が書き換えた節（ADR D12・21・40・51・65）は main の版で先に直さず、b1 の merge の後の同期で直す節として Scope に挙げた。製品の振舞いで owner の判断が要る問いは 1 つ（下の「owner の判断事項」）で、答えを待たずに推奨で進められる。plan-gate へは b1 の merge と同期の後に Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner の決定（repo 外の回答台帳 TD-402）で、b1 の merge を待たずに Plan Review を前倒しする（本 packet の起票の時は「b1 の merge と同期の後に plan-gate」としていた）。owner の判断事項 (i) は B（TD-397）で、推奨どおり Scope は起票のまま。review の基準は b1 の Plan Commit `aba17e2e` と、その後の Gated Amendment `5b53294040ff38d2aeb8366aefd02142ffb2c764`（fresh な計数の精算の判定を取込み ID のカーソルで求める。wire は変わらない）。b1 の merge の後に main を単段で取り込み、b1 の実装で wire の名前・形が変わった所を当て直す（変われば Gated Amendment）。
+5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `dc9f4529` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 
 ## Owner Effort Budget
 
@@ -563,3 +564,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
 
 （Plan Review の後に書く。）
+
+round 1（`70803cef`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 5）、Codex = reject（P1 0 / P2 2 / P3 1）。重なりは H1 の mutant、古い文の残り、商品の画面の直し方の導線（Opus は P3、Codex は P2）。Coordinator は全件を採用した。商品の画面の直し方の導線は AI の review が出所で、owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にして入れ、後で owner に見せる（TD-403）。是正は起草役の `dc9f4529`。
+
+- P2: 66 の計数の行の {数} を `formatStockDisplay` の形に、L3-4 の変動後在庫を今の表の書き方に。H1 の fixture を「fresh の後に同じ精算を取り消して取り込み直す」形にし、`after_settlement` を 0 にする mutant を red に。在庫照会の詳細と在庫変動の見出しに要再確認の理由と「棚卸しの画面で入れ直す」案内（b1 の `list_recheck_products` を使い、新しい wire は作らない）。
+- P3: TD-397・TD-402 の後の形に古い文を揃え、b1 の merge と同期は実装の開始の前の条件に。AC5 の oracle を D-118 の行に絞り file ごとの検査を足す。W2 を `tauri::test::mock_builder` の形に。REQ-207。
