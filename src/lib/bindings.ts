@@ -426,10 +426,7 @@ export type CmdError = {
 	field: string | null,
 	// 診断ログとの相関 ID（internal / restore_* 系のみ）
 	error_id: string | null,
-	/**
-	 *  棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
-	 *  大きいので Box（serde と specta は中身の型として書くので wire は変わらない）
-	 */
+	// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
 	stocktake_recovery: StocktakeRecovery | null,
 };
 
