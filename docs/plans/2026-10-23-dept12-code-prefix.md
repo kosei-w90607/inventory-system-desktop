@@ -10,9 +10,9 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 8e086991e873c0b0254420e6b030abbbae8cf496
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は fresh context の Writer。実装の Writer は plan-approved の後に Coordinator が発注する）
@@ -28,6 +28,8 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 2. spec-check → design（2026-10-23、起草役）: 対象の正本は [master-tables](../db-design/master-tables.md) の「初期データ（全21部門）」、[ARCHITECTURE](../ARCHITECTURE.md) §4 の宅急便部門の項、[30 §4.3](../function-design/30-biz-product-service.md) の処理ステップ 2、[51](../function-design/51-ui-product-form.md) UI-01b-D4 とエラーハンドリング、[22 §3.3](../function-design/22-mnt-migration.md)、[decision-log](../decision-log.md) D-123。値の正本（NULL）は既にあるが、「既存の DB を直す migration を足すか」の判断の置き場が正本に無い（下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の判断を MNT-03-D21 として 22 §3.3 に置いた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」は推奨を既定にした 1 件）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner の判断事項（L3 を置くか）は、owner の方針（repo 外の回答台帳 TD-401: しばらく問わずに推奨で進め、後でまとめて見せる）で推奨の (a) 置かないを既定にした。packet と Matrix が揃い commit されている。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
+5. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: round 1 は Claude 側 fresh Opus 5.5 = approve（P3 4）、Codex = approve（P3 1）で P1/P2 = 0（下の Review Response）。Plan Commit は両方が監査した `8e086991`。P3 は implementing の run で直す（Plan Commit を動かさない）。
+6. plan-approved → implementing（2026-10-23、Coordinator、本 commit）: 実装の Writer を発注する。
 
 本 commit で変えた正本（plan-first）:
 
@@ -252,4 +254,6 @@ N/A: 外部の library・OS・hardware の前提に依らない。repo の中の
 
 ## Review Response
 
-（review の後に書く。）
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+round 1（`8e086991`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 4）、Codex = approve（P1 0 / P2 0 / P3 1）。P3: F1（MNT-03-D21 に止まる検査が無いことと、残す DB の有無を初回の導入の前に確かめることを 1 文。runbook の手順は MSI の lane〈PR #191〉か backlog へ）、F2（Human Visual Confirmation が当たらない理由を 1 行）、F3 と Codex #1（「v1 の外の hit は test の 2 つ」を「test と外部キーの参照だけで、departments を書く・作り直す文は無い」に、`TK-` の rg の時点）、F4（`docs/ARCHITECTURE.md` の「未確定事項」の宅急便の項を本 PR で外すか backlog へ）。implementing の run で直す。
