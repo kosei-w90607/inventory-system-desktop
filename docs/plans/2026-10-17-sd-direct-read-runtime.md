@@ -28,6 +28,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: main（`eed07d37`）への同期と、Scope・AC を今の code と migration の版へ当て直した（D-114 の 71 MNT-01-D10・§71.11.3 を前提として 29 §29.7.4 と IO-09-D3 を直した）。Contract Probe P1 (a)・P4 は合格（下の Contract Probe）、P1 (b) は未確認のまま。owner の判断事項は無い。Plan Review round 1 に出す。Codex は利用上限で 2026-10-24 まで使えないので、round 1 は fresh Opus 5.5 で始め、Codex が戻った時点で同じ round の Codex 分を足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 5. plan-gate のまま是正（round 1、2026-10-23、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 だけ。Codex は利用上限で 2026-10-24 まで使えず、`docs/AGENT_OPERATING_MANUAL.md` §3.3）の reject を起草役が `881700ca` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 6. plan-gate のまま是正（round 2、2026-10-23、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `b852071f`（Claude 側）と `af0f95b0`（Codex 側）で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
+7. plan-gate のまま是正（round 3〈天井〉、2026-10-23、Coordinator、本 commit）: round 3 の Claude 側 fresh Opus 5.5 の reject を起草役が `1c154230` で直した（下の Review Response）。round 4 は回さず、Coordinator の disposition（4 件の一括是正）の後に closure（fresh Opus 5.5 + Codex。Codex は round 3 で未実施なので、是正の後の版の全体を見る）に出す。P1/P2 = 0 なら plan-approved へ進める。
 
 ## Owner Effort Budget
 
@@ -478,3 +479,8 @@ round 2（`9f02ddd7`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 6
 
 - Claude 側: 最新の版の期待は `app_max_version()` と比べる形にし（版が増えても直さずに済む。洗い直しで `schema_v2.rs` の 1 本を足した）、vB の後の形は `migrate_up_to`。L3 の合成の日付は生成の日から決める。手で選んだ preview の選び直しは `idle` の一覧へ戻す（55 UI-07-D16 (a)）。flow test の移し方、P1 の (i)・(ii) の分け、error mode の guard を file system を見る 5 関数に、source の検査を `crate::`・`super::` の参照で、folder 名の検査から test module の file を外す。
 - Codex 側: P1 (b) を L3 の前の必須の確かめに戻した（D-111 の Guarantee range と 29 SD-23 に合わせ、不一致なら L3 を頼まず design へ戻る）。取込みの結果から同じ scan の一覧へ戻る遷移（55 UI-07-D15 (6)）。読んだ byte の数を数える reader で上限の test を固める。介入は decision point の単位で数える。
+
+round 3（天井、`2b9cabb6`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 1 / P3 3）。Codex 側は未実施。Coordinator が P2 を現物で確かめ（55 UI-07-D15 (1) の「場所を選ぶ」は自動の探索で見つからないときだけ出るのに、L3-2 は「同上 →『場所を選ぶ』」だけ）、全 4 件を採用した。disposition: round 4 は回さず、一括の是正（起草役の `1c154230`）の後に closure へ出す。
+
+- P2: L3-2 の到達経路を「L3-1 の USB を抜く → SD から読む → 場所を選ぶ → PC の folder の中の写し」に、合格基準の置き場は `XZ`・`XZ_BKUP` のどちらでも合格に。L3-3 は USB を差し直す経路に（発注の外の波及）。
+- P3: 受入台本の Step 1 と 55 UI-07-D16 の「今の」の 2 文を S6 に、AC9 (3) を足した。folder 名の定数の形を `[&str; 2]` に決めた（PR #190 の packet の書き方と矛盾しない）。`scan.rs` を分けたときの設計照合の登録。
