@@ -8,7 +8,7 @@ wave に属さない単独の lane（docs 全体の棚卸し〈owner 2026-10-18�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R2
 - Plan Commit: pending
 - Amendments: none
@@ -27,6 +27,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 1. kickoff → spec-check（2026-10-23、起草役）: 範囲を backlog の項目の (1)〜(8) にし、Risk を R2 と記録した（下の Risk）。発注 516 は R0/R1 を見込んでいたが、起草役の判定（R2）を Coordinator が採り、1 lane の R2 として進めると裁定した（2026-10-23）。
 2. spec-check → plan-draft（2026-10-23、起草役、同じ commit）: 表の唯一の skip。直す先の設計正本（下の Design Readiness の一覧）は契約として足りていて、本 lane は新しい設計の選択をしない。S1〜S4・S6 は文を code（実装の現物）・正本・decision-log の規則に合わせるだけ、S5 は owner の決定（TD-350）を入庫の正本に書き写すだけで、決定の中身は決まっている。
 3. plan-draft に留まる: 下の S7（owner の判断事項 3 つ）の答えを待つ。答えの後に Coordinator が packet を直して plan-gate へ進める。
+4. plan-draft → plan-gate（2026-10-23、Coordinator、本 commit）: owner が S7 に答えた（repo 外の回答台帳 TD-393・TD-395: S7-2・S7-3 は本 lane で直す、S7-1 は別の R3 lane へ送る）。起草役が `1feb4aa8` で S7 を Scope に移し、S7-1 を backlog に足した。owner の判断事項は残らず、packet と Matrix に当たる表が揃い commit されている。Plan Review に出す。Codex が使えれば Codex と fresh Opus 5.5 を同じ round で、使えなければ fresh Opus 5.5 で始め Codex 分を後から足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 
 ## Owner Effort Budget
 
