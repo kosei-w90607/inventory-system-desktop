@@ -27,7 +27,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -44,6 +44,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 1. kickoff → spec-check（2026-10-23、起草役）: Coordinator の発注（TD-380 の関門の項目、TD-402 の起票）を範囲にし、規模を数えて 1 lane にした（上の「規模と手法」）。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-23、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D2・D3・D6・D7（Gated Amendment の版）、[32](../function-design/32-biz-csv-import-service.md) の取消と §15.5・§15.6a、[41](../function-design/41-cmd-pos.md) §17.5、[55](../function-design/55-ui-csv-import.md) の冒頭の D-118 の表・UI-07-D14・§55.4 の手順 18・§55.9、[65](../function-design/65-inventory-record-traceability.md) §65.5・§65.8.1・§65.10 の 4b、[35](../function-design/35-biz-stocktake-service.md) の完了の後の比較の範囲、design-system の DSR-07・DSR-08・DSR-20。設計の更新が要る点が 3 つあった（取消の前の読取りの関数と wire、CSV取込みの詳細の取消の入口、2 つの入口に共通の確認と導線。下の Design Readiness）。
 3. design → plan-draft（2026-10-23、起草役、本 commit）: 上の 3 つを 32・41・55・65 の新しい節（BIZ-03-D2・CMD-07 の command・UI-07-D18・TRACE-D13）に本 packet と同じ commit で置いた。b1 が書き換える節（55 §55.4 の手順 18、65 §65.10 の 4b、32 の順 4 の message ほか）は main の版で先に直さず、b1 の merge の後の同期で直す節として Scope に挙げた。製品の振舞いで owner の判断が要る問いは 3 つ（下の「owner の判断事項」）で、推奨を既定に書き進めた（owner の方針、repo 外の回答台帳 TD-401）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-404。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: なし）。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 
 ## Owner Effort Budget
 
