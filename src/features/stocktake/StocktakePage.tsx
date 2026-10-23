@@ -233,6 +233,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isZeroing, setIsZeroing] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [completedResult, setCompletedResult] = useState<StocktakeResult | null>(null);
   const [blocked, setBlocked] = useState<StocktakeRecovery | null>(null);
@@ -243,10 +244,18 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     LastStocktakeSummary | null | undefined
   >(undefined);
   const productSuggestRef = useRef<ProductAddSuggestController | null>(null);
+  // 「今の数を入れる」の欄の商品（route が別の商品へ変われば読込みの前からその商品）。遅い保存の応答の照合に使う（73）
+  const standaloneCodeRef = useRef<string | null>(null);
+  // 欄の読込み（route の product・「入れ直す」）は最後の操作の応答だけを当てる（73）
+  const standaloneSeqRef = useRef(0);
 
   useEffect(() => {
     setEffectiveSearch(search);
   }, [search]);
+
+  useEffect(() => {
+    standaloneCodeRef.current = standaloneTarget?.productCode ?? null;
+  }, [standaloneTarget]);
 
   const departmentsQuery = useQuery({
     queryKey: queryKeys.stocktake.departments(),
@@ -284,7 +293,9 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   // stocktake_item_id は進行中の棚卸しにその商品の明細があるときだけ送る
   useEffect(() => {
     if (searchProduct === undefined || !statusLoaded) return;
-    const run = { cancelled: false };
+    standaloneCodeRef.current = searchProduct;
+    const seq = ++standaloneSeqRef.current;
+    const isStale = () => seq !== standaloneSeqRef.current;
     void (async () => {
       try {
         const item =
@@ -296,13 +307,13 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
               });
         const itemId = item !== null && item.product_code === searchProduct ? item.id : null;
         const target = await loadStandaloneTarget(searchProduct, itemId);
-        if (!run.cancelled) setStandaloneTarget(target);
+        if (!isStale()) setStandaloneTarget(target);
       } catch (error) {
-        if (!run.cancelled) setErrorMessage(describeError(error));
+        if (!isStale()) setErrorMessage(describeError(error));
       }
     })();
     return () => {
-      run.cancelled = true;
+      standaloneSeqRef.current += 1;
     };
   }, [searchProduct, activeStocktakeId, statusLoaded]);
 
@@ -313,12 +324,12 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
 
   async function openRecount(target: CountRecoveryTarget) {
     setErrorMessage(null);
+    const seq = ++standaloneSeqRef.current;
     try {
-      setStandaloneTarget(
-        await loadStandaloneTarget(target.product_code, target.stocktake_item_id),
-      );
+      const loaded = await loadStandaloneTarget(target.product_code, target.stocktake_item_id);
+      if (seq === standaloneSeqRef.current) setStandaloneTarget(loaded);
     } catch (error) {
-      setErrorMessage(describeError(error));
+      if (seq === standaloneSeqRef.current) setErrorMessage(describeError(error));
     }
   }
 
@@ -346,6 +357,8 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   async function handleStandaloneSaved(productCode: string) {
     const back = allowedReturnTo(search.returnTo, search.product);
     await handleSaved(productCode);
+    // 保存の応答の保留中に欄が別の商品へ変わっていれば、その欄（未保存の入力）を閉じない・戻らない
+    if (standaloneCodeRef.current !== productCode) return;
     if (back !== null && productCode === search.product) {
       setStandaloneTarget(null);
       onReturnTo?.(back);
@@ -409,8 +422,9 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   }
 
   async function handleZero(productCodes: string[], businessDate: string) {
-    if (activeStocktakeId === null) return;
+    if (activeStocktakeId === null || isZeroing) return;
     setErrorMessage(null);
+    setIsZeroing(true);
     try {
       await unwrapResult(
         commands.zeroUncountedItems(activeStocktakeId, productCodes, businessDate),
@@ -432,6 +446,8 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
         return;
       }
       setErrorMessage(describeError(error));
+    } finally {
+      setIsZeroing(false);
     }
   }
 
@@ -439,7 +455,8 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     return <StocktakeResultPage result={completedResult} lastStocktake={lastStocktakeSnapshot} />;
   }
 
-  const countDisabled = isCompleting || saveMutation.isPending;
+  // 保存（数・0 にする）・確定のどれかの保留中は、他の保存と確定を止める（73）
+  const countDisabled = isCompleting || saveMutation.isPending || isZeroing;
 
   return (
     <PageShell>
@@ -586,7 +603,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
             <Button
               type="button"
               variant="outline"
-              disabled={isCompleting}
+              disabled={countDisabled}
               onClick={() => {
                 setIsConfirmOpen(true);
               }}
@@ -604,7 +621,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
 
           <StocktakeCompleteDialog
             open={isConfirmOpen}
-            isCompleting={isCompleting}
+            disabled={countDisabled}
             onOpenChange={setIsConfirmOpen}
             onConfirm={() => void handleCompleteConfirm()}
           />
@@ -721,6 +738,8 @@ export function StocktakeCountEntry({
   const [candidates, setCandidates] = useState<ProductWithRelations[]>([]);
   // 遅い保存の応答が別の商品の欄を消さないよう、応答の商品と今の欄の商品を照合する（73）
   const selectedCodeRef = useRef<string | null>(null);
+  // 検索・候補の選択は最後の操作の応答だけを当てる（遅い応答が後の欄を置き換えない。73）
+  const lookupSeqRef = useRef(0);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const productSuggest = useProductAddSuggest({
@@ -761,8 +780,11 @@ export function StocktakeCountEntry({
     setSavedMessage(null);
     setCandidates([]);
     onError(null);
+    const seq = ++lookupSeqRef.current;
+    const isStale = () => seq !== lookupSeqRef.current;
     try {
       const item = await findMutation.mutateAsync({ stocktakeId, code: trimmed });
+      if (isStale()) return;
       if (item !== null) {
         selectItem(item);
         return;
@@ -772,6 +794,7 @@ export function StocktakeCountEntry({
         commands.searchProducts({ ...PRODUCT_NAME_SEARCH_QUERY, keyword: trimmed }),
         { source: "commands", cmd: "search_products" },
       );
+      if (isStale()) return;
       if (products.items.length === 0) {
         setSelectedItem(null);
         setTargetMessage(
@@ -784,23 +807,24 @@ export function StocktakeCountEntry({
           stocktakeId,
           code: products.items[0].product_code,
         });
-        if (resolved !== null) selectItem(resolved);
+        if (resolved !== null && !isStale()) selectItem(resolved);
         return;
       }
       setCandidates(products.items);
     } catch (error) {
-      onError(describeError(error));
+      if (!isStale()) onError(describeError(error));
     }
   }
 
   async function selectCandidate(productCode: string) {
     if (disabled) return;
     onError(null);
+    const seq = ++lookupSeqRef.current;
     try {
       const resolved = await findMutation.mutateAsync({ stocktakeId, code: productCode });
-      if (resolved !== null) selectItem(resolved);
+      if (resolved !== null && seq === lookupSeqRef.current) selectItem(resolved);
     } catch (error) {
-      onError(describeError(error));
+      if (seq === lookupSeqRef.current) onError(describeError(error));
     }
   }
 
@@ -972,10 +996,13 @@ function CountFields({
     previous: string;
     today: string;
   } | null>(null);
+  // 日付の preview は最後に選んだ日付の応答だけを当てる（73）
+  const previewSeqRef = useRef(0);
   const today = getLocalDateString();
   const isLength = target.stockUnit === "m";
 
   async function chooseBackDate(value: string) {
+    const seq = ++previewSeqRef.current;
     setBackDate(value);
     setLaterCountExists(false);
     if (value === "" || value > getLocalDateString()) return;
@@ -984,9 +1011,9 @@ function CountFields({
         commands.previewStockCountPlacement(target.productCode, value),
         { source: "commands", cmd: "preview_stock_count_placement" },
       );
-      setLaterCountExists(placement.later_count_exists);
+      if (seq === previewSeqRef.current) setLaterCountExists(placement.later_count_exists);
     } catch (error) {
-      onError(describeError(error));
+      if (seq === previewSeqRef.current) onError(describeError(error));
     }
   }
 
@@ -1110,6 +1137,7 @@ function CountFields({
               size="sm"
               disabled={disabled}
               onClick={() => {
+                previewSeqRef.current += 1;
                 setBackDate(null);
                 setLaterCountExists(false);
               }}
@@ -1446,14 +1474,15 @@ export function StocktakeItemList({
 
 interface StocktakeCompleteDialogProps {
   open: boolean;
-  isCompleting: boolean;
+  /** 確定・保存の保留中 */
+  disabled: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }
 
 export function StocktakeCompleteDialog({
   open,
-  isCompleting,
+  disabled,
   onOpenChange,
   onConfirm,
 }: StocktakeCompleteDialogProps) {
@@ -1478,8 +1507,8 @@ export function StocktakeCompleteDialog({
           </AlertDescription>
         </Alert>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isCompleting}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={isCompleting} onClick={onConfirm}>
+          <AlertDialogCancel disabled={disabled}>キャンセル</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" disabled={disabled} onClick={onConfirm}>
             確定する
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1505,6 +1505,314 @@ describe("StocktakePage D-118 b1（73）", () => {
     });
   });
 
+  it("U9 late count_now save for product A keeps product B's field after the route changes (73, Final Review G1)", async () => {
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(null));
+    mockPreviewPlacement.mockImplementation((productCode) =>
+      Promise.resolve(
+        placement({
+          product_name: productCode === "P-005" ? "連動なしの糸" : "緑の糸",
+          count_value: null,
+          count_kind: null,
+          count_business_date: null,
+        }),
+      ),
+    );
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const { onReturnTo, onSearchChange, queryClient, rerender } = renderWithReturn({
+      product: "P-005",
+      returnTo: "/products/P-005/edit",
+    });
+    const user = userEvent.setup();
+    await screen.findByText("連動なしの糸");
+    await user.type(screen.getByLabelText(/^実際の数/), "9");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+
+    // A の保存の応答の保留中に route の product が B に変わる
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <StocktakePage
+          search={{ product: "P-006" }}
+          onSearchChange={onSearchChange}
+          onReturnTo={onReturnTo}
+        />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("緑の糸");
+    resolveSave(saveResult());
+
+    // A の遅い成功は B の欄を閉じず、A の編集画面へも戻らない
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "今の数を保存" })).toBeEnabled();
+    });
+    expect(screen.getByText("緑の糸")).toBeInTheDocument();
+    expect(onReturnTo).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText(/^実際の数/), "7");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenLastCalledWith({
+        product_code: "P-006",
+        count_value: 7,
+        fresh: true,
+        business_date: TODAY,
+        stocktake_item_id: null,
+      });
+    });
+  });
+
+  it("U8 confirm is locked while a count save is pending (73, Final Review G2)", async () => {
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    const user = await selectItemByCode();
+    await user.type(screen.getByLabelText(/^実際の数/), "8{Enter}");
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeDisabled();
+
+    resolveSave(saveResult());
+    expect(await screen.findByText(`赤い糸 を 8 個（${TODAY}）で保存しました`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeEnabled();
+  });
+
+  it("U7 zero actions run once while pending and lock the other saves (73, Final Review G3)", async () => {
+    let resolveZero: (value: ReturnType<typeof ok<[]>>) => void = () => undefined;
+    const pendingZero = () =>
+      new Promise<ReturnType<typeof ok<[]>>>((resolve) => {
+        resolveZero = resolve;
+      });
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockComplete.mockResolvedValueOnce({
+      status: "error",
+      error: {
+        kind: "stocktake_guard",
+        message: "棚卸しを完了できません",
+        field: null,
+        error_id: null,
+        stocktake_recovery: {
+          code: "completion_blocked",
+          targets: [
+            recheckTarget({
+              product_code: "P-002",
+              product_name: "青い糸",
+              block_reason: "uncounted",
+              stock_range_low: null,
+              stock_range_high: null,
+              recount_reasons: [],
+            }),
+            recheckTarget({
+              product_code: "P-005",
+              product_name: "白い糸",
+              block_reason: "uncounted",
+              stock_range_low: null,
+              stock_range_high: null,
+              recount_reasons: [],
+            }),
+          ],
+          settlement_pending: null,
+        },
+      },
+    });
+    await renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "棚卸しを確定する" }));
+    await user.click(screen.getByRole("button", { name: "確定する" }));
+    const panel = await screen.findByRole("region", { name: "棚卸しを確定できない理由" });
+    const group = within(panel).getByRole("group", { name: "まだ数えていない" });
+
+    // 「0 にする」の保留中は同じ button も他の保存・確定も押せない
+    mockZero.mockImplementationOnce(pendingZero);
+    const blueRow = within(group).getByText("青い糸").closest("li");
+    if (blueRow === null) throw new Error("row missing");
+    const zeroOne = within(blueRow).getByRole("button", { name: "0 にする" });
+    await user.click(zeroOne);
+    await waitFor(() => {
+      expect(mockZero).toHaveBeenCalledTimes(1);
+    });
+    expect(zeroOne).toBeDisabled();
+    expect(within(group).getByRole("button", { name: "残りをまとめて 0 にする" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeDisabled();
+    expect(screen.getByLabelText("商品を検索・スキャン")).toBeDisabled();
+    await user.click(zeroOne);
+    expect(mockZero).toHaveBeenCalledTimes(1);
+    resolveZero(ok([]));
+    await waitFor(() => {
+      expect(within(group).queryByText("青い糸")).not.toBeInTheDocument();
+    });
+
+    // 「残りをまとめて 0 にする」も保留中は開き直せない
+    mockZero.mockImplementationOnce(pendingZero);
+    const zeroAll = within(group).getByRole("button", { name: "残りをまとめて 0 にする" });
+    await user.click(zeroAll);
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "0 にする" }),
+    );
+    await waitFor(() => {
+      expect(mockZero).toHaveBeenCalledTimes(2);
+    });
+    expect(zeroAll).toBeDisabled();
+    expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeDisabled();
+    resolveZero(ok([]));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeEnabled();
+    });
+    expect(mockZero).toHaveBeenCalledTimes(2);
+  });
+
+  it("U5 confirming today's date in the date-change dialog saves once (73, Final Review G3)", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    let user = await selectItemByCode();
+    await user.type(screen.getByLabelText(/^実際の数/), "8{Enter}");
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+    vi.setSystemTime(new Date(2026, 9, 3, 0, 5, 0));
+    user = await selectItemByCode();
+    await user.type(screen.getByLabelText(/^実際の数/), "6{Enter}");
+    let resolveSave: (value: ReturnType<typeof saveResult>) => void = () => undefined;
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    await user.dblClick(await screen.findByRole("button", { name: "今日の分として保存する" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: "数を保存" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "棚卸しを確定する" })).toBeDisabled();
+    resolveSave(saveResult());
+    expect(
+      await screen.findByText("赤い糸 を 6 個（2026-10-03）で保存しました"),
+    ).toBeInTheDocument();
+    expect(mockSave).toHaveBeenCalledTimes(2);
+  });
+
+  it("U1 late search response does not replace the later search's field (73, Final Review G4)", async () => {
+    let resolveFind: (value: ReturnType<typeof ok<StocktakeItemDetail>>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFind = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(ok(stocktakeItem({ id: 502, product_code: "P-002", name: "青い糸" })));
+    await renderPage();
+    const user = userEvent.setup();
+    const code = await screen.findByLabelText("商品を検索・スキャン");
+    await user.type(code, "P-001{Enter}");
+    await user.clear(code);
+    await user.type(code, "P-002{Enter}");
+    expect(await screen.findByText(/^P-002 \//)).toBeInTheDocument();
+
+    resolveFind(ok(baseStocktakeItem()));
+    await waitFor(() => {
+      expect(mockFindItem).toHaveBeenCalledTimes(2);
+    });
+    // 遅い P-001 の応答は P-002 の欄を置き換えない
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText(/^P-002 \//)).toBeInTheDocument();
+    expect(screen.queryByText(/^P-001 \//)).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^実際の数/), "7{Enter}");
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith({
+        ...defaultCount(7, 502),
+        product_code: "P-002",
+      });
+    });
+  });
+
+  it("U6 late recount load does not replace the later recount's field (73, Final Review G4)", async () => {
+    let resolvePreview: (value: ReturnType<typeof placement>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(null));
+    mockListRecheck.mockResolvedValue(
+      ok([
+        recheckTarget({ stocktake_item_id: null, action: "count_now" }),
+        recheckTarget({
+          product_code: "P-004",
+          product_name: "生成りの紐",
+          stocktake_item_id: null,
+          action: "count_now",
+        }),
+      ]),
+    );
+    mockPreviewPlacement
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePreview = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(placement({ product_name: "生成りの紐" }));
+    await renderPage();
+    const list = await screen.findByRole("region", { name: "数え直しが必要な商品" });
+    const user = userEvent.setup();
+    await user.click(
+      within(within(list).getByRole("row", { name: /黄色い糸/ })).getByRole("button", {
+        name: "入れ直す",
+      }),
+    );
+    await user.click(
+      within(within(list).getByRole("row", { name: /生成りの紐/ })).getByRole("button", {
+        name: "入れ直す",
+      }),
+    );
+    const panel = (await screen.findByRole("heading", { name: "今の数を入れる" })).closest(
+      "section",
+    );
+    if (panel === null) throw new Error("panel missing");
+    expect(within(panel).getByText("生成りの紐")).toBeInTheDocument();
+
+    resolvePreview(placement());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(within(panel).getByText("生成りの紐")).toBeInTheDocument();
+    expect(within(panel).queryByText("黄色い糸")).not.toBeInTheDocument();
+  });
+
+  it("U2 late back-date preview does not replace the later date's warning (73, Final Review G4)", async () => {
+    let resolvePreview: (value: ReturnType<typeof placement>) => void = () => undefined;
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockPreviewPlacement
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePreview = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(placement({ later_count_exists: false }));
+    await renderPage();
+    const user = await selectItemByCode();
+    await user.click(screen.getByRole("button", { name: "前の日の分を入れる" }));
+    fireEvent.change(screen.getByLabelText("数えた日"), { target: { value: "2026-09-30" } });
+    fireEvent.change(screen.getByLabelText("数えた日"), { target: { value: "2026-09-29" } });
+    await waitFor(() => {
+      expect(mockPreviewPlacement).toHaveBeenCalledWith("P-001", "2026-09-29");
+    });
+
+    resolvePreview(placement({ later_count_exists: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText("後の数が既にあり、そちらが効きます")).not.toBeInTheDocument();
+  });
+
   it("U2 back-dated count warns when a later count exists", async () => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
     mockPreviewPlacement.mockResolvedValue(placement({ later_count_exists: true }));
