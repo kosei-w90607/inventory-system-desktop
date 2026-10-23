@@ -172,8 +172,6 @@ interface CountTarget {
   countKind: StockCountKind | null;
   countBusinessDate: string | null;
   stocktakeItemId: number | null;
-  /** 明細の写しがある（既存の「入力済みの数を上書きできます」の表示） */
-  hasItemCount: boolean;
 }
 
 function targetFromItem(item: StocktakeItemDetail): CountTarget {
@@ -190,7 +188,6 @@ function targetFromItem(item: StocktakeItemDetail): CountTarget {
     countKind: item.count_kind,
     countBusinessDate: item.count_business_date,
     stocktakeItemId: item.id,
-    hasItemCount: item.actual_count !== null,
   };
 }
 
@@ -225,7 +222,6 @@ async function loadStandaloneTarget(
     countKind: preview.count_kind,
     countBusinessDate: preview.count_business_date,
     stocktakeItemId,
-    hasItemCount: false,
   };
 }
 
@@ -1031,6 +1027,8 @@ function CountFields({
 
   const isBackDated = !freshOnly && backDate !== null;
   const shownDate = isBackDated && backDate !== "" ? backDate : today;
+  // 同じ日付の違う値の既定の計数は要再確認（理由 3）になるので、数を直す導線は「入れ直す」（73 の D-118 の節）
+  const canRecount = !freshOnly && !isBackDated && target.countValue !== null;
 
   return (
     <div className="mt-4 grid gap-4 md:grid-cols-[1fr_12rem_auto]">
@@ -1057,8 +1055,10 @@ function CountFields({
             {target.countKind === "fresh" ? "、入れ直し" : ""}）
           </p>
         ) : null}
-        {target.hasItemCount ? (
-          <p className="text-sm text-muted-foreground">入力済みの数を上書きできます</p>
+        {canRecount ? (
+          <p className="text-sm text-muted-foreground">
+            数を直すときは「入れ直す」を押してください。同じ日付で「数を保存」から違う数を入れると、数え直しが必要になります
+          </p>
         ) : null}
         <p className="flex flex-wrap items-center gap-2 text-sm">
           <CalendarDays aria-hidden="true" className="size-4" />
@@ -1158,7 +1158,7 @@ function CountFields({
           {saveMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
           {freshOnly ? "今の数を保存" : "数を保存"}
         </Button>
-        {!freshOnly && !isBackDated && target.countValue !== null ? (
+        {canRecount ? (
           <Button
             type="button"
             variant="outline"

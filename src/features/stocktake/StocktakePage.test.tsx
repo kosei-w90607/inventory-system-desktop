@@ -388,14 +388,28 @@ describe("StocktakePage (UI-10)", () => {
   it("T6 counted item can be overwritten without confirmation", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
-    mockFindItem.mockResolvedValueOnce(ok(stocktakeItem({ actual_count: 5 })));
+    // 明細の実数がある商品は効く計数も持つ（35 の読取り）。欄の文は「入れ直す」と同じ条件で出る
+    mockFindItem.mockResolvedValueOnce(
+      ok(
+        stocktakeItem({
+          actual_count: 5,
+          count_value: 5,
+          count_kind: "default",
+          count_business_date: "2026-10-01",
+        }),
+      ),
+    );
     await renderPage();
     await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
 
     await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-001");
     await user.click(screen.getByRole("button", { name: "対象を確認" }));
 
-    expect(await screen.findByText("入力済みの数を上書きできます")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "数を直すときは「入れ直す」を押してください。同じ日付で「数を保存」から違う数を入れると、数え直しが必要になります",
+      ),
+    ).toBeInTheDocument();
     await user.clear(screen.getByLabelText("実際の数"));
     await user.type(screen.getByLabelText("実際の数"), "6");
     await user.click(screen.getByRole("button", { name: "数を保存" }));
