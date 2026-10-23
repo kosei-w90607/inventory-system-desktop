@@ -22,7 +22,7 @@
 - 要再確認・未計数・保存済みは日本語の label と icon を併用し、色だけで示さない。範囲は「4〜5」の形。
 - UI の状態は未保存の入力だけで、保存済みの正は DB / query。D-052 の SSOT から、計数の保存・0 にする・完了・Z004 の取込みと取消・入出庫の保存で、写し（在庫・要再確認）を読む consumer と要再確認の一覧を invalidate する（entry は UI_TECH_STACK の D-118 の段落）。
 - Windows L3 の対象（runtime）: (a) 検索 → 数 → 保存 → 次の商品、(b) 前の日の分の保存と「後の数が既にあり」の表示、(c) 締めの取込みの後の要再確認 → 一覧から入れ直して解消、(c2) 商品の「入れ直す」で打ち直し、(d) 完了の拒否の一覧 → 0 にする → 完了。(e) 日付の変わり目の確認は PC の時計を変える手順が L3 Eligibility の (3) に当たるので、L3 に入れず、時計を差し替える自動 test（Matrix の U5）と画面の写しで見る（b1 の起票で決めた）。
-- b1 の画面の細部（2026-10-23、実装で決めた）: 「今の数を入れる」と要再確認の一覧の「入れ直す」は画面の上部の「今の数を入れる」の欄を開き（保存の button は「今の数を保存」。fresh な計数、日付は今日）、商品の文脈は `preview_stock_count_placement` から出す。検索で開く欄は「数を保存」（primary）と、前に保存した数があるときの「入れ直す」（outline）。完了の拒否は「棚卸しを確定できない理由」の欄に `block_reason` ごとの group で出す。
+- b1 の画面の細部（2026-10-23、実装で決めた）: 「今の数を入れる」と要再確認の一覧の「入れ直す」は画面の上部の「今の数を入れる」の欄を開き（保存の button は「今の数を保存」。fresh な計数、日付は今日）、商品の文脈は `preview_stock_count_placement` から出す。検索で開く欄は「数を保存」（primary）と、前に保存した数があるときの「入れ直す」（outline）。「入れ直す」を出すときは、欄に「数を直すときは「入れ直す」を押してください。同じ日付で「数を保存」から違う数を入れると、数え直しが必要になります」を出す（同じ日付の違う値の既定の計数は要再確認〈ADR D3 の理由 3〉になるので、直す導線を名指す。b1 の Gated Amendment の 2 本目で、b1 の前の「入力済みの数を上書きできます」を置き換えた）。完了の拒否は「棚卸しを確定できない理由」の欄に `block_reason` ごとの group で出す。
 
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **入力ドキュメント**: [architecture/ui-task-specs.md](../architecture/ui-task-specs.md) UI-10、[DB_DESIGN.md](../DB_DESIGN.md)、[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17（stocktakes / stocktake_items）、[35-biz-stocktake-service.md](35-biz-stocktake-service.md)、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5、[UI_TECH_STACK.md](../UI_TECH_STACK.md) §7.2（10-4a）、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)、[68-ui-backup-restore.md](68-ui-backup-restore.md) / [69-ui-threshold-settings.md](69-ui-threshold-settings.md)（構成の手本）
@@ -60,7 +60,7 @@
 
 ### UI-10-D2: カウント主動線は検索/スキャン→数量入力→即保存、counted 済みへの上書き再入力を常時許可
 
-- **決定**: 主動線は「検索/HID スキャンで商品を特定 → 数量入力 → 1 件即保存」で、保存は `save_stock_count`（1 商品 1 TX。b1 で旧い数の上書きの command を置き換えた）。商品の特定は新規 CMD `find_stocktake_item({ stocktake_id, code })`（§73.8。`code` は商品コードまたは JAN の完全一致で該当明細を 1 発解決）で行う。counted 済み（`actual_count` が既に入っている）商品への再入力を、未入力商品と全く同じ導線・確認なしで常時許可する（上書き＝都度訂正の代替）。プレカウント専用の別機能は作らない。
+- **決定**: 主動線は「検索/HID スキャンで商品を特定 → 数量入力 → 1 件即保存」で、保存は `save_stock_count`（1 商品 1 TX。b1 で旧い数の上書きの command を置き換えた）。商品の特定は新規 CMD `find_stocktake_item({ stocktake_id, code })`（§73.8。`code` は商品コードまたは JAN の完全一致で該当明細を 1 発解決）で行う。counted 済み（`actual_count` が既に入っている）商品への再入力を、未入力商品と全く同じ導線・確認なしで常時許可する（上書き＝都度訂正の代替）。（b1 の注記: 同じ日付で「数を保存」から違う数を入れると要再確認〈ADR D3 の理由 3〉になるので、数を直す導線は「入れ直す」〈確認なし〉。欄の文は冒頭の D-118 の節）プレカウント専用の別機能は作らない。
 - **Why**: 現運用は部門キー売り中心で、CSV/PLU が未導入の間は商品単位のレジ販売が `sale_records` / `inventory_movements` に反映されない（D-025）。そのため「カウント後に売れた分の訂正」はシステム側にも訂正対象データが存在せず、operator が現物を見て再入力する以外に手段がない（issue #135 の訂正コメント 2026-07-07 で明示）。上書き保存を特別扱いすると、まさに一番必要な訂正導線に確認ダイアログという追加の摩擦を課すことになる。
 - **Rejected**: BIZ 確定ロジック側で `counted_at` 以降の在庫変動を自動織り込む（現運用では織り込むべき商品単位データ自体が存在しないため実装不能。将来 Z004/PLU 運用が始まったら再検討）。上書き時だけ確認ダイアログを挟む（都度訂正が前提の運用で毎回ダイアログを出すのは実質妨害になる。DSR-07 も可逆操作には確認なしを原則としており、数の保存は何度でも入れ直せる）。プレカウント専用モード（上書き入力で用が足りる）。クライアント側で全明細ページを順次取得して `product_code → stocktake_item_id` マップを構築する解決方式（数の保存の成功ごとに一覧 invalidation（§73.11）が走るため 1 件保存のたびに数千件・複数ページの再取得とマップ再構築が反復する。部門を跨いでスキャンする使い方にも弱い。薄い解決 CMD 1 本（BIZ wrapper 込み）の追加コストの方が明確に小さい）。
 - **Revisit trigger**: Z004/PLU 運用が始まり商品単位の販売データが `sale_records` に載るようになった時。
