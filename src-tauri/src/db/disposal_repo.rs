@@ -757,6 +757,15 @@ mod tests {
         conn.last_insert_rowid()
     }
 
+    fn seed_stocktake_item(conn: &DbConnection, stocktake_id: i64, product_code: &str) {
+        conn.execute(
+            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count)
+             VALUES (?1, ?2, 1, 1)",
+            rusqlite::params![stocktake_id, product_code],
+        )
+        .unwrap();
+    }
+
     fn seed_stocktake_movement(
         conn: &DbConnection,
         stocktake_id: i64,
@@ -1568,13 +1577,8 @@ mod tests {
             Some("2026-08-06T18:00:00"),
         );
         assert_eq!(disposal_id, stocktake_id);
-        seed_stocktake_movement(
-            &conn,
-            stocktake_id,
-            "AA-STOCK-OWN",
-            false,
-            "2026-08-06T18:00:00",
-        );
+        // 65: 棚卸しの件数と絞り込みは明細（fixture を明細に。期待は変えない）
+        seed_stocktake_item(&conn, stocktake_id, "AA-STOCK-OWN");
         conn.execute(
             "INSERT INTO inventory_movements
              (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
@@ -1697,9 +1701,9 @@ mod tests {
             "2026-08-06T09:00:00",
             Some("2026-08-06T18:00:00"),
         );
-        seed_stocktake_movement(&conn, stocktake_id, "POP-A", false, "2026-08-06T18:00:00");
-        seed_stocktake_movement(&conn, stocktake_id, "POP-B", false, "2026-08-06T18:01:00");
-        seed_stocktake_movement(&conn, stocktake_id, "POP-VOID", true, "2026-08-06T18:02:00");
+        // 65: 母集団は明細（fixture を明細に。明細を持たない POP-VOID は数えない。期待は変えない）
+        seed_stocktake_item(&conn, stocktake_id, "POP-A");
+        seed_stocktake_item(&conn, stocktake_id, "POP-B");
         let mut query = inventory_query("stocktake");
         query.product_keyword = Some("POP-B".to_string());
 

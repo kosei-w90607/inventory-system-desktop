@@ -640,7 +640,14 @@ mod tests {
         };
         let id = insert_movement(&conn, &key_movement("KEY-1", "2026-05-03", None)).unwrap();
         assert_eq!(key(id), ("2026-05-03".to_string(), 0, None));
-        let id = insert_movement(&conn, &key_movement("KEY-1", "2026-05-04", Some(0))).unwrap();
+        // vZ の CHECK: phase = 1 は Z004 の movement だけ（fixture を csv_import に。Matrix T10）
+        let z004 = NewMovement {
+            movement_type: MovementType::SaleAuto,
+            reference_type: Some(ReferenceType::CsvImport),
+            reference_id: Some(1),
+            ..key_movement("KEY-1", "2026-05-04", Some(0))
+        };
+        let id = insert_movement(&conn, &z004).unwrap();
         assert_eq!(key(id), ("2026-05-04".to_string(), 1, Some(0)));
     }
 

@@ -944,7 +944,18 @@ mod tests {
             let (Value::Text(code), Value::Integer(stock)) = (&row[0], &row[1]) else {
                 panic!("{row:?}")
             };
-            let derived = crate::biz::stock_ledger::derive_stock(&conn, code).unwrap();
+            // v9 の DB に Z004 の取込みは無い（あれば v9 で止まる）ので、精算の一覧を空にして同じ求め直しを当てる
+            // （最新の derive_stock は vZ の列を読む）
+            let ledger = crate::biz::stock_ledger::Ledger {
+                counts: crate::db::inventory_repo::list_stock_counts_for_product(&conn, code)
+                    .unwrap(),
+                movements: crate::db::inventory_repo::list_ledger_movements_for_product(
+                    &conn, code,
+                )
+                .unwrap(),
+                ..Default::default()
+            };
+            let derived = crate::biz::stock_ledger::derive_ledger(&ledger).unwrap();
             assert_eq!((derived.stock, derived.range), (*stock, None), "{code}");
         }
 
