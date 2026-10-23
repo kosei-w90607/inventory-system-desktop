@@ -24,6 +24,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 2. spec-check → design（2026-10-23、起草役）: 72 §72.4 の保持日数の取得（読めない値は既定 365 日で消す）と、DB_DESIGN の D-5・tracking-system-tables の初期データ・ARCHITECTURE の MNT-02 の行・74 の 365 日の記述・D-051 の Retention を変える必要がある。
 3. design → plan-draft（2026-10-23、起草役、同じ commit）: 設計の出力（72 MNT-02-D1、decision-log D-136、上の各文書の直し）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 1 問は推奨を既定にした。下の Review Focus。owner の方針、repo 外の回答台帳 TD-401）。
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-407。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: decision-log の 1 か所（D-132 と D-136 が同じ末尾に足された。番号の順に両方を残した））。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
+5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `879a4495` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 
 ## Owner Effort Budget
 
@@ -261,3 +262,9 @@ Fill after implementation.
 ## Review Response
 
 Fill after review.
+
+round 1（`e05eb9fd`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 3）、Codex = reject（P1 0 / P2 2 / P3 3）。重なりは 3 件（SCREEN_DESIGN・requirements-coverage の旧い日数、範囲の外の掃除の日、汎用の設定の更新の経路）。Coordinator は全 7 件を採用した。是正は起草役の `879a4495`。
+
+- P2: SCREEN_DESIGN と requirements-coverage の旧い日数を保持日数の形に直し AC3 の対象に。20 §2.8 の `delete_old_logs` を `checked_sub_days` と範囲の外の 0 件に。Matrix の範囲の外の行を 72 §72.4 の手順 6（掃除の日を今日にする）に合わせ C4・C5 に分けた。
+- P3: 汎用の `update_setting` の経路（command は書けるが frontend は送らない）、backup からの復元の文を「保証しない」に、Contract Probe P2 を chrono の source と最小の実験で実施済みに、migration を足さない判断の前提（初回の導入の版に含める）。
+- 起草役の見送り（Coordinator が受理）: `docs/backlog.md` の「既定 365」は closeout で直す。`docs/architecture/mnt-task-specs.md` の MNT-02 の手順の要約に「確定できないときは消さない」の分岐が無い件は、round 2 の reviewer の判断に委ねる。
