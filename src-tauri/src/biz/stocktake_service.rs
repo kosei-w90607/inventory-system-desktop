@@ -7,7 +7,7 @@
 //! （ADR SPEC-STK-CNT-D3・D5・D6）に基づく実装。計数は `stock_counts` に保存し（消さない・書き換えない）、
 //! 写しは `biz::stock_ledger` が記録から求め直す。完了は在庫を動かさず評価額を固定する。
 
-use crate::biz::csv_import_service::{missing_ranges, SettlementGap};
+use crate::biz::csv_import_service::{missing_ranges, AffectedStocktake, SettlementGap};
 use crate::biz::inventory_service::validate_business_date;
 use crate::biz::stock_ledger::{
     self, is_after, read_ledger, recompute_stock, representative_count, settlement_no_within,
@@ -563,19 +563,49 @@ pub fn get_last_completed_stocktake(
     Ok(stocktake_repo::find_last_completed_stocktake(conn)?)
 }
 
+/// 精算が完了の時点の入力に入るか（精算回数 ≤ 完了の時点の精算の n。`after` が完了日なら、精算日 < 完了日の
+/// 精算も入る = 完了の後の比較の範囲。35「完了」、ADR D6）
+fn settlement_kept(
+    settlement: &SettlementRow,
+    settlement_n: Option<i64>,
+    after: Option<&str>,
+) -> bool {
+    settlement_n.is_some_and(|no| settlement.settlement_no <= no)
+        || after.is_some_and(|date| settlement.settlement_date.as_str() < date)
+}
+
+/// 完了した棚卸しのうち、指定の精算が完了の後の比較の範囲に入るもの（完了の日時の昇順）。
+/// 範囲による候補で、記録の詳細のどの数が実際に変わるかは見ない（BIZ-03 の取消の前の読取り。32 §15.6b）
+pub(crate) fn completed_stocktakes_comparing_settlement(
+    conn: &DbConnection,
+    settlement: &SettlementRow,
+) -> Result<Vec<AffectedStocktake>, BizError> {
+    let settlements = sales_repo::list_active_settlements(conn)?;
+    Ok(stocktake_repo::list_completed_stocktake_cutoffs(conn)?
+        .into_iter()
+        .filter(|(_, completed_at, cutoff)| {
+            settlement_kept(
+                settlement,
+                settlement_no_within(&settlements, cutoff.import_id),
+                Some(completed_at.get(..10).unwrap_or(completed_at)),
+            )
+        })
+        .map(|(stocktake_id, completed_at, _)| AffectedStocktake {
+            stocktake_id,
+            completed_at,
+        })
+        .collect())
+}
+
 /// 完了の時点の入力に絞る（計数・movement・精算をカーソル以下に。`after` があれば、完了の後に入れた
 /// 完了の前の入出庫・初期在庫・精算の記録を足す。計数はカーソル以下だけ。35「完了」）。
 /// 精算は完了の時点の精算の n（取込みのカーソル以下の今 active な取込みの最大の精算回数。ADR D6）以下で決める
 fn ledger_at_cutoff(ledger: &Ledger, cutoff: StocktakeCutoff, after: Option<&str>) -> Ledger {
     let settlement_n = settlement_no_within(&ledger.settlements, cutoff.import_id);
-    let settlement_kept = |settlement: &SettlementRow| {
-        settlement_n.is_some_and(|no| settlement.settlement_no <= no)
-            || after.is_some_and(|date| settlement.settlement_date.as_str() < date)
-    };
     let settlements: Vec<SettlementRow> = ledger
         .settlements
         .iter()
-        .filter(|settlement| settlement_kept(settlement))
+        .filter(|settlement| settlement_kept(settlement, settlement_n, after))
         .cloned()
         .collect();
     let movements = ledger

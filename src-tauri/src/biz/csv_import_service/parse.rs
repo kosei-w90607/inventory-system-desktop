@@ -84,18 +84,22 @@ pub(super) fn check_settlement_rules(
             )
         }));
     }
-    // 順 4: 同じ精算の active な取込みで hash が違う（取り消した取込みは比べない）
-    if !sales_repo::find_active_imports_for_settlement(
+    // 順 4: 同じ精算の active な取込みで hash が違う（取り消した取込みは比べない）。
+    // 名指す取込みID は文と error の構造の両方に入れる（画面が詳細への link を出す。55 UI-07-D18）
+    if let Some((csv_import_id, _)) = sales_repo::find_active_imports_for_settlement(
         conn,
         &settlement.machine_no,
         settlement.settlement_no,
     )?
-    .is_empty()
+    .first()
     {
-        return Err(BizError::ImportError(format!(
-            "同じ精算と思われる別の資料が既に取り込まれています（精算 {}）",
-            settlement.settlement_no
-        )));
+        return Err(BizError::SettlementConflict {
+            message: format!(
+                "同じ精算と思われる別の資料が既に取り込まれています（精算 {}、取込みID: {}）",
+                settlement.settlement_no, csv_import_id
+            ),
+            csv_import_id: *csv_import_id,
+        });
     }
     // 順 5: 精算日と精算回数の順の食い違い（active だけと比べる）
     let mismatched = sales_repo::list_active_settlements(conn)?
