@@ -14,7 +14,7 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -31,6 +31,7 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 1. kickoff → spec-check（2026-10-24、起草役）: owner の所感（TD-413・TD-415）を受けた Coordinator の発注で、対象を「商品・在庫を探す・見る・直す画面の要素の見直し」とし、段 1〜段 3 と置換えまでを本 lane の範囲にした。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-24、起草役、同じ commit）: 触る正本は `docs/SCREEN_DESIGN.md`（§1 画面一覧、§3 の在庫照会・商品検索・一覧・入出庫履歴ほか、§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮、D-047 と `docs/function-design/52-ui-shared-layout.md` の UI-12-D1。在庫照会の契約 I（58 §58.10）と商品一覧の UI-01a-D1（50 §50.2）が「初めて開いたときに何を出すか」を画面ごとに逆に決めており、owner の所感がその片方を問うので、設計の更新が要る（design へ進む）。設計の中身は段 1〜段 3 で作る。design → plan-draft は段 3 で owner が採否を決め、正本の置換えの文ができてから。
 3. design → plan-draft（2026-10-24、起草役、段 3 の commit）: 条件「設計の出力が正本にある」は、D-138（decision-log）と [50](../function-design/50-ui-product-list.md) UI-01a-D1・D14〜D19・§50.4・§50.6・§50.7、[58](../function-design/58-ui-stock-inquiry.md) の冒頭の注記・契約 H・UI-06a-D8・廃番除外・§58.7、52 UI-12-D1、53 UI-00-D13、61 UI-02-D10・D18、62〜64 の保存の結果、66 UI-06c-D9、02 ⑥・⑨・⑮、`docs/SCREEN_DESIGN.md` §1〜§4 で満たす（段 3 の対応表）。条件「未解決の設計の問いが無い」は、決定 1・決定 2（TD-424・TD-425）と Q-1・Q-2（TD-422・TD-423）で決まり、段 3 の細部は design-system の原則から決めた（段 3 の 3.4）ことで満たす。Open Questions の Q-3（商品ごとの最低限の数）は答えが無いときの既定が D-138 の形（今の基準との比べ）で、設計を止めない。
+4. plan-draft → plan-gate（2026-10-24、起草役、次の commit）: 条件「packet が完成して commit 済み、R3 の Test Design Matrix が commit 済み」は、段 3 の commit `e58f8aaf`（packet の段 3・Scope・Boundary / Wire Contract・Contract Ledger と `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`）で満たす。owner の判断を待つ事項は無い（Q-3 は既定つきで止めない）。Plan Review へ出すのは Coordinator。
 
 ## Owner Effort Budget
 
