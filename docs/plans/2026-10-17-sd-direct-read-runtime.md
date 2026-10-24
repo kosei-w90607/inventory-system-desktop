@@ -11,7 +11,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 - Phase: implementing
 - Risk: R3
 - Plan Commit: 7883545fe67cb8f4d4de8c2de109c5e691c62d05
-- Amendments: none
+- Amendments: ed721d013c023390e3c79146bbfd7896357fd708
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める。Codex が起動できない日は座組表の Codex 停止中の列）
@@ -32,6 +32,7 @@ wave に属さない単独の lane（2026-10-17 起票。owner の「動かせ�
 8. plan-gate のまま是正（closure、2026-10-23、Coordinator、本 commit）: closure の Codex 側の reject（P2 1）を起草役が `8fef2a03` で直した（下の Review Response）。path の包含の規則で、`CLAUDE.md` が安全境界（path traversal）の review を Claude の subagent に出さないと定めるので、是正の後の確かめは Codex の closure と Coordinator の inline の review で行う（inline は fresh context でないので Final Review の本数に数えない）。
 9. plan-gate → plan-approved（2026-10-23、Coordinator、本 commit）: closure は Claude 側 fresh Opus 5.5 = approve（`499da80d`）、Codex = closure 2 回目 approve（`7883545f`、P1/P2/P3 0）、Coordinator の inline の review（`8fef2a03` の link 先の包含）で、P1/P2 = 0（下の Review Response）。Plan Commit は Codex の closure が監査した `7883545f`。Contract Probe P1 (b) は L3 の前の必須（AC10）で、plan-approved の条件ではない。implementing へは、並走の PR #188（migration vZ、同じ file の重なり）と実装の Writer の枠を見て Coordinator が進める。
 10. plan-approved → implementing（2026-10-24、Coordinator、本 commit）: main（`843c4938`、PR #192・#195・#191 と closeout の後）を単段で取り込み（衝突なし。PR #191 で `identifier` が `com.inventory-system.desktop` に変わったが、本 lane の docs・code に前の名の hit は無い）、AC5・AC6・AC9 の rg の baseline を逐語で再測して上の値と一致した（AC5・AC6 は hit 0、AC9 は 14 件・10 件・1 件）。cargo と npm の test の baseline は実装の Writer が着手時に取る。実装の Writer に Scope の S1 から発注する。
+11. implementing のまま Gated Amendment（2026-10-25、Coordinator、本 commit）: #188 b1 の vZ が先に merge して v11 を取ったので、本 lane の migration を v12 に取り直した（code と 22 §17 は Writer の `621f86e5`・`9a6fa61b`）。packet が file 名 `schema_v11.rs` を現在形で持ち偽になったので、`docs/DEV_WORKFLOW.md` の連番 registry の規則（正本の merge の後に採番し直したら gated amendment と同じ packet の中の full sweep を記録する）に従い、`ed721d01` で packet の現在形の箇所（規模と手法・S2 の migration・Matrix の migration の行・Contract Ledger の版の番号の行）を v12 に直し、Scope に無かった `docs/inventory_system_erd.html`（版の範囲と `settlement_no`）を足した（上の「Gated Amendment 1 で変えた正本」）。日付のある記録（当て直し・Review の是正の節、Implementation Results の 2026-10-24 の行）は直さない。sweep の式は `rg -n 'schema_v11|\bv11\b|版 11'` で、残る当たりは #188 b1 の vZ を指す行と日付のある記録だけ。登録は本 commit で `ed721d01` を `Amendments` に足す。review は Final Review broad に含める（前例: PR #188 の amendment 2 本目）。
 
 ## Owner Effort Budget
 
