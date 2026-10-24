@@ -27,9 +27,9 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: a87c5601dc6010e086a68dc7f3c38e60faaa95e0
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
@@ -48,6 +48,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `fd2c1f8c` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 6. plan-gate のまま是正（round 2、2026-10-24、Coordinator の代行、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を Coordinator の裁定に沿って直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（fresh Opus 5.5 + Codex。Plan Review round 天井の 3 回目）で再 review する。
 7. plan-gate（round 3、天井、2026-10-24、Coordinator の disposition、起草役、本 commit）: round 3 は Claude 側 approve・Codex reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、Coordinator が残った findings を「同型指摘の一括是正」とし、起草役がその disposition に沿って直した（下の Review Response）。是正は順 4 の拒否の error に取込みID の任意の field と Alert の link を足す（wire の契約が増え、予定 path が 47 になる）ので、plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が本 commit の版に P1 / P2 = 0 を報告した後（遷移表の plan-gate → plan-approved の条件。前例: PR #193 の遷移 7・8）。
+8. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。遷移 7 は closure を Claude 側 + Codex と書いたが、遷移 7 の版の closure（`ff911e61`）で Codex が挙げた P2（N1）は Claude 側も挙げた同じ点で、Coordinator はその後の closure を、直した点だけを見る fresh Opus 5.5 の狭い closure 1 本に絞った（2026-10-24）。closure 2（`432d48c4`）の是正を経て、closure 3（`af32f558`）が approve（P1 / P2 = 0、P3 1。下の Review Response）。closure 3 の P3 1 件は plan-gate のまま Coordinator が `a87c5601` で直した（Plan Commit はその版。前例: PR #201 の遷移 8 で closure の P3 を直した版を Plan Commit にした）。実装は b1（PR #188）の merge の後に `origin/main` を単段で取り込んでから始める（上の「b1 との関係」）。
 
 ## Owner Effort Budget
 
