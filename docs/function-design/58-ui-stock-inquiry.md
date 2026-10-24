@@ -350,9 +350,9 @@ export function useStockInquiry(params: {
 }
 ```
 
-- **正規化の契約**: 自動展開 / EmptySearchPlaceholder 判定 / Pagination は常に `listQuery.data.items` / `.totalCount` を参照（生 `data.total_count` / `data.items` 直接参照禁止、type narrowing 維持）
+- **正規化の契約**: 自動展開 / Pagination は常に `listQuery.data.items` / `.totalCount` を参照（生 `data.total_count` / `data.items` 直接参照禁止、type narrowing 維持）
 - list query 失敗時も detail query は独立動作（部分障害許容）、逆も同様。`departmentOptionsQuery` も同じく独立: list query の成否に関わらず候補取得は継続する
-- 部門選択肢は `listDepartments()` の master 全件から作る（UI-06a-D2、DSR-10）。`page` / `q` / `dept` / `status` のいずれを変更しても候補集合は不変で、選択中部門から別部門へ直接切り替えられる。旧実装（filtered result からの派生）は Windows native L3 feedback で「個別部門選択後に他部門へ切り替えられない」functional defect として修正済みだった経緯があり、pagination 導入でこの縮退が再発・増幅するリスクがあるため、本 change で master 全件由来へ是正する
+- 部門選択肢は `listDepartments()` の master 全件から作る（UI-06a-D2、DSR-10）。§58.4 の条件の key（50 §50.4）と `page` のいずれを変更しても候補集合は不変で、選択中部門から別部門へ直接切り替えられる。旧実装（filtered result からの派生）は Windows native L3 feedback で「個別部門選択後に他部門へ切り替えられない」functional defect として修正済みだった経緯があり、pagination 導入でこの縮退が再発・増幅するリスクがあるため、本 change で master 全件由来へ是正する
 - **候補取得失敗時の挙動**（round 2 P1-1 対応、catalog ⑨「部門候補の取得失敗は呼び出し側で別途文言表示」の具体化）: `departmentOptionsQuery.isError` を hook が公開し、`StockInquiryPage` が `DepartmentFilter` 直下に「部門候補の取得に失敗しました」（`role="alert"`、products 画面 `ProductListPage.tsx` の既存文言と同型）を表示する。`listQuery`（一覧表示）とは完全に独立し、候補取得が失敗しても一覧表示は継続する
 
 #### CSV 取込み後の invalidation（`useCsvImportFlow.ts` への追加）
@@ -591,7 +591,7 @@ function StockInquiryPage() {
 
 #### 契約 H 在庫状態の高視認性表示（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）
 
-> （D-138 で置換え）どの状態でも、stock_quantity <= 0 は「在庫切れ」、stock_quantity > 0 で BIZ 判定済みの在庫少の集合（`list_low_stock`）に入る商品は「在庫少」、それ以外は「在庫あり」と表示する。「すべて」では一覧（`search_products`）とは別に `list_low_stock(true)`（廃番を含む。「すべて」は廃番の表示を持つため）を読み、商品コードが集合に入るかで決める。「在庫あり」は在庫少の基準（[69](69-ui-threshold-settings.md) の 2 つの key、`stock_quantity <= 基準` が在庫少）を上回ることを示す。「在庫切れ・在庫少」の一覧は同じ集合から廃番を除く。frontend は閾値を保持しない（Q-1）。在庫少の集合の読込み中は、「すべて」の stock_quantity > 0 の行の状態の欄を読込み中の印（Skeleton）にする。在庫少の集合が読めないとき、「すべて」の stock_quantity > 0 の行は状態の欄に「—」を出し、一覧の上に読めなかったことと「もう一度読む」を出す（「在庫あり」と言い切らない）。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。在庫少の集合の query の key は D-052 の invalidation の集合に入れる: `src/lib/invalidation-contract.ts` で `queryKeys.lowStock(false)` を挙げる entry の全部（`rg -c 'queryKeys.lowStock\(false\)' src/lib/invalidation-contract.ts` の出力 15。入出庫 4 画面・CSV 取込み・商品の保存・閾値の保存ほか）に足し、test 側の独立 oracle（`src/test/invalidation-oracle.ts`）も同じ PR で直す（`queryKeys.lowStock(true)` は prefix でも `lowStock(false)` に当たらない。足さないと在庫の数は新しく状態の欄だけ古い）。今の build は「すべて」で閾値判定を行わず、stock_quantity > 0 を「在庫あり」と出す（基準以上を保証しない）。
+> （D-138 で置換え）どの状態でも、stock_quantity <= 0 は「在庫切れ」、stock_quantity > 0 で BIZ 判定済みの在庫少の集合（`list_low_stock`）に入る商品は「在庫少」、それ以外は「在庫あり」と表示する。「すべて」では一覧（`search_products`）とは別に `list_low_stock(true)`（廃番を含む。「すべて」は廃番の表示を持つため）を読み、商品コードが集合に入るかで決める。「在庫あり」は在庫少の基準（[69](69-ui-threshold-settings.md) の 2 つの key、`stock_quantity <= 基準` が在庫少）を上回ることを示す。「在庫切れ・在庫少」の一覧は同じ集合から廃番を除く。frontend は閾値を保持しない（Q-1）。在庫少の集合の読込み中は、「すべて」の stock_quantity > 0 の行の状態の欄を読込み中の印（Skeleton）にする。在庫少の集合が読めないとき、「すべて」の stock_quantity > 0 の行は状態の欄に「—」を出し、一覧の上に読めなかったことと「もう一度読む」を出す（「在庫あり」と言い切らない）。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。在庫少の集合の query の key は D-052 の invalidation の集合に入れる: `src/lib/invalidation-contract.ts` で `queryKeys.lowStock(false)` を挙げる entry の全部（`rg -c 'queryKeys.lowStock\(false\)' src/lib/invalidation-contract.ts` の出力 16。入出庫 4 画面・CSV 取込み・商品の保存・閾値の保存・棚卸しの数の保存ほか）に足し、test 側の独立 oracle（`src/test/invalidation-oracle.ts`）も同じ PR で直す（`queryKeys.lowStock(true)` は prefix でも `lowStock(false)` に当たらない。足さないと在庫の数は新しく状態の欄だけ古い）。今の build は「すべて」で閾値判定を行わず、stock_quantity > 0 を「在庫あり」と出す（基準以上を保証しない）。
 >
 > Why: 入れた後に時々、限られた商品について在庫が最低限要る数に達したかを確かめる（店主の答え Q-102・TD-423）。入庫の結果から開いた 1 商品の行（[61](61-ui-receiving.md) UI-02-D10）が「すべて」の一覧なので、「すべて」の状態の欄が基準との比べを示さないと、この確かめに答えない。新しい設定・field は足さない（基準は今の 2 つの key）。
 
@@ -613,7 +613,7 @@ function StockInquiryPage() {
 
 #### UI-06a-D6: 絞り込み時の件数表示（2026-09-15、SPEC-DISP-B2-1 / D-B5）
 
-- 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
+- 在庫切れ・在庫少の絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
 
 #### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）
 
@@ -635,8 +635,8 @@ function StockInquiryPage() {
 
 #### UI-06a-D4: 在庫少・在庫切れ一覧の取引先列 + 取引先名優先ソート（2026-09-06）
 
-- **決定**: `ProductListTable` に取引先列（`supplier_name`、null は `—`）を追加する。取引先列は「すべて」と「在庫切れ・在庫少」のどちらの列の組にも出る（D-138 で列の組を状態で分けた、50 UI-01a-D16。D-138 の前は単一 component で 3 つの view に無条件で出していた）。並び順は `status === "stockout" | "low_stock"`（`list_low_stock` 経路）でのみ `filterAndSortLowStockList` が取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順にクライアント側でソートする。「すべて」（`search_products` 経路、`ORDER BY p.product_code`）とページングは変更しない。
-- **Why**: `list_low_stock` は既に pagination なしの全件クライアント保持（§58.5）のため、フィルタ後配列を並べ替えるだけで済むクライアント側ソートが SQL `ORDER BY` 変更より変更面積が小さい（新規 Rust test・IO 層契約変更・design doc 改訂が不要）。「すべて」の並び順を変えない要件も自然に満たす。
+- **決定**: `ProductListTable` に取引先列（`supplier_name`、null は `—`）を追加する。取引先列は「すべて」と「在庫切れ・在庫少」のどちらの列の組にも出る（D-138 で列の組を状態で分けた、50 UI-01a-D16。D-138 の前は単一 component で 3 つの view に無条件で出していた）。並び順は `status === "low_stock"`（`list_low_stock` 経路）でのみ `filterAndSortLowStockList` が取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順にクライアント側でソートする。「すべて」（`search_products` 経路）の並び順とページは [50](50-ui-product-list.md) §50.4 に従う。
+- **Why**: `list_low_stock` は既に pagination なしの全件クライアント保持（§58.5）のため、フィルタ後配列を並べ替えるだけで済むクライアント側ソートが SQL `ORDER BY` 変更より変更面積が小さい（新規 Rust test・IO 層契約変更・design doc 改訂が不要）。
 - **Rejected**: `list_low_stock_products`（`product_repo.rs`）の SQL `ORDER BY` を変更する案（IO 層契約変更・新規 Rust test・`20-io-product-repo.md` 改訂を伴い変更面積が大きい上、「すべて」に影響させない制御が別途必要になる）。
 
 #### UI-06a-D5: 展開行トグルクローズ + 自動展開の検索条件単位制限（R2-3、2026-09-06）

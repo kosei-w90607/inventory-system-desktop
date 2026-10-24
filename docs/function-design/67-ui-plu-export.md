@@ -75,7 +75,7 @@ function PluExportPage(): JSX.Element
 | `saved` | PLUファイル保存済み、まだ未反映解除していない | 再保存、Diff再生成、書出し済み確認 |
 | `restored_pending` | 画面再表示時に保存済み未確認状態を復元した | 書出し済み確認、破棄して再書出し |
 | `confirming_exported` | `confirm_plu_export_saved` 実行中 | 操作disabled |
-| `confirmed` | app-side exported state更新済み | 差分一覧再取得、商品一覧へ戻る、PCツール手順確認 |
+| `confirmed` | app-side exported state更新済み | 差分一覧再取得、商品と在庫へ戻る（D-138 の後。proposed・未実装、今の build に戻る導線は無い）、PCツール手順確認 |
 | `error` | prepare/save/confirm 失敗 | 再試行、戻る |
 
 保存キャンセルは `idle` または `saved` に戻す。保存キャンセルと保存失敗は `confirm_plu_export_saved` を呼ばない。

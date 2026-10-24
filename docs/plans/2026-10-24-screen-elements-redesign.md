@@ -106,12 +106,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 段 2: 白紙の骨組み（本 packet の後半の `## 段 2: 白紙の骨組み`。2026-10-24 の段 2 の run で済み）。
 - 段 3: 今の設計との突き合わせと owner の採否の選択肢（本 packet の後半に置く）。採否の後、正本を置き換える: `docs/SCREEN_DESIGN.md`（§1・§2・§3 の対象の画面・§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77 のうち採った形が触る節、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮ のうち触る所、`docs/decision-log.md` の D-138、D-047 の置換えの行（変えるなら）、`docs/backlog.md` の後続の runtime の項目。段 3 の後に Scope をこの粒度から file の一覧へ詰める。
 
-段 3 で置き換えた file（`git diff --name-only origin/main...HEAD` で数える。本 packet と Matrix を除く 20 file）:
+段 3 で置き換えた file（`git diff --name-only origin/main...HEAD` の出力から本 packet と Matrix を除いたもの）:
 
 - 画面の正本: `docs/SCREEN_DESIGN.md`（§1 #4・#7、§2 のエリア・動線・遷移、§3 の商品と在庫画面〈在庫照会画面と商品検索・一覧画面を置換え〉・入出庫履歴・在庫変動追跡・入庫記録・返品・交換・PLU書出し、§4 の商品と在庫の統合・UI-06a Phase 2 の注記）、`docs/UI_TECH_STACK.md`（query の表の UI-06b の行、HID の UI-06a の行）
-- function design: `docs/function-design/50-ui-product-list.md`（冒頭、§50.1、§50.2 UI-01a-D1・D14〜D19、§50.4、§50.6、§50.7、§50.8）、`58-ui-stock-inquiry.md`（冒頭、§58.1、§58.4、§58.6、§58.7、§58.8、§58.10 契約 H・契約 I・UI-06a-D7・D8・廃番除外、§58.12、§58.13、更新履歴）、`52-ui-shared-layout.md`（§52.3 の UI-06a・UI-01a・UI-06b の行とナビに出さない route、§52.6 UI-12-D1）、`53-ui-home.md`（§53.1 の QuickActionGrid の行、§53.8 UI-00-D13）、`51-ui-product-form.md`（UI-01b-D2）、`61-ui-receiving.md`（UI-02-D10・D13・D18、§61.3、§61.5、§61.7、§61.9）、`62-ui-manual-sale.md`（UI-04-D12・D14、§62.3）、`63-ui-return-exchange.md`（UI-03-D15・D18、§63.3、§63.7）、`64-ui-disposal.md`（UI-05-D11・D14、§64.3、§64.7）、`66-ui-stock-movements.md`（§66.1、UI-06c-D9）、`67-ui-plu-export.md`（Diff 0 件の文言）、`77-ui-bulk-price-revision.md`（Empty の導線の label）
+- function design: `docs/function-design/50-ui-product-list.md`（冒頭、§50.1、§50.2 UI-01a-D1・D14〜D19、§50.4、§50.6、§50.7、§50.8）、`58-ui-stock-inquiry.md`（冒頭、§58.1、§58.4、§58.6、§58.7、§58.8、§58.10 契約 H・契約 I・UI-06a-D7・D8・廃番除外、§58.12、§58.13、更新履歴）、`52-ui-shared-layout.md`（§52.3 の UI-06a・UI-01a・UI-06b の行とナビに出さない route、§52.6 UI-12-D1）、`53-ui-home.md`（§53.1 の QuickActionGrid の行、§53.8 UI-00-D13）、`51-ui-product-form.md`（UI-01b-D2）、`60-ui-product-import.md`（UI-01c-D11・D13、§60.5 の result）、`61-ui-receiving.md`（UI-02-D10・D13・D18、§61.3、§61.5、§61.7、§61.9）、`62-ui-manual-sale.md`（UI-04-D12・D14、§62.3、§62.5 の候補の列）、`63-ui-return-exchange.md`（UI-03-D15・D18、§63.3、§63.7、§63.5 の候補の列）、`64-ui-disposal.md`（UI-05-D11・D14、§64.3、§64.7、§64.5 の候補の列）、`66-ui-stock-movements.md`（§66.1、UI-06c-D9、§66.3）、`67-ui-plu-export.md`（Diff 0 件の文言、§67.7 の `confirmed` の操作の label）、`69-ui-threshold-settings.md`（§69.2・§69.9 の区画の説明・§69.12 L3-1 の画面名）、`77-ui-bulk-price-revision.md`（Empty の導線の label）
 - 索引・要約: `docs/ARCHITECTURE.md`（UI-01a・UI-06a・UI-06b の行）、`docs/FUNCTION_DESIGN.md`（UI-06a の要約の 2 行の「検索駆動表示契約 I」に撤去の注記。索引の link の文字は変えない）、`docs/architecture/ui-task-specs.md`（UI-12 のサイドバー、UI-00 の大ボタン、UI-01a、UI-06a・UI-06b）
-- design-system: `docs/design-system/02-component-catalog.md`（⑥ 空状態の説明・filter-empty の採用箇所、⑨ 商品を探す検索欄の列、⑮ 取引 4 画面の先頭の列、更新履歴）
+- design-system: `docs/design-system/01-decision-rules.md`（DSR-18 の木の図の例）、`docs/design-system/02-component-catalog.md`（⑥ 空状態の説明・filter-empty の採用箇所、⑧ 廃番の確認の説明の画面名、⑨ 商品を探す検索欄の列、⑮ 取引 4 画面の先頭の列、更新履歴）
 - 決定と後続: `docs/decision-log.md`（D-138、D-047 の Superseded in part の行）、`docs/backlog.md`（「商品と在庫の画面の統合の runtime」、「商品ごとの最低限の在庫数」）
 - Matrix: `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`
 - Plan Review round 1 の是正で触った節（上の file の中。`## Review Response` の round 1）: 50 UI-01a-D3・D8・D15・D17・D19・§50.4・§50.5・§50.7・§50.8、51 UI-01b-D2、58 の冒頭の注記・テンプレ判定・§58.1・§58.4 の `selected` ライフサイクル・§58.7・契約 H・UI-06a-D4・D7・§58.12・更新履歴、52 §52.3 の UI-06c の行・§52.4 の型の例、53 §53.8、61 UI-02-D10・§61.9、62〜64 の result の行、66 の入力ドキュメント・§66.1・UI-06c-D9・§66.3、ui-task-specs の UI-06b、backlog の runtime の項目
@@ -179,7 +179,7 @@ command・DTO・bindings は変えない（`search_products`・`list_low_stock(i
 - wire type: URL の search params（string。router の `parseSearch` を通る。商品修正の `returnTo` の中身だけは `URLSearchParams` の手組みで、受け口が型つきで読み直し、router の `parseSearch` を通らない。作る側に router の href を使うと数字だけの値が引用符つきで直列化され〈`@tanstack/router-core` 1.171.3（lockfile の版）の `src/searchParams.ts:58-80` の `stringifySearchWith`。下の Contract Probe〉、受け口が引用符ごと受ける）
 - internal type: `status: "all" | "low_stock"`、`selected: string`（1〜100 文字）、`productCode: string`（1〜100 文字）、今の `q`・`dept`・`discontinued`・`sort`・`dir`・`perPage`・`page`（50 §50.4）。`StockStatus` に在庫少の集合が読めない状態を足す（58 契約 H）
 - precision/range: 文字列の長さ 100（`selected` の上限は 58 §58.4・66 UI-06c-D9 と同じ）
-- round-trip path: 統合の画面 → 商品修正 → 保存・戻る → 来た一覧とその行（例外: `recount_required` の回復で棚卸しを経た後は `/products`、b1 の決定。51 UI-01b-D2）。統合の画面 → 在庫変動履歴 →（業務記録詳細 → 戻る）→「商品と在庫へ戻る」→ 来た一覧（限定: `returnTo` が 500 字を超えると既定の戻り先で同じ商品に着く、66 §66.3・UI-06c-D9）。入出庫の保存の結果 →「在庫を見る」→ その商品の行。数字だけの商品コードも string のまま往復する（66 の GA5）
+- round-trip path: 統合の画面 → 商品修正 → 保存・戻る → 来た一覧とその行（例外: `recount_required` の回復で棚卸しを経た後は `/products`、b1 の決定。51 UI-01b-D2）。統合の画面 → 在庫変動履歴 →（業務記録詳細 → 戻る）→「商品と在庫へ戻る」→ 来た一覧（限定は受け口ごと、66 §66.3・UI-06c-D9: 在庫変動履歴の `returnTo` が 500 字を超えると既定の戻り先で同じ商品に着く。業務記録詳細の `returnTo`〈入れ子の `detailReturnTo`〉が 500 字を超えると詳細の「前の画面へ戻る」は詳細の既定 `/inventory/records` に着き、在庫変動履歴と商品は失う。どちらも今の挙動のまま）。入出庫の保存の結果 →「在庫を見る」→ その商品の行。数字だけの商品コードも string のまま往復する（66 の GA5）
 - invalid input: zod の `.catch(undefined)` で既定へ（今の契約）。`status` の旧値 `stockout` は `low_stock` として読む。`productCode` の不明・廃番は明細を入れず案内（61 UI-02-D18）
 - compatibility: `/stock` は `/products` へ寄せ、`q`・`dept`・`selected`・`page` を写し（`page` を写すときは `perPage=50` を足す）、`status` を読み替える（50 UI-01a-D19）。限定: 統合の前の在庫照会で選んだ表示件数 100・200 は URL に無いローカルの値で再現できず、その `page` は別の行を指す（範囲外 page の回復か `selected` が外れる）。統合の前に作られた `returnTo=/stock?...` は在庫変動履歴の pin に合わず fallback（`/products?q=<code>&selected=<code>&discontinued=all`）で同じ商品に着く（66 UI-06c-D9。部分一致で 1 ページ目に無ければ `selected` は外れる、58 §58.4）。`/stock/$code/movements` の path は変えない
 
@@ -553,7 +553,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 
 ### 3.6 旧い言い方の sweep
 
-置き換えた契約の旧い言い方を docs 全体で `rg` した。分類: 置換え（本 PR で直した）／今の build（統合の前の振舞いの記述として残し、runtime の lane が直す。backlog の項目の清掃の基準〈`rg` の 2 つの command〉に入る）／履歴（日付つきの経緯・更新履歴・decision-log の本文。append-only）／一般名（`list_low_stock` の機能の名や一覧の種類の名で、画面の名でない）／対象外。数は Plan Review round 2 の是正の後の head で数えた: `rg -n -F '<語>' docs --glob '!docs/archive/**' --glob '!docs/research/**' --glob '!docs/plans/2026-10-24-screen-elements-redesign.md' --glob '!docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md'` の行数と file ごとの行数。
+置き換えた契約の旧い言い方を docs 全体で `rg` した。分類: 置換え（本 PR で直した）／今の build（統合の前の振舞いの記述として残し、runtime の lane が直す。backlog の項目の清掃の基準〈`rg` の 2 つの command〉に入る）／履歴（日付つきの経緯・更新履歴・decision-log の本文。append-only）／一般名（`list_low_stock` の機能の名や一覧の種類の名で、画面の名でない）／対象外。数は Plan Review round 3 の是正の後の head（base 同期の後）で数えた: `rg -n -F '<語>' docs --glob '!docs/archive/**' --glob '!docs/research/**' --glob '!docs/plans/2026-10-24-screen-elements-redesign.md' --glob '!docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md'` の行数と file ごとの行数。
 
 | 旧い言い方（`rg -F`） | hit の行数（file ごと） | 分類 |
 |---|---|---|
@@ -561,9 +561,9 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 | `機械的に横展開しない` | 1（decision-log 1） | 履歴（D-138 の Context） |
 | `契約 I` | 22（58 13、FUNCTION_DESIGN 2、decision-log 2、50 1、backlog 1、10 1、35 1、templates/plan-packet 1） | 58（冒頭・§58.1・§58.10 は撤去の文、§58.2 の file 表・§58.5 の疑似コードは今の build、§58.7・§58.8 は撤去の注記つきの今の build、更新履歴は履歴）、50 UI-01a-D1（置き換えた旨）、FUNCTION_DESIGN の 2 行（撤去の注記）、backlog の起源の項目（解消の矢印）、decision-log（D-138 の経緯）: 置換え／今の build／履歴。10・35・templates の hit は `契約 ID` で対象外 |
 | `検索駆動` | 5（FUNCTION_DESIGN 2、58 2、50 1） | 置換え（撤去の注記）／今の build／履歴 |
-| `EmptySearchPlaceholder` | 12（58 8、02 2、59 1、backlog 1） | 今の build（部品の撤去とともに runtime が消す。02 ⑥ と 59 の適用除外を含む）。backlog は runtime の清掃の基準の command |
+| `EmptySearchPlaceholder` | 11（58 7、02 2、59 1、backlog 1） | 今の build（部品の撤去とともに runtime が消す。02 ⑥ と 59 の適用除外を含む）。backlog は runtime の清掃の基準の command |
 | `在庫照会へ戻る` | 23（66 4、62 2、63 2、64 2、61 1、SCREEN_DESIGN 2、decision-log 1、01 1、diagrams/current-system 2、design-system/reference の mockup 6） | 61〜64・66・SCREEN_DESIGN は「今の build は…」の注記、decision-log は D-138 の Context（履歴）、01 DSR-18 の例と diagrams は今の build（runtime）、mockup は対象外（初期提案の歴史資料） |
-| `在庫少一覧` | 56（52 9、ui-task-specs 4、58 4、decision-log 3、ARCHITECTURE 2、SCREEN_DESIGN 2、backlog 2、03 2、69 2、diagrams/current-system 2、50 1、73 1、44 1、cmd-task-specs 1、UI_TECH_STACK 1、DEV_SETUP_CHECKLIST 1、design-system/reference 21） | 52 §52.4 の表・diagrams は今の build（runtime）、52 §52.3・§52.4 の型の例と §52.4 の項目の表の前の「今の build の項目」の注記・ARCHITECTURE・ui-task-specs・UI_TECH_STACK・SCREEN_DESIGN §2・50 UI-01a-D14 は「今の build は…」の注記、58 の §58.12 と 03・44・69・cmd-task-specs は一般名（CMD の機能・一覧の種類）、58・73 の更新履歴・decision-log・DEV_SETUP_CHECKLIST・backlog・SCREEN_DESIGN §5 は履歴、reference は対象外 |
+| `在庫少一覧` | 56（52 9、ui-task-specs 4、58 4、decision-log 3、ARCHITECTURE 2、SCREEN_DESIGN 2、backlog 2、03 2、69 2、diagrams/current-system 2、50 1、73 1、44 1、cmd-task-specs 1、UI_TECH_STACK 1、DEV_SETUP_CHECKLIST 1、design-system/reference 18） | 52 §52.4 の表・diagrams は今の build（runtime）、52 §52.3・§52.4 の型の例と §52.4 の項目の表の前の「今の build の項目」の注記・ARCHITECTURE・ui-task-specs・UI_TECH_STACK・SCREEN_DESIGN §2・50 UI-01a-D14 は「今の build は…」の注記、58 の §58.12 と 03・44・69・cmd-task-specs は一般名（CMD の機能・一覧の種類）、58・73 の更新履歴・decision-log・DEV_SETUP_CHECKLIST・backlog・SCREEN_DESIGN §5 は履歴、reference は対象外 |
 | `基準以上を保証しない`（旧契約 H） | 1（58 1） | 今の build（契約 H の「今の build は…」の 1 行） |
 | `行クリックは商品修正`（旧 §50.6） | 1（50 1） | 置換え（50 UI-01a-D17 の理由の欄の旧文の引用。有効な旧い文は 0） |
 | `差分はありません`（X-06） | 0 | 置換え（67・SCREEN_DESIGN） |
@@ -581,7 +581,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 | UI-01a-D15・§50.4（URL state と「在庫切れ・在庫少」の道具） | 50 §50.2・§50.4 | docs（本 PR）: 50 | Matrix の UI-01a-D15・§50.4 の行 | runtime の L3 |
 | UI-01a-D16・UI-06a-D8・廃番除外（列・チップ・検索欄の列） | 50 §50.2・§50.6、58 §58.6・§58.7・§58.10 | docs（本 PR）: 50、58、02 ⑨ | Matrix の UI-01a-D16・UI-06a-D8 の行 | runtime の L3（8 列が 16px で収まるか） |
 | 58 契約 H（「すべて」でも在庫少） | 58 §58.6・§58.8・§58.10・§58.12 | docs（本 PR）: 58、`docs/SCREEN_DESIGN.md` §3・§4 | Matrix の契約 H の行（集合の所属・取得の引数・集合の失敗・集合の読込み中・「在庫切れ・在庫少」の一覧の失敗） | runtime の L3（状態の見分け） |
-| 契約 H の集合の key の D-052 の invalidation | 58 §58.10 契約 H、`src/lib/invalidation-contract.ts`（`queryKeys.lowStock(false)` を挙げる 15 の entry。`rg -c 'queryKeys.lowStock\(false\)' src/lib/invalidation-contract.ts` の出力 15） | docs（本 PR）: 58、backlog。code は runtime（production SSOT と独立 oracle を同じ PR で） | Matrix の契約 H / D-052 の行 | 非対象（自動 test で足りる） |
+| 契約 H の集合の key の D-052 の invalidation | 58 §58.10 契約 H、`src/lib/invalidation-contract.ts`（`queryKeys.lowStock(false)` を挙げる 16 の entry。`rg -c 'queryKeys.lowStock\(false\)' src/lib/invalidation-contract.ts` の出力 16。round 3 の base 同期で b1 の `stocktakeCountUpdate` が加わった） | docs（本 PR）: 58、backlog。code は runtime（production SSOT と独立 oracle を同じ PR で） | Matrix の契約 H / D-052 の行 | 非対象（自動 test で足りる） |
 | 58 §58.4 の `selected` ライフサイクル（検索前ガードの撤去、部分一致の限定） | 58 §58.4・UI-06a-D7、50 §50.4 | docs（本 PR）: 58 | Matrix の UI-01a-D15 / §50.4 の条件の変更の行と 58 §58.4 の行 | 非対象 |
 | UI-01a-D17・UI-06a-D7・UI-06c-D9・UI-01b-D2（行の詳細と戻り先。商品修正の `returnTo` は作る側・受け口に `status`・`selected` を足し作る側は手組み、在庫変動履歴の fallback に `discontinued=all`、`recount_required` の回復の後は `/products` の例外、在庫変動履歴の `returnTo` は 500 字を超えたら fallback の限定） | 50 §50.2・§50.6、58 §58.7・§58.10、66 §66.1・UI-06c-D9・§66.3、51 UI-01b-D2 | docs（本 PR）: 50、58、66、51、backlog | Matrix の UI-01a-D17・UI-01b-D2・UI-06c-D9 の行 | runtime の L3（2 click） |
 | UI-01a-D18（何も出ない画面を作らない、0 件の説明） | 50 §50.2・§50.7、02 ⑥ | docs（本 PR）: 50、02 | Matrix の UI-01a-D18 の行 | 非対象（自動 test で足りる） |
@@ -589,7 +589,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 | UI-02-D4 系と SPEC-SUGGEST（取引 4 画面の候補・明細の列） | 02 ⑮、61 §61.5 | docs（本 PR）: 02、61 | Matrix の catalog ⑮ の行 | runtime の L3。棚卸し（73 UI-10-D2・UI-10-D12）は対象外（D-118 の (b)） |
 | UI-00-D13（ホームの入口 card）。D-089 は変えない | 53 §53.1・§53.8 | docs（本 PR）: 53 | Matrix の UI-00-D13 の行 | runtime の L3 |
 | 67 の Diff 0 件の文言（X-06、正本を今の build の文に合わせた） | 67 の Diff 0 件、`docs/SCREEN_DESIGN.md` §3 PLU書出し画面 | docs（本 PR）: 67、SCREEN_DESIGN。code は変えない | 非対象（code を変えない。この文を assert する test は今は無い〈`rg -ln 'PLU書出しが必要な商品はありません' src` の出力は `src/features/plu-export/PluExportPage.tsx` だけ〉。旧い文の再導入は 3.6 の `差分はありません` の行の sweep で見る） | 非対象 |
-| 77 の 0 件の導線の label（「商品と在庫を開く」、先の route は同じ）と、`/products` へ行く他の導線・文言の画面名（一括インポートの「商品と在庫へ戻る」ほか） | 77 の Empty、60 UI-01c-D11・§60.5、`docs/SCREEN_DESIGN.md` の商品一括インポート画面 | docs（本 PR）: 77、60、SCREEN_DESIGN。code は runtime | Matrix の 77 Empty の行（既存 `src/features/products/PriceRevisionPage.test.tsx:774` を改める）と 60 UI-01c-D11 / 商品フォームの not found の行 | runtime の L3 |
+| 77 の 0 件の導線の label（「商品と在庫を開く」、先の route は同じ）と、`/products` へ行く他の導線・文言の画面名（一括インポートの「商品と在庫へ戻る」、PLU書出しの `confirmed` の「商品と在庫へ戻る」、在庫少の基準の画面の説明・L3-1、廃番の確認の説明） | 77 の Empty、60 UI-01c-D11・§60.5、67 §67.7、69 §69.2・§69.9・§69.12、02 ⑧、`docs/SCREEN_DESIGN.md` の商品一括インポート画面 | docs（本 PR）: 77、60、67、69、02、SCREEN_DESIGN。code は runtime | Matrix の 77 Empty の行（既存 `src/features/products/PriceRevisionPage.test.tsx:774` を改める）と 60 UI-01c-D11 / 商品フォームの not found の行 | runtime の L3 |
 | SCREEN_DESIGN §4「在庫照会のREQ統合」→「商品と在庫の統合」 | `docs/SCREEN_DESIGN.md` §4 | docs（本 PR） | 非対象（文書の判断の記録） | 非対象 |
 | UI-06a-D1・UI-06a-D6（ページと件数） | 58 §58.10 | 変えない（「すべて」は 50 のページ、「在庫切れ・在庫少」は「全 N 件」のまま） | 既存の test のまま | 非対象 |
 
@@ -656,3 +656,21 @@ reviewer: Claude 側（fresh Opus 5.5。reject、P2 1 / P3 6）と Codex 側（r
 | 66 UI-06c-D9 の中に 2 つの版の契約が継ぎ足されている | Opus 7（P3） | 受理（書き直しは runtime） | 今回は全面の書き直しをしない（round 3 の前に大きな差分を作らない）。区切りの文「以下の `/stock` と『在庫照会へ戻る』は今の build の値」で印は完結しており、runtime の清掃（backlog の基準の「印の付いた今の build の値」）で今の build の部分を消す |
 
 この変更で不要になった記述: 58 UI-06a-D5 の「`perPage`（page ローカル state、URL 非依存）は対象外」と旧 4 項目の key の規則、58 §58.1・§58.8 の空配列の一律の文言の規則、58 §58.4 の「`q` / `dept` / `status` の変更で `page=1`」と範囲外 page の旧 3 項目、66 §66.7 の「`/stock` 以外の pathname は pin 不一致」、Matrix の不正値の一覧の `status=stockout`、backlog の「対象は command の出力で決める」の完全性の主張、51・packet の router-core 1.168.15、Contract Probe の「外部 library の振舞いを前提にしていない」（統合の後の規則に置き換えるか今の build の 1 句にした）。
+
+### Plan Review round 3（2026-10-25、起点 `5a7de800`。天井）
+
+reviewer: Claude 側（fresh Opus 5.5。reject、P2 1 / P3 5）と Codex 側（reject、P2 4 / P3 1）。両者とも画面の構成は決め直さず文の置換えで閉じると判定し、Coordinator は天井の disposition として全 finding を受理し一括で是正すると裁定した。画面の構成・runtime の挙動・上限の値は変えていない。是正の前に `origin/main`（`8db97271`、b1 の archive を含む）を単段で merge した（衝突なし）。重なりの組: Codex 1 = Opus 1、Codex 2 + Opus 3、Codex 4 + Opus 2。
+
+| finding | 出所 | 受理 | 直した所 / 採らなかった案 |
+|---|---|---|---|
+| A: 業務記録詳細の `detailReturnTo` が 500 字を超えても同じ商品に着くと書く（偽。詳細の既定は `/inventory/records`） | Codex 1（P2）= Opus 1（P2） | 受理 | 66 UI-06c-D9 の限定と §66.3 の 1 つ目の bullet を受け口ごとに書き分けた（在庫変動履歴の `returnTo` の超過は fallback で同じ商品、業務記録詳細の `returnTo`〈入れ子の `detailReturnTo`〉の超過は詳細の既定 `/inventory/records` で在庫変動履歴と商品を失う。どちらも今の挙動）。Matrix の Boundary Checks の min/max、packet の round-trip path も同じ。採らなかった案: 上限を上げる（既存の backlog の候補のまま、項目は足さない） |
+| B: 69・02 ⑧ の画面に出す文が旧い画面名のまま、Matrix の「商品と在庫に直す」の新しい文が正本に無い | Codex 2（P2）+ Opus 3（P3） | 受理 | 69 §69.2・§69.9 の区画の説明・§69.12 L3-1 に D-138 の後の文（「ホームと商品と在庫の…」、proposed・未実装、今の build の文を併記）。02 ⑧ の構造の例の直後に D-138 の後の説明の文（構造の例は今の build の canonical のまま）と更新履歴。Contract Ledger の 77 の行に 69・02・67 を足した |
+| C: 返品明細と残る 3 画面の候補の先頭が「商品名、商品コード」 | Codex 3（P2） | 受理 | `docs/SCREEN_DESIGN.md` の返品・交換画面の明細、62・63・64 §xx.5 の候補を「商品コード、商品名、…」に置換 |
+| D: 58 UI-06a-D4 の「すべて」の固定順、旧い 4 key・状態の値・2 チップの言い方 | Codex 4（P2）+ Opus 2（P3） | 受理 | UI-06a-D4 の「すべて」の並び順とページを「50 §50.4 に従う」へ置換し、Why の固定順の理由の文を削った。D4 の条件を `status === "low_stock"`、D6 を「在庫切れ・在庫少の絞り込み時」、§58.5 の後の部門候補の bullet を「§58.4 の条件の key（50 §50.4）と `page`」、正規化の契約の bullet から撤去する `EmptySearchPlaceholder 判定` を削った |
+| E: Scope の固定の件数（20）と一覧の漏れ | Codex 5（P3） | 受理 | 固定の件数を削り、`01-decision-rules.md`・`60-ui-product-import.md` と round 3 で触った `69-ui-threshold-settings.md`・62〜64 の §xx.5・66 §66.3・67 §67.7・02 ⑧ を一覧へ |
+| F: 67 の `confirmed` の「商品一覧へ戻る」 | Opus 4（P3） | 受理 | 「商品と在庫へ戻る（D-138 の後。proposed・未実装、今の build に戻る導線は無い）」に置換し、Matrix の Adjacent Pattern Audit の `/products` への link の行に正本の label の site として足した |
+| G: 3.6 の `在庫少一覧` の内訳 `design-system/reference 21` | Opus 5（P3） | 受理 | 3.6 の command で数え直して 18（他の内訳 38 + 18 = 56）。round 3 の是正で `EmptySearchPlaceholder` が 12 → 11（58 8 → 7）になったので同じ表の行と数えた head の文も直した |
+| H: 51 UI-01b-D2 の「b1 の merge の後の base 同期で…確かめる」の予告 | Opus 6（P3） | 受理 | base 同期の後の 51 の冒頭の b1 の文（「商品フォーム自身の `returnTo` は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る」）と UI-01b-D2 の例外が 1 通りに両立することを確かめ（b1 の code も棚卸しへ `returnTo=/products/{商品コード}/edit` だけを渡す）、予告の括弧を「本書の冒頭の b1 の文と同じ」に置換 |
+| （base 同期で変わった数）`queryKeys.lowStock(false)` を挙げる entry の数 | 是正の run | — | b1 の `stocktakeCountUpdate` が加わり 15 → 16。58 契約 H と Contract Ledger の数を直した（契約は「entry の全部」のまま）。Matrix の `ProductFormPage.tsx:203` も b1 の後の `:222` に直した |
+
+この変更で不要になった記述: 66 の「業務記録詳細の入れ子の `detailReturnTo` が超えても同じ商品に着く」、58 UI-06a-D4 の「すべて」の `ORDER BY p.product_code` と「並び順を変えない」の理由、58 §58.5 の後の `EmptySearchPlaceholder 判定` と旧 4 key の部門候補の文、packet の Scope の固定の件数、51 の base 同期の予告。
