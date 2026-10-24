@@ -13,7 +13,7 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 - Phase: implementing
 - Risk: R3
 - Plan Commit: f628c918027295b19c6572433ca30b7629996c5f
-- Amendments: none
+- Amendments: 975090bff4d2b7220c2a38a5561e70e0a4fa6772
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と Plan Review の是正は packet だけ。docs の直しと定義の追加は plan-approved の後の別の run）
 - Plan Reviewer: fresh Opus 5.5（fork でない）+ Codex。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
@@ -35,6 +35,7 @@ Final Reviewer の起動の注: 本 lane の Final Review の Claude 側は、�
 5. plan-gate のまま round 3 へ（2026-10-24、起草役）: Plan Review round 2（対象 `a7a66e1e`）の是正と、owner の決定 TD-429（S5-3）を入れた（下の Review Response）。Risk・Minimum・Human Gate は変えない。本 lane の Final Review の Claude 側を fresh Opus 5.5 にした（Workflow State の注）。round 3 は Plan Review の天井（下の Owner Effort Budget）。
 6. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。Plan Review round 3（天井、対象 `57b01d3d`）の後、Coordinator の disposition「一括是正」で起草役が `f71d131c` で直し、fresh の reviewer の closure 2 本（Claude 側 fresh Opus 5.5 と Codex）が対象 `f71d131c` に P1 / P2 = 0 を報告した（下の Review Response）。closure の P3 3 件は plan-gate のまま起草役が `f628c918` で直した（Plan Commit はその版。前例: PR #201 の遷移 8）。docs の直しと定義の追加は、implementing へ進めてから別の run で行う。
 7. plan-approved → implementing（2026-10-25、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`8db97271`）を単段で merge した（`62ed8ce2`、衝突なし）。AC の baseline を同期の後に逐語で再測し、値は起票時と同じで、行番号だけがずれた（`docs/SCREEN_DESIGN.md` 218 → 216、`docs/backlog.md` 172 → 176・109 → 113・193 → 197・180 → 184）。AC の期待は変わらない。
+8. implementing のまま Gated Amendment（2026-10-25、Coordinator、本 commit）: 実装の run が S5-2 だけを直さずに返した。S5-2・AC-S5-2・Matrix の S5 の行が「35 の 2 つの設計判断の期間の句は PR #188 が外す（merge まで残りに数える）」を前提にしていたが、#188 は `22823ba5` で merge 済みで 2 句は既に無い。遷移 7 の再測は AC の baseline の値だけを見て、Scope の散文の前提の崩れを見落とした。相談役（Fable 5、反例探し）の所見を入れて、`975090bf` で 35 の句を残りに数えない形に直した（S4 の直さないものの 35 と module doc の 2 行、S5-2、Non-scope、durable な判断の (2)、延期した gap、Matrix の S5 の行）。AC-S5-2 は 2 つの見出しが backlog に出る検査を消し（反転すると baseline も期待も exit 1 で判別しない）、2 つめの検査に backlog に残る 35 の file:行（`35-biz-stocktake-service.md:374`）を足した。mockup の 2 か所は歴史資料の正本が決めているので項目に書かない。登録は本 commit で `975090bf` を `Amendments` に足す。review は Final Review broad に含める（前例: PR #172 の amendment 1）。
 
 ## Owner Effort Budget
 
