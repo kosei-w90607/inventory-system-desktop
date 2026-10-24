@@ -535,7 +535,7 @@ function StockInquiryPage() {
 
 - EmptySearchPlaceholder: 今の build だけの部品（status=all + q 空文字時、centered muted text「商品コード、商品名、または JAN コードで検索してください」）。D-138 で旧契約 I とともに撤去する（50 UI-01a-D1）
 - ~~TruncatedResultsAlert~~: **2026-08-03 batch B（UI-06a-D1）で撤去**。pagination 導入により全件へページ送りで到達できるため、「他にも検索結果があります」の打ち切り告知は不要になった（打ち切り告知とページ送りの二重表現を避ける）
-- Pagination: `status === "all"` のときだけ表示（在庫少 / 在庫切れは `list_low_stock` の client filter 経路のため対象外、既存挙動）。02-component-catalog.md ⑩ の canonical をそのまま結線し、`totalCount` から最終ページを計算する
+- Pagination: `status === "all"` のときだけ表示（在庫切れ・在庫少〈`status=low_stock`〉は `list_low_stock` の client filter 経路のため対象外、既存挙動）。02-component-catalog.md ⑩ の canonical をそのまま結線し、`totalCount` から最終ページを計算する
 
 #### StockDetailContent / StockDetailCard（インライン展開 + フォールバック共用、在庫変動履歴 link）
 
