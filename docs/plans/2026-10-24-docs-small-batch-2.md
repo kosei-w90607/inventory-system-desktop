@@ -10,7 +10,7 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: f628c918027295b19c6572433ca30b7629996c5f
 - Amendments: none
@@ -34,6 +34,7 @@ Final Reviewer の起動の注: 本 lane の Final Review の Claude 側は、�
 4. plan-gate のまま round 2 へ（2026-10-24、起草役）: Plan Review round 1（対象 `d3007c38`）の是正を入れた（下の Review Response）。Coordinator の裁定で S6（定義 2 つの追加）と S7（71 §71.9）を足し、Risk を R3 に上げた（下の Risk）。R3 なので Test Design Matrix・Contract Ledger・Contract Probe・Data Safety を足し、Final Reviewer を座組表の「R3 以上」の行にした。spec-check → plan-draft の skip は変えない（S6 は D-099 の (D3) の形を写し、S7 は §71.9 の文を今の `lib.rs` に合わせるだけで、新しい設計の選択をしない）。
 5. plan-gate のまま round 3 へ（2026-10-24、起草役）: Plan Review round 2（対象 `a7a66e1e`）の是正と、owner の決定 TD-429（S5-3）を入れた（下の Review Response）。Risk・Minimum・Human Gate は変えない。本 lane の Final Review の Claude 側を fresh Opus 5.5 にした（Workflow State の注）。round 3 は Plan Review の天井（下の Owner Effort Budget）。
 6. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。Plan Review round 3（天井、対象 `57b01d3d`）の後、Coordinator の disposition「一括是正」で起草役が `f71d131c` で直し、fresh の reviewer の closure 2 本（Claude 側 fresh Opus 5.5 と Codex）が対象 `f71d131c` に P1 / P2 = 0 を報告した（下の Review Response）。closure の P3 3 件は plan-gate のまま起草役が `f628c918` で直した（Plan Commit はその版。前例: PR #201 の遷移 8）。docs の直しと定義の追加は、implementing へ進めてから別の run で行う。
+7. plan-approved → implementing（2026-10-25、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`8db97271`）を単段で merge した（`62ed8ce2`、衝突なし）。AC の baseline を同期の後に逐語で再測し、値は起票時と同じで、行番号だけがずれた（`docs/SCREEN_DESIGN.md` 218 → 216、`docs/backlog.md` 172 → 176・109 → 113・193 → 197・180 → 184）。AC の期待は変わらない。
 
 ## Owner Effort Budget
 
