@@ -1,10 +1,11 @@
 # 60. UI-01c: 商品一括インポート
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D8）の商品一括インポートの側。(a) で入ったのは下の 2 つ目（新規行の初期在庫の movement と写しの求め直し。`biz/product_service.rs` の `recompute_stock` の呼出し）。1 つ目（共有 JAN と連動を始める行の拒否）は (b)。拒否は [30](30-biz-product-service.md) の新契約。旧 ADR（時点証拠）の `ej_unverified` の間の拒否と既定値 false、非連動化の警告と未調整の回復先は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D8）の商品一括インポートの側。(a) で入ったのは下の 3 つ目（新規行の初期在庫の movement と写しの求め直し。`biz/product_service.rs` の `recompute_stock` の呼出し）。1・2 つ目（共有 JAN と連動を始める行の拒否、確定の TX で拒まれたときの表示）は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)。画面・reducer・wire は変えず、BIZ の拒否と画面の test を足した）。拒否は [30](30-biz-product-service.md) の新契約。旧 ADR（時点証拠）の `ej_unverified` の間の拒否と既定値 false、非連動化の警告と未調整の回復先は持たない（置き換えた）。
 
-- 共有 JAN で在庫連動にできない行（別の商品と JAN を共有する行の在庫連動、在庫連動の商品と JAN を共有する行）と、在庫連動を始める行で連動しない間の売上がある既存商品の行は、既存の行単位の validation と同じく error 行にして message を示し、他の正常行の取込みは続ける（業務の TX 全体を拒否しない）。利用者の再同意だけで検査を外さず、`pos_stock_sync` を自動で変えない。
+- 共有 JAN で在庫連動にできない行（別の商品と JAN を共有する行の在庫連動、在庫連動の商品と JAN を共有する行。同じ CSV の先の新規の行と JAN が重なる新規の行を含む）と、在庫連動を始める行で連動しない間の売上がある既存商品の行は、preview で既存の行単位の validation と同じく error 行にして message を示し、他の正常行の取込みは続ける（error 行が他の行の取込みを止めない）。利用者の再同意だけで検査を外さず、`pos_stock_sync` を自動で変えない。
+- preview の後に登録や売上が変わったか、上書きを選んだ行どうしが当たって、確定の TX で行が拒まれたとき（[30](30-biz-product-service.md) の D-118 の節。確定全体が戻り、何も取り込まれない）は、今の commit の失敗と同じく Alert に BIZ の文（行を名指し、「その行をスキップにするか、ファイルを選び直してもう一度読み込んでください」）を出し、「戻る」で preview と上書きの選択に戻る（kind `validation` は preview へ戻る今の分岐。画面・reducer・wire は変えない）。利用者はその場で行をスキップにするか、ファイルを選び直す（b1 の Plan Review round 2 の是正）。
 - 新規行の初期在庫は初期在庫の movement として入り、写しは求め直しで決まる（30 の契約。(a) で実装済み。表示は今のまま）。
 
 > 対応仕様: REQ-104 / UI-01c

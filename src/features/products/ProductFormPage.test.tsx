@@ -1,7 +1,7 @@
 // src/features/products/ProductFormPage.test.tsx
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -133,7 +133,13 @@ describe("ProductFormPage (UI-01b)", () => {
     });
     mockListSuppliers.mockResolvedValue({
       status: "error",
-      error: { kind: "internal", message: "取引先取得失敗", field: null, error_id: null },
+      error: {
+        kind: "internal",
+        message: "取引先取得失敗",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
     });
     mockCreateProduct.mockResolvedValue({
       status: "ok",
@@ -177,7 +183,13 @@ describe("ProductFormPage (UI-01b)", () => {
   it("blocks save when department options fail", async () => {
     mockListDepartments.mockResolvedValue({
       status: "error",
-      error: { kind: "internal", message: "部門取得失敗", field: null, error_id: null },
+      error: {
+        kind: "internal",
+        message: "部門取得失敗",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
     });
     mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
 
@@ -194,7 +206,13 @@ describe("ProductFormPage (UI-01b)", () => {
     mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
     mockGetProduct.mockResolvedValue({
       status: "error",
-      error: { kind: "not_found", message: "商品が見つかりません", field: null, error_id: null },
+      error: {
+        kind: "not_found",
+        message: "商品が見つかりません",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
     });
 
     renderWithClient(
@@ -229,6 +247,7 @@ describe("ProductFormPage (UI-01b)", () => {
         message: "この商品コードは既に使用されています",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
 
@@ -265,6 +284,7 @@ describe("ProductFormPage (UI-01b)", () => {
         message: "在庫単位は個数の単位どうしでだけ変えられます",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
 
@@ -368,6 +388,80 @@ describe("ProductFormPage (UI-01b)", () => {
         invalidateSpy.mock.calls,
         d052InvalidationOracle.productUpdate("P-001"),
       );
+    });
+  });
+
+  it("U12 stock link start rejection shows recovery link", async () => {
+    // 51 の D-118 の節: recount_required は文と「今の数を入れる」の導線。入力を保ち、toast・遷移をしない
+    const user = userEvent.setup();
+    const onNavigateToList = vi.fn();
+    const onNavigateToStocktake = vi.fn();
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [makeMockDepartment()] });
+    mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "P-005", pos_stock_sync: false }),
+    });
+    mockUpdateProduct.mockResolvedValue({
+      status: "error",
+      error: {
+        kind: "stocktake_guard",
+        message: "連動しない間の売上があります。今の数を入れてから在庫連動にしてください",
+        field: null,
+        error_id: null,
+        stocktake_recovery: {
+          code: "recount_required",
+          targets: [
+            {
+              product_code: "P-005",
+              product_name: "連動なしの糸",
+              stock_unit: "pcs",
+              stock: 7,
+              stock_range_low: null,
+              stock_range_high: null,
+              stocktake_item_id: null,
+              stocktake_id: null,
+              action: "count_now",
+              block_reason: null,
+              recount_reasons: [],
+            },
+          ],
+          settlement_pending: null,
+        },
+      },
+    });
+
+    renderWithClient(
+      <ProductFormPage
+        mode="edit"
+        productCode="P-005"
+        onNavigateToList={onNavigateToList}
+        onNavigateToStocktake={onNavigateToStocktake}
+      />,
+    );
+
+    const checkbox = await screen.findByLabelText("POS販売で在庫を減らす");
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "保存する" }));
+
+    await waitFor(() => {
+      expect(mockUpdateProduct).toHaveBeenCalledWith("P-005", { pos_stock_sync: true });
+    });
+    const notice = await screen.findByRole("alert", { name: "在庫連動にできません" });
+    expect(
+      within(notice).getByText(
+        "連動しない間の売上があります。今の数を入れてから在庫連動にしてください",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("POS販売で在庫を減らす")).toBeChecked();
+    expect(mockToastSuccess).not.toHaveBeenCalled();
+    expect(onNavigateToList).not.toHaveBeenCalled();
+
+    await user.click(within(notice).getByRole("button", { name: "今の数を入れる" }));
+    expect(onNavigateToStocktake).toHaveBeenCalledWith({
+      product: "P-005",
+      returnTo: "/products/P-005/edit",
     });
   });
 });

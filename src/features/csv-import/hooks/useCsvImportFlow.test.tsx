@@ -46,7 +46,8 @@ function makePreview(): PreviewData {
     },
     matched_summary: { count: 1, total_amount: 500, warnings: [] },
     error_summary: { count: 0, items: [] },
-    duplicate_check: { status: "NoDuplicate", same_date_imports: [] },
+    settlement_gaps: [],
+    settlement_date_after_today: false,
     preview_created_at: "2026-07-23T10:00:00",
   };
 }
@@ -58,11 +59,14 @@ function makeResult(): ImportResult {
     total_items: 1,
     total_amount: 500,
     skipped_count: 0,
+    settlement_gaps: [],
+    settlement_date_after_today: false,
+    recheck_targets: [],
   };
 }
 
 function makeRollback(): RollbackResult {
-  return { success: true, voided_sale_count: 1, voided_movement_count: 1, stock_corrections: [] };
+  return { success: true, voided_sale_count: 1, voided_movement_count: 1, recheck_targets: [] };
 }
 
 function makeWrapper(queryClient: QueryClient) {
@@ -85,7 +89,7 @@ async function reachResult(result: {
     expect(result.current.state.status).toBe("preview");
   });
   act(() => {
-    result.current.confirmImport(false);
+    result.current.confirmImport();
   });
   await waitFor(() => {
     expect(result.current.state.status).toBe("result");
@@ -142,6 +146,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
         message: "合成CSVを解析できません",
         field: "file",
         error_id: null,
+        stocktake_recovery: null,
       },
     });
     const queryClient = new QueryClient({
@@ -176,6 +181,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
         message: "合成済み preview が見つかりません",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
     const queryClient = new QueryClient({
@@ -196,7 +202,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
       expect(result.current.state.status).toBe("preview");
     });
     act(() => {
-      result.current.confirmImport(false);
+      result.current.confirmImport();
     });
     await waitFor(() => {
       expect(result.current.state.status).toBe("error");
@@ -219,6 +225,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
         message: "合成の DB ロック競合",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
     const queryClient = new QueryClient({
@@ -240,7 +247,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
     });
     const previewBeforeFailure = result.current.state;
     act(() => {
-      result.current.confirmImport(false);
+      result.current.confirmImport();
     });
     await waitFor(() => {
       expect(result.current.state.status).toBe("error");
@@ -264,55 +271,8 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
 
     await reachResult(result);
 
-    expect(mockCommit).toHaveBeenCalledWith("preview-token", false);
+    expect(mockCommit).toHaveBeenCalledWith("preview-token");
     expectExactInvalidations(invalidateSpy.mock.calls, d052InvalidationOracle.csvImportCommit());
-  });
-
-  it("test_import_command_req401_additional_confirmation_reaches_biz", async () => {
-    // REQ-401 / I-W4 / I-U6 / SPEC-SDI-D3,D5: UI trueをgenerated commandへ一回だけ渡す。
-    const additional = makePreview();
-    additional.duplicate_check = {
-      status: "AdditionalImportConfirmationRequired",
-      same_date_imports: [
-        {
-          id: 400,
-          filename: "previous.csv",
-          total_items: 1,
-          total_amount: 100,
-          imported_at: "2026-07-23T09:00:00",
-        },
-      ],
-    };
-    mockParse.mockResolvedValueOnce({
-      status: "ok",
-      data: { preview_data: additional, preview_token: "additional-preview-token" },
-    });
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-    const { result } = renderHook(() => useCsvImportFlow(), {
-      wrapper: makeWrapper(queryClient),
-    });
-    act(() => {
-      result.current.selectFile({
-        bytes: new Uint8Array([1]),
-        filename: "additional.csv",
-        size: 1,
-      });
-    });
-    await waitFor(() => {
-      expect(result.current.state.status).toBe("preview");
-    });
-
-    act(() => {
-      result.current.confirmImport(true);
-    });
-
-    await waitFor(() => {
-      expect(result.current.state.status).toBe("result");
-    });
-    expect(mockCommit).toHaveBeenCalledTimes(1);
-    expect(mockCommit).toHaveBeenCalledWith("additional-preview-token", true);
   });
 
   it("rollback invalidates the same exact independent oracle set", async () => {
@@ -334,6 +294,8 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
     });
 
     expect(mockRollback).toHaveBeenCalledWith(401);
+    // 55 の「取消の結果」: 取消の結果（要再確認の一覧）を画面へ渡す
+    expect(result.current.rollbackResult).toEqual(makeRollback());
     expectExactInvalidations(invalidateSpy.mock.calls, d052InvalidationOracle.csvImportRollback());
     // T7 (UI 表示磨き batch Scope 7(a) gated Amendment): 取消完了 toast は既定 duration (3000ms)
     // より長く表示し、非IT高齢operatorが読み切れる時間を確保する（文言は既存維持）。
@@ -365,7 +327,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
       expect(result.current.state.status).toBe("preview");
     });
     act(() => {
-      result.current.confirmImport(false);
+      result.current.confirmImport();
     });
     await waitFor(() => {
       expect(result.current.state.status).toBe("importing");
@@ -399,6 +361,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
         message: "合成 rollback failure",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
     const queryClient = new QueryClient({
@@ -435,7 +398,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
       expect(harness.flow?.state.status).toBe("preview");
     });
     act(() => {
-      harness.flow?.confirmImport(false);
+      harness.flow?.confirmImport();
     });
     await waitFor(() => {
       expect(harness.flow?.state.status).toBe("result");
