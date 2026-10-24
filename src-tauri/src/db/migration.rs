@@ -12,6 +12,7 @@ use super::migration_tx;
 use super::schema_v1;
 use super::schema_v10;
 use super::schema_v11;
+use super::schema_v12;
 use super::schema_v2;
 use super::schema_v3;
 use super::schema_v4;
@@ -93,8 +94,13 @@ fn migrations() -> Vec<Migration> {
         },
         Migration {
             version: 11,
+            description: "Z004の精算の鍵・売上の連動・棚卸しの完了の列（D-118 (b1)）",
+            kind: MigrationKind::Custom(schema_v11::apply_v11_z004_settlement_key),
+        },
+        Migration {
+            version: 11,
             description: "日報の束の精算回数の列（daily_report_imports.settlement_no）",
-            kind: MigrationKind::Sql(schema_v11::get_v11_daily_report_settlement_no_schema()),
+            kind: MigrationKind::Sql(schema_v12::get_v11_daily_report_settlement_no_schema()),
         },
     ]
 }
@@ -418,8 +424,12 @@ mod tests {
             .split("#[cfg(test)]")
             .next()
             .unwrap();
+        let schema_v11 = include_str!("schema_v11.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
         for source in [
-            migration, schema_v2, schema_v3, schema_v8, schema_v9, schema_v10,
+            migration, schema_v2, schema_v3, schema_v8, schema_v9, schema_v10, schema_v11,
         ] {
             assert!(!source.contains("execute_batch(\"ROLLBACK;\").ok()"));
             assert!(!source.contains("execute_batch(\"COMMIT;\")"));
@@ -430,12 +440,14 @@ mod tests {
         assert_eq!(schema_v8.matches("rollback_after_error").count(), 1);
         assert_eq!(schema_v9.matches("rollback_after_error").count(), 1);
         assert_eq!(schema_v10.matches("rollback_after_error").count(), 1);
+        assert_eq!(schema_v11.matches("rollback_after_error").count(), 1);
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v8.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v9.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v10.matches("commit_transaction").count(), 1);
+        assert_eq!(schema_v11.matches("commit_transaction").count(), 1);
     }
 
     // -----------------------------------------------------------------------
@@ -760,7 +772,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, super::app_max_version());
+        assert_eq!(v1, super::app_max_version()); // 最新の版（b1 Matrix T1）
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -770,20 +782,16 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(
-            v2,
-            super::app_max_version(),
-            "バージョンが変わってはいけない"
-        );
+        assert_eq!(v2, v1, "バージョンが変わってはいけない");
 
-        // schema_versionsのレコードは v1 から最新の版までの連番の件数であること
+        // schema_versions のレコードは版ごとに 1 件（v1 から最新の版まで。b1 Matrix T1）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
             count,
             super::app_max_version(),
-            "マイグレーションレコードは v1 から最新の版までの件数"
+            "マイグレーションレコードは v1 から最新の版まで 1 件ずつ"
         );
     }
 
@@ -854,7 +862,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, super::app_max_version());
+        assert_eq!(version, super::app_max_version()); // 最新の版（b1 Matrix T1）
 
         for table_name in &[
             "daily_report_imports",
@@ -937,7 +945,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, super::app_max_version());
+        assert_eq!(max_version, super::app_max_version()); // 最新の版（b1 Matrix T1）
         assert_eq!(slot_count, 4_784);
     }
 

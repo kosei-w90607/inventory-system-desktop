@@ -156,6 +156,7 @@ pub fn import_plu_register_snapshot(
             message: "ファイルサイズが上限(20MB)を超えています".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     let mut conn = state

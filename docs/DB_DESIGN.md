@@ -1,8 +1,8 @@
 # 在庫管理システム テーブル定義書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。以下のテーブル一覧・インデックス方針と ER 図は (a) の表と列を載せている（列と制約の正本は下の各 db-design の同名の節）。(b) の分は proposed・未実装。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。b1 の列（`csv_imports.machine_no`・`settlement_no`、`sale_records.stock_linked`、`stock_counts.seen_import_id`、`stocktake_items.valuation_quantity`、`stocktakes.cutoff_import_id`・`cutoff_count_id`・`cutoff_movement_id`）と Z004 と phase を結ぶ CHECK は migration v11（[22 §20](function-design/22-mnt-migration.md)）で入った。以下のテーブル一覧・インデックス方針と ER 図はその表と列を載せている（列と制約の正本は下の各 db-design の同名の節）。
 
 - 写しの列（`stock_recheck`・範囲）と在庫連動・共有 JAN: [master](db-design/master-tables.md)。入出庫の TX との接続: [transaction](db-design/transaction-tables.md)。
 - Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
@@ -45,7 +45,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 | 15 | price_history | 在庫追跡 | REQ-102 | 価格変更履歴 |
 | 16 | stocktakes | 棚卸し | REQ-205 | 棚卸しヘッダ |
 | 17 | stocktake_items | 棚卸し | REQ-205 | 棚卸し明細（商品ごとの実カウント） |
-| 17a | stock_counts | 棚卸し | REQ-205 | 計数の置き場（日付と精算の並びの位置を持つ append-only の計数。migration v9、D-118 の (a)。保存する経路は (b)） |
+| 17a | stock_counts | 棚卸し | REQ-205 | 計数の置き場（日付と精算の並びの位置を持つ append-only の計数。migration v9、D-118 の (a)。保存する経路と取込みのカーソルの列 `seen_import_id` は b1〈v11〉） |
 | 18 | operation_logs | システム | QR-06 | 操作ログ |
 | 19 | app_settings | システム | QR系 | アプリ設定（キー・バリューストア） |
 

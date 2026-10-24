@@ -568,6 +568,7 @@ describe("useDailyReportImportFlow_req401", () => {
         message: "合成 rollback failure",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
     const queryClient = new QueryClient({

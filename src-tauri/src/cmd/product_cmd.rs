@@ -227,6 +227,7 @@ pub fn preview_import(
             message: "ファイルサイズが上限(20MB)を超えています".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     let conn = state

@@ -1,17 +1,33 @@
 ## 14. IO-01 追加: POS取込みリポジトリ（BIZ-03 / BIZ-08 用）
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7・D9）の IO の側。以下の現行の csv_imports の API に足す。旧 ADR（時点証拠）の受領（`pos_import_sources`）・受領済みの上限・同一性の拒否の記録・取消の事前読取りの操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7・D9）の IO の側。以下を b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で csv_imports の API に足した。旧 ADR（時点証拠）の受領（`pos_import_sources`）・受領済みの上限・同一性の拒否の記録・取消の事前読取りの操作は持たない（置き換えた）。
 
 | 操作 | 入力 → 出力 / 処理 |
 |---|---|
 | import の保存 | `NewCsvImport` に `machine_no: String`・`settlement_no: i64` を足す（[POS](../db-design/pos-tables.md) の同名の契約）。既存の active hash の重複の判定と取消済みの再取込みは変えない |
 | active な Z004 の精算の一覧 | (conn) → completed / completed_partial の全件の import ID・`machine_no`・`settlement_no`・`settlement_date`（settlement_no の昇順）。BIZ-03 の識別・順の検査・欠けの知らせと、BIZ-02 の求め直し（取り込み済みの精算の並び）が使う。判定は BIZ が行う |
+| Z004 の取込みの machine_no の照合先 | (conn, machine_no) → 取り消したもの（rolled_back）を含む Z004 の取込みのうち `machine_no` が引数と違うもの 1 件（active な取込みがあれば active を優先し、同じ状態の中では import ID の最大）の import ID・`machine_no`・`settlement_no`・`status`・`imported_at`。無ければ None。新設する（active な精算の一覧は rolled_back を返さず、一覧の行の型 `CsvImport` は新しい列を読まない）。BIZ-03 の順 2（[32](32-biz-csv-import-service.md)）が、違う取込みの有無と、拒否の文で名指す取込みに使う |
+| Z004 の取込みの最大の取込みID | (conn) → 取り消したもの（rolled_back）を含む全ての取込みの `MAX(id)`（無ければ None）。新設する。BIZ-06 が fresh な計数の保存の TX（`stock_counts` の `seen_import_id`）と棚卸しの完了の TX（`stocktakes` の `cutoff_import_id`。[tracking](../db-design/tracking-system-tables.md)）で読む。取込みID は使い回されない（AUTOINCREMENT、取消は行を消さない。[POS](../db-design/pos-tables.md)）ので、このカーソル以下の active な取込みは保存・完了の前に取り込まれて今もある精算になる（ADR D3・D6 の判定の n は BIZ が上の active な一覧から求める） |
 | 同じ精算の active な取込みの取得 | (conn, machine_no, settlement_no) → active な import の ID と hash（0 件か 1 件。2 件以上は DbError ではなく BIZ が不整合として拒む） |
 | movement の保存 | Z004 の movement は `business_date = settlement_date`・`phase = 1`・`settlement_no` を持つ（[21](21-io-inventory-repo.md) の `NewMovement` の並びの鍵） |
 
 IO は精算日・番号・file 名から信用や前後を付与しない。判定は BIZ-03 が preview と確定の TX で取り直す。
+
+b1 で足した読取り（`src-tauri/src/db/sales_repo.rs`、`pub(crate)`）:
+
+```rust
+pub(crate) struct SettlementRow { import_id: i64, machine_no: String, settlement_no: i64, settlement_date: String }
+pub(crate) struct MachineNoRef { import_id: i64, machine_no: String, settlement_no: i64, status: CsvImportStatus, imported_at: String }
+
+pub(crate) fn list_active_settlements(conn: &DbConnection) -> Result<Vec<SettlementRow>, DbError> // active な Z004 の精算（settlement_no の昇順）
+pub(crate) fn max_csv_import_id(conn: &DbConnection) -> Result<Option<i64>, DbError> // 取り消したものを含む MAX(id)（取込みのカーソル）
+pub(crate) fn find_machine_no_mismatch(conn: &DbConnection, machine_no: &str) -> Result<Option<MachineNoRef>, DbError> // machine_no の照合先（active を優先）
+pub(crate) fn find_active_imports_for_settlement(conn: &DbConnection, machine_no: &str, settlement_no: i64) -> Result<Vec<(i64, String)>, DbError> // 同じ精算の active な取込み（ID・hash）
+pub(crate) fn list_import_product_codes(conn: &DbConnection, import_id: i64) -> Result<Vec<String>, DbError> // その取込みの売上か movement を持つ商品（無効の行も含む）
+pub(crate) fn list_sale_import_ids(conn: &DbConnection, product_code: &str, stock_linked: bool) -> Result<Vec<i64>, DbError> // 取込みのときの連動が stock_linked の有効な売上を持つ active な取込み
+```
 
 ### 14.1 モジュール配置
 
@@ -49,6 +65,8 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 - total_amount: i64
 - skipped_count: i64
 - status: String（"completed" / "completed_partial"）
+- machine_no: String（精算の鍵。Z004 の確定だけが作る。[POS](../db-design/pos-tables.md)）
+- settlement_no: i64（同上）
 
 **NewCsvImportError構造体**:
 - csv_import_id: i64
@@ -367,7 +385,7 @@ fn void_movements_by_reference(conn: &DbConnection, ref_type: &str, ref_id: i64)
 ```
 
 BIZ-03 での在庫補正:
-- BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない。[32](32-biz-csv-import-service.md) §15.5、`csv_import_service/commit.rs` の `apply_void_stock_corrections`）。写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じになる
+- BIZ-03 は無効にした movement の商品を `recompute_stock` で求め直す（quantity は在庫補正に使わない。[32](32-biz-csv-import-service.md) §15.5、`csv_import_service/rollback.rs`。D-118 の b1 で、計数を持つ全ての商品とその取込みの商品を求め直す）。写しが記録と一致しているとき、求め直しの値は「写し − 無効にした数量」と同じになる
 
 **設計判断**:
 - movement_type 条件を付与しない理由: INV-7 により reference_type='csv_import' の movements は sale_auto 限定であることが保証されている。冗長な条件は可読性を下げるだけ

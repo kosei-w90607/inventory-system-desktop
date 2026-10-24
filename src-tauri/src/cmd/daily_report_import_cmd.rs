@@ -114,6 +114,7 @@ fn scan_register_sd_with_state(
                 message: "読む場所を選んでください".to_string(),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             })
         }
         Some(path) => DailyReportSdSelection::Selected(PathBuf::from(path)),
@@ -162,6 +163,7 @@ fn parse_from_sd_with_state(
             message: "不正なトークンです".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     let files = {
@@ -179,6 +181,7 @@ fn parse_from_sd_with_state(
                 message: SCAN_EXPIRED_MESSAGE.to_string(),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             })?;
         snapshot
             .files_by_candidate
@@ -189,6 +192,7 @@ fn parse_from_sd_with_state(
                 message: "この精算は取り込めません".to_string(),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             })?
     };
     preview_and_cache(state, files)
@@ -233,6 +237,7 @@ fn commit_daily_report_import_with_state(
                 message: "プレビューが見つかりません。再度ファイルを選択してください".to_string(),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             });
         };
         if cached.created_at.elapsed().as_secs() > constants::PREVIEW_CACHE_TTL_SECS {
@@ -243,6 +248,7 @@ fn commit_daily_report_import_with_state(
                     .to_string(),
                 field: None,
                 error_id: None,
+                stocktake_recovery: None,
             });
         }
         cached.clone()
@@ -331,6 +337,7 @@ fn validate_daily_report_files(files: &[DailyReportSourceFileRequest]) -> Result
             message: "Z001/Z002/Z005の3ファイルを選択してください".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     if files
@@ -342,6 +349,7 @@ fn validate_daily_report_files(files: &[DailyReportSourceFileRequest]) -> Result
             message: "ファイルサイズが上限(20MB)を超えています".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     Ok(())
@@ -354,6 +362,7 @@ fn validate_preview_token(preview_token: &str) -> Result<(), CmdError> {
             message: "不正なプレビュートークンです".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         });
     }
     Ok(())

@@ -59,7 +59,7 @@ function ok<T>(data: T) {
 function cmdError(message: string, kind: CmdErrorKind = "internal", errorId: string | null = null) {
   return {
     status: "error" as const,
-    error: { kind, message, field: null, error_id: errorId },
+    error: { kind, message, field: null, error_id: errorId, stocktake_recovery: null },
   };
 }
 
@@ -242,6 +242,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
         message: "message text is intentionally unrelated",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
 
@@ -261,6 +262,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
         message: "durability state unknown",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
 

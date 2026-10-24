@@ -312,6 +312,7 @@ fn save_receipt_image_with_runtime<R: tauri::Runtime>(
             message: "画像データが不正です".to_string(),
             field: None,
             error_id: None,
+            stocktake_recovery: None,
         })?;
 
     // 2. app_data_dir 取得

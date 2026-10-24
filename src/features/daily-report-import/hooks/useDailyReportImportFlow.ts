@@ -47,6 +47,7 @@ function ensureInvokeError(error: unknown, cmd: string): InvokeError {
       message: error instanceof Error ? error.message : String(error),
       field: null,
       error_id: null,
+      stocktake_recovery: null,
     },
     { source: "commands", cmd },
   );

@@ -13,6 +13,10 @@ src-tauri/src/
     schema_v5.rs  -- PLU slot 永続割当テーブル追加
     schema_v6.rs  -- suppliers.updated_at 追加
     schema_v7.rs  -- 日報の個数を100倍の整数へ（quantity → quantity_hundredths）
+    schema_v8.rs  -- 単位を12種へ（§16 の vU）
+    schema_v9.rs  -- 在庫の並びの鍵・計数の表・写しの列（§19 の vL）
+    schema_v10.rs -- 原価を1/100円の列へ（§16 の vB）
+    schema_v11.rs -- Z004の精算の鍵・売上の連動・棚卸しの完了の列（§20 の vZ）
 ```
 
 ### 3.2 migrate
@@ -344,7 +348,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 **vU の手順**（`MigrationKind::Custom`、表の作り直し。SQLite は CHECK を ALTER で変えられない）:
 
-1. TX の外で `PRAGMA foreign_keys` の値を読み、OFF にする（v2・時点証拠の migration と同じ形。TX の中の `PRAGMA foreign_keys` は no-op）
+1. TX の外で `PRAGMA foreign_keys` の値を読み、OFF にする（v2 と同じ形。TX の中の `PRAGMA foreign_keys` は no-op）
 2. BEGIN。`products` の行数と、`stock_unit` の値ごとの件数（手順 6 (c) が比べる相手）を読む。続けて下の「vU の上限の検査」を行う（読取りだけ）。上限の外の値が 1 件でもあれば ROLLBACK し、`PRAGMA foreign_keys` を手順 1 の値に戻して、何も変えず版も記録せず `DbError::MigrationFailed`（message に `上限の検査` と表名・列名）
 3. `products_new` を、vU を適用する時点の `products` と同じ列・同じ順・同じ制約で作り、`stock_unit` の CHECK だけを 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）にする。既定値 `'pcs'` は変えない。列の並びは vU の直前の版の schema から写す（先に時点証拠の migration が `products` に列を足していれば、その列も含める）
 4. 全列を列名で並べて `INSERT INTO products_new (…) SELECT … FROM products`。値は変えない
@@ -365,7 +369,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 - 記録ごとの和は、基準数量で割る前の値で比べる（[共通規則](10-common-rules.md) SPEC-UNIT-D6 の合計はこの値以下なので、通った記録の合計は必ず範囲内。長さの商品の記録は実際の合計の 100 倍まで厳しく止まる）。積か和が i64 を溢れる記録も上限の外にする（SQLite は整数の積の溢れを REAL にし、整数の `SUM` の溢れを error にする。python の sqlite3 で確かめた、2026-10-11）。
 - 検査は値の範囲だけを見る。
-- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`src-tauri/src/db/schema_time_evidence.rs` の `SCHEMA_SQL` の `stocktake_recounts`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。（2026-10-16 の D-118 で時点証拠の migration は作らないことになり、この段は当たらない。`stock_counts.count_value` と写しの範囲の列は (a) の v9〈§19〉で入った。写しの値と範囲は `recompute_stock` が書く前に同じ在庫の上限で検査する〈[31](31-biz-inventory-service.md)、test `test_stock_ledger_req903_recompute_rejects_out_of_range_value_and_range_end`〉。`count_value` の列の CHECK は `>= 0` だけで、上限の検査は計数を保存する経路〈(b)〉が持つ）
+- vU を適用する時点で時点証拠の migration の列は無い（D-118 で時点証拠の migration は作らないことになった）。計数の値と写しの範囲の上限は v9 と計数の保存の検査が守る。
 - 止まった後の進め方: DB は何も変わっていない。vU がその起動の最初の migration なら版も変わらず、旧版のアプリでそのまま開ける（先に別の migration が COMMIT していれば、下の回復の手順）。上限の外の値はアプリの画面では消せないことがある（商品の原価や在庫を直しても、価格の履歴・明細・変動の列に値が残る。記録は書き換えない契約）ので、更新を保留して新しい版を起動せず（起動のたびに同じ所で止まる）、管理者が対応を決める（上限の外の表名・列名は message にあるので、値を直す SQL を当てるか、上限の契約を見直すか。どちらも R4 の判断で owner に諮る）。
 
 **MNT-03-D14 / D-119 原価と単位の起点の migration（vB）**（原価の lane で実装、版 10、D-128）: 原価の 1/100 円は既存の DB の円の値を変換して入れない（owner の決定 U4 = b、repo 外の回答台帳 TD-297）。vB は原価の列を持つ表に行が 1 つも無い DB（新しく作った DB）にだけ当たり、列の名前を変えるだけで値を変えない。行のある開発・試験 DB は vB で止まり、作り直す（owner は作り直しを承認した。作り直す DB と保全の範囲は原価の lane の packet が示す）。本番の DB は無い。値の変換が無いので、変換の範囲の検査・余りの検証・旧版へ戻す手順を持たない。
@@ -465,3 +469,26 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 **回復**: §16 の「回復」と同じ（vL が COMMIT した DB は vL を知らない旧版のアプリでは開けない。旧版へ戻すのは更新の前の backup。vL の後に入れた記録は戻らない）。
 
 **テスト**（棚卸しの runtime (a) の lane の完了条件）: 空の DB と、入庫・返品交換・手動販売・廃棄・初期在庫の movement を持つ直前の版の DB の両方で vL が成功し、各 movement の `business_date` が参照先の日付（初期在庫は `created_at` の日付）、`phase = 0`、`settlement_no` が NULL で、ほかの列と id が同じこと。`sqlite_sequence` が作り直しの前の値のまま（末尾の行を消した fixture で、次の INSERT の id が前の最大 + 1 にならないこと）。手順 1 の条件（`stocktakes`・`csv_imports`・`reference_type` が `csv_import`・`movement_type` が `receiving` で `reference_type` が `stocktake`・`movement_type` が `stocktake`、1 つずつ）、手順 2 の参照先の無い行・形の違う日付（`2026/10/01`）・実在しない日付（`2026-02-30`・`2026-02-32`・`2026-13-01`）、手順 8 の上限の外で、schema・値・版が何も変わらず `MigrationFailed`（message に `作り直し` と表名、手順 8 は列名も）。写しと和の違う商品が 1 つある DB で、その商品の `stock_quantity` が和になり、`operation_logs` に `trigger` が `migration` の 1 行（old / new）があること、違いの無い DB では行が無いこと。最新の版まで当てた後に `products` の 3 列・`stock_counts`・新しい index があり、§18 の 3 つの trigger があればそれも残ること。行を入れてから最新の版まで `migrate()` する既存の test のうち、棚卸しか Z004 の取込みの行を入れるものは、版の上限を取る test 用の migrate（§16 の vB の test と同じ helper。先に入る lane が足す）に替え、期待は変えない。例外の 2 つ（棚卸しの行を持つ DB を `init_database` で開き直す test と、行の無い DB の `products` の列の定義を比べる test）は期待を変える。一覧と新しい期待は packet の Test Matrix の「既存の test の移し方」の T1。
+
+## 20. MNT-03 追加: Z004 の精算の鍵・売上の連動・棚卸しの完了の列の migration（D-118 の b1、実装済み）
+
+**MNT-03-D18 / D-118**: 棚卸しの数の置き場と在庫の求め直しの runtime の (b) の最初の lane（b1。[ADR](../adr/2026-10-16-stocktake-count-placement.md) SPEC-STK-CNT-D12 の「(b) を 2 つの lane に分けた」）の migration（以下 vZ）。列と CHECK の意味の正本は [tracking](../db-design/tracking-system-tables.md) と [POS](../db-design/pos-tables.md) の「計数の置き場と在庫の求め直しの契約」。版の番号は merge の時点の次（起票の 2026-10-22 の main の最大は v10〈`db/migration.rs` の `migrations()`〉。§17 の SD 直読みの runtime の migration も次の版を取るので、先に merge した側が若い番号を取り、後から merge する側が file 名・`migrations()` の登録・test の版の期待を取り直す。`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項）。description は `Z004の精算の鍵・売上の連動・棚卸しの完了の列（D-118 (b1)）`、kind は `MigrationKind::Custom`。v11 として実装した（`src-tauri/src/db/schema_v11.rs` の `apply_v11_z004_settlement_key`、版の定数 `VZ_VERSION`）。
+
+**手順**（1 つの transaction。`inventory_movements` を作り直すが、どの表も `inventory_movements` を外部キーで参照しないので `foreign_keys` は変えない。`csv_imports`・`sale_records`・`stocktakes`・`stocktake_items`・`stock_counts` は列の追加だけ）:
+
+1. BEGIN。止まる検査（読取りだけ）: (a) `stocktakes` か `csv_imports` に行が 1 つでもある、(b) `inventory_movements` に `reference_type` が `csv_import` の行か `phase = 1` の行がある。どれかに当たれば ROLLBACK し、何も変えず版も記録せず `DbError::MigrationFailed`（message に `作り直し` と当たった表名。§19 の手順 1 と同じ文: `棚卸しか商品別売上（Z004）の取込みの記録がある DB はこの版へ移せません。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）: {表名}`）。v9（§19）が同じ条件で止まり、v9 の後は棚卸しと Z004 の確定が停止中で行が作られないので、通常は当たらない。当たる DB では手順 4 の CHECK・手順 5 の列の CHECK が原因の分からない失敗になるので、先に原因と直し方を名指す
+2. `sqlite_sequence` の `inventory_movements` の値（無ければ 0）を読む（§19 の手順 3 と同じ）
+3. `inventory_movements_new` を今の 13 列（同じ名前・順・制約と、§19 が足した CHECK）に table の CHECK `(reference_type IS 'csv_import') = (phase = 1)` を足して作り、全行を id ごと `INSERT INTO inventory_movements_new (…) SELECT …` で写す（値は変えない。`=` で比べると `reference_type` が NULL のとき NULL になって通るので `IS` で比べる。packet の Contract Probe）
+4. `DROP TABLE inventory_movements`、`ALTER TABLE inventory_movements_new RENAME TO inventory_movements`。`sqlite_sequence` の値を手順 2 の値に戻す（§19 の手順 5 と同じ理由。fresh な計数の `seen_movement_id` は id が保存の順に増えることに依る）。index `idx_inventory_movements_product_date`・`idx_inventory_movements_reference`・`idx_inventory_movements_ledger` を作り直す
+5. 列の追加（`ALTER TABLE … ADD COLUMN`。NOT NULL を列の制約で書くと既定値が要るので、新しい取込みで値を持つことは CHECK で書く。行の無い表なので既存の行の検査は通る〈`stock_counts` は下のとおり〉。packet の Contract Probe）: `csv_imports` に `machine_no TEXT CHECK(machine_no IS NOT NULL AND machine_no <> '')` と `settlement_no INTEGER CHECK(settlement_no IS NOT NULL AND settlement_no >= 0)`、`sale_records` に `stock_linked INTEGER NOT NULL DEFAULT 0 CHECK(stock_linked IN (0,1))`（既存の行は 0。要再確認の理由 1 と在庫連動を始める検査は `csv_import_id` のある行だけを見る）、`stocktake_items` に `valuation_quantity INTEGER`、`stocktakes` に `cutoff_import_id INTEGER`・`cutoff_count_id INTEGER`・`cutoff_movement_id INTEGER`（どれも NULL を許す。完了の TX が書く）、`stock_counts` に `seen_import_id INTEGER CHECK(seen_import_id IS NULL OR (count_kind = 'fresh' AND seen_import_id >= 1))`（fresh な計数の取込みのカーソル。b1 の Plan Review closure〈Codex〉の是正。`stock_counts` は行があっても既存の行は NULL で CHECK を通り、NULL は意味として正しい: v9〈§19〉と手順 1 が `csv_imports` に行のある DB を止めるので、vZ の前に保存された計数は保存の時点に取込みが無かった。値を埋めない）
+6. 同じ TX の中で確かめる: `inventory_movements` の行数と id の集合が作り直しの前と同じ、`PRAGMA foreign_key_check` が 0 行。違えば手順 1 と同じく ROLLBACK し、何も変えず版も記録せず `DbError::MigrationFailed`（§19 の手順 9 と同じ文: `在庫の記録を新しい形へ写せなかった DB はこの版へ移せません。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）: inventory_movements（{行数と id の集合 / foreign_key_check: 違反の表名}）`）
+7. schema_versions に記録して COMMIT する（MNT-03-D1 の共有の helper〈`commit_transaction`・`rollback_after_error`〉だけを使う）
+
+- 写しは変えない: 手順 1 で精算と棚卸しの記録の無い DB に限るので、vZ の後の求め直しの値は vZ の前と同じ（計数の行も v9 の後に保存の経路が無いので無い）。`products` を作り直さないので §18 の trigger の規則は当たらない。
+- DB の作り直しとの関係: vZ は手順 1 の DB でだけ止まり、開発・試験 DB の通常の形（商品と入出庫の記録）にはそのまま当たる。作り直しの起点ではない（§16 の「DB の作り直しと順」の 2 つに足さない）。店の PC へ初めて入れる版は vZ を含む（D-123 (4) の「それまでの migration を全部含む版」）。
+
+**止まった後の進め方**: §19 と同じ（DB は何も変わっていない。vZ がその起動の最初の migration なら旧版のアプリでそのまま開ける。§16 の作り直しの手順で作り直す。起動の画面は今の `DatabaseInit` の文に手順 1 の message を添えて出す）。
+
+**回復**: §16 の「回復」と同じ（vZ が COMMIT した DB は vZ を知らない旧版のアプリでは開けない。旧版へ戻すのは更新の前の backup。vZ の後に入れた記録は戻らない）。
+
+**テスト**（b1 の lane の完了条件。test の名前と期待は b1 の packet の Test Design Matrix の M の行）: 空の DB と、入庫・返品交換・手動販売・廃棄・初期在庫の movement と demo の seed の形の売上の movement（`sale_auto`、`reference_type` が NULL）を持つ直前の版の DB の両方で vZ が成功し、各 movement の全列と id が同じで、`sqlite_sequence` が作り直しの前の値のまま。手順 1 の条件（`stocktakes`・`csv_imports`・`reference_type` が `csv_import`・`phase = 1`、1 つずつ）で schema・値・版が何も変わらず `MigrationFailed`（message に `作り直し` と表名）。vZ の後に `reference_type` が `csv_import` で `phase = 0` の行と、`phase = 1` で `reference_type` が `csv_import` でない行の INSERT が CHECK で拒まれ、`csv_import`・`phase = 1`・`settlement_no` ありの行は入る。`csv_imports` の `machine_no` が NULL・空、`settlement_no` が NULL・負の INSERT が CHECK で拒まれる。`sale_records` の `stock_linked` の既定が 0 で 2 を拒む。`stock_counts` の `seen_import_id` は fresh の NULL と 1 以上を受け、default の行の値と 0 を拒み、行のある `stock_counts` にも足せる。最新の版まで当てた後に §18 の 3 つの trigger があればそれも残る。最新の版を期待する既存の test の書き換えは packet の Test Matrix の「既存の test の移し方」の T1。

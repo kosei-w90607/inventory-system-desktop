@@ -1,8 +1,8 @@
 # タスク仕様（IO層）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-SPEC-STK-CNT-D1・D2・D4・D9（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、並びの鍵付きの movement、写しの列の書込み、求め直しの読取り（[21](../function-design/21-io-inventory-repo.md)）。計数の保存と Z004 の分は (b)（proposed・未実装）。IO-01 は [20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md) の新契約で、並びの鍵付きの movement と計数（`stock_counts`）を保存し、写しの列を書く（呼ぶのは BIZ の求め直しの関数だけ）。TX の開始と確定と業務の判断は BIZ が所有する。24 は Z004 の取込みに machine_no・settlement_no を保存し、active な精算の一覧を BIZ へ渡す。
+SPEC-STK-CNT-D1・D2・D4・D9（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、並びの鍵付きの movement、写しの列の書込み、求め直しの読取り（[21](../function-design/21-io-inventory-repo.md)）。計数の保存と Z004 の分は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。商品の読取りの写しの 3 列と `MovementRecord` の並びの鍵は b2（proposed・未実装）。IO-01 は [20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md) の新契約で、並びの鍵付きの movement と計数（`stock_counts`）を保存し、写しの列を書く（呼ぶのは BIZ の求め直しの関数だけ）。TX の開始と確定と業務の判断は BIZ が所有する。24 は Z004 の取込みに machine_no・settlement_no を保存し、active な精算の一覧を BIZ へ渡す。
 
 IO-02 は [23](../function-design/23-io-z004-parser.md) の精算の識別メタを純粋に抽出する（D-109 で実装済み）。時計・精算の系列の信用は判断しない。既存の CP932・改行・符号・売上の無い枠の読み飛ばし（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）と PLU の占有の mode は保つ。(a) の migration v9（movement の並びの鍵の列・`stock_counts`・写しの列、`db/schema_v9.rs`）は入った。Z004 の取込みの記録の識別の列の SQL / schema は (b) で未実装で、[DB 契約](../DB_DESIGN.md) を runtime へ渡す。旧 ADR（時点証拠）の受領・cursor・kind・flag・版の保存は置き換えた。
 

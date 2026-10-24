@@ -1,8 +1,8 @@
 # 在庫管理システム 関数設計書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。ほかは (b)（proposed・未実装）で、現行の API の本文と (b) の契約の案を区別し、以下の既存機能の一覧を (b) の実装完了として扱わない。旧 ADR（時点証拠、superseded）の節は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。b1（[Plan Packet](plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存と完了（35・42・73）、Z004 の識別・確定・取消（24・32・41・55）、共有 JAN と在庫連動を始める検査（30・51・60）、整合性の共有 JAN の一覧（36・75）、migration v11（22 §20）が入った。商品の画面の範囲の表示（58・50・51 の在庫数の表示）と在庫変動の履歴の計数の行（65・66）は b2（proposed・未実装）。旧 ADR（時点証拠、superseded）の節は置き換えた。
 
 | 境界 | 詳細の source |
 |---|---|
@@ -11,7 +11,7 @@
 | 回復型・POS・計数の wire・DB の交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
 | 画面 | [51](function-design/51-ui-product-form.md)、[55](function-design/55-ui-csv-import.md)、[58](function-design/58-ui-stock-inquiry.md)、[60](function-design/60-ui-product-import.md)、[65](function-design/65-inventory-record-traceability.md)、[66](function-design/66-ui-stock-movements.md)、[73](function-design/73-ui-stocktake.md) |
 
-永続化は [DB 設計](DB_DESIGN.md) へ集約する。(b) の実装・SQL migration・binding の生成は後続の runtime で行い、本 docs の同期では行わない。
+永続化は [DB 設計](DB_DESIGN.md) へ集約する。
 
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）
 > **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase
@@ -163,7 +163,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [UI-08: PLU書出し](function-design/67-ui-plu-export.md) — PluExportPage, Diff/Full, native save dialog, prepare/confirm two-step command, app-side exported state, CV17 1.1.1 manual gate（Design Phase 更新済み、REQ-402）
 - [UI-11b: バックアップ・復元](function-design/68-ui-backup-restore.md) — BackupRestorePage, backup settings, manual backup, backup list, restore safety flow（Design Phase 追加済み（実装済み）、QR-05 / REQ-901、復元前強制バックアップ + break-glass 例外 + cache clear + Windows native L3）
 - [UI-11a: 閾値設定（在庫少の基準）](function-design/69-ui-threshold-settings.md) — ThresholdSettingsPage, useThresholdSettings, useSaveThresholds, extract-thresholds（Design Phase 追加済み（実装済み）、QR系 / D-4、既存 getSettings / updateSetting 契約、所有 2 key 限定、整数 1〜99999 検証、dirty key のみ順次保存 + 部分失敗表示、Windows native L3 軽量 2 項目）
-- [UI-10: 棚卸し](function-design/73-ui-stocktake.md) — StocktakePage, useStocktakeStatus, useStocktakeItems, useUpdateCount, useCompleteStocktake, useFindStocktakeItem, useLastCompletedStocktake（Design Phase 追加済み（実装済み）、REQ-205、既存 CMD-10 4 コマンド + 新規 2 CMD 設計、検索/スキャン主動線 + 上書き再入力常時許可、常時確認確定 + force_fill 文言分岐、前回 total_cost 比較、10-4a channel 不採用確定、Windows native L3 5 項目）
+- [UI-10: 棚卸し](function-design/73-ui-stocktake.md) — StocktakePage, useStocktakeStatus, useStocktakeItems, useSaveStockCount, useCompleteStocktake, useFindStocktakeItem, useLastCompletedStocktake（Design Phase 追加済み（実装済み）、REQ-205、検索/スキャン主動線、数の保存と「入れ直す」・要再確認の一覧・完了の拒否の一覧〈D-118 の b1〉、常時確認確定、前回 total_cost 比較、10-4a channel 不採用確定、Windows native L3）
 - [UI-11c: 操作ログ画面](function-design/74-ui-operation-logs.md) — OperationLogsPage, useOperationLogs（Design Phase 追加済み（実装済み）、REQ-902 / TRACE-D3、`/settings/logs` route、`listLogs` 期間拡張 + 新規 `list_log_operation_types`、canonical operation_type registry、detail_json 既知field要約+安全上限、関連記録リンク明示 contract、範囲外page回復、empty 2系統、retry、REQ-902/905 traceability 是正、Windows native L3 8 項目）
 - [UI-13: 在庫整合性検証画面](function-design/75-ui-integrity-check.md) — IntegrityCheckPage（Design Phase 追加済み（実装済み）、REQ-904、`/settings/integrity` route、idle/running/completed、generated integrity commands、直近確認日時、個別選択 + 確認dialog、100件paging、fix summary・skipped警告・retry選択保持、非色状態表示、Windows native L3 3項目）
 - [入出庫記録・在庫変動追跡 完成形](function-design/65-inventory-record-traceability.md) — REQ-206/207/208、入庫/返品・交換/手動販売/廃棄・破損/CSV取込み/棚卸しの一覧・詳細、在庫変動履歴との相互リンク、取消/訂正、操作ログとの役割分担

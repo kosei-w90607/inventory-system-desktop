@@ -423,6 +423,7 @@ describe("DailySalesPage describeError adoption (B1, UI-ERR-D2)", () => {
         message: "日次売上の取得に失敗しました",
         field: null,
         error_id: "E-20260321-090000-syn1",
+        stocktake_recovery: null,
       },
     });
 

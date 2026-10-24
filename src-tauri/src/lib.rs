@@ -255,7 +255,7 @@ fn show_pre_window_fatal(message: &str) {
 /// - CMD-12: parse_and_validate_daily_report / commit_daily_report_import / rollback_daily_report_import / list_daily_report_imports
 /// - CMD-08: prepare_plu_export / confirm_plu_export_saved / list_plu_dirty
 /// - CMD-09: get_daily_sales / get_monthly_sales / export_sales_csv
-/// - CMD-10: get_active_stocktake / start_stocktake / get_stocktake_items / find_stocktake_item / get_last_completed_stocktake / get_stocktake_record / update_count / complete_stocktake
+/// - CMD-10: get_active_stocktake / start_stocktake / get_stocktake_items / find_stocktake_item / get_last_completed_stocktake / get_stocktake_record / save_stock_count / preview_stock_count_placement / zero_uncounted_items / list_recheck_products / complete_stocktake
 /// - CMD-11: get_settings / update_setting / list_logs / create_backup / check_auto_backup / list_backups / restore_backup / save_receipt_image
 ///
 /// Phase 2 以降で段階的に拡張する。
@@ -342,7 +342,10 @@ fn export_bindings_to(bindings_path: &std::path::Path) -> Result<(), String> {
         cmd::stocktake_cmd::find_stocktake_item,
         cmd::stocktake_cmd::get_last_completed_stocktake,
         cmd::stocktake_cmd::get_stocktake_record,
-        cmd::stocktake_cmd::update_count,
+        cmd::stocktake_cmd::save_stock_count,
+        cmd::stocktake_cmd::preview_stock_count_placement,
+        cmd::stocktake_cmd::zero_uncounted_items,
+        cmd::stocktake_cmd::list_recheck_products,
         cmd::stocktake_cmd::complete_stocktake,
         cmd::integrity_cmd::run_integrity_check,
         cmd::integrity_cmd::fix_integrity,
@@ -1214,6 +1217,7 @@ mod bindings_generation_tests {
             crate::db::migrate_legacy_db,
         )
         .unwrap();
+        // 最新の版まで当たる（版の定数でなく app_max_version と比べる。b1 Matrix T1）
         assert_eq!(
             version_and_products(&conn),
             (crate::db::migration::app_max_version(), 0)
@@ -1251,6 +1255,7 @@ mod bindings_generation_tests {
             crate::db::migrate_legacy_db,
         )
         .unwrap();
+        // 最新の版まで当たる（版の定数でなく app_max_version と比べる。b1 Matrix T1）
         assert_eq!(
             version_and_products(&conn),
             (crate::db::migration::app_max_version(), 0)
@@ -1566,7 +1571,10 @@ pub fn run() {
             cmd::stocktake_cmd::find_stocktake_item,
             cmd::stocktake_cmd::get_last_completed_stocktake,
             cmd::stocktake_cmd::get_stocktake_record,
-            cmd::stocktake_cmd::update_count,
+            cmd::stocktake_cmd::save_stock_count,
+            cmd::stocktake_cmd::preview_stock_count_placement,
+            cmd::stocktake_cmd::zero_uncounted_items,
+            cmd::stocktake_cmd::list_recheck_products,
             cmd::stocktake_cmd::complete_stocktake,
             // CMD-11 部分: 整合性チェック
             cmd::integrity_cmd::run_integrity_check,
