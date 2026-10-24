@@ -592,7 +592,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 | UI-01a-D17・UI-06a-D7・UI-06c-D9・UI-01b-D2（行の詳細と戻り先。商品修正の `returnTo` は作る側・受け口に `status`・`selected` を足し作る側は手組み、在庫変動履歴の fallback に `discontinued=all`、`recount_required` の回復の後は `/products` の例外、在庫変動履歴の `returnTo` は 500 字を超えたら fallback の限定） | 50 §50.2・§50.6、58 §58.7・§58.10、66 §66.1・UI-06c-D9・§66.3、51 UI-01b-D2 | docs（本 PR）: 50、58、66、51、backlog | Matrix の UI-01a-D17・UI-01b-D2・UI-06c-D9 の行 | runtime の L3（2 click） |
 | UI-01a-D18（何も出ない画面を作らない、0 件の説明） | 50 §50.2・§50.7、02 ⑥ | docs（本 PR）: 50、02 | Matrix の UI-01a-D18 の行 | 非対象（自動 test で足りる） |
 | UI-02-D10・UI-04-D12・UI-03-D15・UI-05-D11（保存の結果の「在庫を見る」）、UI-02-D18（入庫の事前入力） | 61〜64 の該当の行・§xx.3・§61.7 | docs（本 PR）: 61、62、63、64、`docs/SCREEN_DESIGN.md` §3 | Matrix の UI-02-D10 ほか 4 画面・UI-02-D18 の行 | runtime の L3 |
-| UI-02-D4 系と SPEC-SUGGEST（取引 4 画面の候補・明細の列） | 02 ⑮、61 §61.5 | docs（本 PR）: 02、61 | Matrix の catalog ⑮ の行 | runtime の L3。棚卸し（73 UI-10-D2・UI-10-D12）は対象外（D-118 の (b)） |
+| UI-02-D4 系と SPEC-SUGGEST（取引 4 画面の候補・明細の列） | 02 ⑮、61 §61.5・62 §62.5・63 §63.5・64 §64.5、`docs/SCREEN_DESIGN.md` の返品・交換画面の明細 | docs（本 PR）: 02、61〜64、SCREEN_DESIGN | Matrix の catalog ⑮ の行 | runtime の L3。棚卸し（73 UI-10-D2・UI-10-D12）は対象外（D-118 の (b)） |
 | UI-00-D13（ホームの入口 card）。D-089 は変えない | 53 §53.1・§53.8 | docs（本 PR）: 53 | Matrix の UI-00-D13 の行 | runtime の L3 |
 | 67 の Diff 0 件の文言（X-06、正本を今の build の文に合わせた） | 67 の Diff 0 件、`docs/SCREEN_DESIGN.md` §3 PLU書出し画面 | docs（本 PR）: 67、SCREEN_DESIGN。code は変えない | 非対象（code を変えない。この文を assert する test は今は無い〈`rg -ln 'PLU書出しが必要な商品はありません' src` の出力は `src/features/plu-export/PluExportPage.tsx` だけ〉。旧い文の再導入は 3.6 の `差分はありません` の行の sweep で見る） | 非対象 |
 | 77 の 0 件の導線の label（「商品と在庫を開く」、先の route は同じ）と、`/products` へ行く他の導線・文言の画面名（一括インポートの「商品と在庫へ戻る」、PLU書出しの `confirmed` の「商品と在庫へ戻る」、在庫少の基準の画面の説明・L3-1、廃番の確認の説明） | 77 の Empty、60 UI-01c-D11・§60.5、67 §67.7、69 §69.2・§69.9・§69.12、02 ⑧、`docs/SCREEN_DESIGN.md` の商品一括インポート画面 | docs（本 PR）: 77、60、67、69、02、SCREEN_DESIGN。code は runtime | Matrix の 77 Empty の行（既存 `src/features/products/PriceRevisionPage.test.tsx` の 0 件の導線の test を test 名で引いて改める）と 60 UI-01c-D11 / 商品フォームの not found の行 | runtime の L3 |
@@ -697,3 +697,7 @@ reviewer: Claude 側（fresh Opus 5.5。reject〈形式上〉、新しい P1 0 /
 | N3: 58 §58.7 の Pagination の bullet の旧い 2 チップの言い方 | Opus N3（P3） | 受理 | 「在庫切れ・在庫少〈`status=low_stock`〉は…」にした |
 
 この変更で不要になった記述: Matrix の Boundary Checks の「runtime の test の行を足さない」、Matrix と Contract Ledger の `PriceRevisionPage.test.tsx:774`、Matrix の `test_receiving_candidate_and_line_columns`（4 画面の名に置き換えた）。
+
+### Plan Review closure 2（2026-10-25、対象 `edbd6046`、Coordinator）
+
+Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 2）。Codex は利用上限（解除 2026-10-31）で、owner の決定（repo 外の回答台帳 TD-438）により reset の後に Codex の closure を流す。P3 の 2 件を受理して直した: (1) Contract Ledger の UI-02-D4 系の行の出典と docs に 62〜64 の §x.5 と SCREEN_DESIGN の返品・交換画面の明細を足した（Matrix の行に合わせた）。(2) Matrix の `test_ui01a_d15_low_stock_hides_tools_and_keeps_url` の行の並びの期待を、mock が返した順を見るだけの同語反復にならない形にした（mock は商品名の降順で返し、3 商品は取引先順と違う順にして、行は mock の順のまま出す〈画面で並べ直さない〉）。
