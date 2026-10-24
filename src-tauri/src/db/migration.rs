@@ -98,9 +98,9 @@ fn migrations() -> Vec<Migration> {
             kind: MigrationKind::Custom(schema_v11::apply_v11_z004_settlement_key),
         },
         Migration {
-            version: 11,
+            version: 12,
             description: "日報の束の精算回数の列（daily_report_imports.settlement_no）",
-            kind: MigrationKind::Sql(schema_v12::get_v11_daily_report_settlement_no_schema()),
+            kind: MigrationKind::Sql(schema_v12::get_v12_daily_report_settlement_no_schema()),
         },
     ]
 }

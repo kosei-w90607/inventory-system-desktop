@@ -17,6 +17,7 @@ src-tauri/src/
     schema_v9.rs  -- 在庫の並びの鍵・計数の表・写しの列（§19 の vL）
     schema_v10.rs -- 原価を1/100円の列へ（§16 の vB）
     schema_v11.rs -- Z004の精算の鍵・売上の連動・棚卸しの完了の列（§20 の vZ）
+    schema_v12.rs -- 日報の束の精算回数の列（§17 の vS）
 ```
 
 ### 3.2 migrate
@@ -420,7 +421,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 ## 17. MNT-03 追加: 日報の束の精算回数の列の migration（D-111）
 
-**MNT-03-D15 / IO-07-D5 / BIZ-08-D4 / D-111**: `daily_report_imports` に NULL を許す列 `settlement_no INTEGER` を足す migration（以下 vS）。列の意味の正本は [db-design/pos-tables.md](../db-design/pos-tables.md) §12b、保存と照合は [37](37-biz-daily-report-import-service.md) §37.4 手順 4a・6 と [24](24-io-csv-import-repo.md) §14.14・§14.18a。版の番号は v11（`src-tauri/src/db/schema_v11.rs`。2026-10-24 の main の最大は v10〈`src-tauri/src/db/migration.rs` の `migrations()`。v9 は §19、v10 は §16 の vB〉。merge の時点で先に別の migration が入っていれば下の規則で取り直す）。棚卸しの数の置き場と在庫の求め直しの runtime の (b) の最初の lane（b1）の migration（vZ）も次の版を取るので、先に merge した側が若い番号を取り、後から merge する側が file 名・`mod` の行・`migrations()` の登録を取り直す（`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項。§18 の JAN の別名・PLU の書出しの見直しの runtime の migration も同じ）。test の版の期待は取り直さずに済む形にする: 全部の migration を当てて最新の版を期待する既存の test（`init_database`・`migration::migrate`・起動の `prepare_database_with` の後の `MAX(version)` と `schema_versions` の行数）は、版の数値・版の定数でなく `app_max_version()`（`src-tauri/src/db/migration.rs`）と比べ、ある版の後の schema・振舞いを見る test（vB の後の全 object の SQL 等）は §16 の「版の上限を取る test 用の migrate」（`migrate_up_to(&conn, <その版の定数>)`）で当てる。vS の lane がこの形に直す test の一覧と洗い直しの command は SD 直読みの runtime の packet の S2。先に merge した lane が最新の版を版の定数（例 vZ の定数）か数値で期待する test を残していれば、後から merge する lane がそれを `app_max_version()` に替える。
+**MNT-03-D15 / IO-07-D5 / BIZ-08-D4 / D-111**: `daily_report_imports` に NULL を許す列 `settlement_no INTEGER` を足す migration（以下 vS）。列の意味の正本は [db-design/pos-tables.md](../db-design/pos-tables.md) §12b、保存と照合は [37](37-biz-daily-report-import-service.md) §37.4 手順 4a・6 と [24](24-io-csv-import-repo.md) §14.14・§14.18a。版の番号は v12（`src-tauri/src/db/schema_v12.rs`。2026-10-24 に §20 の vZ〈PR #188〉が先に merge して v11 を取ったので、下の規則で v12 に取り直した。merge の時点で先に別の migration が入っていれば同じ規則で取り直す）。棚卸しの数の置き場と在庫の求め直しの runtime の (b) の最初の lane（b1）の migration（vZ）も次の版を取るので、先に merge した側が若い番号を取り、後から merge する側が file 名・`mod` の行・`migrations()` の登録を取り直す（`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項。§18 の JAN の別名・PLU の書出しの見直しの runtime の migration も同じ）。test の版の期待は取り直さずに済む形にする: 全部の migration を当てて最新の版を期待する既存の test（`init_database`・`migration::migrate`・起動の `prepare_database_with` の後の `MAX(version)` と `schema_versions` の行数）は、版の数値・版の定数でなく `app_max_version()`（`src-tauri/src/db/migration.rs`）と比べ、ある版の後の schema・振舞いを見る test（vB の後の全 object の SQL 等）は §16 の「版の上限を取る test 用の migrate」（`migrate_up_to(&conn, <その版の定数>)`）で当てる。vS の lane がこの形に直す test の一覧と洗い直しの command は SD 直読みの runtime の packet の S2。先に merge した lane が最新の版を版の定数（例 vZ の定数）か数値で期待する test を残していれば、後から merge する lane がそれを `app_max_version()` に替える。
 
 **手順**（`MigrationKind::Sql`。実行器が BEGIN → SQL → schema_versions の INSERT → COMMIT を持つ）:
 

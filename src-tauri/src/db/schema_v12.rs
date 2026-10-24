@@ -1,10 +1,10 @@
-//! migration v11（vS）: 日報の束の精算回数の列（D-111）
+//! migration v12（vS）: 日報の束の精算回数の列（D-111）
 //!
 //! docs/function-design/22-mnt-migration.md §17 / MNT-03-D15 に基づく実装。
 //! NULL を許す列を足すだけで、既存の行の値を変えない（D-111 より前の取込みは NULL のまま）。
 
 /// vS マイグレーション: `daily_report_imports.settlement_no` を足す
-pub(crate) fn get_v11_daily_report_settlement_no_schema() -> &'static str {
+pub(crate) fn get_v12_daily_report_settlement_no_schema() -> &'static str {
     "ALTER TABLE daily_report_imports ADD COLUMN settlement_no INTEGER;"
 }
 
@@ -13,7 +13,7 @@ mod tests {
     use crate::db::migration::{self, migrate_up_to};
     use rusqlite::Connection;
 
-    const VS_VERSION: i64 = 11;
+    const VS_VERSION: i64 = 12;
 
     fn version(conn: &Connection) -> (i64, i64) {
         conn.query_row(
