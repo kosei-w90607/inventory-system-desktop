@@ -34,7 +34,7 @@
 - **主動線**: ホームの「商品と在庫」・「在庫切れ・在庫少」の card / サイドバーの同じ 2 項目から開き、一覧 → 行の直下の詳細 → 発注判断・入庫記録・商品修正・在庫変動履歴（D-138）。今の build はホーム・サイドバーの「在庫照会」から開き、検索欄 → 結果一覧 → 詳細の展開
 - **失敗 4 状態**:
   1. list query API fail → ProductListTable 領域 Alert + toast（`stock-inquiry-list-error`）
-  2. list query items 空配列 → 「該当する商品がありません」EmptyState
+  2. list query items 空配列 → 0 件の空状態。見出し・説明・action は [50](50-ui-product-list.md) §50.7 の Empty の順（UI-01a-D18。範囲外 page は UI-06a-D3 が先）。今の build は一律に「該当する商品がありません」
   3. detail query fail → 詳細カード内 inline エラー（部分障害許容、一覧表示は維持） + toast（`stock-inquiry-detail-error`）
   4. （旧契約 I の検索前の案内は D-138 で撤去した。初めて開いたら一覧を出す〈50 UI-01a-D1〉。今の build は status === "all" かつ `q` 空文字で search_products を呼ばず EmptySearchPlaceholder を出す）
 
@@ -194,8 +194,8 @@ const searchSchema = z.object({
 - `selected` undefined → `null` fallback（詳細カード閉）
 - 不正値（例: `?status=invalid`、`?dept=abc`）→ zod `.catch(undefined)` で吸収、ユーザに通知せず黙って fallback（UI-09a/b 同方針）
 - `selected` URL 化で詳細カード展開状態の F5 耐性を担保（detail query のみ再 fetch）
-- `q` / `dept` / `status` の変更で `page=1` に戻す。page 移動だけは検索条件を維持する（50 §50.4 慣行の踏襲）。対象は `status === "all"`（`search_products` 経路）のみで、在庫少 / 在庫切れ（`list_low_stock` の client filter 経路）には pagination を適用しない（既存挙動維持）
-- **範囲外 page**（UI-06a-D3、round 1 P1-2 対応）: `items` 空 かつ `total_count > 0` かつ `page > 1` のとき、通常の EmptyState（filter-empty reset action を含む）ではなく専用メッセージ「このページには表示する商品がありません」+「先頭ページに戻る」ボタン（`page=1` へ navigate、`q` / `dept` / `status` は維持）を表示する。74 §74.10（UI-11c-D8）と同型。この判定は EmptyState 系より優先する（§58.10 参照）
+- 条件の変更（[50](50-ui-product-list.md) §50.4 の条件の key: `q`・`dept`・`status`・`discontinued`・`sort`・`dir`・`perPage`）で `page=1` に戻す。page 移動だけは条件を維持する。pagination は「すべて」（`search_products` 経路）だけで、「在庫切れ・在庫少」（`list_low_stock` の client filter 経路）には当てない（UI-01a-D15、UI-06a-D1）。今の build は条件の key が `q`・`dept`・`status` だけ
+- **範囲外 page**（UI-06a-D3、round 1 P1-2 対応）: `items` 空 かつ `total_count > 0` かつ `page > 1` のとき、通常の EmptyState（filter-empty reset action を含む）ではなく専用メッセージ「このページには表示する商品がありません」+「先頭ページに戻る」ボタン（`page=1` へ navigate、50 §50.4 の条件の key は維持）を表示する。74 §74.10（UI-11c-D8）と同型。この判定は EmptyState 系より優先する（§58.10 参照）
 
 #### `selected` ライフサイクル（race condition 回避。統合の画面の規則、D-138、proposed・未実装）
 
@@ -515,7 +515,7 @@ function StockInquiryPage() {
 #### DepartmentFilter（共通 `patterns/DepartmentFilter`、2026-08-03 batch B で sync）
 
 - 共通 `src/components/patterns/DepartmentFilter.tsx`（shadcn `Select`、「すべての部門」+ `commands` 由来の部門一覧）を使う。`DepartmentOption` 型は `patterns/DepartmentFilter.tsx` が単一定義し、stock-inquiry 側は re-export を import する（[59-ui-shared-patterns.md](59-ui-shared-patterns.md) §59.3、PR-B で 3 feature 統合済み）
-- 候補は `listDepartments()` master 全件（UI-06a-D2、DSR-10）で、`page` / `q` / `dept` / `status` に関わらず不変。個別部門選択中も他部門候補が縮退しない。`DepartmentFilter` 自体は pure component とし、候補取得は `useStockInquiry` の `departmentOptionsQuery` が担う
+- 候補は `listDepartments()` master 全件（UI-06a-D2、DSR-10）で、§58.4 の条件の key（50 §50.4）と `page` に関わらず不変（今の build の key は `page` / `q` / `dept` / `status`）。個別部門選択中も他部門候補が縮退しない。`DepartmentFilter` 自体は pure component とし、候補取得は `useStockInquiry` の `departmentOptionsQuery` が担う
 - **canonical props 結線**（round 2 P1-1 対応、59 §59.1 の `{options, selected, onChange, disabled?}` 準拠）: `StockInquiryPage` は `options={departmentOptions}`（hook が `Department[] → DepartmentOption[]` へ変換済みの配列）/ `selected={deptValue}`/ `onChange`（URL state `dept` 更新）/ `disabled={departmentOptionsQuery.isLoading}` を渡す。候補取得失敗時は `departmentOptionsQuery.isError` を見て `DepartmentFilter` 直下に「部門候補の取得に失敗しました」を別途表示し、`listQuery`（一覧表示）とは独立に一覧表示は継続する（§58.5）
 
 #### ProductListTable（高視認性状態表示契約 H、選択行直下インライン展開）
@@ -557,8 +557,8 @@ function StockInquiryPage() {
 | 状態 | 描画 | 復旧手段 |
 |---|---|---|
 | **#1 list query API fail**（`listQuery.isError`） | ProductListTable 領域 `<Alert variant="destructive">` + toast（`id: "stock-inquiry-list-error"`） | 検索条件変更 or ページ再読込、リトライ成功で同 id `toast.dismiss` |
-| **範囲外 page**（UI-06a-D3、`items` 空 + `total_count > 0` + `page > 1`、round 1 P1-2 対応） | `<EmptyState title="このページには表示する商品がありません" action={<Button variant="outline">先頭ページに戻る</Button>} />`。74 §74.10（UI-11c-D8）と同型。**#2 の filter-empty reset action より優先して判定する**（SPEC-UIBB-8） | 「先頭ページに戻る」押下で `page=1`、`q` / `dept` / `status` は維持 |
-| **#2 list query items 空配列** | `<EmptyState title="該当する商品がありません" />`。q / dept / status が既定値以外なら `action` に「絞り込みを解除」ボタン（catalog ⑥ filter-empty reset action、SPEC-UIBB-1/2） | 検索条件 / 部門フィルタ変更、または reset action で既定値へ一括復帰 |
+| **範囲外 page**（UI-06a-D3、`items` 空 + `total_count > 0` + `page > 1`、round 1 P1-2 対応） | `<EmptyState title="このページには表示する商品がありません" action={<Button variant="outline">先頭ページに戻る</Button>} />`。74 §74.10（UI-11c-D8）と同型。**#2 の filter-empty reset action より優先して判定する**（SPEC-UIBB-8） | 「先頭ページに戻る」押下で `page=1`、50 §50.4 の条件の key は維持 |
+| **#2 list query items 空配列** | `<EmptyState>` の見出し・説明・action は 50 §50.7 の Empty の順（条件に合わせた説明、絞り込みが既定値以外なら「絞り込みを解除」、商品が 1 件も無い DB は「商品がありません」と「商品を登録する」。UI-01a-D18、catalog ⑥ filter-empty reset action、SPEC-UIBB-1/2）。今の build は一律に「該当する商品がありません」で、q / dept / status が既定値以外なら「絞り込みを解除」 | 条件の変更、または reset action（50 §50.7 の既定値への一括復帰） |
 | **#3 detail query fail**（`detailQuery.isError`） | 詳細の inline エラー（一覧は維持、部分障害許容）。list 成功時は選択行直下のインライン展開行内、list 失敗時はフォールバック StockDetailCard 内（両系統とも `StockDetailContent` が isLoading/isError/data を内包）+ toast（`id: "stock-inquiry-detail-error"`） | 別商品選択 or リトライ、成功で同 id `toast.dismiss` |
 | **#4（D-138 で撤去）** | 今の build だけ: status=all + q 空文字で `<EmptySearchPlaceholder />`（search_products 呼ばない、旧契約 I）。統合の後は初めて開いたら一覧（50 UI-01a-D1・D18） | — |
 | **在庫少の集合の取得失敗**（統合の後の「すべて」） | 一覧は出し、`stock_quantity > 0` の行の状態の欄に「—」、一覧の上に「在庫少かどうかを読めませんでした。状態の欄は在庫切れだけを示しています」と「もう一度読む」（契約 H） | 「もう一度読む」で `listLowStock` を再取得 |
@@ -623,7 +623,7 @@ function StockInquiryPage() {
 
 #### UI-06a-D2: 部門候補を listDepartments master 全件へ是正（DSR-10、round 1 P1-3、2026-08-03 batch B）
 
-- **決定**: 部門候補 query を検索結果由来（`searchProducts` 先頭 page からの派生）から `commands.listDepartments()` の master 全件へ切り替える。`page` / `q` / `dept` / `status` のいずれを変更しても候補集合は不変にする。
+- **決定**: 部門候補 query を検索結果由来（`searchProducts` 先頭 page からの派生）から `commands.listDepartments()` の master 全件へ切り替える。§58.4 の条件の key（50 §50.4）と `page` のいずれを変更しても候補集合は不変にする（今の build の key は `page` / `q` / `dept` / `status`）。
 - **Why**: filtered result 由来の候補縮退は DSR-10 / 02-component-catalog.md ⑨「フィルタ候補のソース」で禁止されている。pagination 導入により「現在 page の商品に含まれる部門」への縮退リスクが増幅するため、同一 change で正本準拠に是正する。wire 変更なし（`listDepartments` は既存 command）。
 - **Rejected**: 現状維持（dept 選択時だけ同じ q/status で dept を外した候補用 query を使う案）。個別部門選択後に他部門へ切り替えられない機能不全を過去 L3 で一度是正した実績があり、pagination 追加でさらに再発しやすくなるため据え置かない。
 
@@ -641,10 +641,10 @@ function StockInquiryPage() {
 
 #### UI-06a-D5: 展開行トグルクローズ + 自動展開の検索条件単位制限（R2-3、2026-09-06）
 
-- **決定**: `ProductListTable` の行クリックを、選択中行の再クリックで `onSelect(null)` を呼ぶよう変更する（`selected` URL state が `undefined` になり展開が閉じる）。自動展開 `useEffect`（§58.4）に、検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` で保持するガードを追加し、同じ条件で一度自動展開したら再展開しない。条件が変われば新しい key として改めて 1 度だけ自動展開する。
+- **決定**: `ProductListTable` の行クリックを、選択中行の再クリックで `onSelect(null)` を呼ぶよう変更する（`selected` URL state が `undefined` になり展開が閉じる）。自動展開 `useEffect`（§58.4）に、§58.4 の条件の key（50 §50.4）と `page` から導出した key を `useRef` で保持するガードを追加し、同じ条件で一度自動展開したら再展開しない。条件が変われば新しい key として改めて 1 度だけ自動展開する。
 - **Why**: 既存の自動展開は `selected === null` ガードのみのため、再クリックで `selected` を `null` に戻しても同じ検索条件で結果がまだ 1 件なら即座に再展開し、「閉じる」操作を打ち消してしまう。`useRef` は URL 一本化の既存方針（§58.4）に追加の state を持ち込まずに済む。
-- **境界（意図的、defect ではない）**: `useRef` はコンポーネントインスタンスのメモリ上のため、full remount（サイドバー遷移で `/stock` を離れて戻る等）が起きると ref は初期化され、同じ検索条件でも自動展開が再度発火する。1 セッション内で条件を変えずに何度も開閉する操作を対象にした guard であり、画面を離れて戻る操作まで記憶する要件ではない。
-- **conditionKey の構成要素**: URL 由来の `status`/`q`/`dept`/`page` の 4 項目のみ（`useStockInquiry.ts` の `conditionKey`）。`perPage`（page ローカル state、URL 非依存）は対象外。`q` は `trim()` せず生値をそのまま key に使う。
+- **境界（意図的、defect ではない）**: `useRef` はコンポーネントインスタンスのメモリ上のため、full remount（サイドバー遷移で商品と在庫の画面を離れて戻る等。今の build は `/stock`）が起きると ref は初期化され、同じ検索条件でも自動展開が再度発火する。1 セッション内で条件を変えずに何度も開閉する操作を対象にした guard であり、画面を離れて戻る操作まで記憶する要件ではない。
+- **conditionKey の構成要素**: §58.4 の条件の key（50 §50.4 の `q`・`dept`・`status`・`discontinued`・`sort`・`dir`・`perPage`。統合の画面では `perPage` も URL の key）と `page`（D-138）。`q` は `trim()` せず生値をそのまま key に使う。今の build は URL 由来の `status`/`q`/`dept`/`page` の 4 項目（`useStockInquiry.ts` の `conditionKey`）で、`perPage` は page ローカルの state で対象外。
 - **Rejected**: `selected` の変化元（ユーザー操作 vs 自動展開）を別 state で追跡する案（state 数が増え、URL 一本化の既存方針に反する）。
 
 #### UI-06a-D8: 状態のチップを 2 つにし、在庫切れ・在庫少を 1 つの一覧にする（D-138、2026-10-24）

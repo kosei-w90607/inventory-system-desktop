@@ -60,7 +60,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 
 ### 52.3 ルーティング定義
 
-全画面対応表（22 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 23）。設計合意書 §2.1 を転記（D-047 反映済み）。各記録種別の記録詳細 route（`/inventory/receiving/records/$recordId` 等、入出庫履歴 6 種、いずれもナビ非表示）はこの表の集計対象外とし、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 を正本とする。
+全画面対応表（22 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 23）。この数と共用の関係は今の build の値で、D-138 の後（proposed・未実装）は「商品検索・一覧」のナビ表示が外れて 21 になり、UI-01a・UI-06a・UI-06b が `/products` を共用し、`/stock` の index は `/products` への寄せになる（UI-12-D1、[50](50-ui-product-list.md) UI-01a-D14・D19）。設計合意書 §2.1 を転記（D-047 反映済み）。各記録種別の記録詳細 route（`/inventory/receiving/records/$recordId` 等、入出庫履歴 6 種、いずれもナビ非表示）はこの表の集計対象外とし、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 を正本とする。
 
 | UI-ID | 画面名 | URL パス | route ファイル | サイドバー4エリア | ナビ表示 | 備考 |
 |---|---|---|---|---|---|---|
@@ -71,7 +71,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 | UI-09b | 月次売上 | `/reports/monthly` | `src/routes/reports/monthly.tsx` | 毎日の業務 | ○ | |
 | UI-01a | 商品検索・一覧 | `/products` | `src/routes/products/index.tsx` | 商品管理 | ○ | 商品管理の起点。D-138 で UI-06a と統合した「商品と在庫」の route になり、サイドバーの項目は毎日の業務の「商品と在庫」の 1 つ（商品管理のエリアから外す。proposed・未実装） |
 | UI-01b (新規) | 商品登録 | `/products/new` | `src/routes/products/new.tsx` | 商品管理 | ○ | |
-| UI-01b (編集) | 商品修正 | `/products/$code/edit` | `src/routes/products/$code.edit.tsx` | （ナビ非表示） | — | 一覧 or 在庫照会詳細から遷移 |
+| UI-01b (編集) | 商品修正 | `/products/$code/edit` | `src/routes/products/$code.edit.tsx` | （ナビ非表示） | — | D-138 の後は商品と在庫の行の詳細の「商品修正」から遷移（今の build は一覧の「修正」or 在庫照会詳細から） |
 | UI-01c | 一括インポート | `/products/import` | `src/routes/products/import.tsx` | 商品管理 | ○ | |
 | UI-08 | PLU書出し | `/products/plu-export` | `src/routes/products/plu-export.tsx` | 商品管理 | ○ | 商品管理 route とサイドバー配置を一致させる |
 | UI-14 | 一括価格改定 | `/products/price-revision` | `src/routes/products/price-revision.tsx` | 商品管理 | ○ | REQ-105/106。値上げリストを行単位で商品マスタへ反映 |
@@ -133,6 +133,8 @@ export const navigation: readonly NavArea[] = [...] as const;
 
 #### 4 エリア × 22 項目
 
+下の表は今の build の項目。D-138 の後（proposed・未実装）は、毎日の業務の「在庫照会」が「商品と在庫」に、入出庫の「在庫少一覧」が「在庫切れ・在庫少」になり、商品管理から「商品検索・一覧」が外れて 4 項目（計 21 項目）になる（UI-12-D1、[50](50-ui-product-list.md) UI-01a-D14）。
+
 | エリア | エリアアイコン | 項目数 | 項目（順序固定） |
 |---|---|---|---|
 | 毎日の業務 | `Sun` | 5 | ホーム / 売上データ取込み / 日次売上 / 在庫照会 / 月次売上 |
@@ -141,6 +143,8 @@ export const navigation: readonly NavArea[] = [...] as const;
 | システム管理 | `Wrench` | 5 | バックアップ・復元 / 操作ログ / 在庫少の基準 / 整合性検証 / 取引先管理 |
 
 #### 各項目アイコン（lucide-react ^1.8.0）
+
+項目名は今の build の名（D-138 の後の名は上の「4 エリア × 22 項目」の表の前の注記）。
 
 | 項目 | アイコン | 項目 | アイコン |
 |---|---|---|---|
@@ -226,7 +230,7 @@ UI-12 内で唯一「処理 + エラーハンドリング + 書式規約」を�
 - **デザイン哲学**: stone 系パレット + アイコン + 区切り線でグループ表現（色分け廃止）。出典は [../design-system/00-foundations.md](../design-system/00-foundations.md)「4色エリアモデルの扱い」（ドクトリン文書）
 - **表示サイズ option**: H-6 の商品コード readability follow-up として Sidebar footer に `表示サイズ` Select を追加する。選択肢は `標準` / `大きめ` / `特大`、保存は frontend-only `localStorage`、WebView 反映は `@tauri-apps/api/webview` の `setZoom`。Tauri capability は `core:webview:allow-set-webview-zoom`。UI-11a/b/c の設定画面や `app_settings` には本 PR では接続しない
 - **表示サイズ control の到達性**: WebView zoom 後に Sidebar 全体が実質大きくなるため、`Sidebar` root と navigation `ScrollArea` は `min-h-0` を持ち、navigation 側を縮小・スクロール可能にする。`DisplayScaleControl` は `shrink-0` として Sidebar footer に残し、`大きめ` / `特大` にした後でも表示サイズを戻せることを L3 で確認する
-- **UI-12-D1（2026-07-16、同じ route を指す 2 項目の排他 active 判定の機構規定）**: `/stock` を指す nav 項目が「在庫照会」（ui-06a）と「在庫少一覧」（ui-06b、D-047 で `/stock` への deep-link に統合）の 2 つになったため、active 表示は排他にする。D-138 の後は 2 つの項目が「商品と在庫」（ui-06a、`to: "/products"`）と「在庫切れ・在庫少」（ui-06b、`to: "/products"` + `search: { status: "low_stock" }`）になり、下の機構をそのまま使う（`item.to` が `/products` に変わるだけ。proposed・未実装）。
+- **UI-12-D1（2026-07-16、同じ route を指す 2 項目の排他 active 判定の機構規定）**: `/stock` を指す nav 項目が「在庫照会」（ui-06a）と「在庫少一覧」（ui-06b、D-047 で `/stock` への deep-link に統合）の 2 つになったため、active 表示は排他にする。D-138 の後は 2 つの項目が「商品と在庫」（ui-06a、`to: "/products"`）と「在庫切れ・在庫少」（ui-06b、`to: "/products"` + `search: { status: "low_stock" }`）になり、下の機構をそのまま使う（`item.to` が `/products` に変わるだけ。proposed・未実装）。下の bullet の項目名（在庫照会・在庫少一覧）と `/stock` の例は今の build の値。
   - **型**: `NavItem` に optional `activeMatch?: { searchKey: string; is?: string; isNot?: string }` を追加する。
   - **宣言**（`navigation.ts` 側）: ui-06b（在庫少一覧）は `activeMatch: { searchKey: "status", is: "low_stock" }`、ui-06a（在庫照会）は `activeMatch: { searchKey: "status", isNot: "low_stock" }` を宣言する。
   - **判定**（`SidebarLink.tsx` 側）: `activeMatch` を持つ項目のみ、`useRouterState` selector（§52.5 ウィンドウタイトル機構の pathname 取得と同じ selector パターン）で現在 pathname + search を読み、「`pathname === item.to` かつ predicate 成立」で active と判定する。predicate は `is` 指定時は `currentSearch[searchKey] === is`（等値）、`isNot` 指定時は `currentSearch[searchKey] !== isNot`（非等値。`currentSearch[searchKey]` が `undefined`（= URL に該当 key がない）の場合も `isNot` は成立扱い、`undefined !== "low_stock"` は真のため「在庫照会」は `status` 未指定時も active になる）。`activeMatch` を持たない残りの項目は既存 `<Link activeOptions={{ exact: true, includeSearch: false }}>` 経路を無変更で維持する。

@@ -337,7 +337,7 @@
   - create mode の商品コードは「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がない場合は保存前に止める
   - edit mode では `product_code` / `jan_code` / `stock_quantity` を読取専用にする。`stock_unit` は個数の単位の商品だけ個数の単位どうしで変えられ、長さの単位の商品は読取専用（D-119、UI-01b-D23）
   - 取引先候補は取引先マスタ全件を取得し、「新しい取引先を追加」からメーカー/ブランドを漸進追加できる（UI-01b-D7 / D21）。改名・統合は UI-15 取引先管理（[function-design/78-ui-supplier-management.md](function-design/78-ui-supplier-management.md)）で扱う
-  - 保存成功後は商品一覧へ戻る。`returnTo` は `/products` 一覧 route とその search params だけを許可し、`/products/new`、`/products/$code/edit`、`/products/import`、外部 URL、他画面 route は `/products` に戻す
+  - 保存成功後は来た一覧へ戻る（D-138 の後は商品と在庫の画面の条件と開いていた行、[function-design/51-ui-product-form.md](function-design/51-ui-product-form.md) UI-01b-D2。今の build は商品一覧）。`returnTo` は `/products` 一覧 route とその search params だけを許可し、`/products/new`、`/products/$code/edit`、`/products/import`、外部 URL、他画面 route は `/products` に戻す
   - form は「商品の識別」「分類と取引先」「価格」「在庫」の 4 セクションに分割し、edit mode は末尾に第 5 セクション「価格履歴」を追加する（UI-01b-D10 / D20）。各セクションに h2 見出しと 1 行説明を付ける
 - **利用者配慮**:
   - 廃番状態は色だけにせず、「表示中」「廃番」の日本語 badge と廃番 / 復帰 button label で示す
@@ -350,19 +350,19 @@
 ### 商品一括インポート画面
 - **対応仕様**: REQ-104（商品マスタCSV一括インポート）
 - **レイアウト判断**:
-  - route は `/products/import`。商品管理エリアの独立画面として扱い、商品一覧 / 商品フォームの query param で mode 切替しない
+  - route は `/products/import`。商品管理エリアの独立画面として扱い、商品と在庫の画面（今の build は商品一覧）/ 商品フォームの query param で mode 切替しない
   - 3ステップ構成（ファイル選択 → 内容確認 → 完了）にし、プレビュー段階で新規登録候補 / エラー行 / 重複行を同じ画面で確認できるようにする
   - ファイル選択は共通 FilePicker（native dialog ボタン + 任意 drop、[UI_TECH_STACK.md §6.5.4](UI_TECH_STACK.md) 正本、D-054）を使う
   - 重複行は既定「スキップ」。行ごとに「上書き」を選べる。上書き選択が 1 件以上ある場合だけ確認ダイアログを出す
   - （proposed・未実装、D-122）上書きで JAN を直す行のうち、前の JAN をその商品だけが持っていた行は、上書きを選んだときに同じ行で「前の番号のバーコードが付いた現物は店にありますか」（`ある` / `ない`、既定 `ない`）を聞く。行の warning は詳細テーブルの 50 行の表示の制限と別に、一覧の上にも全件まとめて出す（どちらも UI-01c-D17）
   - エラー行があっても正常行があれば取込み可能にする。ただしエラー行は取り込まれないことを件数サマリと行別エラーで明示する
   - 取り込める行が 0 件の場合は「取り込む」を disabled にし、理由を日本語で表示する
-  - 完了画面では新規 / 更新 / スキップ件数を明示し、「商品一覧へ戻る」「別のCSVを取り込む」の 2 導線に絞る
+  - 完了画面では新規 / 更新 / スキップ件数を明示し、「商品と在庫へ戻る」「別のCSVを取り込む」の 2 導線に絞る（D-138 の後。今の build は「商品一覧を確認」、[function-design/60-ui-product-import.md](function-design/60-ui-product-import.md) UI-01c-D11）
 - **利用者配慮**:
   - CSV 初期投入は失敗影響が大きいため、色だけで状態を示さず、`新規登録候補` / `エラー行` / `重複行` / `上書き` / `スキップ` の日本語ラベルを主情報にする
   - 一括上書きは初回実装では置かない。既存商品を変える操作は行ごとに明示選択させる
   - commit 中は中断可能に見せない。backend は単一 TX であり、UI だけの cancel は誤認を招く
-  - Windows native L3 で FilePicker（native dialog ボタン + 任意 drop）、エラー行と重複行の見分け、上書き確認、結果サマリ、商品一覧への戻り導線を確認する
+  - Windows native L3 で FilePicker（native dialog ボタン + 任意 drop）、エラー行と重複行の見分け、上書き確認、結果サマリ、商品と在庫の画面への戻り導線（今の build は商品一覧）を確認する
   - 詳細な関数設計と Design Intent Trace は [function-design/60-ui-product-import.md](function-design/60-ui-product-import.md) を参照
 
 ### 月次売上レポート画面
