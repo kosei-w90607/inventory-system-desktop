@@ -10,9 +10,11 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 段 2 の直しの run（2026-10-24）でやったこと: 相談役の反例探しを Coordinator が受理した 7 点で段 2 を直した（QU-004 の出所の範囲、Q-1 の d、案 A の失うもの、大きさの見込み、K-5 の限定、原則の伸ばしの限定、案 C の位置づけ）。正本と画面の code は変えていない。
 
+段 3 の run（2026-10-24）でやったこと: owner の採否（決定 1 = A 統合〈TD-424〉、決定 2 = a 全商品の一覧〈TD-425〉）と店主の答え（Q-1 = a〈Q-101、TD-422〉、Q-2 = c〈Q-102、TD-423〉）を受け、採った形を正本へ置き換え、D-138 を decision-log に、後続の runtime の項目を backlog に置き、Test Design Matrix を書いた（`## 段 3: 突き合わせと owner の採否、正本の置換え`）。画面の code は変えていない。
+
 ## Workflow State
 
-- Phase: design
+- Phase: plan-draft
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -28,6 +30,7 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 1. kickoff → spec-check（2026-10-24、起草役）: owner の所感（TD-413・TD-415）を受けた Coordinator の発注で、対象を「商品・在庫を探す・見る・直す画面の要素の見直し」とし、段 1〜段 3 と置換えまでを本 lane の範囲にした。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-24、起草役、同じ commit）: 触る正本は `docs/SCREEN_DESIGN.md`（§1 画面一覧、§3 の在庫照会・商品検索・一覧・入出庫履歴ほか、§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮、D-047 と `docs/function-design/52-ui-shared-layout.md` の UI-12-D1。在庫照会の契約 I（58 §58.10）と商品一覧の UI-01a-D1（50 §50.2）が「初めて開いたときに何を出すか」を画面ごとに逆に決めており、owner の所感がその片方を問うので、設計の更新が要る（design へ進む）。設計の中身は段 1〜段 3 で作る。design → plan-draft は段 3 で owner が採否を決め、正本の置換えの文ができてから。
+3. design → plan-draft（2026-10-24、起草役、段 3 の commit）: 条件「設計の出力が正本にある」は、D-138（decision-log）と [50](../function-design/50-ui-product-list.md) UI-01a-D1・D14〜D19・§50.4・§50.6・§50.7、[58](../function-design/58-ui-stock-inquiry.md) の冒頭の注記・契約 H・UI-06a-D8・廃番除外・§58.7、52 UI-12-D1、53 UI-00-D13、61 UI-02-D10・D18、62〜64 の保存の結果、66 UI-06c-D9、02 ⑥・⑨・⑮、`docs/SCREEN_DESIGN.md` §1〜§4 で満たす（段 3 の対応表）。条件「未解決の設計の問いが無い」は、決定 1・決定 2（TD-424・TD-425）と Q-1・Q-2（TD-422・TD-423）で決まり、段 3 の細部は design-system の原則から決めた（段 3 の 3.4）ことで満たす。Open Questions の Q-3（商品ごとの最低限の数）は答えが無いときの既定が D-138 の形（今の基準との比べ）で、設計を止めない。
 
 ## Owner Effort Budget
 
@@ -37,7 +40,7 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（起票の時点。TD-413・TD-415 は起票の前の所感で、本 lane の介入に数えない） | 4（段 3 の採否 2〈画面の割り当て・初めて開いたときに出すもの〉、Ready 1、merge 1） | 2 | 6 = 0 + 4 + 2 |
+| 介入 | 6 | 2（段 3 の時点。決定 1〈TD-424〉・決定 2〈TD-425〉。店主への問い Q-1・Q-2〈TD-422・TD-423〉は同じ問い合わせに束ね、数え方は Coordinator が決める。TD-413・TD-415 は起票の前の所感で数えない） | 2（Ready 1、merge 1） | 2 | 6 = 2 + 2 + 2 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -82,12 +85,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は operator の操作を決め直す design lane なので、店主の普通の一日のうち本 lane が扱う操作を、今の結果と並べて置く（段 3 で「採った形での結果」の列を足す）。この文書を完了できる（段 3 の採否と正本の置換え）ことと、通常運用を達成できる（後続の runtime の lane が画面を変える）ことは別で、本 lane だけでは後者は達しない。
 
-| 初期状態 | 操作 | 利用者が得る結果（今） | 次へ進む条件 | 未確認の前提／probe参照 |
-| --- | --- | --- | --- | --- |
-| 開店の前後、発注を考える | サイドバーかホームの「在庫照会」を開く | 一覧は出ず、検索の案内だけが出る（S-03、E-01） | 段 2 で、発注の判断に何を一目で見たいかを店の仕事の流れから組む | 発注の判断を在庫照会で何から始めるか（全体を眺める・部門で見る・在庫少だけ見る）は店の事実。段 2 で台帳を引いた: 発注の準備は発注書を持って棚を回り、欲しいのは取引先別の在庫切れ・在庫少の一覧（L-124・QU-004）。PC で最初に何を見たいかは台帳に無く、段 2 の 2.7 の Q-1 |
-| 品物が届いた | 入庫記録で商品を入れて保存し、「在庫照会へ戻る」を押す | 在庫照会が案内だけで開き、入れた商品の在庫は検索し直さないと見えない（S-07、E-02） | 段 3 で戻り先と開いたときの中身を決める | 入庫の後に在庫照会で何を確かめたいか（入れた商品だけか）。段 2 で台帳を引いたが無く、段 2 の 2.7 の Q-2 |
-| 商品を直したい | 商品検索・一覧を開いて探し、「修正」を押す | 一覧が初めから出ていて探せる。修正の後は一覧へ戻る（S-02、S-14） | 段 3 で、在庫照会と商品一覧の役割の分け方か統合を決める | なし |
-| 在庫照会で商品を開き、商品修正へ進む | 詳細の「商品修正」を押して保存する | 保存の後は商品一覧へ戻り、在庫照会へは戻らない（S-03、S-14） | 段 3 で戻り先を決める | なし |
+| 初期状態 | 操作 | 利用者が得る結果（今） | 採った形での結果（D-138、後続の runtime の後） | 次へ進む条件 | 未確認の前提／probe参照 |
+| --- | --- | --- | --- | --- | --- |
+| 開店の前後、発注を考える | サイドバーかホームの「在庫照会」を開く | 一覧は出ず、検索の案内だけが出る（S-03、E-01） | 「商品と在庫」を開くと全商品の一覧が出る。発注の準備はサイドバー・ホームの「在庫切れ・在庫少」で、在庫切れと在庫少が取引先順に 1 つの一覧で出る（メーカー品番つき） | 後続の runtime の L3 で、一覧の列と道具が読めるかを owner が確かめる | 店主は PC で在庫を見るとき全部の商品の一覧が助かると答えた（Q-101・TD-422） |
+| 品物が届いた | 入庫記録で商品を入れて保存し、「在庫照会へ戻る」を押す | 在庫照会が案内だけで開き、入れた商品の在庫は検索し直さないと見えない（S-07、E-02） | 保存の結果に保存した商品ごとの「在庫を見る」が出て、押すとその商品の行と詳細が開き、状態の欄が在庫少の基準との比べ（在庫少 / 在庫あり）を示す | 同上 | 店主は時々、限られた商品について最低限要る数に達したかを確かめる（Q-102・TD-423）。商品ごとに違う数は Q-3 |
+| 商品を直したい | 商品検索・一覧を開いて探し、「修正」を押す | 一覧が初めから出ていて探せる。修正の後は一覧へ戻る（S-02、S-14） | 「商品と在庫」で探し、行を開いて「商品修正」（2 click）。保存の後は来た一覧の条件へ戻る | 同上 | なし |
+| 在庫照会で商品を開き、商品修正へ進む | 詳細の「商品修正」を押して保存する | 保存の後は商品一覧へ戻り、在庫照会へは戻らない（S-03、S-14） | 同じ画面なので、保存の後は来た一覧（在庫切れ・在庫少を含む）へ戻る | 同上 | なし |
 
 ## Scope
 
@@ -97,12 +100,21 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 正本と code の食い違いの表。
 - 重なる画面の組と、初めて開いたときに何も出ない所の一覧（解決案は書かない）。
 
-段 2・段 3（後の run。下の「段 2・段 3 の進め方」）:
+段 2・段 3（下の「段 2・段 3 の進め方」）:
 
 - 段 2: 白紙の骨組み（本 packet の後半の `## 段 2: 白紙の骨組み`。2026-10-24 の段 2 の run で済み）。
 - 段 3: 今の設計との突き合わせと owner の採否の選択肢（本 packet の後半に置く）。採否の後、正本を置き換える: `docs/SCREEN_DESIGN.md`（§1・§2・§3 の対象の画面・§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77 のうち採った形が触る節、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮ のうち触る所、`docs/decision-log.md` の D-138、D-047 の置換えの行（変えるなら）、`docs/backlog.md` の後続の runtime の項目。段 3 の後に Scope をこの粒度から file の一覧へ詰める。
 
-本 run の差分は本 packet だけ。`docs/Plans.md` は変えない（`## 次の行動` に `docs/plans/` を指す pointer の行が既にあり、D-097 の D6 は lane ごとの行を足さない）。
+段 3 で置き換えた file（`git diff --name-only origin/main...HEAD` で数える。本 packet と Matrix を除く 20 file）:
+
+- 画面の正本: `docs/SCREEN_DESIGN.md`（§1 #4・#7、§2 のエリア・動線・遷移、§3 の商品と在庫画面〈在庫照会画面と商品検索・一覧画面を置換え〉・入出庫履歴・在庫変動追跡・入庫記録・返品・交換・PLU書出し、§4 の商品と在庫の統合・UI-06a Phase 2 の注記）、`docs/UI_TECH_STACK.md`（query の表の UI-06b の行、HID の UI-06a の行）
+- function design: `docs/function-design/50-ui-product-list.md`（冒頭、§50.1、§50.2 UI-01a-D1・D14〜D19、§50.4、§50.6、§50.7、§50.8）、`58-ui-stock-inquiry.md`（冒頭、§58.1、§58.4、§58.6、§58.7、§58.8、§58.10 契約 H・契約 I・UI-06a-D7・D8・廃番除外、§58.12、§58.13、更新履歴）、`52-ui-shared-layout.md`（§52.3 の UI-06a・UI-01a・UI-06b の行とナビに出さない route、§52.6 UI-12-D1）、`53-ui-home.md`（§53.1 の QuickActionGrid の行、§53.8 UI-00-D13）、`51-ui-product-form.md`（UI-01b-D2）、`61-ui-receiving.md`（UI-02-D10・D13・D18、§61.3、§61.5、§61.7、§61.9）、`62-ui-manual-sale.md`（UI-04-D12・D14、§62.3）、`63-ui-return-exchange.md`（UI-03-D15・D18、§63.3、§63.7）、`64-ui-disposal.md`（UI-05-D11・D14、§64.3、§64.7）、`66-ui-stock-movements.md`（§66.1、UI-06c-D9）、`67-ui-plu-export.md`（Diff 0 件の文言）、`77-ui-bulk-price-revision.md`（Empty の導線の label）
+- 索引・要約: `docs/ARCHITECTURE.md`（UI-01a・UI-06a・UI-06b の行）、`docs/FUNCTION_DESIGN.md`（UI-06a の要約の 2 行の「検索駆動表示契約 I」に撤去の注記。索引の link の文字は変えない）、`docs/architecture/ui-task-specs.md`（UI-12 のサイドバー、UI-00 の大ボタン、UI-01a、UI-06a・UI-06b）
+- design-system: `docs/design-system/02-component-catalog.md`（⑥ 空状態の説明・filter-empty の採用箇所、⑨ 商品を探す検索欄の列、⑮ 取引 4 画面の先頭の列、更新履歴）
+- 決定と後続: `docs/decision-log.md`（D-138、D-047 の Superseded in part の行）、`docs/backlog.md`（「商品と在庫の画面の統合の runtime」、「商品ごとの最低限の在庫数」）
+- Matrix: `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`
+
+変えないもの: `docs/spec/requirements.md`（REQ と task の対応）、各設計書の `> 対応仕様:` の行、`docs/FUNCTION_DESIGN.md` の索引の link の文字（traceability の生成の入力は link の文字だけ〈`src-tauri/src/bin/generate_traceability.rs` の `parse_index_links`〉。UI-01a と UI-06a の ID を 1 つの画面で持つので変えない）、`docs/diagrams/current-system.md`（今の build の図。runtime の lane が直す）。`docs/Plans.md` は変えない（`## 次の行動` に `docs/plans/` を指す pointer の行が既にあり、D-097 の D6 は lane ごとの行を足さない）。
 
 ## Non-scope
 
@@ -131,11 +143,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - plan にしかない durable な判断の昇格先: 段 3 の採否は D-138 と各正本の節。段 1 の表と段 2 の骨組みは packet に置き、正本には写さない（archive の packet が経緯を持つ）。
 - 前提・制約と、延期した design gap の follow-up: SP-301-01〜03・SP-302-01〜04（在庫照会の仕様の ID）の本文は tracked docs に無い（`rg -n 'SP-301-01|SP-302-01' docs --glob '!docs/archive/**'` の出力 2 行、どちらも ID の引用だけ〈`docs/SCREEN_DESIGN.md` と 58 §58.1〉）。段 2 で REQ の文（`docs/spec/requirements.md` の REQ-103・REQ-301〜303）と店の事実から組み、SP の本文を前提にしない。
 - 絶対保証の例外と escape hatch の自己点検: 段 1 では絶対保証を書いていない。段 3 で「何も出ない画面は無い」と書くなら、読込みの失敗・0 件・範囲外の page・商品が 1 件も無い DB の場合を同じ PR で点検する。
-- 判定: not ready（段 3 が残る。design に留まる）。
+- 段 3 の後の状態: operator workflow / route・search state / empty UI の行 = updated in this PR（上の Scope の file）。durable な判断 = D-138（updated in this PR）。BIZ・CMD・DB = 変えない（`search_products`・`list_low_stock`・`get_stock_detail` の既存の型で足りる。Boundary / Wire Contract）。
+- 絶対保証の点検（段 3）: 「何も出ない画面は作らない」（50 UI-01a-D18、D-138 の Guarantee range）の例外を同じ PR で点検した: 読込みの失敗（Alert と再試行）、絞り込みの 0 件（条件に合わせた説明と「絞り込みを解除」）、範囲外の page（UI-06a-D3 の回復）、商品が 1 件も無い DB（「商品がありません」と「商品を登録する」）、在庫少の集合だけの失敗（58 契約 H の「—」と知らせ）・読込み中（Skeleton）。
+- 隣の仕様との比べ（Design completion criteria の route/search state の行）: 戻り先（商品修正の `returnTo` は 51 UI-01b-D2 の受け口のまま、在庫変動履歴は 66 UI-06c-D9 の仕組みのまま pin を `/products` へ）、絞り込みの解除（02 ⑥ の採用箇所の統合の後の数）、行の選択（58 の `selected` ライフサイクル）、数字だけの商品コードの往復（66 の GA5 を `/products` にも当てる）。
+- 判定: ready（design → plan-draft の条件を満たす。Workflow State の遷移の記録 3）。
 
 ## Registration / Generation Obligations
 
-本 run は該当なし（docs の packet だけ）。段 3 の置換えで function-design の file を新設・改名するなら `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` と親の索引、REQ の参照を増減するなら `cargo run --bin generate_traceability` を Scope に入れる。route の新設・改名・operator 画面の新設・統合は後続の runtime の lane の義務（`npm run generate:routes`、`src/config/navigation.ts` と到達の test）。
+段 3 の後も本 lane は該当なし: function-design の file を新設・改名せず、`> 対応仕様:` の行・`docs/spec/requirements.md`・`docs/FUNCTION_DESIGN.md` の索引の link の文字を変えないので、`build_doc_to_modules_map()` と traceability の再生成は要らない。（起票の時の注記: function-design の file を新設・改名するなら `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` と親の索引、REQ の参照を増減するなら `cargo run --bin generate_traceability` を Scope に入れる。route の新設・改名・operator 画面の新設・統合は後続の runtime の lane の義務（`npm run generate:routes`、`src/config/navigation.ts` と到達の test）。D-138 の runtime では `/stock` の index の redirect と navigation の 2 項目の変更・1 項目の削除がこれに当たる（backlog の該当項目）。）
 
 ## Impact Review Lenses
 
@@ -149,30 +164,30 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 該当: 発注を考える・入庫の後に確かめる・商品を直す、の列（上の Ordinary Operation）。店の事実は段 2 で台帳を引く | 段 2 の骨組み |
 | Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | 不該当: 外部の system を置き換えない | なし |
 | Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 該当: owner の原文は台帳の ID だけで引き、店の商品数・商品名は書かない | Data Safety |
-| Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 一部該当: 「在庫あり」は基準以上を保証しない（58 契約 H）。一覧を出す形で状態の意味が変わらないかを段 3 で点検する | 段 3 の選択肢 |
+| Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 該当（段 3 で点検）: 一覧を全商品で開くと、今の契約 H では在庫少の商品を「在庫あり」と出す（基準以上を保証しない）。D-138 で「すべて」でも在庫少の集合で決め、「在庫あり」を基準を上回る意味にした。集合が読めないときは言い切らない | 58 契約 H、Matrix の契約 H の行 |
 | Manual verification | Which assertions cannot be proven by automated tests and require Windows native L3, external tool import, or real-device confirmation? | Plan Packet, Test Matrix, PR body | 本 lane は docs だけで L3 は無い。採った形の見え方は後続の runtime の L3 で確かめる（design-system 04 原則 11） | 後続の runtime の packet |
 | 環境・再現性 | 新設の環境依存（toolchain / CI runner / OS 差異等）を repo-pinned config で強制するか、明示的に defer するか | repo-pinned config, Plan Packet | 不該当: 環境依存を足さない | なし |
 
 ## Boundary / Wire Contract
 
-本 run は wire を変えない。段 3 で画面の統合や検索の command・route の search params を変える形を採るなら、その時点でこの節を埋める（producer・consumer・wire type・互換）。今の route の search params は段 1 の表の各行が引く zod schema（`src/features/stock-inquiry/types.ts:30-38`、`src/features/products/search.ts:54-69` ほか）。
+command・DTO・bindings は変えない（`search_products`・`list_low_stock(includeDiscontinued)`・`get_stock_detail` の既存の型）。変わるのは route の search params（URL state）で、後続の runtime の lane が実装する。
 
-- producer: 段 3 の後に決める（本 run は変えない）
-- consumer: 同上
-- wire type: 同上
-- internal type: 同上
-- precision/range: 同上
-- round-trip path: 同上
-- invalid input: 同上
-- compatibility: 同上
+- producer: 統合の画面（`/products` の navigate）、行の詳細（「商品修正」の `returnTo`、「在庫変動履歴」の `returnTo`、「入庫記録」の `productCode`）、入出庫 4 画面の保存の結果（「在庫を見る」の `q`・`selected`）、在庫変動履歴の「商品と在庫へ戻る」、`/stock` の redirect、サイドバーの「在庫切れ・在庫少」（`status=low_stock`）
+- consumer: `/products` の route schema（`src/routes/products/index.tsx`・`src/features/products/search.ts` の `validateSearch`）、入庫の route schema（`src/routes/inventory/receiving.tsx`）、商品修正の `returnTo` の受け口（`src/features/products/lib/return-to.ts`、UI-01b-D2 は変えない）、在庫変動履歴の `returnToLinkProps` の pin（66 UI-06c-D9）
+- wire type: URL の search params（string。router の `parseSearch` を通る）
+- internal type: `status: "all" | "low_stock"`、`selected: string`（1〜100 文字）、`productCode: string`（1〜100 文字）、今の `q`・`dept`・`discontinued`・`sort`・`dir`・`perPage`・`page`（50 §50.4）。`StockStatus` に在庫少の集合が読めない状態を足す（58 契約 H）
+- precision/range: 文字列の長さ 100（`selected` の上限は 58 §58.4・66 UI-06c-D9 と同じ）
+- round-trip path: 統合の画面 → 商品修正 → 保存・戻る → 来た一覧。統合の画面 → 在庫変動履歴 →（業務記録詳細 → 戻る）→「商品と在庫へ戻る」→ 来た一覧。入出庫の保存の結果 →「在庫を見る」→ その商品の行。数字だけの商品コードも string のまま往復する（66 の GA5）
+- invalid input: zod の `.catch(undefined)` で既定へ（今の契約）。`status` の旧値 `stockout` は `low_stock` として読む。`productCode` の不明・廃番は明細を入れず案内（61 UI-02-D18）
+- compatibility: `/stock` は `/products` へ寄せ、`q`・`dept`・`selected`・`page` を写し `status` を読み替える（50 UI-01a-D19）。統合の前に作られた `returnTo=/stock?...` は在庫変動履歴の pin に合わず fallback（`/products?q=<code>&selected=<code>`）で同じ商品に着く（66 UI-06c-D9）。`/stock/$code/movements` の path は変えない
 
 ## Test Plan
 
-本 lane は docs だけで、自動 test の追加は無い。Test Design Matrix は段 3 の後（plan-draft への遷移の前）に `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md` へ置き、採った形の契約ごとに後続の runtime が足す test の行（REQ・節の ID つき）を導く。
+本 lane は docs だけで、自動 test の追加は無い。Test Design Matrix は `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`（段 3 で置いた）で、採った形の契約ごとに後続の runtime が足す test の行（節の ID つき）を持つ。
 
 - targeted tests: 本 lane は無い。`bash scripts/doc-consistency-check.sh` と `--target plan docs/plans/2026-10-24-screen-elements-redesign.md` を ERROR 0 で通す
-- negative tests: 本 lane は無い。段 3 で 0 件・読込みの失敗・範囲外の page を Matrix の行にする
-- compatibility checks: 段 3 で、URL の search params の互換（bookmark・`returnTo` の着地、66 UI-06c-D9）を Matrix の行にする
+- negative tests: 本 lane は無い。0 件・読込みの失敗・範囲外の page・在庫少の集合の失敗は Matrix の UI-01a-D18・契約 H の行
+- compatibility checks: URL の search params の互換（`/stock` の寄せ・`returnTo` の着地・数字だけの商品コード）は Matrix の UI-01a-D19・UI-06c-D9・§50.4 の行
 - data safety checks: 差分に owner の原文・店のデータが無いことを目で確かめる
 - main wiring/integration checks: 本 lane は無い（後続の runtime の到達の test）
 
@@ -181,7 +196,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 段 1 の表が、code の現物と正本の両方に合っているか（行の根拠の `file:line` と節を開いて確かめる）。外した画面の理由が妥当か。
 - 重なりと何も出ない所の一覧に漏れが無いか。解決案が混ざっていないか。
 - 食い違いの表に、どちらが正しいかの裁定を書いていないか（裁定は段 3）。
-- この変更で不要になる記述・条件は無いか（段 3 の置換えで、契約 I・UI-01a-D1 の「機械的に横展開しない」・D-047 の文が要らなくなる見込みがあるか）。
+- この変更で不要になる記述・条件は無いか（段 3 の置換えで、契約 I・UI-01a-D1 の「機械的に横展開しない」・D-047 の文が要らなくなる見込みがあるか）。段 3 の後: 旧い言い方の sweep（段 3 の 3.6）の分類が妥当か、「今の build」と書いて残した記述が runtime の lane の Scope（backlog）に入っているか。
+- 段 3（Plan Review）: 対応表（3.2）の全行が採った結果と直した正本の箇所を持ち、正本の文と食い違わないか。D-138 の失うもの・Guarantee range が正本（50・58）の文と合うか。「すべて」の在庫少の判定（58 契約 H）が、廃番の表示・集合の読込み中・失敗の全部の組で言い切らないか。Q-2 の「最低限の数」の扱い（3.3）が、新しい設定・field を足さずに言える範囲に留まっているか。
 
 ## 段 1: 今の画面の事実
 
@@ -465,20 +481,109 @@ design-system の正本（04 の 11 の原則、01 の DSR、02 のパターン�
 | E-04 | D-118 の (b)（本 lane は変えない） |
 | X-01 | 58 を置き換えるときに同じ PR で直す（案 A・B・C） |
 
+## 段 3: 突き合わせと owner の採否、正本の置換え
+
+2026-10-24、起草役（段 3 の run）。行番号は起点 main `843c4938` の code の時点（段 1 と同じ）。
+
+### 3.1 owner と店主の答え
+
+repo 外の回答台帳の ID で引く（原文は台帳にあり、公開 repo には書かない）。
+
+| 問い | 答え | 台帳 |
+|---|---|---|
+| Q-1（店主、2.7） | a 全部の商品の一覧 | Q-101、TD-422 |
+| Q-2（店主、2.7） | c 時々確かめる。確かめるのは限られた商品で、1 単位でできることが限られる品について、最低限要る在庫の数に達したかを見る | Q-102、TD-423 |
+| 決定 1（2.8） | A 統合 | TD-424 |
+| 決定 2（2.8） | a 全商品の一覧（廃番以外、商品コード順、ページあり） | TD-425 |
+
+Q-1 が a なので 2.8 の推奨（決定 1 = A・決定 2 = a）は動かず、owner はその推奨を採った。Q-2 が c なので、2.5 の K-5 の a・c の扱い（保存の後の「在庫を見る」は扱った商品を出す）を採った。
+
+### 3.2 段 1 の項目の対応表
+
+全部の O・E・X に、採った結果と直した正本の箇所を対応させた。
+
+| 項目 | 採った結果 | 直した正本の箇所 |
+|---|---|---|
+| O-1 商品検索・一覧と在庫照会の「すべて」 | 統合（決定 1 = A）。1 つの画面「商品と在庫」、route `/products`、`/stock` は寄せる | 50 冒頭・§50.1・UI-01a-D14・D19、58 冒頭、`docs/SCREEN_DESIGN.md` §1 #4・#7、§3 商品と在庫画面、§4 商品と在庫の統合、52 §52.3 の UI-01a・UI-06a の行、ARCHITECTURE・ui-task-specs の UI-01a・UI-06a、D-138 (1) |
+| O-2 ホームの件数と在庫照会の在庫切れ・在庫少 | 件数の card は今のまま導線にしない（D-089）。ホームの入口 card の 4 枚目を「在庫切れ・在庫少」にし、件数の近くから 1 回でその一覧へ。件数の数え方の関数の重複は runtime の任意 | 53 §53.1・UI-00-D13、backlog の「商品と在庫の画面の統合の runtime」の任意の行 |
+| O-3 サイドバーの在庫少一覧とチップ | 入口を「在庫切れ・在庫少」1 つにし、在庫切れにも同じ入口が付く。チップは 2 つ | 52 UI-12-D1・UI-06b の行、58 §58.1・UI-06a-D8、D-047 の Superseded in part の行 |
+| O-4 1 商品の情報の 3 か所と戻り先 | 戻り先を直す（詳細の「商品修正」が `returnTo` を渡し、保存の後は来た一覧へ）。3 か所（行の詳細・商品修正・在庫変動履歴の見出し）は、見る・直す・増減を追うの別の問いに答えるので残す（P-23） | 50 UI-01a-D17、58 §58.7、51 UI-01b-D2 |
+| O-5 PLU の列・絞り込みと PLU書出し・通知バー | 本 lane は変えない（D-117 の runtime）。統合の画面は PLU の列・絞り込み・一括の操作を持たない（D-117 が決めた撤去を写すだけ） | 50 UI-01a-D16、D-138 の Compatibility |
+| O-6 一括価格改定と商品検索・一覧 | 残す（行ごとの確定と新しい値の入力を持つ作業の画面。P-03・P-23）。検索欄の当たる列だけ共通の規則 | 02 ⑨、77 の Empty の導線の label |
+| O-7 入出庫 4 画面と棚卸しの商品を選ぶ欄 | 取引 4 画面の複数件候補と明細の先頭の列を「商品コード・商品名・部門・現在庫」にそろえる。棚卸しは除く（D-118 の (b)、並走の b1・b2） | 02 ⑮、61 §61.5、`docs/SCREEN_DESIGN.md` §3 入庫記録画面 |
+| O-8 入出庫履歴と在庫変動履歴 | 残す（記録を探す問いと 1 商品の増減を追う問いは別）。在庫変動履歴の入口は統合の画面の行の詳細 | 66 §66.1、`docs/SCREEN_DESIGN.md` §3 入出庫履歴・在庫変動追跡 |
+| E-01 在庫照会の「すべて」で何も出ない | 解消（決定 2 = a）。初めて開いたら全商品。旧契約 I を撤去 | 50 UI-01a-D1、58 §58.1 の失敗の 4、§58.7 の EmptySearchPlaceholder、§58.8 の #4、§58.10 契約 I |
+| E-02 入出庫 4 画面の「在庫照会へ戻る」 | 解消（Q-2 = c）。保存の結果に保存した商品ごとの「在庫を見る」（その商品の行と状態を開く）。上の戻る導線は「商品と在庫へ」（全商品の一覧が出るので何も出ない画面に着かない） | 61 UI-02-D10・§61.3、62 UI-04-D12・§62.3、63 UI-03-D15・§63.3、64 UI-05-D11・§64.3、`docs/SCREEN_DESIGN.md` §2 の遷移・§3 入庫記録・返品・交換 |
+| E-03 在庫少・在庫切れの 0 件の文 | 解消。0 件の説明を選んでいる条件に合わせる | 50 UI-01a-D18・§50.7、02 ⑥ の空状態の説明 |
+| E-04 棚卸しに進行中が無い | 本 lane の外（D-118 の (b)） | なし |
+| E-05 PLU書出しの 0 件 | 文を今の build の「PLU書出しが必要な商品はありません。」にそろえる（X-06） | 67 の Diff 0 件、`docs/SCREEN_DESIGN.md` §3 PLU書出し画面 |
+| X-01 58 の `selected` の上限 20 | 58 を 100 に直した（code と 66 に合わせる） | 58 §58.4 |
+| X-02 入庫の候補・明細に現在庫が無い | 正本に合わせて runtime で code を直す（先頭の 4 列の共通の規則） | 61 §61.5、02 ⑮、`docs/SCREEN_DESIGN.md` §3 入庫記録画面 |
+| X-03 商品一覧の PLU の道具 | D-117 の runtime（本 lane は変えない。統合の画面は持たない） | なし（50 UI-01a-D10〜D12 のまま） |
+| X-04 50 §50.6 の行のクリック | 置き換え（行のクリックは詳細を開く。商品修正は詳細から） | 50 §50.6・UI-01a-D17 |
+| X-05 検索欄の当たる列がチップで変わる | 検索欄はどの状態でも 4 つの列（`maker_code` を含む） | 02 ⑨、58 UI-06a-D8・§58.6 |
+| X-06 PLU書出しの 0 件の文言 | 正本を今の build の文に合わせた | 67、`docs/SCREEN_DESIGN.md` §3 PLU書出し画面 |
+
+### 3.3 Q-2 の「最低限要る在庫の数に達したか」の扱い
+
+正本の閾値の定義を実読した: 在庫少の基準は `app_settings` の `stock_low_threshold`（個数の単位の数、初期値 3）と `stock_low_threshold_fabric`（長さの単位の cm、初期値 500）の 2 つで、BIZ の `list_low_stock` が `stock_quantity <= ?` で比べる（`docs/function-design/10-common-rules.md` の在庫少の基準の行、`docs/DB_DESIGN.md` の初期値と適用ルールの行、[69](../function-design/69-ui-threshold-settings.md)）。商品ごとの基準は無い。
+
+- confirmed（新しい設定・field を足さない）: 統合の画面の状態の欄を、どの状態でも在庫少の集合で決める（58 契約 H の置換え）。「すべて」でも `list_low_stock(true)` を読み、集合に入る在庫ありの商品を「在庫少」、入らない商品を「在庫あり」（基準を上回る）と出す。入庫などの保存の結果の「在庫を見る」はその商品の行を「すべて」で開くので、状態の欄が「今の基準に達したか」に答える。今の契約 H のままだと「すべて」は在庫少を出さず（「在庫あり」は基準以上を保証しない）、この確かめに答えない。集合の読込み中は Skeleton、失敗は「—」と知らせで、言い切らない。
+- owner への問いの候補（Open Questions の Q-3）: 店主の言う「最低限要る数」が商品ごとに違うなら、今の基準（単位の種類ごとの 2 つの値）では表せない。商品ごとの基準は商品の field・商品フォーム・`list_low_stock`・商品 CSV を変える別の lane になる。出所は店主の答え（TD-423）で、AI の review の起源の要件ではない。答えが無い間は confirmed の形で進め、本 lane と runtime の lane を止めない。
+
+### 3.4 段 3 で決めた細部と根拠
+
+owner の採否（A・a）の中で、画面の細部は design-system の原則から決めた（見え方は後続の runtime の Windows native L3 で owner が確かめる。P-22）。
+
+- route は `/products`（UI-01a-D14）: URL の道具が多い側で、商品修正の `returnTo` の受け口と子の route 5 つが既にある。子の route の path は移さない（デスクトップのアプリで URL は利用者に見えない）。`/stock` は寄せる（UI-01a-D19）。
+- サイドバーは「商品と在庫」を毎日の業務に、「在庫切れ・在庫少」を入出庫に（UI-01a-D14、52 UI-12-D1）: 使う頻度（SCREEN_DESIGN §1）と、今の在庫照会・在庫少一覧の位置を保つ（壊さない優先）。商品管理のエリアから商品検索・一覧を外す（2 つの入口が同じ画面を指さない。P-09）。
+- ホームの入口 card は 3・4 枚目を「商品と在庫」「在庫切れ・在庫少」（53 UI-00-D13）: 2 枚が同じ画面を指さず、件数の近くから発注の準備の一覧へ 1 回で行ける。月次売上は日次売上のタブから 1 回で行ける。
+- 詳細の導線の label は今のまま（「商品修正」「在庫変動履歴」「入庫記録」）: 店主が見たことのある語を変えない（壊さない優先）。
+- 「在庫切れ・在庫少」では検索欄・状態・部門だけを出し、URL の値は消さない（UI-01a-D15）: 効かない道具を見せない（P-24）、足さない（QU-004、P-02）、行き来で条件を失わない。並べ順は「取引先順」と文字で出す（P-13）。
+- 「在庫切れ・在庫少」の列は取引先・メーカー品番を先頭側に（UI-01a-D16）: 2.4 の案 A の表のとおり（発注書は取引先ごと、番号はメーカー品番）。
+- 保存の結果の「在庫を見る」は商品ごとの link（61 UI-02-D10）: 入れた商品だけを出した一覧（2.5 の K-5 の a・c の形）は、商品コードの一覧で絞る検索が無く command の型を変える。Q-2 の答えは「限られた商品を時々」で、確かめたい商品を 1 回で開く形がその用途に合い、command の型を変えない。
+- 入庫の事前入力は完全一致の `get_stock_detail` で読み、URL から外す（61 UI-02-D18）: 部分一致で似たコードの商品を入れない、F5 で 2 行目を入れない。廃番は入れない（入庫の商品追加欄は廃番を出さない）。
+- 「すべて」の在庫少の集合は廃番を含めて読む（58 契約 H）: 「すべて」は廃番の表示を持つので、廃番の在庫少を「在庫あり」と出さない。
+
+### 3.5 Open Questions
+
+- Q-3（owner へ。店主の答え TD-423 から。決定でなく確かめ）: 「最低限要る在庫の数は、商品ごとに違いますか」— a 今の基準（個数の単位で 1 つ、生地で 1 つ）でよい ／ b 商品ごとに数を持ちたい（商品の欄を足す。別の lane、R3 以上、DB の列）／ c 部門ごとに持ちたい（別の lane）。推奨 a（precondition-dependent: 店主が確かめる商品の最低限の数が基準と大きく違うと答えたら b か c）。答えが無いときの既定は a（D-138 の形）で、本 lane の plan-gate と runtime の lane を止めない。答えの置き場は backlog の「商品ごとの最低限の在庫数」。
+
+### 3.6 旧い言い方の sweep
+
+置き換えた契約の旧い言い方を docs 全体（`docs/archive/**`・`docs/research/**` を除く）で `rg` した。分類: 置換え（本 PR で直した）／今の build（統合の前の振舞いの記述として残し、runtime の lane が直す。backlog の項目に入れた）／履歴（日付つきの経緯・更新履歴・decision-log の本文。append-only）／対象外。結果は下の表（数は本 PR の head で数えた）。
+
+| 旧い言い方（`rg -F`） | hit の file（packet・Matrix を除く） | 分類 |
+|---|---|---|
+| `別の目的`・`機械的に横展開しない`（旧 UI-01a-D1） | 50 の UI-01a-D1 は置換え済み（hit 0）。`docs/SCREEN_DESIGN.md` §4 と decision-log D-138 の hit は置き換えた経緯の文 | 置換え（旧文 0）／履歴 |
+| `契約 I`・`検索駆動` | 58（冒頭・§58.1・§58.10 は撤去の文、§58.2 の file 表・§58.5 の疑似コード・§58.7・§58.8 は今の build の記述、更新履歴は履歴）、50 UI-01a-D1（置き換えた旨）、`docs/FUNCTION_DESIGN.md` の 2 行（撤去の注記を足した）、backlog の起源の項目（解消の矢印に直した）、decision-log D-138（経緯） | 置換え／今の build（runtime）／履歴。`契約 ID` の hit（10・35・templates）は対象外 |
+| `EmptySearchPlaceholder` | 58（今の build の部品）、02 ⑥ の適用除外 2 行、59 の空状態の 2 系統 | 今の build（部品の撤去とともに runtime が消す。backlog の項目に入れた） |
+| `在庫照会へ戻る` | 61〜64・66 の行は「今の build は…」の注記と D-138 の後の値、66 の Header・§66.7、01 DSR-18 の例、`docs/diagrams/current-system.md`、design-system の mockup（reference） | 置換え／今の build（runtime、backlog に入れた）／対象外（reference の mockup は初期提案の歴史資料） |
+| `在庫少一覧` | 52 の §52.3（D-138 の注記を足した）・§52.4 の項目と icon の表、58 の §58.1（置換え）と §58.12・更新履歴、ARCHITECTURE・ui-task-specs・UI_TECH_STACK（D-138 の注記を足した）、`docs/diagrams/current-system.md`、03 の「配置の常識」（一覧の種類の一般名）、44・69・cmd-task-specs（`list_low_stock` の機能の一般名）、DEV_SETUP_CHECKLIST・decision-log D-047（履歴）、reference の mockup | 置換え／今の build（52 §52.4、diagrams。runtime）／対象外（一般名）／履歴 |
+| `基準以上を保証しない`（旧契約 H） | 58 契約 H の「今の build は…」の 1 行 | 今の build（runtime） |
+| `行クリックは商品修正`（旧 §50.6） | 0（50 §50.6 は置換え済み） | 置換え |
+| `差分はありません`（X-06） | 0（67・SCREEN_DESIGN は置換え済み） | 置換え |
+| `include_discontinued = false`（旧廃番除外） | 58 の廃番除外の「今の build は…」の 1 行 | 今の build（runtime） |
+| `「在庫照会」`（画面名） | `docs/ACCEPTANCE_SCENARIO.md` の手順 8 行、52・58・ui-task-specs・decision-log・SCREEN_DESIGN | 今の build（ACCEPTANCE_SCENARIO は runtime、backlog に入れた）／置換えの注記／履歴 |
+
 ## Contract Ledger
 
-本 run は正本を変えない。段 3 の採否で置き換える見込みの契約を挙げる（採った形が決まった後に、実装の列と自動 test の列を埋め、触らない行は除外の理由を書く）。
+段 3 で置き換えた契約。実装の列は本 PR の docs の置換え、自動 test の列は Matrix の Test Matrix の行（契約の列で引く。test の名は Matrix にあり、後続の runtime の lane が足す）。
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| 58 契約 I（「すべて」の検索駆動表示） | 58 §58.10、§58.1 失敗 4 状態の 4 | 段 3 の採否で決める（docs だけ） | 後続の runtime（今は `src/features/stock-inquiry/hooks/useStockInquiry.test.tsx` の status=all+q 空で enabled=false） | 後続の runtime の L3 |
-| UI-01a-D1（商品一覧の初期表示） | 50 §50.2 | 段 3 の採否で決める | 後続の runtime | 後続の runtime の L3 |
-| D-047・UI-12-D1（在庫少一覧を在庫照会の deep-link にする） | 58 §58.1、52 UI-12-D1 | 段 3 の採否で決める | 後続の runtime | 後続の runtime の L3 |
-| UI-06a-D1・UI-06a-D6（在庫照会のページと件数） | 58 §58.10 | 段 3 の採否で決める | 後続の runtime | 後続の runtime の L3 |
-| UI-06a-D7・UI-06c-D9（在庫照会への戻り先） | 58 §58.10、66 §66.2 | 段 3 の採否で決める（入出庫 4 画面の「在庫照会へ戻る」を含む） | 後続の runtime | 後続の runtime の L3 |
-| D-089（ホームの件数 card は導線でない） | decision-log D-089、53 §53.1 | 段 3 の採否で決める | 後続の runtime | 後続の runtime の L3 |
-| UI-02-D4 系と SPEC-SUGGEST-D3・D7（商品を選ぶ欄の候補） | 61〜64 の product add の行、73 UI-10-D2・UI-10-D12、02 ⑮ | 段 3 の採否で決める（候補・明細の列を揃えるか） | 後続の runtime | 後続の runtime の L3 |
-| SCREEN_DESIGN §4「在庫照会のREQ統合」 | `docs/SCREEN_DESIGN.md` §4 | 段 3 の採否で決める | 非対象（文書の判断の記録） | 非対象 |
+| 58 契約 I（「すべて」の検索駆動表示）→ 撤去、UI-01a-D1 の置換え | 50 §50.2 UI-01a-D1、58 §58.10 契約 I・§58.1・§58.8 | docs（本 PR）: 50、58、`docs/SCREEN_DESIGN.md` §3 | Matrix の UI-01a-D1 の 2 行（今の `src/features/stock-inquiry/hooks/useStockInquiry.test.tsx` の status=all+q 空で enabled=false は runtime で反転） | runtime の L3（開いて一覧が出る） |
+| UI-01a-D14・D19（統合と `/stock` の寄せ）、D-047・UI-12-D1 の先 | 50 §50.2、52 §52.3・§52.6、D-047 の Superseded in part、D-138 | docs（本 PR）: 50、52、58 冒頭・§58.1、decision-log、ARCHITECTURE、ui-task-specs | Matrix の UI-01a-D19・UI-12-D1 の行 | runtime の L3（サイドバーの 2 項目） |
+| UI-01a-D15・§50.4（URL state と「在庫切れ・在庫少」の道具） | 50 §50.2・§50.4 | docs（本 PR）: 50 | Matrix の UI-01a-D15・§50.4 の行 | runtime の L3 |
+| UI-01a-D16・UI-06a-D8・廃番除外（列・チップ・検索欄の列） | 50 §50.2・§50.6、58 §58.6・§58.7・§58.10 | docs（本 PR）: 50、58、02 ⑨ | Matrix の UI-01a-D16・UI-06a-D8 の行 | runtime の L3（8 列が 16px で収まるか） |
+| 58 契約 H（「すべて」でも在庫少） | 58 §58.6・§58.8・§58.10・§58.12 | docs（本 PR）: 58、`docs/SCREEN_DESIGN.md` §3・§4 | Matrix の契約 H の 4 行 | runtime の L3（状態の見分け） |
+| UI-01a-D17・UI-06a-D7・UI-06c-D9・UI-01b-D2（行の詳細と戻り先） | 50 §50.2・§50.6、58 §58.7・§58.10、66 §66.1・UI-06c-D9、51 UI-01b-D2 | docs（本 PR）: 50、58、66、51 | Matrix の UI-01a-D17・UI-06c-D9 の行 | runtime の L3（2 click） |
+| UI-01a-D18（何も出ない画面を作らない、0 件の説明） | 50 §50.2・§50.7、02 ⑥ | docs（本 PR）: 50、02 | Matrix の UI-01a-D18 の行 | 非対象（自動 test で足りる） |
+| UI-02-D10・UI-04-D12・UI-03-D15・UI-05-D11（保存の結果の「在庫を見る」）、UI-02-D18（入庫の事前入力） | 61〜64 の該当の行・§xx.3・§61.7 | docs（本 PR）: 61、62、63、64、`docs/SCREEN_DESIGN.md` §3 | Matrix の UI-02-D10 ほか 4 画面・UI-02-D18 の行 | runtime の L3 |
+| UI-02-D4 系と SPEC-SUGGEST（取引 4 画面の候補・明細の列） | 02 ⑮、61 §61.5 | docs（本 PR）: 02、61 | Matrix の catalog ⑮ の行 | runtime の L3。棚卸し（73 UI-10-D2・UI-10-D12）は対象外（D-118 の (b)） |
+| UI-00-D13（ホームの入口 card）。D-089 は変えない | 53 §53.1・§53.8 | docs（本 PR）: 53 | Matrix の UI-00-D13 の行 | runtime の L3 |
+| SCREEN_DESIGN §4「在庫照会のREQ統合」→「商品と在庫の統合」 | `docs/SCREEN_DESIGN.md` §4 | docs（本 PR） | 非対象（文書の判断の記録） | 非対象 |
+| UI-06a-D1・UI-06a-D6（ページと件数） | 58 §58.10 | 変えない（「すべて」は 50 のページ、「在庫切れ・在庫少」は「全 N 件」のまま） | 既存の test のまま | 非対象 |
 
 ## Contract Probe
 
@@ -492,7 +597,7 @@ N/A: 段 1 の事実は repo の code と正本の現物だけから取り、外
 
 ## Implementation Results
 
-段 3 の置換えの後に書く。
+本 lane は docs だけで、実装の段で足す code は無い。置き換えた正本と箇所は段 3 の 3.2 と Scope（段 3 の commit）。
 
 ## Review Response
 

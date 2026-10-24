@@ -150,7 +150,7 @@ function PluExportPage(): JSX.Element
 
 ## 67.11 Error / Recovery
 
-- Diff対象0件: `listPluDirty` が 0 なら prepareを呼ばず、空状態で「差分はありません」を表示する。Full書出しは選べる
+- Diff対象0件: `listPluDirty` が 0 なら prepareを呼ばず、空状態で「PLU書出しが必要な商品はありません。」を表示する（何が無いかを言う、DSR-11。2026-10-24 に今の build の文へ合わせた、D-138 の design lane の X-06）。Full書出しは選べる
 - prepare validation error: Alertで表示し、差分一覧へ戻れる
 - 未照合: `register_snapshot_required` を表示し、売上データ取込みへの導線へフォーカスを移す
 - JANなし / 13桁以外 / チェックディジット不正 / 同一JAN価格不一致 / `no_free_slot`: prepareは失敗せず、該当商品を `excluded`（要修正一覧）として理由付きで表示する。既存 slot は維持し、今回のファイルには含めない
