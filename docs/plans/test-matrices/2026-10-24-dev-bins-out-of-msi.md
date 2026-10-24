@@ -107,4 +107,4 @@ T1〜T4・T10・T11 は Writer が実装の後に 1 つずつ注入して red �
 - tauri-cli を上げて `get_binaries` が workspace の member を読むように変わったとき、T1・T2 は止めない（crate の形だけを見る）。D-137 の Revisit で tauri-cli の更新のたびに P1 を確かめ直す。T8（deb）を CI に足すのは非目的。
 - 前の MSI（PR #191 の版）の上への更新で開発用の exe が消えるかは見ない（非目的。店の PC は初回から新しい版）。
 - dev-tools の bin が Windows の resource 無しで起動するかは、L3-3 で 3 つの bin を debug の `cargo run` で 1 回ずつ見るだけ（release の build と、開発用の Windows 以外の PC は見ない）。自動の test は無い（CI に Windows の build が無い）。
-- L3-3 の `generate_traceability -- --check` は、Windows の clone の改行の設定（`core.autocrlf`）で D-137 と無関係に T1 が ERROR になり得る（repo に `.gitattributes` が無い）。その時は loader の問題と分けて Coordinator が切り分ける（packet の L3 の順の段落）。
+- L3-3 の `generate_traceability -- --check` は、Windows の clone の改行の設定（`core.autocrlf`）で D-137 と無関係に T1 が ERROR になり得る（repo に `.gitattributes` が無い）。packet の L3 の用意 1 で値を見て、`true` なら L3-3 だけを `git clone -c core.autocrlf=false` の使い捨ての clone で回して前もって避ける。それでも出力の後の非 0・差分が出たら loader の問題と分けて Coordinator が切り分ける（packet の L3 の順の段落）。
