@@ -42,6 +42,8 @@ pub struct NewSaleRecord {
     pub source_line_no: Option<i64>,
     pub reason: Option<String>,
     pub note: Option<String>,
+    /// 取込みのときの在庫連動（Z004 の確定だけが `pos_stock_sync` を渡し、手動の売上ほかは false。pos-tables）
+    pub stock_linked: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -56,8 +58,8 @@ pub struct NewSaleRecord {
 pub fn insert_sale_record(conn: &DbConnection, record: &NewSaleRecord) -> Result<i64, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO sale_records (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, reason, note, is_voided, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)",
+        "INSERT INTO sale_records (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, reason, note, is_voided, created_at, stock_linked)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11)",
         rusqlite::params![
             record.csv_import_id,
             record.product_code,
@@ -69,6 +71,7 @@ pub fn insert_sale_record(conn: &DbConnection, record: &NewSaleRecord) -> Result
             record.reason,
             record.note,
             now,
+            record.stock_linked,
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -106,6 +109,9 @@ pub struct NewCsvImport {
     pub total_amount: i64,
     pub skipped_count: i64,
     pub status: String,
+    /// 精算の鍵（pos-tables。Z004 の確定だけが作る）
+    pub machine_no: String,
+    pub settlement_no: i64,
 }
 
 /// csv_import_errors INSERT用（created_at は自動設定）
@@ -249,14 +255,144 @@ pub struct NewDailyReportDepartmentLine {
 // CSV取込み関数（BIZ-03 用）
 // ---------------------------------------------------------------------------
 
+/// active な Z004 の取込みの精算（24「active な Z004 の精算の一覧」の 1 行）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SettlementRow {
+    pub import_id: i64,
+    pub machine_no: String,
+    pub settlement_no: i64,
+    pub settlement_date: String,
+}
+
+/// machine_no の照合先（24「Z004 の取込みの machine_no の照合先」）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MachineNoRef {
+    pub import_id: i64,
+    pub machine_no: String,
+    pub settlement_no: i64,
+    pub status: CsvImportStatus,
+    pub imported_at: String,
+}
+
+/// active（completed / completed_partial）な Z004 の取込みの精算を settlement_no の昇順で返す（24）
+pub(crate) fn list_active_settlements(conn: &DbConnection) -> Result<Vec<SettlementRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, machine_no, settlement_no, settlement_date FROM csv_imports
+         WHERE status IN ('completed','completed_partial')
+         ORDER BY settlement_no, id",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(SettlementRow {
+                import_id: row.get(0)?,
+                machine_no: row.get(1)?,
+                settlement_no: row.get(2)?,
+                settlement_date: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 取り消したものを含む全ての Z004 の取込みの最大の取込みID（無ければ None。24「Z004 の取込みの最大の取込みID」）。
+/// fresh な計数と棚卸しの完了の取込みのカーソル（ADR D3・D6）
+pub(crate) fn max_csv_import_id(conn: &DbConnection) -> Result<Option<i64>, DbError> {
+    Ok(conn.query_row("SELECT MAX(id) FROM csv_imports", [], |row| row.get(0))?)
+}
+
+/// 取り消したものを含む Z004 の取込みのうち machine_no が引数と違うもの 1 件（active を優先し、
+/// 同じ状態の中では import ID の最大）。無ければ None（24。BIZ-03 の順 2）
+pub(crate) fn find_machine_no_mismatch(
+    conn: &DbConnection,
+    machine_no: &str,
+) -> Result<Option<MachineNoRef>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, machine_no, settlement_no, status, imported_at FROM csv_imports
+         WHERE machine_no <> ?1
+         ORDER BY status IN ('completed','completed_partial') DESC, id DESC LIMIT 1",
+    )?;
+    let mut rows = stmt.query([machine_no])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(MachineNoRef {
+            import_id: row.get(0)?,
+            machine_no: row.get(1)?,
+            settlement_no: row.get(2)?,
+            status: parse_csv_import_status(3, &row.get::<_, String>(3)?)?,
+            imported_at: row.get(4)?,
+        })),
+        None => Ok(None),
+    }
+}
+
+/// 同じ machine_no・settlement_no の active な取込みの ID と hash（0 件か 1 件。24。BIZ-03 の順 4）
+pub(crate) fn find_active_imports_for_settlement(
+    conn: &DbConnection,
+    machine_no: &str,
+    settlement_no: i64,
+) -> Result<Vec<(i64, String)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, file_hash FROM csv_imports
+         WHERE machine_no = ?1 AND settlement_no = ?2 AND status IN ('completed','completed_partial')
+         ORDER BY id",
+    )?;
+    let rows = stmt
+        .query_map(rusqlite::params![machine_no, settlement_no], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// その取込みの売上か movement を持つ商品（Z004 の確定・取消の求め直しの対象。無効の行も含む）
+pub(crate) fn list_import_product_codes(
+    conn: &DbConnection,
+    import_id: i64,
+) -> Result<Vec<String>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT product_code FROM sale_records WHERE csv_import_id = ?1
+         UNION
+         SELECT product_code FROM inventory_movements
+         WHERE reference_type = 'csv_import' AND reference_id = ?1
+         ORDER BY product_code",
+    )?;
+    let rows = stmt
+        .query_map([import_id], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// 商品の、取込みのときの連動が `stock_linked` の有効な売上（個数 ≠ 0 か金額 ≠ 0）を持つ active な取込みの ID
+/// （連動 = 1 は ADR D3 の理由 1 の行の判定、連動 = 0 は D8 の在庫連動を始める検査。今の `pos_stock_sync` を見ない）
+pub(crate) fn list_sale_import_ids(
+    conn: &DbConnection,
+    product_code: &str,
+    stock_linked: bool,
+) -> Result<Vec<i64>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT s.csv_import_id FROM sale_records s
+         JOIN csv_imports c ON c.id = s.csv_import_id
+         WHERE s.product_code = ?1 AND s.is_voided = 0 AND s.stock_linked = ?2
+           AND (s.quantity <> 0 OR s.amount <> 0)
+           AND c.status IN ('completed','completed_partial')
+         ORDER BY s.csv_import_id",
+    )?;
+    let rows = stmt
+        .query_map(rusqlite::params![product_code, stock_linked], |row| {
+            row.get(0)
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
 /// csv_imports に1行INSERTし、挿入されたIDを返す
 ///
 /// 24-io-csv-import-repo.md §14.4
 pub fn insert_csv_import(conn: &DbConnection, record: &NewCsvImport) -> Result<i64, DbError> {
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at,
+             machine_no, settlement_no)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         rusqlite::params![
             record.filename,
             record.settlement_date,
@@ -266,6 +402,8 @@ pub fn insert_csv_import(conn: &DbConnection, record: &NewCsvImport) -> Result<i
             record.skipped_count,
             record.status,
             now,
+            record.machine_no,
+            record.settlement_no,
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -858,19 +996,21 @@ pub fn list_daily_report_imports(
 // ---------------------------------------------------------------------------
 
 /// rusqlite::Row → CsvImport の変換
+fn parse_csv_import_status(index: usize, value: &str) -> rusqlite::Result<CsvImportStatus> {
+    match value {
+        "completed" => Ok(CsvImportStatus::Completed),
+        "completed_partial" => Ok(CsvImportStatus::CompletedPartial),
+        "rolled_back" => Ok(CsvImportStatus::RolledBack),
+        value => Err(rusqlite::Error::FromSqlConversionFailure(
+            index,
+            rusqlite::types::Type::Text,
+            format!("unknown csv import status: {value}").into(),
+        )),
+    }
+}
+
 fn row_to_csv_import(row: &rusqlite::Row) -> rusqlite::Result<CsvImport> {
-    let status = match row.get::<_, String>(7)?.as_str() {
-        "completed" => CsvImportStatus::Completed,
-        "completed_partial" => CsvImportStatus::CompletedPartial,
-        "rolled_back" => CsvImportStatus::RolledBack,
-        value => {
-            return Err(rusqlite::Error::FromSqlConversionFailure(
-                7,
-                rusqlite::types::Type::Text,
-                format!("unknown csv import status: {value}").into(),
-            ))
-        }
-    };
+    let status = parse_csv_import_status(7, &row.get::<_, String>(7)?)?;
     Ok(CsvImport {
         id: row.get(0)?,
         filename: row.get(1)?,
@@ -1411,220 +1551,6 @@ pub fn get_monthly_sales_by_department(
         .map_err(|e| DbError::QueryFailed(e.to_string()))
 }
 
-/// 資料の受領と精算の同一性（SPEC-STK-TIME-D2 / D3）。⑤ まで test だけが呼ぶ（D-109 (3)）。
-/// 24-io-csv-import-repo.md「時点証拠契約（proposed）」の表の 1〜5 行。業務の判定は BIZ が行う
-#[cfg(test)]
-pub(crate) mod time_evidence {
-    use crate::db::{DbConnection, DbError};
-    use rusqlite::OptionalExtension;
-
-    /// 同一性の拒否の理由（pos_import_sources.identity_rejection_code の CHECK）
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) enum IdentityRejectionCode {
-        IdentityConflict,
-        MissingIdentity,
-    }
-
-    impl IdentityRejectionCode {
-        fn as_str(self) -> &'static str {
-            match self {
-                Self::IdentityConflict => "identity_conflict",
-                Self::MissingIdentity => "missing_identity",
-            }
-        }
-
-        fn parse(value: &str) -> Result<Self, DbError> {
-            match value {
-                "identity_conflict" => Ok(Self::IdentityConflict),
-                "missing_identity" => Ok(Self::MissingIdentity),
-                other => Err(DbError::QueryFailed(format!(
-                    "不明な identity_rejection_code: {other}"
-                ))),
-            }
-        }
-    }
-
-    #[derive(Debug, Clone)]
-    pub(crate) struct NewPosImportSource {
-        pub file_hash: String,
-        pub received_at: String,
-        pub settlement_date: String,
-        pub machine_no: Option<String>,
-        pub report_kind: Option<String>,
-        pub settlement_no: Option<String>,
-        pub settled_at: Option<String>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub(crate) struct PosImportSource {
-        pub id: i64,
-        pub file_hash: String,
-        pub received_at: String,
-        pub settlement_date: String,
-        pub machine_no: Option<String>,
-        pub report_kind: Option<String>,
-        pub settlement_no: Option<String>,
-        pub settled_at: Option<String>,
-        pub identity_rejection_code: Option<IdentityRejectionCode>,
-        pub identity_rejected_at: Option<String>,
-    }
-
-    /// 同じ精算日の active import と、その source の識別メタ（source なしは各 None）
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub(crate) struct ActiveImportIdentity {
-        pub csv_import_id: i64,
-        pub settlement_date: String,
-        pub source_id: Option<i64>,
-        pub machine_no: Option<String>,
-        pub report_kind: Option<String>,
-        pub settlement_no: Option<String>,
-    }
-
-    const SOURCE_COLUMNS: &str = "id, file_hash, received_at, settlement_date, machine_no,
-        report_kind, settlement_no, settled_at, identity_rejection_code, identity_rejected_at";
-
-    fn row_to_source(row: &rusqlite::Row) -> rusqlite::Result<(PosImportSource, Option<String>)> {
-        Ok((
-            PosImportSource {
-                id: row.get(0)?,
-                file_hash: row.get(1)?,
-                received_at: row.get(2)?,
-                settlement_date: row.get(3)?,
-                machine_no: row.get(4)?,
-                report_kind: row.get(5)?,
-                settlement_no: row.get(6)?,
-                settled_at: row.get(7)?,
-                identity_rejection_code: None,
-                identity_rejected_at: row.get(9)?,
-            },
-            row.get(8)?,
-        ))
-    }
-
-    fn with_code(
-        (mut source, code): (PosImportSource, Option<String>),
-    ) -> Result<PosImportSource, DbError> {
-        source.identity_rejection_code = code
-            .as_deref()
-            .map(IdentityRejectionCode::parse)
-            .transpose()?;
-        Ok(source)
-    }
-
-    /// 受領の upsert。同じ hash が既にあれば最初の ID と受領時刻の行をそのまま返す（REPLACE・再採番しない）
-    pub(crate) fn upsert_pos_import_source(
-        conn: &DbConnection,
-        new: &NewPosImportSource,
-    ) -> Result<PosImportSource, DbError> {
-        conn.execute(
-            "INSERT INTO pos_import_sources (file_hash, received_at, settlement_date, machine_no,
-                report_kind, settlement_no, settled_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-             ON CONFLICT(file_hash) DO NOTHING",
-            rusqlite::params![
-                new.file_hash,
-                new.received_at,
-                new.settlement_date,
-                new.machine_no,
-                new.report_kind,
-                new.settlement_no,
-                new.settled_at
-            ],
-        )?;
-        let row = conn.query_row(
-            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE file_hash = ?1"),
-            [&new.file_hash],
-            row_to_source,
-        )?;
-        with_code(row)
-    }
-
-    /// 最大の source ID。空なら 0（cursor の空集合）
-    pub(crate) fn max_pos_import_source_id(conn: &DbConnection) -> Result<i64, DbError> {
-        Ok(conn.query_row(
-            "SELECT COALESCE(MAX(id), 0) FROM pos_import_sources",
-            [],
-            |row| row.get(0),
-        )?)
-    }
-
-    pub(crate) fn get_pos_import_source(
-        conn: &DbConnection,
-        id: i64,
-    ) -> Result<Option<PosImportSource>, DbError> {
-        conn.query_row(
-            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE id = ?1"),
-            [id],
-            row_to_source,
-        )
-        .optional()?
-        .map(with_code)
-        .transpose()
-    }
-
-    /// 同じ帳票種別で machine_no / settlement_no が一致する別の受領 source（未取込み・取消済みを含む）。
-    /// NULL は `=` で一致しない
-    pub(crate) fn find_settlement_identity_candidates(
-        conn: &DbConnection,
-        report_kind: &str,
-        machine_no: &str,
-        settlement_no: &str,
-        exclude_source_id: i64,
-    ) -> Result<Vec<PosImportSource>, DbError> {
-        let mut stmt = conn.prepare(&format!(
-            "SELECT {SOURCE_COLUMNS} FROM pos_import_sources
-             WHERE report_kind = ?1 AND machine_no = ?2 AND settlement_no = ?3 AND id <> ?4
-             ORDER BY id"
-        ))?;
-        let rows = stmt.query_map(
-            rusqlite::params![report_kind, machine_no, settlement_no, exclude_source_id],
-            row_to_source,
-        )?;
-        rows.map(|row| with_code(row?)).collect()
-    }
-
-    /// 同じ精算日の active import（completed / completed_partial）を csv_imports 起点で全件返す。
-    /// LEFT JOIN で source なし・メタ欠けの行も残す
-    pub(crate) fn list_active_import_identities(
-        conn: &DbConnection,
-        settlement_date: &str,
-    ) -> Result<Vec<ActiveImportIdentity>, DbError> {
-        let mut stmt = conn.prepare(
-            "SELECT ci.id, ci.settlement_date, ci.source_id, s.machine_no, s.report_kind, s.settlement_no
-             FROM csv_imports ci
-             LEFT JOIN pos_import_sources s ON s.id = ci.source_id
-             WHERE ci.settlement_date = ?1 AND ci.status IN ('completed', 'completed_partial')
-             ORDER BY ci.id",
-        )?;
-        let rows = stmt.query_map([settlement_date], |row| {
-            Ok(ActiveImportIdentity {
-                csv_import_id: row.get(0)?,
-                settlement_date: row.get(1)?,
-                source_id: row.get(2)?,
-                machine_no: row.get(3)?,
-                report_kind: row.get(4)?,
-                settlement_no: row.get(5)?,
-            })
-        })?;
-        Ok(rows.collect::<Result<_, _>>()?)
-    }
-
-    /// 同一性の拒否を初回だけ 2 列一緒に保存する。保存したら true、既にあれば書かずに false
-    pub(crate) fn record_identity_rejection(
-        conn: &DbConnection,
-        source_id: i64,
-        code: IdentityRejectionCode,
-        rejected_at: &str,
-    ) -> Result<bool, DbError> {
-        let affected = conn.execute(
-            "UPDATE pos_import_sources SET identity_rejection_code = ?2, identity_rejected_at = ?3
-             WHERE id = ?1 AND identity_rejection_code IS NULL",
-            rusqlite::params![source_id, code.as_str(), rejected_at],
-        )?;
-        Ok(affected == 1)
-    }
-}
-
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------
@@ -1681,6 +1607,7 @@ mod tests {
             source_line_no: None,
             reason: Some("plu_unregistered".to_string()),
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(&conn, &record).unwrap();
         assert!(id > 0);
@@ -1705,8 +1632,9 @@ mod tests {
 
         // csv_imports にダミーレコードを作成
         conn.execute(
-            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
-             VALUES ('Z004_test', '2026-04-06', 'abc123', 1, 500, 0, 'completed', '2026-04-06T00:00:00')",
+            "INSERT INTO csv_imports (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at,
+                 machine_no, settlement_no)
+             VALUES ('Z004_test', '2026-04-06', 'abc123', 1, 500, 0, 'completed', '2026-04-06T00:00:00', '0001', 1)",
             [],
         ).unwrap();
         let csv_id = conn.last_insert_rowid();
@@ -1721,6 +1649,7 @@ mod tests {
             source_line_no: Some(5),
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(&conn, &record).unwrap();
         assert!(id > 0);
@@ -1751,6 +1680,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let result = insert_sale_record(&conn, &record);
         assert!(
@@ -1776,6 +1706,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let result = insert_sale_record(&conn, &record);
         assert!(
@@ -1799,6 +1730,8 @@ mod tests {
             total_amount: 5000,
             skipped_count: 0,
             status: status.to_string(),
+            machine_no: "0001".to_string(),
+            settlement_no: 1,
         };
         insert_csv_import(conn, &record).unwrap()
     }
@@ -1977,6 +1910,7 @@ mod tests {
                 source_line_no: Some(7),
                 reason: None,
                 note: None,
+                stock_linked: false,
             },
         )
         .unwrap();
@@ -1992,6 +1926,7 @@ mod tests {
                 source_line_no: Some(8),
                 reason: None,
                 note: None,
+                stock_linked: false,
             },
         )
         .unwrap();
@@ -2026,8 +1961,8 @@ mod tests {
         ] {
             conn.execute(
                 "INSERT INTO inventory_movements
-                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase)
-                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 0)",
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at, business_date, phase, settlement_no)
+                 VALUES ('DETAIL-MOVE', 'sale_auto', -1, 9, 'csv_import', ?1, NULL, ?2, ?3, '2026-04-01', 1, 1)",
                 rusqlite::params![reference_id, is_voided, created_at],
             )
             .unwrap();
@@ -2114,6 +2049,7 @@ mod tests {
                 source_line_no: Some(i + 1),
                 reason: None,
                 note: None,
+                stock_linked: false,
             };
             insert_sale_record(&conn, &record).unwrap();
         }
@@ -2137,8 +2073,8 @@ mod tests {
 
         // inventory_movements に直接INSERT（テスト用）
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
-             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase, settlement_no)
+             VALUES ('VM-P1', 'sale_auto', -3, 7, 'csv_import', ?1, 0, '2026-03-21T00:00:00', '2026-04-01', 1, 1)",
             rusqlite::params![import_id],
         ).unwrap();
 
@@ -2166,8 +2102,8 @@ mod tests {
         seed_product(&conn, "INV7-P1");
 
         conn.execute(
-            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
-             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 0)",
+            "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase, settlement_no)
+             VALUES ('INV7-P1', 'sale_auto', -5, 5, 'csv_import', 999, 0, '2026-03-21T00:00:00', '2026-04-01', 1, 1)",
             [],
         ).unwrap();
 
@@ -2962,6 +2898,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         let id = insert_sale_record(conn, &record).unwrap();
         if is_voided {

@@ -3,6 +3,8 @@
 pub mod daily_report_parser;
 pub mod ej_parser;
 pub mod image_manager;
+#[cfg(test)]
+mod l3_fixtures;
 pub mod plu_formatter;
 pub mod product_csv_importer;
 pub mod report_csv_exporter;
