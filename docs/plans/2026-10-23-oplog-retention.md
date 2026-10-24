@@ -25,6 +25,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 3. design → plan-draft（2026-10-23、起草役、同じ commit）: 設計の出力（72 MNT-02-D1、decision-log D-136、上の各文書の直し）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 1 問は推奨を既定にした。下の Review Focus。owner の方針、repo 外の回答台帳 TD-401）。
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-407。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: decision-log の 1 か所（D-132 と D-136 が同じ末尾に足された。番号の順に両方を残した））。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `879a4495` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
+6. plan-gate のまま是正（round 2、2026-10-24、Coordinator の代行の起草役、本 commit）: round 2 は両 reviewer とも approve（P1 0 / P2 0、P3 は各 3 件）。P3 の全 6 件と、K1 の owner の決定（repo 外の回答台帳 TD-418、2026-10-24。d 約 3000 日）を反映し、既定の日数を 2557 から 3000 に改めた（下の Review Response）。round 2 の approve は日数を改める前の版の plan に対するものなので、plan-gate に留め、契約の変わった版の確認（round 3）を受けてから plan-approved へ進む。
 
 ## Owner Effort Budget
 
@@ -34,9 +35,9 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（起票の時点） | 2（Ready 1、merge 1） | 4 | 6 = 0 + 2 + 4 |
+| 介入 | 6 | 1（K1 の答え、2026-10-24、TD-418） | 2（Ready 1、merge 1） | 3 | 6 = 1 + 2 + 3 |
 
-owner の判断事項 K1 は既定で進め、本 lane の完了に答えを要らないので見込みに数えない。L3 は無い（下の Risk の L3 の段）。
+owner の判断事項 K1 は owner が答えた（d 約 3000 日。下の Review Focus）。L3 は無い（下の Risk の L3 の段）。
 
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
@@ -45,7 +46,7 @@ owner の判断事項 K1 は既定で進め、本 lane の完了に答えを要�
 Risk: R3
 
 Reason:
-`docs/DEV_WORKFLOW.md` Risk Tiers の R3「DB ... changes」に当たる: DB を作るときの初期データ（`app_settings` の key `log_retention_days`）と、操作ログの物理削除の条件（audit / log の persistence の振舞い）を変える。R4 にしない理由: 新しい削除の経路を足さず、消す範囲を狭める向きだけの変更（保持を 365 日から 2557 日へ延ばし、保持日数を確定できない値では今の「既定 365 日で消す」をやめて消さない）。backup・restore・migration・店の実データに触れない（本番の DB は無い、`docs/project-memory.md` の「無いもの」）。R3 の要件: Contract Ledger・Data Safety・Contract Probe・Test Design Matrix・Design Readiness を置いた。required gate: 実装の PR は Rust を変えるので `rust=true`（classify-changes）。Final Review Minimum は 1、Human Gate は `ready,merge`（R3 の既定）。
+`docs/DEV_WORKFLOW.md` Risk Tiers の R3「DB ... changes」に当たる: DB を作るときの初期データ（`app_settings` の key `log_retention_days`）と、操作ログの物理削除の条件（audit / log の persistence の振舞い）を変える。R4 にしない理由: 新しい削除の経路を足さず、消す範囲を狭める向きだけの変更（保持を 365 日から 3000 日へ延ばし、保持日数を確定できない値では今の「既定 365 日で消す」をやめて消さない）。backup・restore・migration・店の実データに触れない（本番の DB は無い、`docs/project-memory.md` の「無いもの」）。R3 の要件: Contract Ledger・Data Safety・Contract Probe・Test Design Matrix・Design Readiness を置いた。required gate: 実装の PR は Rust を変えるので `rust=true`（classify-changes）。Final Review Minimum は 1、Human Gate は `ready,merge`（R3 の既定）。
 
 L3 について: L3 の条件（`docs/DEV_WORKFLOW.md` Human Visual Confirmation の L3 Eligibility）の (1)「Windows/Tauri native でしか観測できない」に当たる項目が無い。掃除は起動時の setup で DB に対して行い、振舞いは全て自動 test で示せる（Matrix）。7 年の経過は実機で見られない。画面の文言・route は変えない。owner の操作の回数を減らす工夫: L3 の round を作らず、初回の導入の版の MSI の予行演習（`docs/msi-distribution-runbook.md` の確かめる項目）で操作ログの画面を開いたときに記録が出ることを見るだけで足りる（追加の操作は無い）。Human Gate に manual を入れないので、`cargo check --release` の Writer の完了条件は当たらない。
 
@@ -55,12 +56,12 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 初回の導入の版で作られる店の DB では、操作ログが 7 年以上（2557 日）消えずに残り、それより古いものだけが起動時に消える。
+- 初回の導入の版で作られる店の DB では、操作ログが 3000 日（1 月 1 日の取引でも、帳簿書類の 7 年〈申告の期限の翌日から〉に足りる長さ）消えずに残り、それより古いものだけが起動時に消える。
 - 保持日数の設定が読めない値・0 になっても、操作ログは消えない（記録が溜まる側に倒れる）。
 
 ### 失敗定義
 
-- 新しい DB の `log_retention_days` が 2557 でない、または掃除が 2557 日より新しい記録を消す。
+- 新しい DB の `log_retention_days` が 3000 でない、または掃除が 3000 日より新しい記録を消す。
 - 設定の値が読めない・0 のときに記録を消す、または大きな値で起動時に panic する（setup の中で起動が止まる）。
 - 既にある開発・試験 DB の値を書き換える migration を足す（本 lane は足さない。D-136 (4)）。
 - 操作ログの画面・command・wire が変わる。
@@ -70,7 +71,7 @@ Goal Invariant:
 - 保持日数を画面で変えられるようにする（69 UI-11a-D1 のまま）。
 - 操作ログの archive・CSV 出力・手動削除（74 の Non-scope のまま）。
 - backup の保持日数（3 日）を変える。
-- `operation_logs` に index を足す（合成の 7 年分で一覧の取得が約 0.07 秒。Contract Probe）。
+- `operation_logs` に index を足す（合成の 2557 日分で一覧の取得が約 0.07 秒。Contract Probe）。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
@@ -78,7 +79,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 初回の導入の版で DB が空から作られた（`log_retention_days` = 2557） | 毎日アプリを起動する | 7 年以上前の操作ログだけが 1 日 1 回消え、それより新しい記録は操作ログの画面で見える | — | なし |
+| 初回の導入の版で DB が空から作られた（`log_retention_days` = 3000） | 毎日アプリを起動する | 3000 日より前の操作ログだけが 1 日 1 回消え、それより新しい記録は操作ログの画面で見える | — | なし |
 | 設定の値が壊れた（数でない・0。画面からは変えられない。汎用の `update_setting` command は key を問わず値を検査せずに書けるが frontend はこの key を送らないので、その command を直に呼ぶか DB を手で触った場合） | 起動する | 操作ログは消えず、診断ログに warn が残る。アプリは起動する | 値を直せば次の起動から掃除が戻る | なし |
 | 既にある開発・試験 DB（`log_retention_days` = 365） | 起動する | 今と同じく 365 日で消す。22 §16 の作り直しで新しい既定になる | — | なし |
 
@@ -87,17 +88,17 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 決めたこと（発注書の「決めること」）:
 
 - 既定の値の変更と、掃除の守りの小さな変更の両方。掃除の仕組み（起動時に 1 日 1 回、物理削除、`log_cleanup` の記録）は変えない。守りの変更は、保持日数を確定できない値（数でない・0）で既定に置き換えて消すのをやめて消さないことと、日付の範囲の外の値で panic しないこと（72 MNT-02-D1。backup の 71 MNT-01-D3 と同じ形）。
-- 既存の設定値を持つ DB: migration は足さない。新しい DB の値は DB を作るときの初期データ（`schema_v1.rs`）で決まる。既にある DB は開発・試験 DB だけで、今の値（365）のまま、作り直せば 2557（D-123 (1)、D-136 (4)）。予約の 22 §25・MNT-03-D23 は使わない（PR #188 が migration v11 を足す予定で、足すと番号も後ろにずれる）。migration を足さない判断は、本 lane が初回の導入の版に含まれる前提に立つ。導入の後なら、既存の DB の値を直す migration が要る（D-136 の Guarantee range）。
-- 7 年分の大きさ: 合成の測定（下の Contract Probe）。店の 1 日の行数は未実測。
+- 既存の設定値を持つ DB: migration は足さない。新しい DB の値は DB を作るときの初期データ（`schema_v1.rs`）で決まる。既にある DB は開発・試験 DB だけで、今の値（365）のまま、作り直せば 3000（D-123 (1)、D-136 (4)）。予約の 22 §25・MNT-03-D23 は使わない（PR #188 が migration v11 を足す予定で、足すと番号も後ろにずれる）。migration を足さない判断は、本 lane が初回の導入の版に含まれる前提に立つ。導入の後なら、既存の DB の値を直す migration が要る（D-136 の Guarantee range）。この前提は Coordinator が Ready の依頼の前に確かめる（`docs/Plans.md` の導入の前の関門と repo 外の回答台帳で、初回の導入が済んでいないこと）。済んでいれば Ready を依頼せず plan-gate に戻し、既存の DB の値を直す migration を Scope に足す。
+- 保持の長さ分の大きさ: 合成の 2557 日分の測定と、3000 日分への行数の比（下の Contract Probe P1）。店の 1 日の行数は未実測。
 
 実装（plan-approved の後）:
 
-- `src-tauri/src/db/schema_v1.rs`: `app_settings` の初期データの `('log_retention_days', '365', …)` を `'2557'` にする（他の行は変えない）。
-- `src-tauri/src/mnt/log_manager.rs`: `DEFAULT_RETENTION_DAYS` を 2557 にする（設定の行が無いときの値）。設定の値が `u32` として読めないか 0 のときは、`tracing::warn!` を記録して削除も `log_last_cleanup_date` の更新もせず `Ok(())` を返す（72 §72.4 の手順 3）。doc comment の「デフォルト365日」を直す。
+- `src-tauri/src/db/schema_v1.rs`: `app_settings` の初期データの `('log_retention_days', '365', …)` を `'3000'` にする（他の行は変えない）。
+- `src-tauri/src/mnt/log_manager.rs`: `DEFAULT_RETENTION_DAYS` を 3000 にする（設定の行が無いときの値）。設定の値が `u32` として読めないか 0 のときは、`tracing::warn!` を記録して削除も `log_last_cleanup_date` の更新もせず `Ok(())` を返す（72 §72.4 の手順 3）。doc comment の「デフォルト365日」を直す。
 - `src-tauri/src/db/system_repo.rs`: `delete_old_logs` の cutoff を `checked_sub_days`（`chrono::Days`）で求め、日付の範囲の外なら何も消さず `Ok(0)` を返す（72 §72.4 の手順 4）。
 - test（同じ 2 file の `mod tests`）:
-  - 直す: `test_cleanup_old_logs_req902_deletes_expired`（366 日前 → 2558 日前）、`test_cleanup_old_logs_req902_keeps_recent`（364 日前 → 2557 日前。初期データの値の境）、固定の日付 `2025-01-01T10:00:00` を古いログに使う `test_cleanup_old_logs_req902_first_run`・`test_cleanup_old_logs_req902_same_day_skip`・`test_cleanup_old_logs_req902_records_cleanup`（今日から 2558 日前の相対の日付にする。365 日より古いだけでは 2557 日の保持で消えない）。期待（消える・残る・記録される・飛ばす）は変えない。誤った test ではなく、設計正本の値（72 MNT-02-D1）が変わったための直し（AGENTS.md の Working Rules）。
-  - 足す（名前は実装で決め、REQ-902 を付ける）: 新しい DB の `log_retention_days` が `"2557"`。設定の行を消した DB で 2558 日前が消え 2557 日前が残る。値が `"abc"`・`"-1"`・`"0"` の DB で何も消えず `log_last_cleanup_date` が変わらない。値が `"4294967295"` の DB で panic せず何も消えない（`cleanup_old_logs` と `delete_old_logs` の両方。`cleanup_old_logs` では 0 件から §72.4 の手順 6 へ進み、`log_last_cleanup_date` が今日になる）。
+  - 直す: `test_cleanup_old_logs_req902_deletes_expired`（366 日前 → 3001 日前）、`test_cleanup_old_logs_req902_keeps_recent`（364 日前 → 3000 日前。初期データの値の境）、固定の日付 `2025-01-01T10:00:00` を古いログに使う `test_cleanup_old_logs_req902_first_run`・`test_cleanup_old_logs_req902_same_day_skip`・`test_cleanup_old_logs_req902_records_cleanup`（今日から 3001 日前の相対の日付にする。365 日より古いだけでは 3000 日の保持で消えない）。期待（消える・残る・記録される・飛ばす）は変えない。誤った test ではなく、設計正本の値（72 MNT-02-D1）が変わったための直し（AGENTS.md の Working Rules）。
+  - 足す（名前は実装で決め、REQ-902 を付ける）: 新しい DB の `log_retention_days` が `"3000"`。設定の行を消した DB で 3001 日前が消え 3000 日前が残る。値が `"abc"`・`"-1"`・`"0"` の DB で何も消えず `log_last_cleanup_date` が変わらない。値が `"4294967295"` の DB で panic せず何も消えない（`cleanup_old_logs` と `delete_old_logs` の両方。`cleanup_old_logs` では 0 件から §72.4 の手順 6 へ進み、`log_last_cleanup_date` が今日になる）。
 - 生成物: `docs/function-design/90-traceability.md`（`cd src-tauri && cargo run --bin generate_traceability`。REQ-902 の test の数が変わる。手で直さない）。
 
 作る所・読む所の全件（`rg -n "log_retention_days|DEFAULT_RETENTION_DAYS|delete_old_logs|cleanup_old_logs" src-tauri/src src` で確かめた、2026-10-23）: 作る所は `schema_v1.rs` の初期データ 1 行と、key を問わない汎用の書込みの経路（`update_setting` command〈`src-tauri/src/cmd/settings_cmd.rs:137`〉→ `biz::system_service::upsert_setting`〈`src-tauri/src/biz/system_service.rs:19`〉→ `system_repo::upsert_setting`。値を検査しない）。command は書けるが frontend は送らない（`rg -n log_retention src` で hit 無し。`updateSetting` を呼ぶ backup の画面は `BACKUP_SETTING_KEYS` の key に限り、閾値の画面は閾値の key だけを送る）。不正な値は MNT-02-D1 で消さない側に倒れる。この経路の API は変えない。読む所は `log_manager.rs` の `cleanup_old_logs` だけ。`delete_old_logs` の呼び出し元は `cleanup_old_logs` と `system_repo.rs` の test 2 本（`test_delete_old_logs_req902_*`、引数に 365 を直接渡すので変えない）。`cleanup_old_logs` の呼び出し元は `src-tauri/src/lib.rs` の `run` の setup（失敗を warn して続ける、変えない）と `log_manager.rs` の test。`system_repo.rs` の `log_retention_days` の key の存在を見る test は変えない。`backup.rs` の `DEFAULT_RETENTION_DAYS`（3、backup の保持）は別の定数で変えない。
@@ -106,8 +107,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `docs/function-design/72-mnt-log-manager.md`: §72.4 の手順 3・4、MNT-02-D1 の新設、§72.6 の test の表（名前を実在の `_req902_` に直し、MNT-02-D1 の test を足す）。
 - `docs/decision-log.md`: D-136 の新設（末尾）、D-051 の `Superseded in part by: D-136` の行。
-- `docs/DB_DESIGN.md` の D-5、`docs/db-design/tracking-system-tables.md` の app_settings の初期データ例、`docs/ARCHITECTURE.md` の MNT-02 の行、`docs/REQ-700_diagnostic_log.md` の比較の表、`docs/function-design/74-ui-operation-logs.md` の 365 日の記述 6 か所（UI-11c-D10・D13・D14、§74.6 の 2 か所、Non-scope の表）。
-- `docs/backlog.md`: 「操作ログの保持を 7 年程度に延ばす」の項目に起票の行。
+- `docs/DB_DESIGN.md` の D-5、`docs/db-design/tracking-system-tables.md` の app_settings の初期データ例、`docs/ARCHITECTURE.md` の MNT-02 の行、`docs/REQ-700_diagnostic_log.md` の比較の表、`docs/function-design/74-ui-operation-logs.md` の 365 日の記述 6 か所（UI-11c-D10・D13・D14、§74.10 と §74.12 の各 1 か所、§74.16 非目的の表）。
+- `docs/backlog.md`: 「操作ログの保持を 7 年程度に延ばす」の項目に起票の行。項目の本文の「今は…既定 365」は code の今の値で、実装の merge の後の closeout で直す。
 - `docs/function-design/20-io-product-repo.md` の §2.8 `delete_old_logs` の処理ステップ 1（`checked_sub_days`、`None` で `Ok(0)`）、`docs/SCREEN_DESIGN.md` の操作ログ画面のレイアウト判断の 1 行、`docs/spec/requirements-coverage.md` の QR-06 の行（Plan Review round 1 の是正）。
 
 他の lane との所有（`docs/DEV_WORKFLOW.md` Wave Operation。open の PR #172・#188・#190・#191・#192・#193・#194 の差分〈#188 は packet の Scope〉と本 lane の予定の path を `comm -12` で突き合わせた。下の AC の実測）:
@@ -126,7 +127,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | `docs/SCREEN_DESIGN.md` | 操作ログ画面のレイアウト判断の「閲覧 MVP」の行 | 本 lane。#188 は冒頭と棚卸しの節の別の hunk |
 | `docs/spec/requirements-coverage.md` | QR-06 の行 | 本 lane（2026-10-24 の open の PR の差分に無い） |
 
-この変更で不要になる記述・条件・code（D-127 の問い）: DB_DESIGN の D-5 の「1年以上前のログが必要な場合はバックアップから復元」は backup の保持（3 日）と合わず誤っていたので置き換えた。72 の「パース失敗 → デフォルト365日」の fallback は消す側の既定で、MNT-02-D1 で外す（既定は設定の行が無いときだけ）。74 の「365日 cleanup」の 6 か所は日数を書かずに「保持日数の cleanup」にし、日数の正本を 72 MNT-02-D1 の 1 か所にした。SCREEN_DESIGN の「365日超の自動削除」と requirements-coverage の QR-06 の「365 日超の削除」「365 日 cleanup」も同じく保持日数の形に置き換え、20 §2.8 の panic する引き算（`- chrono::Duration::days(..)`）は `checked_sub_days` に置き換えた（Plan Review round 1）。`docs/DEV_SETUP_CHECKLIST.md` の「MNT-02 log_manager: cleanup_old_logs（起動時自動削除、365 日超）」は済んだ作業の記録の行で、変えない。decision-log の D-051 の本文は append-only で、Superseded in part の行だけを足した。
+この変更で不要になる記述・条件・code（D-127 の問い）: DB_DESIGN の D-5 の「1年以上前のログが必要な場合はバックアップから復元」は backup の保持（3 日）と合わず誤っていたので置き換えた。72 の「パース失敗 → デフォルト365日」の fallback は消す側の既定で、MNT-02-D1 で外す（既定は設定の行が無いときだけ）。74 の「365日 cleanup」の 6 か所は日数を書かずに「保持日数の cleanup」にし、日数の正本を 72 MNT-02-D1 にした。SCREEN_DESIGN の「365日超の自動削除」と requirements-coverage の QR-06 の「365 日超の削除」「365 日 cleanup」も同じく保持日数の形に置き換え（round 1 の是正で足した既定の日数は、74 の UI-11c-D13・D14、SCREEN_DESIGN、QR-06 から round 2 の是正で外し、MNT-02-D1 を引く形にした）、20 §2.8 の panic する引き算（`- chrono::Duration::days(..)`）は `checked_sub_days` に置き換えた（Plan Review round 1）。`docs/DEV_SETUP_CHECKLIST.md` の「MNT-02 log_manager: cleanup_old_logs（起動時自動削除、365 日超）」は済んだ作業の記録の行で、変えない。decision-log の D-051 の本文は append-only で、Superseded in part の行だけを足した。
 
 ## Non-scope
 
@@ -139,11 +140,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0（ERROR なし）。baseline（2026-10-23、起点 `eed07d37`）: exit 0、`結果: WARN 12 件（ERROR なし）`。
 - AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-23-oplog-retention.md` が exit 0。
-- AC3（正本の旧い文）: `rg -n 'log_retention_days \| 365|デフォルト365日|365 ?日 cleanup|365日自動削除|365 ?日超|\| 保持期間 \| 365日|Duration::days\(retention_days\)' docs/ARCHITECTURE.md docs/DB_DESIGN.md docs/REQ-700_diagnostic_log.md docs/db-design/tracking-system-tables.md docs/function-design/72-mnt-log-manager.md docs/function-design/74-ui-operation-logs.md docs/SCREEN_DESIGN.md docs/spec/requirements-coverage.md docs/function-design/20-io-product-repo.md` が何も出さない（exit 1）。baseline（`git grep -n -P` で `eed07d37`）: 13 行（ARCHITECTURE 208、REQ-700 90、SCREEN_DESIGN 185、tracking 228、20 の 663、72 の 47、74 の 60・63・64・272・297・568、requirements-coverage 66）。是正の commit の後: exit 1。
-- AC4（初期データ）: `rg -n "'log_retention_days',\s+'2557'" src-tauri/src/db/schema_v1.rs` が 1 行。baseline（`eed07d37`）: exit 1（値は `'365'`）。
-- AC5（既定の定数）: `rg -c 'DEFAULT_RETENTION_DAYS: u32 = 2557' src-tauri/src/mnt/log_manager.rs` が `1`。baseline: exit 1（`= 365`）。
+- AC3（正本の旧い文）: `rg -n 'log_retention_days \| 365|デフォルト365日|365 ?日 cleanup|365日自動削除|365 ?日超|\| 保持期間 \| 365日|Duration::days\(retention_days\)' docs/ARCHITECTURE.md docs/DB_DESIGN.md docs/REQ-700_diagnostic_log.md docs/db-design/tracking-system-tables.md docs/function-design/72-mnt-log-manager.md docs/function-design/74-ui-operation-logs.md docs/SCREEN_DESIGN.md docs/spec/requirements-coverage.md docs/function-design/20-io-product-repo.md` が何も出さない（exit 1）。baseline（`git grep -n -P` で `eed07d37`）: 13 行（ARCHITECTURE 208、REQ-700 90、SCREEN_DESIGN 185、tracking 228、20 の 663、72 の 47、74 の 60・63・64・272・297・568、requirements-coverage 66）。是正の commit の後: exit 1。2 本目（旧い既定の日数 2557 の live な文。round 2 の是正）: `` rg -n '既定 ?2557|2557 日[（〈]7 年以上|7 年以上|\| 2557 \||保持日数（2557 日）|`2557`|2557 日で消す' `` を上の 9 file と `docs/decision-log.md`・`docs/backlog.md` に当てて何も出さない（exit 1）。baseline（`git grep -n -P` で `16d7dd00`）: 17 行。round 2 の是正の commit の後: exit 1（2026-10-24）。残る `2557` は棄てた案・測定の記録・改めた経緯だけ（decision-log の D-136 の Status・Alternatives・Guarantee range、72 の Rejected alternatives と大きさ、backlog の起票の行）。
+- AC4（初期データ）: `rg -n "'log_retention_days',\s+'3000'" src-tauri/src/db/schema_v1.rs` が 1 行。baseline（`eed07d37`）: exit 1（値は `'365'`）。
+- AC5（既定の定数）: `rg -c 'DEFAULT_RETENTION_DAYS: u32 = 3000' src-tauri/src/mnt/log_manager.rs` が `1`。baseline: exit 1（`= 365`）。
 - AC6（test）: `cd src-tauri && cargo test --lib log_manager` と `cd src-tauri && cargo test --lib system_repo` が全 PASS で、Scope の「足す」の 4 群の test が含まれる（test の名前と本数は PR の runner の出力で示す）。baseline: 未実測（本 run は cargo を回さない。発注書の条件）。
-- AC7（mutation）: 実装の後、`schema_v1.rs` の値を `'2555'` に戻すと 2557 日前が残る test が red、`log_manager.rs` の 0 と読めない値の分岐を外す（既定で消す）と読めない値・0 の test が red、`delete_old_logs` の `checked_sub_days` を `-` に戻すと大きな値の test が panic で red になる（Matrix の Mutation-style Adequacy Questions。実注入の結果を PR に書く）。
+- AC7（mutation）: 実装の後、`schema_v1.rs` の値を旧い既定の案の `'2557'` にすると 3000 日前が残る test が red、`log_manager.rs` の 0 と読めない値の分岐を外す（既定で消す）と読めない値・0 の test が red、`delete_old_logs` の `checked_sub_days` を `-` に戻すと大きな値の test が panic で red になる（Matrix の Mutation-style Adequacy Questions。実注入の結果を PR に書く）。
 - AC8（生成物）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
 - AC9: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings` が exit 0。
 - AC10: `bash scripts/check-workflow-git.sh` が exit 0。
@@ -159,11 +160,11 @@ AC5  baseline: src-tauri/src/mnt/log_manager.rs:10 const DEFAULT_RETENTION_DAYS:
 
 ## Design Readiness
 
-- 引く設計正本（節まで）: 72 §72.4（手順 1〜7）・§72.5・§72.6、71 MNT-01-D3（読めない保持日数で消さない）、69 UI-11a-D1（保持日数を画面で変えない）、74 UI-11c-D10・D13・D14 と §74.6・Non-scope、tracking-system-tables §19 app_settings、DB_DESIGN の D-5、ARCHITECTURE の MNT-02、D-051（Retention）、D-123 (1)、22 §3.2 MNT-03-D11、REQ-902（`docs/spec/requirements.md`）、QR-06。
+- 引く設計正本（節まで）: 72 §72.4（手順 1〜7）・§72.5・§72.6、71 MNT-01-D3（読めない保持日数で消さない）、69 UI-11a-D1（保持日数を画面で変えない）、74 UI-11c-D10・D13・D14 と §74.10・§74.12・§74.16、tracking-system-tables §19 app_settings、DB_DESIGN の D-5、ARCHITECTURE の MNT-02、D-051（Retention）、D-123 (1)、22 §3.2 MNT-03-D11、REQ-902（`docs/spec/requirements.md`）、QR-06。
 - 必要な設計成果物: Design artifact selection の「audit/log ... persistence behavior」の行 → DB_DESIGN と db-design（updated in this PR）、「New or changed ... MNT ... behavior」の行 → 72（updated in this PR、MNT-02-D1）、「Durable cross-cutting choice」の行 → decision-log D-136（updated in this PR）。
 - plan にしかない durable な判断の昇格先: 無い（全て 72 MNT-02-D1 と D-136 に置いた）。
-- 前提・制約と延期した gap: 店の 1 日の行数は未実測（導入の後に操作ログの件数で分かる。D-136 の Revisit）。延期しても安全な理由: 合成の 1 日 200 行の 7 年分で 210006016 byte、一覧は約 0.07 秒で、運用に障る大きさではない見込み（店の PC では測っていない）。
-- 絶対保証の自己点検: 「7 年以上残る」は、設定が既定のまま（画面からは変えられず、汎用の `update_setting` command で書き換えない限り）で、DB と backup が残る限りに限って書いた。保持期間を過ぎた後の復元は保証しない（残る backup の作成の時点による）。保持日数の内でも DB を失えば backup（3 日）と PC の外の控えの範囲だけが戻る。「消えない」（読めない値）は削除を飛ばす分岐だけを指し、他の削除の経路（無い。`operation_logs` の DELETE は `delete_old_logs` だけ。`rg -n "DELETE FROM operation_logs" src-tauri/src` で 1 か所）を含めて確かめた。
+- 前提・制約と延期した gap: 店の 1 日の行数は未実測（導入の後に操作ログの件数で分かる。D-136 の Revisit）。延期しても安全な理由: 合成の 1 日 200 行の 2557 日分で 210006016 byte、一覧は約 0.07 秒、3000 日分は行数の比で約 246389538 byte（未実測。Contract Probe P1）で、運用に障る大きさではない見込み（店の PC では測っていない）。
+- 絶対保証の自己点検: 「3000 日残る」は、設定が既定のまま（画面からは変えられず、汎用の `update_setting` command で書き換えない限り）で、DB と backup が残る限りに限って書いた。保持期間を過ぎた後の復元は保証しない（残る backup の作成の時点による）。保持日数の内でも DB を失えば backup（3 日）と PC の外の控えの範囲だけが戻る。「消えない」（読めない値）は削除を飛ばす分岐だけを指し、他の削除の経路（無い。`operation_logs` の DELETE は `delete_old_logs` だけ。`rg -n "DELETE FROM operation_logs" src-tauri/src` で 1 か所）を含めて確かめた。
 - 判定: ready。
 
 ## Contract Audit（新しく足す契約の文の境界の一巡）
@@ -171,9 +172,9 @@ AC5  baseline: src-tauri/src/mnt/log_manager.rs:10 const DEFAULT_RETENTION_DAYS:
 | 観点 | 契約の文（72 MNT-02-D1、§72.4） | 確かめたこと |
 |---|---|---|
 | 安全な整数の範囲 | 「日付の範囲の外になる大きな値は、消す対象が無いとして 0 件」 | 値は `u32`（最大 4294967295）で読み、`chrono` の `NaiveDate` から引くと範囲の外で panic する（今の `date_naive() - Duration::days(..)`）。setup の中の panic は起動を止めるので、`checked_sub_days` の `None` を 0 件にする。`i64` の幅の問題は無い（`u32` → `Days`）。JavaScript の安全な整数の範囲は当たらない（wire に出ない） |
-| 0 の表示 | 「0 のときは削除を飛ばす」 | 0 を受けると cutoff が今日の 0 時になり、今日より前の全ての記録を消す。0 は既定（2557）とも「消さない」とも区別して、読めない値と同じく飛ばす。負の値は `u32` で読めないので同じ分岐 |
+| 0 の表示 | 「0 のときは削除を飛ばす」 | 0 を受けると cutoff が今日の 0 時になり、今日より前の全ての記録を消す。0 は既定（3000）とも「消さない」とも区別して、読めない値と同じく飛ばす。負の値は `u32` で読めないので同じ分岐 |
 | 失敗の時点と順序 | 「削除も日付の更新もせず Ok(()) を返す」 | 飛ばすときは `log_last_cleanup_date` を更新しないので、同じ日の次の起動でも同じ判断になる（設定を直せば次の起動で掃除する）。DB の読取りの失敗は今のまま `Err` で返り、呼び出し元が warn して起動を続ける（§72.4 のエラーハンドリング）。削除と `log_cleanup` の記録と日付の更新の順は変えない |
-| 単位や種類の混在 | 「既定は 2557 日」 | 単位は日で、年を持たない（7 年をどの 7 年にも足りる日数に直した）。cutoff は今日から日数を引いた日の 0 時（ローカル時刻）で、`created_at` の文字列と比べる今の形を変えない。設定は TEXT で、数は文字列 `'2557'` |
+| 単位や種類の混在 | 「既定は 3000 日」 | 単位は日で、年を持たない（帳簿書類の 7 年〈申告の期限の翌日から〉を、1 月 1 日の取引にも足りる日数に直した。数え方は Review Response の K1）。cutoff は今日から日数を引いた日の 0 時（ローカル時刻）で、`created_at` の文字列と比べる今の形を変えない。設定は TEXT で、数は文字列 `'3000'` |
 
 ## Registration / Generation Obligations
 
@@ -216,7 +217,7 @@ Test Design Matrix: [2026-10-23-oplog-retention](test-matrices/2026-10-23-oplog-
 - negative tests: 読めない値・0・大きな値（Scope の「足す」）。
 - compatibility checks: 設定の行が無い DB（既定）、既にある DB の値を変えないこと（migration が無いこと: `rg -n "log_retention_days" src-tauri/src/db/schema_v*.rs` が `schema_v1.rs` の 1 行だけ）。
 - data safety checks: 合成のデータだけ。
-- main wiring/integration checks: `lib.rs` の `run` の setup が `cleanup_old_logs` を呼ぶ形を変えない（既存の起動の test）。
+- main wiring/integration checks: `lib.rs` の `run` の setup が `cleanup_old_logs` を呼び、失敗を warn して起動を続ける形（`src-tauri/src/lib.rs:1475`〜`:1478`、DB の初期化の後・自動 backup の前）を変えない。これを確かめる自動 test は無いので、PR の差分に `lib.rs` が無いこと（`git diff --name-only`）と、この行の静的照合で確かめる。
 
 ## Review Focus
 
@@ -224,19 +225,22 @@ Test Design Matrix: [2026-10-23-oplog-retention](test-matrices/2026-10-23-oplog-
 - migration を足さない判断（D-136 (4)）と、`schema_v1.rs` の初期データを直す形の当否（D-123 (1)。リリースの前に v1 の初期データを直す先例は #192 が backlog に足す部門 12 の後続の lane）。
 - 既存の test の直し（Scope の「直す」）が期待を変えずに値の境だけを直しているか。弱めていないか。
 - この変更で不要になる記述・条件・code が他に無いか（Scope の D-127 の段）。
-- owner の判断事項（owner の方針 TD-401 のとおり、推奨を既定にして書き進めた）:
-  - K1 保持の長さ: a 2557 日（どの 7 年にも足りる）/ b 2555 日（365 × 7）/ c 消さない（掃除を外す）。推奨 a（candidate: TD-348 の「7 年程度」を必ず満たす最小の日数。c は D-127 の素直な形だが DB と backup の大きさに上限が無くなり、owner は 7 年程度と決めた）。変わる所: `schema_v1.rs` の初期データと `DEFAULT_RETENTION_DAYS` の値、72 MNT-02-D1・D-136・DB_DESIGN の D-5・tracking の初期データ例・ARCHITECTURE・REQ-700 の日数、Scope の test の境の日数（c なら `cleanup_old_logs` と起動の呼出しを外す別の形になり、Scope を作り直す）。
+- owner の判断事項（起票では owner の方針 TD-401 のとおり推奨を既定にし〈TD-407、a 2557 日〉、round 2 の後に owner に諮った）:
+  - K1 保持の長さ: 決定は d 約 3000 日（owner の決定、repo 外の回答台帳 TD-418、2026-10-24）。選択肢は a 2557 日（取引の日から 7 暦年）/ b 2555 日（365 × 7）/ c 消さない（掃除を外す）/ d 約 3000 日（1 月 1 日の取引でも帳簿書類の 7 年〈申告の期限の翌日から〉に足りる）。正確な日数は 3000 日（数え方は Review Response の round 2 の K1 の段）。
+    - plan の段階で直した所（round 2 の是正の commit。日数を 3000 日に改めた）: 72 の §72.4 の手順 3・MNT-02-D1・§72.6 の test の表と MNT-02-D1 の test の段、decision-log の D-136 と D-051 の Superseded in part の行、DB_DESIGN の D-5、tracking §19 の初期データ例、ARCHITECTURE の MNT-02 の行、REQ-700 の比較の表、backlog の起票の行。packet の Goal・Ordinary Operation・Risk・Scope の実装の段・AC3〜AC5・AC7・Design Readiness・Contract Audit・Contract Ledger・Contract Probe P1。Matrix の前文・C1〜C3・FM1・FM2・Test Matrix・State Lifecycle・Boundary・Compatibility・Mutation の各行。
+    - 日数を外して 72 MNT-02-D1 を引く形にした所（同じ commit）: 74 の UI-11c-D13・D14、SCREEN_DESIGN の操作ログ画面の「閲覧 MVP」の行、requirements-coverage の QR-06 の行。
+    - 実装で直す所（plan-approved の後、Scope の実装の段）: `schema_v1.rs` の初期データ、`log_manager.rs` の `DEFAULT_RETENTION_DAYS` と doc comment、`log_manager.rs`・`system_repo.rs` の test の境の日数（3000 日前・3001 日前）、生成物 `90-traceability.md`。closeout で直す所: backlog の項目の本文の「今は…既定 365」。
 
 ## Contract Ledger
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| MNT-02-D1（既定 2557 日、設定の行が無いときも 2557 日） | 72 §72.4 の手順 3、MNT-02-D1、tracking §19、DB_DESIGN の D-5、D-136 (1) | `schema_v1.rs` の初期データ、`log_manager.rs` の `DEFAULT_RETENTION_DAYS` | 直す `test_cleanup_old_logs_req902_deletes_expired`・`test_cleanup_old_logs_req902_keeps_recent`、足す「新しい DB の値」「設定の行が無い DB」 | 非対象 |
+| MNT-02-D1（既定 3000 日、設定の行が無いときも 3000 日） | 72 §72.4 の手順 3、MNT-02-D1、tracking §19、DB_DESIGN の D-5、D-136 (1) | `schema_v1.rs` の初期データ、`log_manager.rs` の `DEFAULT_RETENTION_DAYS` | 直す `test_cleanup_old_logs_req902_deletes_expired`・`test_cleanup_old_logs_req902_keeps_recent`、足す「新しい DB の値」「設定の行が無い DB」 | 非対象 |
 | MNT-02-D1（読めない値・0 で消さず、日付を更新しない） | 72 §72.4 の手順 3、MNT-02-D1、D-136 (2) | `log_manager.rs` の `cleanup_old_logs` | 足す「読めない値・0」 | 非対象 |
 | MNT-02-D1（日付の範囲の外は 0 件、panic しない） | 72 §72.4 の手順 4・6、20 §2.8 の `delete_old_logs`、D-136 (2) | `system_repo.rs` の `delete_old_logs` | 足す「大きな値」（`cleanup_old_logs` と `delete_old_logs`。`cleanup_old_logs` では `log_last_cleanup_date` が今日になる） | 非対象 |
 | §72.4 の 1 日 1 回・`log_cleanup` の記録・日付の更新（変えない） | 72 §72.4 の手順 1・2・5・6 | 変えない | 既存 `test_cleanup_old_logs_req902_same_day_skip`・`test_cleanup_old_logs_req902_records_cleanup`・`test_cleanup_old_logs_req902_updates_date`・`test_cleanup_old_logs_req902_first_run`（古いログの日付だけを直す） | 非対象 |
 | `delete_old_logs` の cutoff（今日から日数を引いた日の 0 時より前を消す。変えない） | 20 §2.8 の `delete_old_logs`（72 §72.1 の system_repo の拡張） | `system_repo.rs`（求め方を checked にするだけ） | 既存 `test_delete_old_logs_req902_*` 2 本（引数 365 のまま） | 非対象 |
-| §72.5 の起動の順と、失敗を warn して起動を続けること（変えない） | 72 §72.5 | 変えない | 既存の起動の test | 非対象 |
+| §72.5 の起動の順と、失敗を warn して起動を続けること（変えない） | 72 §72.5 | 変えない | 無い（自動 test は無い。PR の差分に `lib.rs` が無いことと `lib.rs:1475`〜`:1478` の静的照合。Test Plan の main wiring） | 非対象 |
 | 保持日数を画面で変えない（変えない） | 69 UI-11a-D1 | 変えない | 非対象 | 非対象 |
 | 隣接の除外: backup の保持日数と MNT-01-D3 | 71 §71.5・MNT-01-D3 | 変えない（形だけを借りる） | 既存 | 非対象 |
 | 隣接の除外: D-051 の `integrity_fix` の監査の痕跡（同じ TX、ログに残す） | D-051、36 BIZ-07-D3、74 UI-11c-D14 | 変えない（残る期間だけが延びる。D-051 の Superseded in part の行） | 既存 | 非対象 |
@@ -246,7 +250,7 @@ Test Design Matrix: [2026-10-23-oplog-retention](test-matrices/2026-10-23-oplog-
 
 R3 の Contract Probe は外部の前提に頼る計画で Plan Gate の前に最小の実験を求める。本 lane の前提で外部のものは 2 つで、どちらも Plan Gate の前に確かめた（P1 は起票の run、P2 は Plan Review round 1 の是正の run）。
 
-- P1 7 年分の操作ログの大きさと一覧の速さ: 合成の DB（`operation_logs` は `schema_v1.rs` と同じ定義、index 無し）に 1 日 200 行 × 2557 日 = 511400 行（summary は日本語 40 字、detail_json は約 300 byte）を入れ、`sqlite3 "$TMPDIR/oplog-size.db" < oplog-size.sql`（scratch の script、commit しない）→ 結果（2026-10-23、開発用の PC の WSL、sqlite3 3.51.3）: `rows|511400`、`bytes|210006016`、1 か月の範囲の `COUNT(*)` が `Run Time: real 0.072777`、同じ範囲の `ORDER BY created_at DESC, id DESC LIMIT 50 OFFSET 0` が `Run Time: real 0.067429`。`VACUUM INTO`（backup の作り方、71 §71.4）が `Run Time: real 0.461897` で写しは 210006016 byte。店の PC と店の 1 日の行数では測っていない（未実測）。
+- P1 保持の長さ分の操作ログの大きさと一覧の速さ（起票の時の既定 2557 日分で測った）: 合成の DB（`operation_logs` は `schema_v1.rs` と同じ定義、index 無し）に 1 日 200 行 × 2557 日 = 511400 行（summary は日本語 40 字、detail_json は約 300 byte）を入れ、`sqlite3 "$TMPDIR/oplog-size.db" < oplog-size.sql`（scratch の script、commit しない）→ 結果（2026-10-23、開発用の PC の WSL、sqlite3 3.51.3）: `rows|511400`、`bytes|210006016`、1 か月の範囲の `COUNT(*)` が `Run Time: real 0.072777`、同じ範囲の `ORDER BY created_at DESC, id DESC LIMIT 50 OFFSET 0` が `Run Time: real 0.067429`。`VACUUM INTO`（backup の作り方、71 §71.4）が `Run Time: real 0.461897` で写しは 210006016 byte。既定を 3000 日に改めた後の 3000 日分（600000 行）は測り直さず、行数の比で `python3 -c "print(round(210006016*3000/2557))"` → `246389538`（byte、未実測）。店の PC と店の 1 日の行数では測っていない（未実測）。
 - P2 `chrono` の `NaiveDate` から範囲の外の日数を引くと panic し、`checked_sub_days` は `None` を返す: lock の版 `chrono 0.4.44`（`src-tauri/Cargo.lock`）の source（`~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.44/src/naive/date/mod.rs`）で、`checked_sub_days` は `days.0 <= i32::MAX as u64` でなければ `None`、それ以下なら `add_days` の範囲の検査で `Option` を返し（`:689`〜`:694`）、`impl Sub<TimeDelta> for NaiveDate` は `` checked_sub_signed(rhs).expect("`NaiveDate - TimeDelta` overflowed") ``（`:2139`〜`:2146`）。最小の実験（2026-10-24、`$TMPDIR/chrono-probe` に `chrono = { version = "=0.4.44", default-features = false, features = ["clock"] }` の crate を作り、今日を `2026-10-24` に固定して `cargo run --offline -q`。scratch で commit しない）→ 出力 `checked_sub_days(2557) = Some(2019-10-24)`、`checked_sub_days(100000000) = None`、`checked_sub_days(4294967295) = None`、`today - Duration::days(i64::from(u32::MAX))` は `` `NaiveDate - TimeDelta` overflowed `` で panic（`catch_unwind` で `panicked = true`）。Plan Review round 1 の reviewer の観測（今の `system_repo.rs:224`〜`:225` の式が `u32::MAX` で panic する）と一致する。
 
 ## Data Safety
@@ -268,3 +272,18 @@ round 1（`e05eb9fd`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 3
 - P2: SCREEN_DESIGN と requirements-coverage の旧い日数を保持日数の形に直し AC3 の対象に。20 §2.8 の `delete_old_logs` を `checked_sub_days` と範囲の外の 0 件に。Matrix の範囲の外の行を 72 §72.4 の手順 6（掃除の日を今日にする）に合わせ C4・C5 に分けた。
 - P3: 汎用の `update_setting` の経路（command は書けるが frontend は送らない）、backup からの復元の文を「保証しない」に、Contract Probe P2 を chrono の source と最小の実験で実施済みに、migration を足さない判断の前提（初回の導入の版に含める）。
 - 起草役の見送り（Coordinator が受理）: `docs/backlog.md` の「既定 365」は closeout で直す。`docs/architecture/mnt-task-specs.md` の MNT-02 の手順の要約に「確定できないときは消さない」の分岐が無い件は、round 2 の reviewer の判断に委ねる。
+
+round 2（`16d7dd00`）: Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 3）、Codex（発注 546）= approve（P1 0 / P2 0 / P3 3）。重なりは 1 件（K1 を変えたときの更新先の漏れ）。Coordinator は全 6 件を受理した（Opus #3 は K1 の問い直しで、owner の決定で閉じる）。是正は Coordinator の代行の起草役が本 commit で行った。
+
+- Codex #1・Opus #1（K1 の更新先の漏れ。Scope の D-127 の段の「日数の正本を 1 か所にした」が現物と合わない）: 74 の UI-11c-D13・D14、SCREEN_DESIGN、QR-06 から既定の日数を外して 72 MNT-02-D1 を引く形にした（D-050 の、別の正本の値を転記しない形）。日数を書く所は 3000 日に改め、Review Focus の K1 に直した所の全件を、plan の段階（正本・packet・Matrix）と実装（code・test・生成物）と closeout に分けて書いた。AC3 に旧い既定の日数の式を 2 本目として足した。backlog の項目の本文「今は…既定 365」は code の今の値で、closeout で直す（Scope の正本の段）。
+- Codex #2（起動の順・warn の続行を「既存の起動の test」で確かめるとした誤り）: 確かめる自動 test は無い。Test Plan の main wiring・Contract Ledger の §72.5 の行・Matrix の Main Wiring と Residual Test Gaps を、PR の差分に `lib.rs` が無いことと `src-tauri/src/lib.rs:1475`〜`:1478`（DB の初期化の後・自動 backup の前で呼び、失敗を warn して続ける）の静的照合に直した。
+- Codex #3（74 の箇所を §74.6 とした誤り）: Scope の正本の段と Design Readiness を §74.10・§74.12・§74.16 に直した（`rg -n '保持日数の cleanup' docs/function-design/74-ui-operation-logs.md` の 272・297 行は見出し 265 行の §74.10 と 292 行の §74.12、非目的の表の 568 行は 563 行の §74.16）。
+- Opus #2（migration を足さない前提が repo の中で強制されていない）: Scope の migration の段に、Coordinator が Ready の依頼の前に初回の導入が済んでいないことを確かめ、済んでいれば plan-gate に戻して migration を Scope に足す、と書いた。
+- Opus #3（2557 日は取引の日から 7 年で、帳簿書類の 7 年の数え方より短い。K1 を owner に見せる時点が未定）: K1 を owner に諮り、owner は d 約 3000 日を選んだ（repo 外の回答台帳 TD-418、2026-10-24）。D-136 と 72 MNT-02-D1 の Why を「同じ長さ」から数え方つきに書き直し、Owner Effort Budget の K1 の段を「答えた」に直した。
+- K1 の日数（3000 日）の数え方:
+  - 起算日: 個人の帳簿書類の 7 年は、その年の翌年 3 月 15 日の翌日から数える（所得税法施行規則 63 条 4 項。日付で決まり、休日で動かない）。法人は確定申告書の提出期限の翌日から数え（国税庁 タックスアンサー No.5930。欠損金の生じた年度は 10 年）、期限は事業年度の終わりの翌日から 2 か月（法人税法 74 条 1 項）、申請で原則 1 か月〈会計監査人を置く場合などは更に長く〉延ばせ（同 75 条の 2）、期限が休日なら翌日（国税通則法 10 条 2 項）。法令は 2026-10-24 に e-Gov 法令 API の本文で、No.5930 は国税庁の頁で確かめた。
+  - 店の形: repo 外の回答台帳の L-132・L-217（個人店）、L-284（確定申告で 1 年分の売上と出費をまとめる）、L-059（棚卸しは税理士の指示で大晦日）。暦年で申告する個人事業と読めるが、明言した記録は無いので、12 月末の決算の法人の場合も満たす日数にした。
+  - 数え方: 掃除は今日から N 日を引いた日の 0 時より前を消すので（72 §72.4 の手順 4）、ある日の記録はその日から N 日後の日まで残る。要る N は、1 月 1 日の取引の日から 7 年の最後の日までの日数の最大。個人: `python3 -c "from datetime import date as d; r=[(d(y+8,3,15)-d(y,1,1)).days for y in range(2026,2060)]; print(min(r),max(r))"` → `2995 2996`。法人（12 月末の決算、期限が土日なら次の平日）: `python3 -c "from datetime import date as d,timedelta as t;import calendar as c;s=lambda x:x if x.weekday()<5 else s(x+t(1));e=lambda dl:(lambda a:d(a.year+7,a.month,a.day)-t(1))(s(dl)+t(1));print(max((e(d(y+1,2,c.monthrange(y+1,2)[1]))-d(y,1,1)).days for y in range(2026,2060)),max((e(d(y+1,3,31))-d(y,1,1)).days for y in range(2026,2060)))"` → `2983 3014`（2 か月の期限、1 か月延ばした期限）。
+  - 丸め: 個人の最大 2996 日と、期限を延ばさない法人の最大 2983 日の両方に足りる切りのよい値として 3000 日にした（4 日の余裕。owner の「約 3000 日」と合い、test の境〈3000 日前・3001 日前〉が読みやすい）。期限を延ばした法人（1 か月の延長で 3014 日、更に長い延長ではそれ以上）と欠損金の年度（10 年）には足りないが、店は個人と読めるので当てず、法人と分かれば D-136 の Revisit で見直す。大きさは 2557 日分の測定の行数の比で約 246389538 byte（Contract Probe P1、未実測）。
+- 照合した先（Review Rules の scope の提案の照合）: K1 の答えは repo 外の回答台帳 TD-418 の原文、店の形は同じ台帳の L-132・L-217・L-284・L-059。
+- plan-approved へ: 日数を改めたので、round 2 の approve は前の版の plan に対するもの。契約の変わった版の確認を round 3（Plan Review round 天井 3 の最後の round）で受ける。
