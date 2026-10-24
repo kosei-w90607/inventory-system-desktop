@@ -1,14 +1,15 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
-### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）で、商品の読取りが写しの 3 列を返すこと・stocktake_repo の明細の読取り・計数の保存は (b)（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、stocktake_repo の明細・完了・記録の詳細の読取り（§2.11・§2.11a）と共有 JAN の読取り。商品の読取りが写しの 3 列を返すことは b2（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
 | repo 操作 | 処理・返却の契約 |
 |---|---|
-| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。（(b)）商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
+| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。（b2、proposed・未実装）商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
 | stocktake_repo の明細の読取り | `get_stocktake_items`・`find_stocktake_item` は、明細を参照する計数（`stock_counts.stocktake_item_id`）の効く値と置き場の日付、写しの在庫・範囲を返す。差異と要再確認の理由は BIZ が求める |
 | 計数の読取り・保存 | [21](21-io-inventory-repo.md) の新契約（`insert_stock_count` と、商品の計数の鍵の順の一覧） |
+| 共有 JAN の読取り（b1） | `list_shared_jan_conflicts(conn) -> Result<Vec<(String, Vec<String>)>, DbError>`（`pub(crate)`）: 在庫連動の商品と同じ JAN を別の商品が持つ組を JAN の昇順、商品コードの昇順で返す（[36](36-biz-integrity-check.md) の共有 JAN の違反の一覧）。変更の後の状態の検査（BIZ-01）は今の `find_by_jan_code` で行う |
 
 SQL の失敗・整数の範囲外・FK 違反は DbError として返し、IO で前後や回復の可否を決めない。
 
@@ -782,11 +783,14 @@ fn find_stocktake_by_id(conn: &DbConnection, id: i64) -> Result<Option<Stocktake
 
 **シグネチャ**:
 ```
-fn complete_stocktake(conn: &DbConnection, stocktake_id: i64, total_cost: i64, completed_at: &str) -> Result<(), DbError>
+fn complete_stocktake(conn: &DbConnection, id: i64, total_cost: i64, completed_at: &str, cutoff: StocktakeCutoff) -> Result<(), DbError>
 ```
 
+**StocktakeCutoff構造体**（完了の時点のカーソル。[tracking](../db-design/tracking-system-tables.md)、ADR D6）:
+- import_id: Option\<i64\>（`MAX(csv_imports.id)`、取り消したものを含む。無ければ None）, count_id: Option\<i64\>（`MAX(stock_counts.id)`）, movement_id: Option\<i64\>（`MAX(inventory_movements.id)`、無ければ 0）
+
 **処理ステップ**:
-1. UPDATE stocktakes SET status = 'completed', total_cost = ?, completed_at = ? WHERE id = ? AND status = 'in_progress'
+1. UPDATE stocktakes SET status = 'completed', total_cost = ?, completed_at = ?, cutoff_import_id = ?, cutoff_count_id = ?, cutoff_movement_id = ? WHERE id = ? AND status = 'in_progress'
 2. affected_rows == 0 → DbError::NotFound（該当棚卸しが存在しないか完了済み）
 
 #### list_stocktake_items
@@ -795,19 +799,19 @@ fn complete_stocktake(conn: &DbConnection, stocktake_id: i64, total_cost: i64, c
 
 **シグネチャ**:
 ```
-fn list_stocktake_items(conn: &DbConnection, stocktake_id: i64, department_id: Option<i64>, counted_only: Option<bool>, page: u32, per_page: u32) -> Result<PaginatedResult<StocktakeItemDetail>, DbError>
+fn list_stocktake_items(conn: &DbConnection, stocktake_id: i64, department_id: Option<i64>, counted_only: Option<bool>, page: u32, per_page: u32) -> Result<PaginatedResult<StocktakeItemRow>, DbError>
 ```
 
-**StocktakeItemDetail構造体**:
-- id: i64, stocktake_id: i64, product_code: String, name: String, department_name: String, system_stock: i64, actual_count: Option<i64>, counted_at: Option<String>, current_stock: i64（動的: products.stock_quantity）, is_discontinued: bool（products.is_discontinued）
+**StocktakeItemRow構造体**（IO の行。wire の `StocktakeItemDetail` は BIZ-06 が効く計数・差異・理由を足して作る。[35](35-biz-stocktake-service.md) の「読取り」）:
+- id: i64, stocktake_id: i64, product_code: String, name: String, department_name: String, system_stock: i64, actual_count: Option<i64>, counted_at: Option<String>（明細の表示用の写し）, current_stock: i64（動的: products.stock_quantity）, is_discontinued: bool（products.is_discontinued）, stock_unit: ProductStockUnit, stock_range_low・stock_range_high: Option<i64>（写しの範囲）
 
 **処理ステップ**:
-1. WHERE句構築: department_id → p.department_id = ?、counted_only=true → si.actual_count IS NOT NULL、counted_only=false → si.actual_count IS NULL
+1. WHERE句構築: department_id → p.department_id = ?、counted_only=true → 明細を参照する計数がある（`EXISTS(SELECT 1 FROM stock_counts sc WHERE sc.stocktake_item_id = si.id)`）、counted_only=false → 無い（「計数済み」の定義。35）
 2. COUNT + LIMIT/OFFSET のページングパターン
 
 #### find_stocktake_item_with_parent_status
 
-**関数要求**: 棚卸し明細を親ヘッダのステータス付きで取得する。update_count 時の「棚卸しが進行中か」の確認に使用
+**関数要求**: 棚卸し明細を親ヘッダのステータス付きで取得する。計数の保存（`save_stock_count`）の明細の確かめ（進行中か・商品が同じか）に使用
 
 **シグネチャ**:
 ```
@@ -834,7 +838,7 @@ fn update_stocktake_item_valuation(conn: &DbConnection, item_id: i64, valuation_
 
 #### count_uncounted_items
 
-**関数要求**: 未入力（actual_count IS NULL）のアイテム数を返す
+**関数要求**: 未計数（明細を参照する計数が無い）のアイテム数を返す
 
 **シグネチャ**:
 ```
@@ -843,26 +847,32 @@ fn count_uncounted_items(conn: &DbConnection, stocktake_id: i64) -> Result<i64, 
 
 #### list_uncounted_items
 
-**関数要求**: 未入力の棚卸し明細一覧を返す（force_fill 処理用）
+**関数要求**: 未計数の棚卸し明細一覧を返す（完了の `uncounted` の理由と「0 にする」の明細の確かめ。35）
 
 **シグネチャ**:
 ```
 fn list_uncounted_items(conn: &DbConnection, stocktake_id: i64) -> Result<Vec<UncountedItem>, DbError>
 ```
 
-#### get_stocktake_items_for_complete
+#### list_items_for_completion
 
-**関数要求**: 棚卸し確定処理で必要な全アイテムを取得（actual_count が NOT NULL の明細のみ）
+**関数要求**: 完了の検査と評価に使う明細を id の順で取得する（35「完了」。`pub(crate)`）
 
 **シグネチャ**:
 ```
-fn get_stocktake_items_for_complete(conn: &DbConnection, stocktake_id: i64) -> Result<Vec<StocktakeItemForComplete>, DbError>
+pub(crate) fn list_items_for_completion(conn: &DbConnection, stocktake_id: i64) -> Result<Vec<StocktakeItemForCompletion>, DbError>
 ```
 
-**StocktakeItemForComplete構造体**:
-- id: i64, product_code: String, actual_count: i64
+**StocktakeItemForCompletion構造体**:
+- id: i64, product_code: String, counted: bool（明細を参照する計数がある）, is_discontinued: bool, stock_quantity: i64, stock_recheck: bool, cost_price_centi: i64, stock_unit: ProductStockUnit
 
-**設計ノート**: BIZ-06 complete_stocktake は各明細で product_repo::find_by_product_code を個別呼出しするため、IO型に current_stock_quantity/current_cost_price を含めない（35-biz §20.5）。actual_count は force_fill 後に NULL なしが保証されるため i64 で直接取得する。
+#### 回復先と要再確認の一覧の読取り（b1、`pub(crate)`）
+
+```
+pub(crate) fn find_active_item_for_product(conn: &DbConnection, product_code: &str) -> Result<Option<(i64, i64)>, DbError> // 進行中の棚卸しのその商品の明細（明細 ID・棚卸し ID）。40 の回復先
+pub(crate) fn find_stock_copy(conn: &DbConnection, product_code: &str) -> Result<Option<StockCopyRow>, DbError> // 商品の写し（名前・単位・在庫・要再確認の印と範囲）
+pub(crate) fn list_recheck_product_codes(conn: &DbConnection) -> Result<Vec<String>, DbError> // 写しが要再確認の商品コード（商品コードの順。35「読取り」）
+```
 
 #### get_stocktake_progress
 
@@ -891,7 +901,7 @@ fn find_stocktake_eligible_products(conn: &DbConnection) -> Result<Vec<ProductFo
 **処理ステップ**:
 1. SELECT product_code, stock_quantity, cost_price_centi, is_discontinued FROM products ORDER BY product_code ASC
 
-**設計ノート**: BIZ層（start_stocktake）が is_discontinued と stock_quantity に基づいて auto-fill 分岐を制御する。IO層ではフィルタしない。
+**設計ノート**: 開始は全ての商品を明細にし、自動の 0 の入力をしない（35。b1）。IO層ではフィルタしない。
 
 #### find_all_stock_quantities
 
@@ -912,11 +922,11 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<StockCopyRow>, D
 
 ### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
 
-本節の開始時snapshot・確定時live在庫基準の補正は、現行実装の表示契約である。D-118 の新方式は冒頭の proposed 節を正とし、完了は補正の movement を作らず、差異は [35](35-biz-stocktake-service.md) の新契約の「読取り」（効く計数の値 − その計数に入っている記録だけから求めた帳簿）で返す。
+完了は補正の movement を作らない（D-118、b1）。明細ごとの効く計数・差異・ロス原価・完了の後の差は BIZ-06 が完了の時点のカーソルで求める（[35](35-biz-stocktake-service.md) の新契約の「読取り」「完了」）。本節の IO は header・明細・カーソルだけを返す。
 
 #### get_stocktake_record_detail
 
-**関数要求**: 棚卸し記録詳細（ヘッダ、補正明細、関連 `inventory_movements`）を取得する。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
+**関数要求**: 棚卸し記録詳細（ヘッダ、明細、完了の時点のカーソル）を取得する。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用。補正の movement は読まない
 
 **シグネチャ**:
 ```
@@ -926,20 +936,17 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 **StocktakeRecordDetailCore構造体**（IO 内部型。wire DTO は BIZ-06 側 [35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.6a が所有）:
 - header: Stocktake（§2.11 既存型を再利用）
 - item_count: i64（stocktake_items 全件数 = 対象商品数）
-- items: Vec\<StocktakeRecordDetailItem\>（補正明細のみ）
-- movements: Vec\<MovementRecord\>（source=None のまま）
+- items: Vec\<StocktakeRecordItemRow\>（全ての明細、商品コードの順）
+- cutoff: StocktakeCutoff（完了の時点のカーソル。進行中は全て None）
 
-**StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
-- product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
-- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。D-118 の新方式でも同じ参考値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price_centi: Option\<i64\>
-- adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
-- `stock_unit` は repo が `parse_stock_unit` で読む `ProductStockUnit`（D-113）。確定時評価原価は `valuation_cost_price_centi`（1/100 円。原価の lane、D-113・D-128）。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」。
+**StocktakeRecordItemRow構造体**:
+- product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit（`parse_stock_unit`、D-113）
+- valuation_quantity: Option\<i64\>・valuation_cost_price_centi: Option\<i64\>（完了で固定した評価数量と評価原価〈1/100 円〉。進行中は None。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11）
 
 **処理ステップ**:
-1. stocktakes のヘッダを stocktake_id で取得する。存在しない場合は DbError::NotFound
+1. stocktakes のヘッダとカーソルを stocktake_id で取得する。存在しない場合は DbError::NotFound
 2. stocktake_items の件数を COUNT で取得する（対象商品数）
-3. 補正明細: inventory_movements（`reference_type='stocktake'` かつ `reference_id=stocktake_id` かつ `is_voided=0`）を起点に、stocktake_items（stocktake_id + product_code 一致）、products、departments を JOIN し、ORDER BY product_code ASC で返す。「差異」の値は補正 movement の quantity（確定時 live 在庫基準、[35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.5 の adjustment_quantity）であり、`system_stock - actual_count` の snapshot 差では定義しない — 棚卸し中の CSV取込み等（SP-205-09）で両者は乖離し得る。stocktake_items 行を欠く異常 row は補正明細から落ち movements にのみ現れる（表示は壊れない）
-4. movements: 同 filter の全行を [24-io-csv-import-repo.md](24-io-csv-import-repo.md) §14.13a / [21-io-inventory-repo.md](21-io-inventory-repo.md) §10.2 と同パターンで取得し、source=None のまま返す（in_progress 棚卸しは補正 movement 未作成のため 0 件で正常）
+3. 明細: stocktake_items を products、departments と JOIN し、ORDER BY product_code ASC で返す
 
 **エラーハンドリング**:
 - ヘッダ不存在 → DbError::NotFound

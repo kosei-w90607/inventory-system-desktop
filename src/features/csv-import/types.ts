@@ -26,7 +26,6 @@ export type CsvImportState =
       status: "importing";
       preview: PreviewData;
       previewToken: string;
-      additionalImportConfirmed: boolean;
       filename: string;
     }
   | { status: "result"; result: ImportResult; settlementDate: string; filename: string }
@@ -43,7 +42,7 @@ export type CsvImportAction =
   | { type: "select_file"; filename: string }
   | { type: "parse_succeeded"; preview: PreviewData; previewToken: string }
   | { type: "parse_failed"; error: InvokeError }
-  | { type: "confirm_import"; additionalImportConfirmed: boolean }
+  | { type: "confirm_import" }
   | { type: "import_succeeded"; result: ImportResult; settlementDate: string }
   | { type: "import_failed"; error: InvokeError; recoverTo: ErrorRecoverTo }
   | { type: "dismiss_error" }
