@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7・D9）の IO の側。以下を b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で csv_imports の API に足した。旧 ADR（時点証拠）の受領（`pos_import_sources`）・受領済みの上限・同一性の拒否の記録・取消の事前読取りの操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D7・D9）の IO の側。以下を b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で csv_imports の API に足した。旧 ADR（時点証拠）の受領（`pos_import_sources`）・受領済みの上限・同一性の拒否の記録・取消の事前読取りの操作は持たない（置き換えた）。
 
 | 操作 | 入力 → 出力 / 処理 |
 |---|---|

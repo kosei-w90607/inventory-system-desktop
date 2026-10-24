@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の棚卸し画面の側。既存の検索 / HID・候補の確認・一覧・確定の結果を保ち、計数は商品ごとに「数を保存」で即保存する（今の Excel と同じく、数えたら入れる。既定の計数）。棚を今見た数で直すときは「入れ直す」（fresh な計数。ADR D3・D5）。旧 ADR（時点証拠）の「今から数える」（begin）・token・失効・応答不明の照会・legacy / auto_filled / force_fill の表示・非連動化の未調整の案内は持たない（置き換えた）。旧 UI-10-D10・§73.6 / §73.10 / §73.12 の current_stock の差異の計算、UI-10-F5・UI-10-D4 ほかの force_fill の確認 dialog と再送信、補正の一覧の結果画面、とそれらのテストの oracle は、b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で本節に置き換えた（以下の §73.1〜§73.14 は置き換えた後の現行の契約。決定の履歴の文は当時のまま残し、置き換えた所に注記した）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の棚卸し画面の側。既存の検索 / HID・候補の確認・一覧・確定の結果を保ち、計数は商品ごとに「数を保存」で即保存する（今の Excel と同じく、数えたら入れる。既定の計数）。棚を今見た数で直すときは「入れ直す」（fresh な計数。ADR D3・D5）。旧 ADR（時点証拠）の「今から数える」（begin）・token・失効・応答不明の照会・legacy / auto_filled / force_fill の表示・非連動化の未調整の案内は持たない（置き換えた）。旧 UI-10-D10・§73.6 / §73.10 / §73.12 の current_stock の差異の計算、UI-10-F5・UI-10-D4 ほかの force_fill の確認 dialog と再送信、補正の一覧の結果画面、とそれらのテストの oracle は、b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で本節に置き換えた（以下の §73.1〜§73.14 は置き換えた後の現行の契約。決定の履歴の文は当時のまま残し、置き換えた所に注記した）。
 
 | 場面 | 表示・入力・focus |
 |---|---|
@@ -440,5 +440,5 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-09-02 | stocktake-empty-count-guard（本 PR） | §73.5 step 4 と §73.9 に、数量の空欄・空白のみを `update_count` 送信前の FieldError「数量を入力してください」で止める契約（ST-C5-D1）を追加。 |
 | 2026-09-06 | ⑨ 在庫少一覧の取引先列 + 棚卸し廃番 badge + R2-3（本 PR） | UI-10-D13 追加: `StocktakeItemDetail` に `is_discontinued: bool` を追加し、棚卸しカウント画面の一覧テーブルに廃番 badge（`variant="secondary"` + `border-border`、icon なし）を表示する（§73.3/§73.6）。同一 file 内の既存候補行 badge も同じ commit で `border-border` へ揃える。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §73.15 現行buildの停止の節（SPEC-STOP-D4、案内の見出し・本文の正本、無効にする操作と使える操作）を追加。 |
-| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§73.15 の停止の節を外し、F4・F5・D4・§73.4〜§73.13 の数の保存・確定・差異・結果の画面を計数の保存・完了の拒否の一覧・在庫を動かさない確定に置き換えた。L3 の (e) を自動 test へ移した（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§73.15 の停止の節を外し、F4・F5・D4・§73.4〜§73.13 の数の保存・確定・差異・結果の画面を計数の保存・完了の拒否の一覧・在庫を動かさない確定に置き換えた。L3 の (e) を自動 test へ移した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
 | 2026-10-24 | stocktake-count-runtime-b1 の Final Review の是正 | §73.1 と UI-10-D7 の現在形の説明を CMD-10 の 11 command（`save_stock_count` ほか）に揃えた（廃止した `update_count` と「7 本」が残っていた）。 |

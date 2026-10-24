@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で、精算の窓、BIZ-01 の共有 JAN と在庫連動を始める検査、BIZ-03 の Z004 の識別・確定・取消、BIZ-06 の計数の保存と完了、BIZ-07 の共有 JAN の一覧が入った（旧本体は撤去した）。旧 ADR（時点証拠）の契約は置き換えた。
+SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、精算の窓、BIZ-01 の共有 JAN と在庫連動を始める検査、BIZ-03 の Z004 の識別・確定・取消、BIZ-06 の計数の保存と完了、BIZ-07 の共有 JAN の一覧が入った（旧本体は撤去した）。旧 ADR（時点証拠）の契約は置き換えた。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。共有 JAN の在庫連動の拒否、在庫連動を始めるときの連動しない間の売上の検査、初期在庫の movement と求め直し。
 - BIZ-02 / BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。並びの鍵付きの movement、求め直しの関数（写しを書く唯一の経路）、要再確認の判定。整合性は写しと求め直しの比較で、補正は求め直しを写しへ書く（操作ログの必須は変えない）。
