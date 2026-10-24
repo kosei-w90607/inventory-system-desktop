@@ -172,8 +172,8 @@ sweep（`843c4938` で `rg -n --hidden 'Fable 5\.1' --glob '!docs/archive/**' --
 
 旧表記の全数（`843c4938` で `rg -n -e '10月〜大晦日' -e '数週間スパン' -e '長期作業' docs src-tauri src --glob '!docs/archive/**' --glob '!docs/plans/**'`）は、上の 3 か所と backlog の項目そのもの（193）のほかに、下の 4 行を出す。backlog の項目の 7 か所のうち本 lane で直さないもの:
 
-- `docs/function-design/35-biz-stocktake-service.md` の force_fill の設計判断の「年末棚卸しは10月〜大晦日の長期作業。…」（377）と、評価原価の「理由: 棚卸しは数ヶ月に及ぶ長期作業であり、…」（382）: 並走の PR #188（`agent/stocktake-count-runtime-b`、`c667d52c`）の差分が 2 行とも外す（`gh pr diff 188` の `-` の行）。本 lane は 35 を触らない。#188 は Draft で merge されていないので、backlog の項目では merge まで残りに数える（S5-2）。
-- `src-tauri/src/biz/stocktake_service.rs` の module doc の「年末の長期作業（10月〜大晦日）で、…」（4）: code の file で、本 lane の外。PR #188 が同じ module doc の隣の行（3 行目と 6 行目以降）を書き換えるので、今直すと #188 の base 同期で衝突する。#188 の merge の後に同じ file を触る lane で直す（S5 で backlog の項目に残す）。
+- `docs/function-design/35-biz-stocktake-service.md` の force_fill の設計判断の「年末棚卸しは10月〜大晦日の長期作業。…」（377）と、評価原価の「理由: 棚卸しは数ヶ月に及ぶ長期作業であり、…」（382）: PR #188 が 2 行とも外した（`22823ba5` で merge 済み。本 branch は遷移 7 で取り込んだ）。本 lane は 35 を触らず、backlog の残りに数えない（Gated Amendment 1）。
+- `src-tauri/src/biz/stocktake_service.rs` の module doc の「年末の長期作業（10月〜大晦日）で、…」（4）: code の file で、本 lane の外。PR #188 は同じ module doc の隣の行（3 行目と 6 行目以降）を書き換えて merge され、この句は残った。code の file を触る後の lane で直す（S5 で backlog の項目に残す）。
 - `docs/screen_mockups.html` の図の「10月〜大晦日」（208）とボタン説明「閉店後にレジのCSVを読み込む」（259）: 初期提案の歴史資料で、今の画面の図でない（`docs/SCREEN_DESIGN.md` の頭の「このファイルの目的」、`docs/architecture/ui-task-specs.md` の頭、[52](../function-design/52-ui-shared-layout.md) の「モックアップアーカイブ扱い」「触らない」の行）。当時の提案の記録として残す。
 
 ### S5 backlog の項目を直す
@@ -181,7 +181,7 @@ sweep（`843c4938` で `rg -n --hidden 'Fable 5\.1' --glob '!docs/archive/**' --
 | # | 項目（`843c4938` の行） | 直す向き | 結果 |
 |---|---|---|---|
 | S5-1 | 「`docs/ARCHITECTURE.md` §4 の宅急便部門の項を整理する」（109） | 項目を外す（S2 で済む。残りが無い） |  直した |
-| S5-2 | 「期間・動線の旧表記の残り 7 か所を店の事実に合わせる」（193） | 残りだけを書く項目にする: `src-tauri/src/biz/stocktake_service.rs` の module doc の期間の句（code comment 1 行。PR #188 の merge の後に同じ file を触る lane で直す）と、「35 §20.5 の「設計判断 — force_fill パラメータ」と「設計判断 — valuation_cost_price_centi のタイミング」の期間の句は PR #188 が外す（#188 の merge まで残りに数える）」、mockup の 2 か所は歴史資料として残す、を書く。35 は行番号でなく節と見出しで引く（`docs/DOC_STYLE_GUIDE.md` §1 の「code と文書の箇所の引き方」。行番号は #188 の merge で動く）。本 lane が直した 3 か所の名と、PR #93 の起源の句の長い列挙は外す（本 packet に残る）。見出しから数を外す（例: 「期間・動線の旧表記の残りを店の事実に合わせる」。残りは code comment 1 か所・35 の 2 句・mockup 2 か所で、数を写すと次の直しでまた古くなる） |  残す（PR #188 は `22823ba5` で merge 済みで、本 branch の base〈`8db97271`〉に入っている。35 §20.5 に「設計判断 — force_fill パラメータ」の見出しは無く、「設計判断 — valuation_cost_price_centi のタイミング」の句も期間の旧表記〈「長期作業」〉を持たない。直す向きの「#188 が外す〈#188 の merge まで残りに数える〉」と AC-S5-2 の 3 つめの検査が現況と食い違い、AC の変更が要るので、実装の run は項目を直さず Coordinator に返した） |
+| S5-2 | 「期間・動線の旧表記の残り 7 か所を店の事実に合わせる」（193） | 残りだけを書く項目にする: `src-tauri/src/biz/stocktake_service.rs` の module doc の期間の句（code comment 1 行。code の file を触る後の lane で直す）を書く。35 の 2 句は PR #188 が外し（merge 済み）、mockup の 2 か所は歴史資料として残すと正本（上の S4 の直さないものの mockup の行が引く節）が決めているので、どちらも項目に書かない。本 lane が直した 3 か所の名と、PR #93 の起源の句の長い列挙と、35 の file:行（`a3f08cdd` の時点の 374 行）は外す（本 packet に残る）。見出しから数を外す（例: 「期間・動線の旧表記の残りを店の事実に合わせる」。数を写すと次の直しでまた古くなる） |  残す（PR #188 は `22823ba5` で merge 済みで、本 branch の base〈`8db97271`〉に入っている。35 §20.5 に「設計判断 — force_fill パラメータ」の見出しは無く、「設計判断 — valuation_cost_price_centi のタイミング」の句も期間の旧表記〈「長期作業」〉を持たない。直す向きの「#188 が外す〈#188 の merge まで残りに数える〉」と AC-S5-2 の 3 つめの検査が現況と食い違い、AC の変更が要るので、実装の run は項目を直さず Coordinator に返した） |
 | S5-3 | 「squash merge の subject 明示」（180） | 項目を外す（owner の決定 2026-10-24、repo 外の回答台帳 TD-429）。理由: 今の merge は helper だけを通り（`scripts/pr-gate.py` の `merge` が `gh pr merge --squash --match-head-commit` を呼び、`--subject` を渡さない）、squash の subject は PR title〈commit が 1 つの PR では commit の subject〉になる（`gh api repos/kosei-w90607/inventory-system-desktop --jq .squash_merge_commit_title` → `COMMIT_OR_PR_TITLE`、2026-10-24）。正本に PR title の規則は無い（`docs/DEV_WORKFLOW.md` Commit / PR Messages は commit の subject の形だけを決め、`.github/pull_request_template.md`・`docs/agent-guidance/merge-evidence.md`・`docs/ci.md` にも無い）。観測として、`843c4938` から遡る 30 commit の subject は、`git log --format='%h %s' -30 843c4938` を Commit / PR Messages の type の形で数えて外れが 0 |  直した |
 
 S3 は項目そのものを直す段なので、S5 に入れない。
@@ -227,7 +227,7 @@ S6 の後、hook test の監査（`scripts/tests/claude-hooks.test.sh` の `vali
 ## Non-scope
 
 - code・migration・bindings・route・画面の文言（`src-tauri/src/biz/stocktake_service.rs` の module doc を含む。S5-2 で backlog に残す。`src-tauri/src/lib.rs` の setup の comment の番号も変えない: 起動の test が `// 5. 操作ログ自動削除` を文字列で探す〈`lib.rs` の `.find("// 5. 操作ログ自動削除")`〉）。
-- 35 の force_fill と評価原価の句（PR #188 が外す）と `docs/screen_mockups.html`（歴史資料）。
+- 35 の force_fill と評価原価の句（PR #188 が外した。merge 済み）と `docs/screen_mockups.html`（歴史資料）。
 - 72 §72.5 の「追加箇所」（PR #198 が直す）。
 - `.claude/agents/` の既存の定義（`reviewer`・`writer`）と、classifier・helper・hook test の変更。
 - 座組表の外の「Fable 5.1」（decision-log の決定の本文、backlog と archive の記録、並走の lane の packet、tracked でない `.local/` の雛形、owner の個人の `~/.claude/CLAUDE.md`）。
@@ -255,7 +255,7 @@ baseline は起点 `843c4938` で下の command を逐語で実行した出力�
 - AC-S4-1: `rg -n -e '10月〜大晦日' -e '数週間スパン' docs/architecture/biz-task-specs.md docs/db-design/tracking-system-tables.md docs/SCREEN_DESIGN.md` が何も出さない（exit 1。baseline は 3 行: biz-task-specs:453・tracking-system-tables:133・SCREEN_DESIGN:218）。
 - AC-S4-2: `rg -c '73-ui-stocktake.md\) §73.1' docs/architecture/biz-task-specs.md docs/db-design/tracking-system-tables.md docs/SCREEN_DESIGN.md` が 3 file でそれぞれ 1 以上（baseline: 何も出さない、exit 1）。読んで確かめる: 新しい句が 73 §73.1 に無い期間・作業量（例: 正式カウントの日数）を書いていない。
 - AC-S5-1: `rg -n -e 'ARCHITECTURE.md` §4 の宅急便部門' docs/backlog.md` が何も出さない（exit 1。baseline は 1 行: 109）。
-- AC-S5-2: `rg -c 'stocktake_service.rs' docs/backlog.md` が 1 以上で、その行が期間の旧表記の項目にある（baseline: `1`、同じ項目の今の列挙。読んで確かめる）。`rg -n -e 'biz-task-specs.md:451' -e 'tracking-system-tables.md:137' -e 'SCREEN_DESIGN.md:213' docs/backlog.md` が何も出さない（exit 1。baseline は 1 行: 193）。`rg -n -e '設計判断 — force_fill パラメータ' -e '設計判断 — valuation_cost_price_centi のタイミング' docs/backlog.md` が 1 行で、その行が同じ項目にある（baseline: 何も出さない、exit 1）。`rg -n '旧表記の残り 7 か所' docs/backlog.md` が何も出さない（exit 1。見出しから数を外す。baseline は 1 行: 193）。
+- AC-S5-2: `rg -c 'stocktake_service.rs' docs/backlog.md` が 1 以上で、その行が期間の旧表記の項目にある（baseline: `1`、同じ項目の今の列挙。読んで確かめる）。`rg -n -e 'biz-task-specs.md:451' -e 'tracking-system-tables.md:137' -e 'SCREEN_DESIGN.md:213' -e '35-biz-stocktake-service.md:374' docs/backlog.md` が何も出さない（exit 1。baseline は 1 行: 197〈Gated Amendment 1 の時点〉）。`rg -n '旧表記の残り 7 か所' docs/backlog.md` が何も出さない（exit 1。見出しから数を外す。baseline は 1 行: 193）。
 - AC-S5-3: `rg -n 'squash merge の subject 明示' docs/backlog.md` が何も出さない（exit 1。baseline は 1 行: 180）。
 - AC-S6-1: `git ls-files .claude/agents` が `.claude/agents/consult-fable5.md`・`.claude/agents/reviewer-fable5.md`・`.claude/agents/reviewer.md`・`.claude/agents/writer.md` の 4 行（baseline: `reviewer.md` と `writer.md` の 2 行）。`git diff --exit-code origin/main...HEAD -- .claude/agents/reviewer.md .claude/agents/writer.md` が exit 0。
 - AC-S6-2: `rg -n -e '^name: reviewer-fable5$' -e '^model: claude-fable-5$' -e '^effort: high$' -e '^disallowedTools: Edit, Write, NotebookEdit$' .claude/agents/reviewer-fable5.md` が 4 行。`diff <(awk 'f>=2; /^---$/{f++}' .claude/agents/reviewer.md) <(awk 'f>=2; /^---$/{f++}' .claude/agents/reviewer-fable5.md)` が exit 0（本文が `reviewer.md` と同じ。baseline: `reviewer-fable5.md` が無く `rg` は exit 2）。
@@ -269,8 +269,8 @@ baseline は起点 `843c4938` で下の command を逐語で実行した出力�
 
 - 引用する設計正本（節まで）: `docs/AGENT_OPERATING_MANUAL.md` `## 座組`（表と直後の箇条）と §3.3（S1）、`docs/decision-log.md` の D-099 の (D1)・(D3)（S6）、[67](../function-design/67-ui-plu-export.md) の関数要求・UI-08-D1〜D3、[25](../function-design/25-io-plu-formatter.md)、[master-tables](../db-design/master-tables.md) の「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」（S2）、`docs/project-memory.md` の Store Premises の ECR+ の 2 行（S3）、[73](../function-design/73-ui-stocktake.md) §73.1 と `docs/SCREEN_DESIGN.md` の `### 利用者の1日の動線`（S4）、[71](../function-design/71-mnt-backup.md) §71.9 と `src-tauri/src/lib.rs` の `run` の setup・`run_startup_auto_backup`（S7）。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。
-- plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) S2 で IO-04 の項も一緒に外す（backlog の項目が「着手のときに決める」とした事項。昇格先は ARCHITECTURE §4 そのもの）。(2) S4 で 35・code comment・mockup を直さない（理由は本 packet と、S5-2 で直す backlog の項目に残る）。(3) S6 で Fable の枠を tracked の定義で起動する（Coordinator の裁定。昇格先は座組表〈S1〉と定義の file そのもの。D-099 の (D3) の適用で、decision-log には足さない）。どれも規則の新設でなく既存の規則（D-127、歴史資料の扱い、D-099）の適用。S1 の owner の決定は座組表そのものが置き場（表の注記の経路）で、decision-log には足さない。
-- 前提・制約と延期した gap: `stocktake_service.rs` の module doc の句は PR #188 の merge の後に直す（S5-2）。送っても安全な理由: comment で振舞いに効かず、#188 が同じ module doc を書き換えている。定義は本体の checkout の同期で効く（Ordinary Operation の 1 行目、owner の介入 1）。
+- plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) S2 で IO-04 の項も一緒に外す（backlog の項目が「着手のときに決める」とした事項。昇格先は ARCHITECTURE §4 そのもの）。(2) S4 で code comment・mockup を直さない（35 は PR #188 が外した。code comment の理由は本 packet と、S5-2 で直す backlog の項目に残り、mockup は歴史資料の扱いの正本に従う）。(3) S6 で Fable の枠を tracked の定義で起動する（Coordinator の裁定。昇格先は座組表〈S1〉と定義の file そのもの。D-099 の (D3) の適用で、decision-log には足さない）。どれも規則の新設でなく既存の規則（D-127、歴史資料の扱い、D-099）の適用。S1 の owner の決定は座組表そのものが置き場（表の注記の経路）で、decision-log には足さない。
+- 前提・制約と延期した gap: `stocktake_service.rs` の module doc の句は code の file を触る後の lane で直す（S5-2。PR #188 は merge 済みで、この句を変えなかった）。送っても安全な理由: comment で振舞いに効かない。定義は本体の checkout の同期で効く（Ordinary Operation の 1 行目、owner の介入 1）。
 - 絶対保証の自己点検: S1-3 の「alias の `fable` は既定で Fable 5.1 になる」は公式 model-config「Model aliases」の 2026-10-24 の記述で、Claude Code の版・`ANTHROPIC_DEFAULT_FABLE_MODEL`・Claude apps gateway の session で変わり得る（句は条件を括弧で書く）。定義の `model: claude-fable-5` は alias に依らないが、`CLAUDE_CODE_SUBAGENT_MODEL` より先に効くのは v2.1.251 以上で `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` を立てないときだけ（P-1）。定義の `effort: high` は環境変数 `CLAUDE_CODE_EFFORT_LEVEL` と呼出しの `effort` に上書きされ得る。座組表の規則（S1-1 の後: 発注と実効の model か effort が違う run は数えず取り直す。実効の model と effort を run 報告に記録する）が、どちらの食い違いの検出も持つ。
 - 判定: ready。
 
@@ -320,7 +320,7 @@ Risk は上の `## Risk` と同じ（R3。helper の `parse_packet` は行頭の
 | §4 から決まった 2 項が外れる（S2） | 項が残る、Q40 まで消える | regression | AC-S2-1 | 2 項のどれかが残るか、Q40 が `1` でない |
 | ECR+ の前提（S3） | 旧い前提の句が残る | regression | AC-S3-1 | 172 行の句が残る |
 | 期間の旧表記（S4） | 3 か所のどれかが残る、link が切れる | regression | AC-S4-1・AC-S4-2・AC1 | 旧表記が出る、`73-ui-stocktake.md) §73.1` が file のどれかに無い |
-| backlog の項目（S5） | 済んだ項目・外すと決めた項目が残る、35 の 2 つの句を済んだ扱いにする | regression | AC-S5-1・AC-S5-2・AC-S5-3 | 109・180 の項目が残る、35 の 2 つの見出しの句が無い、見出しに「7 か所」が残る |
+| backlog の項目（S5） | 済んだ項目・外すと決めた項目が残る、35 の 2 つの句（#188 が外した）を残りに数える | regression | AC-S5-1・AC-S5-2・AC-S5-3 | 109・180 の項目が残る、35 の file:行（`35-biz-stocktake-service.md:374`）が backlog に残る、見出しに「7 か所」が残る |
 | §71.9 の順序（S7） | 手順の番号が残る、関数の名が無い | regression | AC-S7-1 | 「ステップ6」「ステップ8」か `// 7.` が残る、`run_startup_auto_backup` が無い |
 
 State Lifecycle Matrix: not applicable（UI・data・cache の状態を持たない。定義の反映の前後は Ordinary Operation の 1・5 行目）。Adjacent Pattern Audit: 「Fable 5.1」の全 site（S1 の sweep）、期間の旧表記の全 site（S4 の全数）、setup の手順の番号を引く全 site（S7 の `rg`）を列挙した。Residual Test Gaps: 定義で起動した run の実効の model・effort は自動 test で確かめられず、merge 後の最初の run の記録に依る（P-1）。`/tasks` を取れない run は、model を run の自己申告、effort を run の `echo $CLAUDE_CODE_EFFORT_LEVEL` からの導出で記録し、どちらも無い項は未実測と書いて数える（Ordinary Operation の 1 行目）。
