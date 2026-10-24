@@ -12,7 +12,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -30,6 +30,7 @@ manual なし: 製品の runtime・画面・配布物を変えない検査 scrip
 
 1. kickoff → spec-check（2026-10-24、起草役）: 範囲を D-125 の Guarantee range のうち「検査」（TD-353 の 2b）と、2a が送った workflow の 2 file の引用の直しにした。Risk = R3（下の Risk）。
 2. spec-check → plan-draft（2026-10-24、起草役、同じ commit）: 表の唯一の skip。規則は D-125 と DOC_STYLE_GUIDE §1 に在り、本 lane はその規則を機械で強制するだけで、検査の形（対象・形・除外）は §1 の列挙から導く（下の Design Readiness）。
+3. plan-draft → plan-gate（2026-10-24、起草役、本 commit。state だけ）: packet と Test Design Matrix は前の commit `4e963c0c` で揃っている。Plan Review（Plan Reviewer 行の 2 本）へ出す。
 
 ## Owner Effort Budget
 
