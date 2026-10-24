@@ -4,7 +4,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: cfc9df8c734da4f8caaa01b2e003cc7ec4e7131b
 - Amendments: none
@@ -26,6 +26,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 6. plan-gate のまま是正（round 2、2026-10-24、Coordinator、本 commit）: round 2 の是正（Review Response 参照）と Contract Probe P6 の実測の記録。設計の方向は変えないので plan-gate に留め、round 3（Plan Review round の天井）で再 review する。
 7. plan-gate（round 3、天井、2026-10-24、Coordinator、本 commit）: round 3 の結果（Review Response 参照）に、`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings の全部を disposition「同型指摘の一括是正」とした。起草役が直した（Review Response 参照）。設計の方向（外し方）は変えないので plan-gate に留める。
 8. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）の closure は Claude 側 fresh Opus 5.5 = approve（P3 3）、Codex（発注 556）= approve（P1/P2/P3 0）で、P1/P2 = 0（下の Review Response）。closure の P3 3 件は plan-gate のまま起草役が `cfc9df8c` で直した（Plan Commit はその版）。実装の Writer は Plan Commit の版から S2 を書く（AC5 の test の名の集合は移動の前に取る）。
+9. plan-approved → implementing（2026-10-24、Coordinator、本 commit）: base の main（`843c4938`）は Plan Commit の祖先のままで同期は要らない。AC1〜AC3 の baseline を逐語で再測して上の値と一致した（AC1 `ls src-tauri/src/bin` は 3 file・exit 0、AC2 `ls src-tauri/dev-tools/src/bin` は無し・exit 2、AC3 `rg -n '^\[\[bin\]\]' src-tauri/Cargo.toml` は hit なし・exit 1）。並走の PR #204 は plan-gate のままで、`scripts/doc-consistency-check.sh` の変更は本 lane が先。
 
 本 commit で変えた正本（plan-first）:
 
