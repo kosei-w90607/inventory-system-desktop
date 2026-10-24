@@ -519,7 +519,7 @@ pub fn preview_rollback_csv_import(
 - csv_import_id: i64
 - settlement_no: i64（取り込み直す精算の番号。この取込みの精算回数）
 - recheck_targets: Vec\<CountRecoveryTarget\>（取り消した後に要再確認である商品。取消の結果の `RollbackResult.recheck_targets` と同じ作り方で、求め直した商品〈計数を持つ全ての商品とこの取込みの商品〉のうち要再確認のものなので、取り消す前から要再確認の商品も入る。[40](40-cmd-product.md) の CountRecoveryTarget）
-- affected_stocktakes: Vec\<AffectedStocktake\>（この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し。範囲の判定による候補で、取り消すと記録の詳細の明細の差異・ロス原価〈完了の時点の精算の n 以下の精算から求める〉と参考の差が変わることがある〈その精算が明細の商品を売っていなければ変わらない〉。範囲〈精算回数 ≤ 完了の時点の精算の n、または精算日 < 完了日〉は差異・ロス原価が使う精算を含むので、名指す集合を広げなくてよい。どの数が実際に変わるかは求めない。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
+- affected_stocktakes: Vec\<AffectedStocktake\>（この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し。範囲の判定による候補で、取り消すと記録の詳細の明細の差異・ロス原価〈完了の時点の精算の n 以下の精算から求める〉と参考の差が変わることがある。範囲〈精算回数 ≤ 完了の時点の精算の n、または精算日 < 完了日〉は差異・ロス原価が使う精算を含むので、名指す集合を広げなくてよい。どの数が実際に変わるかは他の精算の判定〈ADR D3 の「D に精算があるか」「最初の 1 本」〉でも決まるので求めず、確認の文は変わりうると言うだけにする。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
 
 **処理ステップ**:
 1. sales_repo::find_csv_import_by_id。None → BizError::NotFound（「CSV取込み記録が見つかりません: ID {csv_import_id}」）。rolled_back → BizError::ValidationFailed（「この取込みは取り消し済みです」）

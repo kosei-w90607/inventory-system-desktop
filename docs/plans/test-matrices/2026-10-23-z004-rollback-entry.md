@@ -1,6 +1,6 @@
 # Test Design Matrix: Z004 の取込みを取り消す入口
 
-Plan Packet: [2026-10-23-z004-rollback-entry](../2026-10-23-z004-rollback-entry.md)。行の記号は RB（BIZ。RB7 は 32 の表の順 4 の文）・W（CMD と登録）・U（画面）・T（既存の test の移し方）。test 名の REQ は REQ-401（Z004 の取込みと取消）・REQ-206 / REQ-207（記録の詳細）。
+Plan Packet: [2026-10-23-z004-rollback-entry](../2026-10-23-z004-rollback-entry.md)。行の記号は RB（BIZ。RB7 は 32 の表の順 4 の文と variant）・W（CMD と登録。W3 は `CmdError` の取込みID）・U（画面）・T（既存の test の移し方）。test 名の REQ は REQ-401（Z004 の取込みと取消）・REQ-206 / REQ-207（記録の詳細）。
 
 ## Risk
 
@@ -10,9 +10,10 @@ Risk: R3
 
 - 32 §15.6b BIZ-03-D2: preview は取消の本体を同じ TX で当てて明示の rollback で戻し、何も書かない。名指す商品は同じ状態の取消と同じ。
 - 32 §15.6b の手順 1〜3: 無い ID・取消済みの拒否、取り込み直す精算回数、記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し（35 の完了の後の比較の範囲に入る棚卸し。範囲の判定による候補）。
-- 32 の冒頭の D-118 の節の表の順 4: 拒否の文が同じ精算の active な取込みの取込みID を名指す（preview と確定の両方の経路）。
+- 32 の冒頭の D-118 の節の表の順 4: 拒否の文が同じ精算の active な取込みの取込みID を名指し、error の構造（`BizError::SettlementConflict` の `csv_import_id` → `CmdError.related_csv_import_id`、kind は `import_error` のまま）でも同じ ID を持つ（preview と確定の両方の経路）。ほかの拒否と error は None。
 - 41 の `preview_rollback_csv_import`: 薄い command、error の kind、登録（Specta と runtime の 2 面。`scripts/check-command-drift.sh`）。
 - 65 §65.5a TRACE-D13: CSV取込みの詳細の取消の入口（active だけ）、成功の後の表示と再取得、失敗の再試行。
+- 55 §55.11 UI-07-D18 の順 4 の拒否からの導線: 取込みの画面の error の Alert（`ErrorState`）が、`related_csv_import_id` があるときだけ名指した取込みの詳細への link を出す。
 - 55 §55.11 UI-07-D18: 2 つの入口に共通の確認（項目・要再確認〈因果を言わない文、操作の無い一覧〉・取り込み直し・完了した棚卸し〈言い切らない文〉・押せる条件・cache を使い回さない）、取消の mutation を 1 つに、Z004 タブの導線と `tab`（初期選択だけ）。
 - UI_TECH_STACK の UI-STATE-D2: `tab` の値の集合は `src/features/csv-import/types.ts` の tuple と schema が持ち、route は import する。
 
@@ -23,7 +24,7 @@ Risk: R3
 - 取消済みの取込みに preview が成功し、確認が「取り消す」を押させる。無い ID で preview が internal になる。
 - 比較の範囲に入る完了した棚卸しを取りこぼす（完了の後に入れた遅い精算）か、範囲に入らない棚卸しを名指す。範囲に入るが記録の詳細の数が変わらない棚卸しを落とす（差を求めて絞る実装）、または確認が差異・ロス原価・参考の差の変化を言い切るか、変わりうる「差異」「ロス原価」を名指さない。
 - 確認が「取り消すと…になります」と因果を言い切る（取り消す前から要再確認の商品も一覧に入る）。確認の一覧に入れ直しの操作や文が出る。
-- 順 4 の拒否の文が取込みID を名指さない、または別の取込みの ID を名指す。
+- 順 4 の拒否の文が取込みID を名指さない、または別の取込みの ID（固定の値、DB の最新の取込み）を名指す。error の構造に ID が無い、文と構造の ID が違う、順 4 以外の error に ID が入る。拒否の Alert に名指した取込みの詳細への link が無い、別の番号（精算回数）で link を作る、ID の無い error に link を出す。
 - command が Specta と runtime の登録のどちらかに無い。
 - 詳細が取消済みにも入口を出す、一覧の行に取消を出す、取消の後に詳細と一覧が古いまま。
 - 確認が読取りの間・失敗の後に「取り消す」を押させる、閉じて開き直しても古い preview を出す。
@@ -50,19 +51,21 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 | RB4 手順 2 | 精算回数を取り違える | unit | `test_preview_rollback_csv_import_req401_names_settlement_no` | 精算回数 0 と 101 の 2 つの取込みで、それぞれの preview の `settlement_no` が 0 と 101 でない（0 を「無い」として落とす、別の取込みの番号を返す） |
 | RB5 SPEC-STK-CNT-D3 の A1（取り消すと要再確認になる） | 取消の前に要再確認でなかった商品を名指さない | integration | `test_preview_rollback_csv_import_req401_recheck_after_losing_count_day_settlement` | 精算 101（日付 D、商品 B だけ）・102（D+1、商品 A）、A の既定の計数（日付 D）の DB で、取消の前の A が要再確認でなく、101 の preview の `recheck_targets` が A だけ（範囲 = 計数 − 1 〜 計数、理由 `undetermined_settlement`）でない。期待は非空（空の結果を返す mutation で red）。求め直す商品を「この取込みの商品だけ」に狭める mutation（計数を持つ商品を落とす）でも red（A は 101 に行が無く、計数を持つ商品としてだけ求め直される） |
 | RB6 手順 3（35 の範囲） | 比較の範囲に入る完了した棚卸しを取りこぼす・範囲の外を名指す・差で絞る | integration | `test_preview_rollback_csv_import_req401_affected_completed_stocktakes` | (a) 完了の前に取り込んだ取込み（id ≤ `cutoff_import_id`）の preview が、その棚卸しを名指さない。(b) 完了の後に取り込んだ、精算日が完了日より前の取込みの preview が名指さない（35 の「精算日 < 完了日」の項）。(c) 完了の後に取り込んだ、精算日が完了日以後で精算回数が完了の時点の精算の n より大きい取込みの preview が名指す。(d) 進行中の棚卸しを名指す。(e) 範囲に入るが記録の詳細の差異・ロス原価・参考の差のどれも変わらない取込み（完了の前に取り込んだ精算 101・102 が明細の商品を売っておらず、全ての明細の商品を fresh に数えて完了した後の 101）の preview が、その棚卸しを名指さない（差を求めて絞る実装で red）。各 case に非空か空の期待を 1 つずつ置く。名指す集合を範囲のままにする理由: 記録の詳細の明細の差異・ロス原価は完了の時点の精算の n 以下の精算だけを使い（b1 の `stocktake_service.rs` の 720 行の `ledger_at_cutoff`、`after` なし）、範囲〈精算回数 ≤ n、または精算日 < 完了日。同じ file の 571〜574 行〉はそれを含むので、範囲で名指せば差異・ロス原価が変わる棚卸しを取りこぼさない |
-| RB7 32 の表の順 4（取込みID を名指す） | 文が取込みID を名指さない・別の取込みを名指す | unit（実 DB）。既存の 3 test の期待を当て直す（T5） | preview の経路: `parse_tests.rs` の `test_parse_req401_rejects_other_version_of_same_settlement_and_allows_after_rollback`。確定の経路: `commit_tests.rs` の `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache` と `csv_import_cmd.rs` の `test_csv_cmd_req401_commit_keeps_token_on_rejection_and_removes_on_success` | 拒否の文が「同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）」で、{id} が各 test の中で先に確定した同じ精算の取込みの `csv_import_id`（parse は `first.csv_import_id`、commit は v2 の確定の結果の ID、cmd は `insert_import` の返す ID）と等しくない。期待は test の中の変数から組み、固定の数を書かない。fixture: b1 の 3 test は名指す取込みが DB の最初の取込み（ID 1）なので、3 test とも名指す取込みの前に別の取込みを 1 件入れ、名指す ID を 1 以外にする（例: 別の精算回数の売上 0 の取込みの行、cmd では `insert_import(…, "rolled_back", …)` のように順 2〜5 の比べる先にならない取込み。既存の在庫・`write_surface` の期待を変えない形を選ぶ）。各 test で、名指す ID が 1 でないことを assert する。production の側で ID を固定値 `1` にする mutant で 3 test とも red（b1 の今の fixture のままでは名指す ID が 1 なので、この mutant でも 3 test とも GREEN になる） |
+| RB7 32 の表の順 4（取込みID を名指す。文と error の構造） | 文と構造が取込みID を名指さない・別の取込みを名指す | unit（実 DB）。既存の 3 test の期待を当て直す（T5） | preview の経路: `parse_tests.rs` の `test_parse_req401_rejects_other_version_of_same_settlement_and_allows_after_rollback`。確定の経路: `commit_tests.rs` の `test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlement_from_cache` と `csv_import_cmd.rs` の `test_csv_cmd_req401_commit_keeps_token_on_rejection_and_removes_on_success` | 拒否の文が「同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）」で、{id} が各 test の中で先に確定した同じ精算の取込みの `csv_import_id`（parse は `first.csv_import_id`、commit は v2 の確定の結果の ID、cmd は `insert_import` の返す ID）と等しくない。期待は test の中の変数から組み、固定の数を書かない。fixture: b1 の 3 test は名指す取込みが DB の最初の取込み（ID 1）なので、3 test とも名指す取込みの前に別の取込みを 1 件入れ、名指す ID を 1 以外にする（例: 別の精算回数の売上 0 の取込みの行、cmd では `insert_import(…, "rolled_back", …)` のように順 2〜5 の比べる先にならない取込み。既存の在庫・`write_surface` の期待を変えない形を選ぶ）。各 test で、名指す ID が 1 でないことを assert する。cmd の test は、名指す取込みの後にも順 2〜5 の比べる先にならない取込み（`insert_import(…, "rolled_back", …)`）を 1 件足し、名指す ID が 1 でも DB の最大の id でもないことを assert する（parse・commit の 2 test は名指す取込みが DB の最新のままなので、最新の ID を名指す mutant はこの 1 test が止める）。error の構造: BIZ の 2 test は `Err(BizError::SettlementConflict { message, csv_import_id })` で、`csv_import_id` が文の {id} と同じ期待の変数と等しい。cmd の test は `CmdError.kind` が `import_error` のままで、`related_csv_import_id` が `Some(期待の ID)`。production の側で ID を固定値 `1` にする mutant で 3 test とも red（b1 の今の fixture のままでは名指す ID が 1 なので、この mutant でも 3 test とも GREEN になる）。DB の最新の取込みの ID（`SELECT MAX(id) FROM csv_imports` や確定の経路の `last_insert_rowid()`）を名指す mutant で cmd の test が red。文の ID と構造の ID を別の値から取る mutant（構造だけ固定値）で 3 test とも red |
 | W1 41 | error の kind が違う | unit（CMD） | `test_preview_rollback_csv_import_cmd_req401_maps_error_kinds` | 無い ID が kind `not_found`、取消済みが kind `validation` でない。成功で `RollbackPreview` の `settlement_no` が BIZ の値と違う |
 | W2 41 §17.9 | command が Specta か runtime の登録に無い | static（既存の `scripts/check-command-drift.sh`。`scripts/doc-consistency-check.sh` の `check_command_registry_drift` も同じ script を呼ぶ） | `bash scripts/check-command-drift.sh`（AC2）。新しい test は書かない | `#[tauri::command]` の宣言（D）、runtime の登録（`run` の `tauri::generate_handler!`、H）、Specta の登録（`export_bindings_to` の `collect_commands!`、S）、bindings の wire 名（`__TAURI_INVOKE("preview_rollback_csv_import"`、T）の 4 つの集合が一致しない（H か S から外すと `[ERROR] D - H` か `[ERROR] D - S` で exit 1。S から外して bindings を再生成すると T からも消え、AC2 の `rg -c '^export type RollbackPreview ='` も 0 になる） |
+| W3 40 §5.3・41 §17.4（順 4 の拒否の取込みID） | 変換で ID が落ちる・kind が変わる・ほかの error に ID が入る | unit（CMD。`cmd/mod.rs` の tests。b1 の `test_cmd_error_req205_stocktake_guard_carries_recovery` と同じ形） | `test_cmd_error_req401_settlement_conflict_carries_related_csv_import_id` | `BizError::SettlementConflict { message, csv_import_id: 42 }` の変換が kind `import_error`・message そのまま・`related_csv_import_id == Some(42)` でない。ほかの全ての variant（`ImportError`・`ValidationFailed`・`NotFound`・`StocktakeGuard` ほか）の変換で `related_csv_import_id` が None でない。変換の arm で `None` を返す mutant と、`ImportError` にも ID を入れる mutant で red |
 | U1 TRACE-D13（表示条件） | 取消済みに入口が出る・一覧の行に出る | component（RTL） | `CsvImportRecordDetailPage.test.tsx` の `REQ-207: 成功・部分成功の詳細に「この取込みを取り消す」を出し、取消済みには出さない` | `completed`・`completed_partial` の 2 つの mock で button が無い、`rolled_back` の mock で button がある |
 | U2 UI-07-D18（読取りの間） | 読み終わる前に押せる | component | `RollbackConfirmDialog.test.tsx` の `REQ-401: 取消の前の読取りの間は「取り消す」を押せず、確かめている文を出す` | preview の Promise を解決しない間に「取り消す」が `disabled` でない、または「取り消した後のようすを確かめています…」が無い |
-| U3 UI-07-D18（中身） | 名指しが欠ける・色だけ・因果や差の変化を言い切る・変わりうる列を名指さない・確認の中に入れ直しの操作 | component | `RollbackConfirmDialog.test.tsx` の `REQ-401: 対象の項目・精算回数・要再確認の一覧・取り込み直し・完了した棚卸しを出す` | 非空の preview（要再確認 2 商品〈取消で要再確認になる商品と、取り消す前から要再確認の商品を混ぜた mock〉、完了した棚卸し 1 つ、精算回数 0）で、「精算 0」・2 商品の商品名・範囲・理由の文字と icon（`aria-hidden` の svg と文字の両方）・取り込み直しの文・完了の日付の文のどれかが無い。要再確認の見出しの文が「取り消した後、次の商品は数え直しが必要です（今すでに必要な商品を含みます）」の exact で 1 件でない、または旧い「取り消すと、次の商品は数え直しが必要になります」が出る。完了した棚卸しの文が「完了した棚卸し（{完了の日付}）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差（参考）」が変わることがあります。」（日付は mock の値）の exact で 1 件でない、旧い「棚卸しの記録の詳細の「完了の後に入った記録による差（参考）」が変わることがあります。」（差異・ロス原価を名指さない文）が出る、または言い切りの「…が変わります。」が出る（mock は記録の詳細の数が変わらない棚卸しでも同じ文）。確認の一覧に「操作」の列見出し・「棚の数を確かめて入れ直してください。」・「棚卸しの画面で入れ直す」の link のどれかがある（`RecheckTargetList` を `renderAction` なしで使う形）。空の preview（要再確認 0、棚卸し 0）で「取り消しても、数え直しが必要になる商品はありません」が無い、または棚卸しの文が出る |
+| U3 UI-07-D18（中身） | 名指しが欠ける・色だけ・因果や差の変化を言い切る・変わりうる列を名指さない・記録の詳細と違う語で名指す・確認の中に入れ直しの操作 | component | `RollbackConfirmDialog.test.tsx` の `REQ-401: 対象の項目・精算回数・要再確認の一覧・取り込み直し・完了した棚卸しを出す` | 非空の preview（要再確認 2 商品〈取消で要再確認になる商品と、取り消す前から要再確認の商品を混ぜた mock〉、完了した棚卸し 1 つ、精算回数 0）で、「精算 0」・2 商品の商品名・範囲・理由の文字と icon（`aria-hidden` の svg と文字の両方）・取り込み直しの文・完了の日付の文のどれかが無い。要再確認の見出しの文が「取り消した後、次の商品は数え直しが必要です（今すでに必要な商品を含みます）」の exact で 1 件でない、または旧い「取り消すと、次の商品は数え直しが必要になります」が出る。完了した棚卸しの文が「完了した棚卸し（{完了の日付}）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差」が変わることがあります。」（日付は mock の値。節の名は b1 の `c667d52c` の `StocktakeRecordDetailPage.tsx` の 265 行の aria-label と同じ文字）の exact で 1 件でない、旧い文に共通の「「完了の後に入った記録による差（参考）」」（round 1 の差異・ロス原価を名指さない文と round 2 の文の両方に入り、記録の詳細の見出しと一字一句は合わない語）が出る、または言い切りの「…が変わります。」が出る（mock は記録の詳細の数が変わらない棚卸しでも同じ文）。確認の一覧に「操作」の列見出し・「棚の数を確かめて入れ直してください。」・「棚卸しの画面で入れ直す」の link のどれかがある（`RecheckTargetList` を `renderAction` なしで使う形）。空の preview（要再確認 0、棚卸し 0）で「取り消しても、数え直しが必要になる商品はありません」が無い、または棚卸しの文が出る |
 | U4 UI-07-D18（失敗と取消済み） | 失敗の後に押せる | component | `RollbackConfirmDialog.test.tsx` の `REQ-401: 読取りの失敗と取消済みでは「取り消す」を押せない` | preview の reject（kind `internal`）で「取り消した後のようすを読み込めませんでした」が無いか「取り消す」が押せる。kind `validation`（「この取込みは取り消し済みです」）で BIZ の文が出ないか押せる |
 | U5 TRACE-D13（成功） | 取消の後が古い・結果が出ない | integration（RTL + QueryClient） | `CsvImportRecordDetailPage.test.tsx` の `REQ-401: 詳細から取り消すと同じ ID で取消し、C9 で再取得し、取消の結果と Z004 の導線を出す` | `rollbackCsvImport` が詳細の ID で 1 回呼ばれない、Toast が `duration: 8000` でない、`src/test/invalidation-oracle.ts` の売上 CSV rollback の key の集合（D-052 C9 の独立の oracle）が invalidate されない、取消の結果の要再確認の一覧（mock の非空の `recheck_targets`）か「商品別CSV取込み（Z004）を開く」（href に `tab=z004`）が無い、再取得の後に「この取込みを取り消す」が残る |
 | U6 §55.9（失敗） | 失敗で state が壊れる・別の ID で再試行 | integration | `CsvImportRecordDetailPage.test.tsx` の `REQ-401: 取消の失敗は Toast で、同じ ID のまま再試行できる` | 1 回目の reject の後に Toast「取り消しに失敗しました。もう一度お試しください」が無い、2 回目の `rollbackCsvImport` の引数が 1 回目と違う、詳細が取消済みの表示になる |
 | U7 UI-07-D18（同じ確認） | 結果の画面だけ古い確認 | component | `ResultStep.test.tsx` の `REQ-401: 結果の画面の「取り消す」は共通の確認で、結果の取込みID で読む` | 「取り消す」で `previewRollbackCsvImport` が `result.csv_import_id` で呼ばれない、確認に精算回数と要再確認の一覧が出ない、今の確認の文（「この取込みによる在庫数も元に戻ります。」）が残る |
-| U8 UI-07-D18（導線と `tab`）・UI-STATE-D2 | Z004 タブが開かない・link が違う・route が値の集合を別に持つ | integration（実 router。route は feature の `csvImportSearchSchema` を import した `validateSearch` を通る）+ static（AC3 の 3 つの `rg`） | `CsvImportPage.test.tsx` の `REQ-401: tab=z004 で Z004 タブを開き、不正な tab は既定、取り込んだ記録の link は種別 CSV取込み` と AC3 の `rg` | `/csv-import?tab=z004` の render で Z004 タブが選ばれていない、`tab=zzz` で日報取込みでない、「取り込んだ記録を見る（取り消すときはここから）」の href が `/inventory/records?recordType=csv_import` でない。route に `z.enum(` がある、`validateSearch: csvImportSearchSchema` が無い、または `src/features/csv-import/types.ts` に `CSV_IMPORT_TAB_VALUES` の定義が無い（UI-STATE-D2） |
+| U8 UI-07-D18（導線と `tab`）・UI-STATE-D2 | Z004 タブが開かない・link が違う・route が値の集合を別に持つ | integration（実 router。route は feature の `csvImportSearchSchema` を import した `validateSearch` を通る）+ 同一性（`Route.options.validateSearch`）+ static（AC3 の 4 つの `rg`） | `CsvImportPage.test.tsx` の `REQ-401: tab=z004 で Z004 タブを開き、不正な tab は既定、取り込んだ記録の link は種別 CSV取込み` と AC3 の `rg` | `/csv-import?tab=z004` の render で Z004 タブが選ばれていない、`tab=zzz` で日報取込みでない、「取り込んだ記録を見る（取り消すときはここから）」の href が `/inventory/records?recordType=csv_import` でない。`expect(Route.options.validateSearch).toBe(csvImportSearchSchema)`（`Route` は `src/routes/csv-import/index.tsx`、schema は `src/features/csv-import/types.ts` から import）が通らない（route の中で同じ値を受ける別の schema〈`z.union([z.literal("daily-report"), z.literal("z004")])` など〉を作る mutant で red。振舞いの 3 つの期待はこの mutant でも通るので、同一性の検査が要る）。static: `validateSearch: csvImportSearchSchema` が無い、route に feature の types の import が無い、route に `z004` の文字がある、または `src/features/csv-import/types.ts` に `CSV_IMPORT_TAB_VALUES` の定義が無い（UI-STATE-D2） |
 | U9 UI-07-D18（mutation を 1 つに） | 取消の処理を 2 つ持つ | static（AC3 の `rg`）+ 今の flow の test | AC3 の `rg -l 'commands.rollbackCsvImport' …` と `useCsvImportFlow.test.tsx` の今の取消の test（T3） | `rg` の出力が `useRollbackCsvImport.ts` の 1 行でない。flow の取消の test の期待（成功で idle と取消の結果、失敗で result のまま）が変わる |
 | U10 UI-07-D18（cache を使い回さない） | 開き直して古い preview・読み直しの間に押せる | component | `RollbackConfirmDialog.test.tsx` の `REQ-401: 確認を開くたびに取消の前の読取りをやり直す` | 開く → 1 回目を解決 → 閉じる → 開くで、2 回目の Promise を解決しない間に「取り消す」が `disabled` でない、または 1 回目の値（1 回目の要再確認の商品名）が出ている。2 回目を解決した後に `previewRollbackCsvImport` の呼出しが 2 回でない、または 2 回目の mock の値〈要再確認の商品を替えた〉が出ない |
+| U11 UI-07-D18（順 4 の拒否からの導線） | 拒否の Alert から名指した取込みへ進めない・別の番号で開く・ID の無い error に link | integration（実 router。`CsvImportPage` を render し、`parseAndValidateCsv` の mock が error を返す） | `CsvImportPage.test.tsx` の `REQ-401: 同じ精算の別の版の拒否の Alert から、名指した取込みの詳細へ進める` | mock の error（kind `import_error`、message「同じ精算と思われる別の資料が既に取り込まれています（精算 101、取込みID: 7）」、`related_csv_import_id: 7`。取込みID と精算回数を別の値にする）で、Alert に「取込みID 7 の記録を見る（取り消すときはここから）」の link が無い、href の pathname が `/csv-import/records/7` でない、または search の `returnTo` が `/csv-import?tab=z004` でない。`related_csv_import_id` の無い import_error（「このファイルは取込み済みです…」）で link が出る。Alert の見出し「プレビューが利用できません」と「最初に戻る」が変わる |
 
 ## 既存の test の移し方
 
@@ -74,7 +77,7 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 | T2 | `rg -n "it\\(|test\\(" src/features/csv-import/components/ResultStep.test.tsx` | 確認の中身を見る case は期待を変える（契約の変更: 55 UI-07-D18。今の確認の文と dl の assert を共通の確認の assert に。代わりに同じ失敗を止める行は U7）。結果の表示・要再確認の一覧（入れ直しの文と「棚卸しの画面で入れ直す」の link。b1 の `c667d52c` の 143〜148 行。`RecheckTargetList` に `renderAction` を渡す形の回帰）・「売上レポートを見る」・「ホームに戻る」の case は移す |
 | T3 | `rg -n "it\\(|test\\(" src/features/csv-import/hooks/useCsvImportFlow.test.tsx` | 取消の case は移す（期待を変えない。mutation の置き場が共有の hook に移るだけで、成功の dispatch・`rollbackResult`・失敗の Toast と state は同じ）。mock の import 先だけを直す |
 | T4 | `rg -n "it\\(|test\\(" src/features/inventory-records/CsvImportRecordDetailPage.test.tsx` | 移す（期待を変えない）: 今の表示・戻り導線（DSR-18）・取消済みの Alert の case。mock の command に `previewRollbackCsvImport`・`rollbackCsvImport` を足す |
-| T5 | `rg -n '既に取り込まれています（精算' src-tauri/src/biz/csv_import_service/tests src-tauri/src/cmd/csv_import_cmd.rs` | 期待を変える（契約の変更: 32 の表の順 4 の文に取込みID を足す。b1 の `c667d52c` では `parse_tests.rs` の 664 行・`commit_tests.rs` の 682 行・`csv_import_cmd.rs` の 341 行の 3 件）。3 test とも名指す取込みの前に別の取込みを 1 件足す（fixture の変更。理由と形は RB7）。同じ失敗（ID を名指さない・別の ID）を止める行は RB7 |
+| T5 | `rg -n '既に取り込まれています（精算' src-tauri/src/biz/csv_import_service/tests src-tauri/src/cmd/csv_import_cmd.rs` と、順 4 を通る照合を拾う `rg -n -e 'BizError::ImportError' -e 'fn import_error' src-tauri/src/biz/csv_import_service/tests` | 期待を変える（契約の変更: 32 の表の順 4 の文に取込みID を足し、`BizError::SettlementConflict` で返す。2 本目の出力は、順 4 で拒否する入力の行だけを `SettlementConflict` の照合へ移し、順 1〜3・5 の行〈`c667d52c` では `commit_tests.rs` の 725 行の順 5、`cross_feature_tests.rs` の 259 行の順 3 ほか〉は移す〈期待を変えない〉。b1 の `c667d52c` では `parse_tests.rs` の 664 行・`commit_tests.rs` の 682 行・`csv_import_cmd.rs` の 341 行の 3 件）。3 test とも名指す取込みの前に別の取込みを 1 件足す（fixture の変更。理由と形は RB7）。同じ失敗（ID を名指さない・別の ID）を止める行は RB7 |
 
 ## State Lifecycle Matrix
 
@@ -93,6 +96,7 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 | 取消の成功の Toast の表示時間 8 秒 | `rg -n 'duration: 8000' src -g '!*.test.*'` の 2: `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts`・`src/features/csv-import/hooks/useCsvImportFlow.ts` | Z004 の分を共有の hook へ移す（詳細も同じ） | 日報の分は日報の取消のまま | U5 |
 | 取消の再取得（D-052 C9） | `rg -n 'csvImportRollback\(' src -g '!*.test.*'` の 1: `src/features/csv-import/hooks/useCsvImportFlow.ts` | 共有の hook へ移す | — | U5 |
 | 詳細の戻り導線 `returnTo`（DSR-15・DSR-18） | `src/features/inventory-records/CsvImportRecordDetailPage.tsx` の `returnToLinkProps` | 変えない（取消の後も同じ戻り先） | — | T4 |
+| `CmdError` に kind 別の構造の field を足す（先例: b1 の `stocktake_recovery`。`stocktake_guard` だけ Some） | `c667d52c` の `src-tauri/src/cmd/mod.rs` の `From<BizError>` と、`CmdError` を literal で作る 23 か所（`git grep -c -e 'error_id: None' -e 'error_id: Some'`、6 file）、TS の `stocktake_recovery` を書く 42 file（`git grep -l 'stocktake_recovery' -- 'src/**'`） | `related_csv_import_id`（`SettlementConflict` だけ Some）。Rust の 23 か所に None | TS は任意の field（`?:`）にして 42 file を変えない（先例の必須の field と違う理由は packet の「起票時に起草役が決めたこと」の 8） | W3、AC2 |
 | route の search の検証（zod の `.catch(undefined)`）と、有限の値の集合の所有（UI-STATE-D2: feature の `types.ts` / `search.ts` が tuple と schema を持ち、route は import する） | `src/routes/csv-import.records.$importId.tsx` の `searchSchema`、`src/features/inventory-records/types.ts` の `inventoryRecordsSearchSchema`、`src/features/daily-sales/types.ts` の `dailySalesSearchSchema`（`src/routes/reports/daily.tsx` が import）、`src/features/monthly-sales/types.ts` の `monthlySalesSearchSchema`、`src/features/products/search.ts` の `productListSearchSchema` | `src/features/csv-import/types.ts` に tuple と schema、`src/routes/csv-import/index.tsx` は import | — | U8、AC3 |
 
 ## Negative Paths
@@ -100,7 +104,7 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 - missing input: 無い取込みID の preview（RB3・W1）。
 - invalid input: 不正な `tab`（U8）。
 - duplicate/ambiguous input: 取消済みの取込みの preview（RB3・U4）と、取消済みへの重ねた取消（冪等の Ok、T1）。
-- unknown reference: 完了した棚卸しが無い DB（RB6 の空の期待）。
+- unknown reference: 完了した棚卸しが無い DB（RB6 の空の期待）。取込みID を持たない import_error（U11 の link を出さない case、W3 の None）。
 - dependency missing: preview の読取りの失敗（U4）。
 - permission/write failure: 取消の失敗（U6）。preview の戻しの失敗は `DatabaseError`（code 読み。下の Residual Test Gaps）。
 - dry-run side effect: preview が書く（RB2）。
@@ -112,19 +116,19 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 - empty/non-empty: `recheck_targets` の空と非空（U3・RB5）。
 - min/max: 精算回数 0（RB4・U3）。
 - status/policy enum: 取込みの状態 3 つ（`completed`・`completed_partial`・`rolled_back`）で入口の有無（U1）。
-- wire type: `RollbackPreview`・`AffectedStocktake`（AC2）。
+- wire type: `RollbackPreview`・`AffectedStocktake`、`CmdError.related_csv_import_id`（任意。AC2・W3）。
 - internal type: 切り出した取消の本体の関数（T1・RB1）。
-- producer/consumer: BIZ → CMD → bindings → 確認（W1・U3）。
+- producer/consumer: BIZ → CMD → bindings → 確認（W1・U3）。順 4 の拒否: BIZ → CMD → `ErrorState`（RB7・W3・U11）。
 - round-trip token: `tab` の search（U8）。
 - precision/range: 精算回数は b1 の範囲の内で number（RB4）。
 - cross-language parse: 無い。
 
 ## Compatibility Checks
 
-- old schema/input: 今の `RollbackResult`・`ImportResult`・`CsvImportRecordDetail` の形は変えない（AC2 の bindings の再生成で今の型の diff が無い）。
-- new schema/input: `RollbackPreview`・`AffectedStocktake`。
+- old schema/input: 今の `RollbackResult`・`ImportResult`・`CsvImportRecordDetail` の形は変えない（AC2 の bindings の再生成で今の型の diff が無い）。`CmdError` は任意の field を 1 つ足すだけ（kind の集合と今の field は変えない。TS の今の literal は変えずに型が通る〈AC4 の typecheck〉）。
+- new schema/input: `RollbackPreview`・`AffectedStocktake`、`CmdError.related_csv_import_id`。
 - output order: `affected_stocktakes` は完了の日時の昇順（RB6）。`recheck_targets` の順は b1 の取消と同じ（RB1）。
-- optional field behavior: 無い（新しい型は nullable の field を持たない）。
+- optional field behavior: 新しい型は nullable の field を持たない。`CmdError.related_csv_import_id` は任意（無い・null は link を出さない。U11）。
 
 ## Data Safety Checks
 
@@ -145,12 +149,12 @@ BIZ の test は実の SQLite（`src-tauri/src/db/test_support.rs` の in-memory
 
 mutation は対象経路の観測結果を変えるものを選び、既存の適用条件に従って実注入で red を確認する。effect 等が変化を打ち消す場合は別経路で単独に効くか調べる。観測不能な mutant の kill を固定 AC にせず、承認済み AC の訂正は Coordinator へ返す。
 
-- If a mock value is changed so it differs from the design-doc expected value, which assertion proves the implementation used the correct source and not the mock's accidental constant? → RB7 は名指す取込みの ID を 1 以外にした fixture で、ID を固定値 1 にする mutant を red にする。U3 は preview の mock の値（精算回数 0、商品名）がそのまま画面に出ることを見る。U7 は `result.csv_import_id` と違う ID の mock を置き、呼出しの引数を見る。
+- If a mock value is changed so it differs from the design-doc expected value, which assertion proves the implementation used the correct source and not the mock's accidental constant? → RB7 は名指す取込みの ID を 1 以外にした fixture で、ID を固定値 1 にする mutant を red にし、cmd の test は名指す ID を最大でもない値にして最新の ID を名指す mutant を red にする。U11 は取込みID と精算回数を別の値にした mock で、link の id の取り違えを見る。U8 は `Route.options.validateSearch` の同一性で、route の中の同じ振舞いの別 schema を red にする。U3 は preview の mock の値（精算回数 0、商品名）がそのまま画面に出ることを見る。U7 は `result.csv_import_id` と違う ID の mock を置き、呼出しの引数を見る。
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → U5（取消の前は入口があり、C9 の再取得の後に取消済み）。
 - If a key branch is inverted, which test fails? → U1（`rolled_back` の判定）、U4（押せる条件）。
 - If a threshold comparison changes, which test fails? → RB6 の (b)(c)（35 の「精算日 < 完了日」と「精算回数 ≤ n」の境）。
 - If a guard is removed, which test fails? → RB3（取消済みの拒否）、U2（読取りの間の disabled）、U10（開き直した読取りの間の disabled）。
-- If an output field is omitted, which test fails? → RB4・RB6・RB7（順 4 の文の取込みID）・U3。
+- If an output field is omitted, which test fails? → RB4・RB6・RB7（順 4 の文と構造の取込みID）・W3（`related_csv_import_id`）・U3・U11。
 - If output order changes, which test fails? → RB6（完了の日時の昇順）。
 - If dry-run performs a side effect, which test fails? → RB2。
 - If a JSON number crosses JavaScript safe integer range, which test fails? → 該当なし（精算回数は b1 の入力の境で範囲の内。b1 の Z5）。
