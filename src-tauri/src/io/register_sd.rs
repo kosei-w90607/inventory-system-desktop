@@ -1258,8 +1258,12 @@ mod tests {
     /// 本体と test の境の属性（architecture_test の行の追跡に掛からないよう分けて書く）
     const TEST_ATTR: &str = concat!("#[cfg(", "test)]");
 
-    /// `cfg(test)` の属性 より前の本体から、行と block の comment を外した文字列
+    /// `cfg(test)` の属性 より前の本体から、行と block の comment を外した文字列。
+    /// `cfg(test)` の属性つきの `mod <名>;` の宣言は本体の途中にも置かれる（`io/mod.rs` の
+    /// `l3_fixtures`）ので、境とみなさず外す（その file は `test_only_paths` が扱う）
     fn production_text(source: &str) -> String {
+        let declarations = Regex::new(r"#\[cfg\(test\)\]\s*mod\s+\w+\s*;").unwrap();
+        let source = declarations.replace_all(source, "");
         let body = source.split(TEST_ATTR).next().unwrap_or("");
         let without_block = Regex::new(r"(?s)/\*.*?\*/").unwrap().replace_all(body, "");
         without_block

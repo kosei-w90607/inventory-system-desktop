@@ -92,7 +92,10 @@ function makePreview(): DailyReportPreviewData {
 }
 
 function cmdError(kind: CmdError["kind"], message: string): { status: "error"; error: CmdError } {
-  return { status: "error", error: { kind, message, field: null, error_id: null } };
+  return {
+    status: "error",
+    error: { kind, message, field: null, error_id: null, stocktake_recovery: null },
+  };
 }
 
 function renderPage() {
