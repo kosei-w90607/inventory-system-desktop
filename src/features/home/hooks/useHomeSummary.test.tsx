@@ -35,6 +35,7 @@ const syntheticError: CmdError = {
   message: "synthetic query failure",
   field: null,
   error_id: "E-SYNTHETIC",
+  stocktake_recovery: null,
 };
 
 function makeDailySales(): DailySalesReport {
