@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D5・D6）の CMD-10 の側。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)。停止 ADR の 5 つの入口を外す単位。SPEC-STK-CNT-D12）で、旧い数の上書きの command を外し、下の 4 つの command を足した。旧 ADR（時点証拠）の begin / save / abandon の 3 command・token・AppState の context の保管・DB 世代の失効は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D5・D6）の CMD-10 の側。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)。停止 ADR の 5 つの入口を外す単位。SPEC-STK-CNT-D12）で、旧い数の上書きの command を外し、下の 4 つの command を足した。旧 ADR（時点証拠）の begin / save / abandon の 3 command・token・AppState の context の保管・DB 世代の失効は持たない（置き換えた）。
 
 | command | wire 入力 | wire 出力 |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の BIZ-06 の側。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で、旧い数の上書きと在庫への上書きの確定・force_fill・自動の 0 の入力を本節に置き換え、停止 ADR の入口を外した。以下の §20.2〜§20.10 は本節の現行の契約。旧 ADR（時点証拠）の計数 context（begin・token・版・DB 世代・source_cursor・再送の照会・abandon）・独立再実測の表・明細の kind（uncounted / measured / auto_filled / legacy）・force_fill・legacy の取消の保留・非連動化の回復・拒否の回復型の表（SPEC-STK-TIME-D1-R1）は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた時点証拠の code は b1 で外した）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の BIZ-06 の側。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、旧い数の上書きと在庫への上書きの確定・force_fill・自動の 0 の入力を本節に置き換え、停止 ADR の入口を外した。以下の §20.2〜§20.10 は本節の現行の契約。旧 ADR（時点証拠）の計数 context（begin・token・版・DB 世代・source_cursor・再送の照会・abandon）・独立再実測の表・明細の kind（uncounted / measured / auto_filled / legacy）・force_fill・legacy の取消の保留・非連動化の回復・拒否の回復型の表（SPEC-STK-TIME-D1-R1）は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた時点証拠の code は b1 で外した）。
 
 #### 計数の保存（SPEC-STK-CNT-D5）
 
@@ -401,4 +401,4 @@ CMD層では `kind="validation"` と BIZ の message / field をそのまま保�
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §20.3 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を設計判断として追加 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §20.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-06 停止文言の正本）を追加。§20.3〜§20.5 は旧本体 `legacy_*` の記述と明記 |
 | 2026-09-25 | 棚卸しの評価額（本 PR） | §20.5a 評価額の計算（SPEC-STK-VAL-D1〜D6: 価格の基準数量、1/100 円の商品別の金額、円未満を四捨五入した総額）を追加。§20.2 / §20.5 と新方式の total_cost の式を §20.5a へ寄せる |
-| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§20.0 の停止の節を外し、§20.2〜§20.5・§20.6a・§20.8〜§20.10 を計数の保存・0 にする・完了の拒否と評価額の固定・記録の詳細の新しい経路に置き換えた（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§20.0 の停止の節を外し、§20.2〜§20.5・§20.6a・§20.8〜§20.10 を計数の保存・0 にする・完了の拒否と評価額の固定・記録の詳細の新しい経路に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |

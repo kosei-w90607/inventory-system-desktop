@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。b1（[Plan Packet](plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存と完了（35・42・73）、Z004 の識別・確定・取消（24・32・41・55）、共有 JAN と在庫連動を始める検査（30・51・60）、整合性の共有 JAN の一覧（36・75）、migration v11（22 §20）が入った。商品の画面の範囲の表示（58・50・51 の在庫数の表示）と在庫変動の履歴の計数の行（65・66）は b2（proposed・未実装）。旧 ADR（時点証拠、superseded）の節は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。(a) で入ったのは、写しを記録から求め直す関数と並びの鍵付きの movement（21・31〈`biz/stock_ledger.rs`〉）、整合性の突合と補正（36・75）、計数の表と写しの列の migration v9（22 §19、`db/schema_v9.rs`）。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存と完了（35・42・73）、Z004 の識別・確定・取消（24・32・41・55）、共有 JAN と在庫連動を始める検査（30・51・60）、整合性の共有 JAN の一覧（36・75）、migration v11（22 §20）が入った。商品の画面の範囲の表示（58・50・51 の在庫数の表示）と在庫変動の履歴の計数の行（65・66）は b2（proposed・未実装）。旧 ADR（時点証拠、superseded）の節は置き換えた。
 
 | 境界 | 詳細の source |
 |---|---|

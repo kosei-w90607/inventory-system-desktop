@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（D-109 で `#[cfg(test)]` に置いたもの）は置き換え、b1 で外した。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`NewMovement` の並びの鍵、`update_movement_stock_after`、求め直しの 2 つの読取り、写しの書込み（下の 1〜4 つ目の項目）。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、精算の読取り、計数の保存（`insert_stock_count`）とカーソルの読取り、初期在庫の印（ADR D9）。`MovementRecord` の列は b2（proposed・未実装）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（D-109 で `#[cfg(test)]` に置いたもの）は置き換え、b1 で外した。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`NewMovement` の並びの鍵、`update_movement_stock_after`、求め直しの 2 つの読取り、写しの書込み（下の 1〜4 つ目の項目）。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、精算の読取り、計数の保存（`insert_stock_count`）とカーソルの読取り、初期在庫の印（ADR D9）。`MovementRecord` の列は b2（proposed・未実装）。
 
 - `NewMovement` に並びの鍵（`business_date: String`〈YYYY-MM-DD〉、`settlement_no: Option<i64>`）を足し、`insert_movement` が保存する。`phase` は field に持たず、`insert_movement` が `settlement_no` から決めて書く（`Some` なら 1、`None` なら 0。phase と settlement_no の食い違いを型で作れないようにする。2026-10-18、D-118 の runtime の (a) の起票で決めた。DB の CHECK も同じ対を縛る）。`MovementRecord` に同じ列を返させるのは b2（proposed・未実装。在庫推移に計数を混ぜる [65](65-inventory-record-traceability.md) の新契約と同じ配布の単位。ADR SPEC-STK-CNT-D12）。
 - (a) の間の書込みの関数: `update_movement_stock_after`（その TX で INSERT した movement の `stock_after` を、求め直しの後の写しの値に書く。[31](31-biz-inventory-service.md) の `apply_stock_change`。シグネチャは下の code block）。

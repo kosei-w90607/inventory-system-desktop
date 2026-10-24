@@ -714,4 +714,4 @@ wire の型を変えたら `src/lib/bindings.ts` を generator で再生成す�
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、bindings再生成義務を正本化。 |
-| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。commit_csv_import から同じ日の追加の確認のフラグを外し、token は成功のときだけ消す。知らせと `recheck_targets`、停止の注記を外した（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。commit_csv_import から同じ日の追加の確認のフラグを外し、token は成功のときだけ消す。知らせと `recheck_targets`、停止の注記を外した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
