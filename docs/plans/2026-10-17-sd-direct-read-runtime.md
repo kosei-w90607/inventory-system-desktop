@@ -483,7 +483,15 @@ Plan Review round 1（2026-10-23）で残すと決めたもの。どれも Plan 
 
 ## Implementation Results
 
-Fill after implementation.
+実装（S1〜S6）は `fc43cbf5`〜`8fd5b875`。実装の Writer が見送った 6 点を Coordinator が 2026-10-24 に裁定し（相談役の助言は repo 外）、是正と記録を本 commit で行った。
+
+- 点 1（AC1 の baseline の filtered の数）: 受理。着手時の baseline は `1316 filtered out` で、上の AC1 の `1315` より 1 多い。差は plan-approved の後に取り込んだ main の PR #195（`6457204e`）が足した lib test 1 本（`test_create_product_req101_takkyubin_rejects_custom_code`）。確かめた command と出力: `git diff eed07d37 f140526b -- src-tauri/src | grep -E '^[+-]\s*#\[(tokio::)?test\]' | sort | uniq -c` → `1 +    #[test]`（AC の baseline の head から implementing の head までの lib test の増減はこの 1 本だけ）。AC1 を今の head（`8fd5b875`）で逐語に実行: `cd src-tauri && cargo test --lib -- io::register_sd io::pos_source_copy` → exit 0、`test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 1360 filtered out; finished in 0.36s`。
+- 点 2（`sales_repo::latest_completed_daily_report_date` が 24 に無い）: 是正。S2 の計画に無い repo 関数（`pub(crate)`、呼び手は `scan.rs` の手順 2 だけ）を [24](../function-design/24-io-csv-import-repo.md) §14.18c に足した。振舞いは 37 §37.9 手順 2 と同じ（completed の `report_date` の最大、`rolled_back` は数えない）。code は変えない。
+- 点 3（45 §45.4 手順 3a の `app_data_dir` を手順 1 より先に取る順）: 受理。code は変えず、[45](../function-design/45-cmd-daily-report-import.md) §45.4 の注記と手順 3a に、実行の順と観測できる差（token が不正かつ `app_data_dir` を取れないときに `internal` が先に返ること）を書いた。
+- 点 4（「場所を選ぶ」を SD の読取りの失敗の後はいつも出す）: 受理。[55](../function-design/55-ui-csv-import.md) §55.0 の利用者フロー手順 2 を実装（`DailyReportImportPage.tsx` の `scanError !== null`）に合わせ、理由（wire に「見つからない」の構造化された区別が無く message で分岐しない、2 枚以上・レジの SD でないときも場所を選べば解ける）を書いた。UI-07-D15 (1) の owner 決定（2026-10-06）の文は変えない（実装はその上位集合）。Matrix の UI-07-D15 の行（見つからないときに出ない → red）と SD の scan の状態の行（失敗 → 固定の文と予備の操作）は実装と食い違わないので直さない。
+- 点 5（S1 の commit の CI が red）: 受理（記録だけ）。Draft の run `40022365339`（head `4b70a4f5`、S1 と 90 の反映）は Rust tests の `architecture_test` の `layer_dependency_rules` が FAILED。`src-tauri/tests/architecture_test.rs` は本 branch で変えておらず（`git diff --stat f140526b 8fd5b875 -- src-tauri/tests/architecture_test.rs` → 差分なし）、#172 が新設した `src-tauri/src/io/register_sd.rs` を直して次の run `40025822344`（head `519c236e`）と `40029463494`（head `8fd5b875`）は success。commit ごとの緑を求める規則は無く、Ready の条件は最終の head の run（AC4・AC11）。
+- 点 6（実装の前の red でなく mutant で test を確かめた）: 受理。実装の Writer は自己申告で mutant 37 件を回したと報告したが、内訳（どの変異をどの test が red にしたか）は保存されていないので、件数・内訳とも未実測として扱う（D-062）。独立の変異確認は Final Review（`docs/DEV_WORKFLOW.md` の Standard Final Review の「Mutation / anti-tautology check」）で行い、Writer の自己実行はその代わりにしない。
+- 版 11 の衝突（PR #188 も `schema_v11.rs`）は本 commit で触らない。#188 の merge の後に付け替える（上の Open Questions の agent 側の migration の番号）。
 
 ## Review Response
 

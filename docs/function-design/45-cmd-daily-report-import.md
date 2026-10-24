@@ -90,13 +90,13 @@ fn commit_daily_report_import(
 ) -> Result<DailyReportImportResult, CmdError>
 ```
 
-`app` は Tauri が注入する。手順 3a の `app_data_dir` は command が test 用の `commit_daily_report_import_with_state`（`src-tauri/src/cmd/daily_report_import_cmd.rs`）を呼ぶ前に取り、解決済みの `app_data_dir: &Path` を引数で渡す（取れなければ cache に触れずに `internal`。test は一時 directory を渡す）。
+`app` は Tauri が注入する。手順 3a の `app_data_dir` は command が test 用の `commit_daily_report_import_with_state`（`src-tauri/src/cmd/daily_report_import_cmd.rs`）を呼ぶ前に取り、解決済みの `app_data_dir: &Path` を引数で渡す（取れなければ cache に触れずに `internal`。test は一時 directory を渡す）。このため手順 3a は番号に反して手順 1 より前に行い、観測できる差は token が不正（手順 1〜3 の失敗）かつ `app_data_dir` を取れないときに、手順 1〜3 の error でなく手順 3a の `internal` が返る（期限切れの token も cache から消えない）ことだけである（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `commit_daily_report_import`）。
 
 **処理ステップ**:
 1. preview_tokenのUUID形式を検証する。
 2. `daily_report_preview_cache` からcached previewを取得する。
 3. cache miss / 期限切れは `CmdError.kind="import_error"`。
-3a. `app.path().app_data_dir()` で写しの置き場所を取る（`settings_cmd.rs` の `get_backup_dir` / `restore_backup` と同じ取り方）。失敗は `CmdError::internal("アプリデータの保存先を取得できませんでした", e)` で、cache は残す。
+3a. `app.path().app_data_dir()` で写しの置き場所を取る（実行は手順 1 より前。上の注記。`settings_cmd.rs` の `get_backup_dir` / `restore_backup` と同じ取り方）。失敗は `CmdError::internal("アプリデータの保存先を取得できませんでした", e)` で、cache は残す。
 4. DB接続を取得する。
 5. `additional_import_confirmed` と手順 3a の `app_data_dir` をBIZ-08 `commit_daily_report_import` へ渡す（写しを書くかは BIZ-08-D5 が決め、CMD は書く規則を持たない）。Rust wire名はこのsnake_case、TypeScript生成名は `additionalImportConfirmed` とする。
 6. 成功時、cacheからtokenを削除する。
