@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D4・D7・D11）の BIZ-03 の側。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で §15.3〜§15.5 の parse / commit / rollback を本節の契約に置き換えた。日報の束・売上の集計日・既存の active hash の拒否は変えない。旧 ADR（時点証拠）の資料の受領（`pos_import_sources`）・前後の分類（Before / After / Unknown）・全数読取り・要再確認 flag の表と 5 つの理由・売上と返品の相殺の判定・EJ の証拠の interface・準備照会（`get_pos_stock_readiness` と issue）・共有 JAN の file 全体の保留・取消の補償と保留・外部 probe 表は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた時点証拠の code は b1 で外した）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D4・D7・D11）の BIZ-03 の側。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で §15.3〜§15.5 の parse / commit / rollback を本節の契約に置き換えた。日報の束・売上の集計日・既存の active hash の拒否は変えない。旧 ADR（時点証拠）の資料の受領（`pos_import_sources`）・前後の分類（Before / After / Unknown）・全数読取り・要再確認 flag の表と 5 つの理由・売上と返品の相殺の判定・EJ の証拠の interface・準備照会（`get_pos_stock_readiness` と issue）・共有 JAN の file 全体の保留・取消の補償と保留・外部 probe 表は持たない（置き換えた。D-109 で `#[cfg(test)]` に置いた時点証拠の code は b1 で外した）。
 
 #### 精算の識別と並び（SPEC-STK-CNT-D4）
 
@@ -514,4 +514,4 @@ enum BizError {
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別hashを追加取込みとし、全件summary、追加確認flag、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体の記述と明記 |
 | 2026-10-17 | JAN の別名の design lane（D-122） | §15.3 手順 4 b に、ヒット0件の行で前の JAN の別名を引く段と、引き当ての規則を preview と確定の取り直しで共有する文を足した（proposed・未実装） |
-| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§15.0 の停止の節を外し、§15.2 の型（知らせ・`recheck_targets`）と §15.3〜§15.5 の手順を精算の識別・確定の取り直し・求め直しの新しい経路に置き換えた（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§15.0 の停止の節を外し、§15.2 の型（知らせ・`recheck_targets`）と §15.3〜§15.5 の手順を精算の識別・確定の取り直し・求め直しの新しい経路に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |

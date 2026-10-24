@@ -2,7 +2,7 @@
 
 ### 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）。b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、stocktake_repo の明細・完了・記録の詳細の読取り（§2.11・§2.11a）と共有 JAN の読取り。商品の読取りが写しの 3 列を返すことは b2（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、stocktake_repo の明細・完了・記録の詳細の読取り（§2.11・§2.11a）と共有 JAN の読取り。商品の読取りが写しの 3 列を返すことは b2（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
 | repo 操作 | 処理・返却の契約 |
 |---|---|
