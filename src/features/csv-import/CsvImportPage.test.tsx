@@ -1,14 +1,46 @@
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { commands, type CmdError } from "@/lib/bindings";
+import { Route as CsvImportIndexRoute } from "@/routes/csv-import/index";
+import { routeTree } from "@/routeTree.gen";
+import { renderWithRouter } from "@/test/render-with-router";
 import { CsvImportPage } from "./CsvImportPage";
 import { useCsvImportFlow } from "./hooks/useCsvImportFlow";
+import { csvImportSearchSchema } from "./types";
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ setTitle: vi.fn().mockResolvedValue(undefined) }),
+}));
 
 vi.mock("@/features/daily-report-import/DailyReportImportPage", () => ({
   DailyReportImportPage: () => <div>daily report req401 content</div>,
 }));
 
 vi.mock("./hooks/useCsvImportFlow", () => ({ useCsvImportFlow: vi.fn() }));
+
+vi.mock("@/lib/bindings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/bindings")>();
+  return { ...actual, commands: { parseAndValidateCsv: vi.fn() } };
+});
+
+const mockParse = vi.mocked(commands.parseAndValidateCsv);
+
+/** 実の route tree で `path` を開く（route の validateSearch を通る） */
+function renderRoute(path: string) {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [path] }),
+  });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
 
 type Flow = ReturnType<typeof useCsvImportFlow>;
 
@@ -70,9 +102,9 @@ describe("CsvImportPage_req401", () => {
       confirmImport,
     });
     vi.mocked(useCsvImportFlow).mockImplementation(() => previewFlow);
-    render(<CsvImportPage />);
+    renderWithRouter(<CsvImportPage />);
 
-    await user.click(screen.getByRole("tab", { name: "商品別CSV取込み（Z004）" }));
+    await user.click(await screen.findByRole("tab", { name: "商品別CSV取込み（Z004）" }));
 
     expect(screen.queryByText(/停止中/)).not.toBeInTheDocument();
     expect(screen.getByText("紐付け結果")).toBeInTheDocument();
@@ -80,5 +112,97 @@ describe("CsvImportPage_req401", () => {
     expect(importButton).toBeEnabled();
     await user.click(importButton);
     expect(confirmImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("REQ-401: tab=z004 で Z004 タブを開き、不正な tab は既定、取り込んだ記録の link は種別 CSV取込み", async () => {
+    // 55 UI-07-D18・UI-STATE-D2（Matrix U8）: route は feature の schema をそのまま validateSearch に渡す
+    expect(CsvImportIndexRoute.options.validateSearch).toBe(csvImportSearchSchema);
+
+    const { unmount } = renderRoute("/csv-import?tab=z004");
+    expect(await screen.findByRole("tab", { name: "商品別CSV取込み（Z004）" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByRole("link", { name: "取り込んだ記録を見る（取り消すときはここから）" }),
+    ).toHaveAttribute("href", "/inventory/records?recordType=csv_import");
+    unmount();
+
+    renderRoute("/csv-import?tab=zzz");
+    expect(await screen.findByRole("tab", { name: "日報取込み" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("daily report req401 content")).toBeInTheDocument();
+  });
+
+  it("REQ-401: 同じ精算の別の版の拒否の Alert から、名指した取込みの詳細へ進める", async () => {
+    // 55 UI-07-D18 の順 4 の拒否からの導線（Matrix U11）: link を出すかと ID は related_csv_import_id だけで決め、
+    // 文から読まない。parseAndValidateCsv の拒否が実の flow を通って ErrorState に出る
+    const actual = await vi.importActual<typeof import("./hooks/useCsvImportFlow")>(
+      "./hooks/useCsvImportFlow",
+    );
+    vi.mocked(useCsvImportFlow).mockImplementation(actual.useCsvImportFlow);
+    const order4 = (id: number) =>
+      `同じ精算と思われる別の資料が既に取り込まれています（精算 101、取込みID: ${String(id)}）`;
+    const order3 = "このファイルは取込み済みです（取込みID: 5、取込み日: 2026-10-01T10:00:00）";
+    const cases: {
+      message: string;
+      related: number | null | undefined;
+      expected: number | null;
+      absent?: number;
+    }[] = [
+      { message: order4(7), related: 7, expected: 7 },
+      { message: order4(9), related: 7, expected: 7, absent: 9 },
+      { message: order4(7), related: null, expected: null },
+      { message: order3, related: undefined, expected: null },
+      { message: order3, related: 7, expected: 7, absent: 5 },
+      { message: "合成の拒否の文", related: 7, expected: 7 },
+    ];
+
+    for (const testCase of cases) {
+      const error: CmdError = {
+        kind: "import_error",
+        message: testCase.message,
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      };
+      if (testCase.related !== undefined) error.related_csv_import_id = testCase.related;
+      mockParse.mockResolvedValueOnce({ status: "error", error });
+      const { unmount } = renderRoute("/csv-import?tab=z004");
+      const zone = await screen.findByTestId("file-picker-dropzone");
+      fireEvent.drop(zone, {
+        dataTransfer: { files: [new File([new Uint8Array([1, 2, 3])], "z004-0101.csv")] },
+      });
+      const alert = await screen.findByRole("alert");
+      await waitFor(() => {
+        expect(within(alert).getByText("プレビューが利用できません")).toBeInTheDocument();
+      });
+      expect(within(alert).getByText(testCase.message)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "最初に戻る" })).toBeInTheDocument();
+      const recordLinks = screen
+        .queryAllByRole("link")
+        .filter((link) => link.getAttribute("href")?.startsWith("/csv-import/records/"));
+      if (testCase.expected === null) {
+        expect(within(alert).queryByRole("link")).toBeNull();
+        expect(recordLinks).toHaveLength(0);
+      } else {
+        const link = within(alert).getByRole("link", {
+          name: `取込みID ${String(testCase.expected)} の記録を見る（取り消すときはここから）`,
+        });
+        const href = new URL(link.getAttribute("href") ?? "", "http://localhost");
+        expect(href.pathname).toBe(`/csv-import/records/${String(testCase.expected)}`);
+        expect(href.searchParams.get("returnTo")).toBe("/csv-import?tab=z004");
+        if (testCase.absent !== undefined) {
+          expect(
+            recordLinks.some((l) =>
+              l.getAttribute("href")?.startsWith(`/csv-import/records/${String(testCase.absent)}`),
+            ),
+          ).toBe(false);
+        }
+      }
+      unmount();
+    }
   });
 });

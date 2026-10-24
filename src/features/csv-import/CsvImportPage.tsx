@@ -4,6 +4,7 @@
 // 4 step UI (Parse/Preview/Importing/Result) に振り分け、error variant は重ね描き。
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4
 
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import type { PickedFile } from "@/components/FilePicker";
@@ -16,7 +17,7 @@ import { ParseStep } from "./components/ParseStep";
 import { PreviewStep } from "./components/PreviewStep";
 import { ResultStep, RollbackResultCard } from "./components/ResultStep";
 import { StepIndicator, type StepNumber } from "./components/StepIndicator";
-import type { CsvImportState } from "./types";
+import type { CsvImportState, CsvImportTab } from "./types";
 
 /// state.status (error 時は previousState.status を使う) を 1/2/3 step に正規化。
 /// 設計: 55-ui-csv-import.md §55.2 派生値 currentStep
@@ -36,22 +37,40 @@ function computeCurrentStep(status: CsvImportState["status"]): StepNumber {
   }
 }
 
-export function CsvImportPage() {
+export interface CsvImportPageProps {
+  /** search `tab`: 開いたときのタブ（初期選択だけ。切り替えても URL は書き換えない。55 §55.11） */
+  tab?: CsvImportTab;
+}
+
+const DEFAULT_TAB: CsvImportTab = "daily-report";
+const Z004_TAB: CsvImportTab = "z004";
+
+export function CsvImportPage({ tab }: CsvImportPageProps) {
   return (
     <PageShell>
       <PageHeader
         title="売上データ取込み"
         subtitle="日報（Z001/Z002/Z005）と商品別CSV（Z004）を分けて取り込みます"
       />
-      <Tabs defaultValue="daily-report" className="w-full">
+      <Tabs defaultValue={tab ?? DEFAULT_TAB} className="w-full">
         <TabsList>
-          <TabsTrigger value="daily-report">日報取込み</TabsTrigger>
-          <TabsTrigger value="z004">商品別CSV取込み（Z004）</TabsTrigger>
+          <TabsTrigger value={DEFAULT_TAB}>日報取込み</TabsTrigger>
+          <TabsTrigger value={Z004_TAB}>商品別CSV取込み（Z004）</TabsTrigger>
         </TabsList>
-        <TabsContent value="daily-report">
+        <TabsContent value={DEFAULT_TAB}>
           <DailyReportImportPage />
         </TabsContent>
-        <TabsContent value="z004">
+        <TabsContent value={Z004_TAB} className="space-y-4">
+          {/* 結果の画面を離れた後に誤った版に気づいたときの入口（55 §55.11、65 §65.5a） */}
+          <p className="text-sm">
+            <Link
+              to="/inventory/records"
+              search={{ recordType: "csv_import" }}
+              className="font-medium text-primary underline underline-offset-4"
+            >
+              取り込んだ記録を見る（取り消すときはここから）
+            </Link>
+          </p>
           <CsvImportFlowPanel />
         </TabsContent>
       </Tabs>

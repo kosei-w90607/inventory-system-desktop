@@ -1,9 +1,10 @@
 // src/features/inventory-records/CsvImportRecordDetailPage.tsx
 //
-// REQ-206 / REQ-207: CSV取込み記録詳細。
+// REQ-206 / REQ-207: CSV取込み記録詳細。有効な取込みは header から取り消せる（65 §65.5a TRACE-D13）。
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -28,10 +29,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RollbackConfirmDialog } from "@/features/csv-import/components/RollbackConfirmDialog";
+import { RollbackResultCard } from "@/features/csv-import/components/ResultStep";
+import { useRollbackCsvImport } from "@/features/csv-import/hooks/useRollbackCsvImport";
 // 数量の桁区切りと単位名は共通formatterに揃える。
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
-import type { CsvImportStatus } from "@/lib/bindings";
+import type { CsvImportStatus, RollbackResult } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -83,6 +87,9 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
     gcTime: 5 * 60_000,
     retry: 0,
   });
+  // 取消の結果（55 の「取消の結果」）。Toast・C9 の再取得・失敗の Toast は共有の hook（55 UI-07-D18）
+  const [rollbackResult, setRollbackResult] = useState<RollbackResult | null>(null);
+  const rollbackMutation = useRollbackCsvImport({ onSuccess: setRollbackResult });
 
   if (detailQuery.isLoading) {
     return (
@@ -125,14 +132,41 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
       <PageHeader
         title={`CSV取込み #${String(detail.id)}`}
         actions={
-          <Button asChild variant="outline">
-            <Link {...backLinkProps}>
-              <ArrowLeft aria-hidden="true" />
-              前の画面へ戻る
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link {...backLinkProps}>
+                <ArrowLeft aria-hidden="true" />
+                前の画面へ戻る
+              </Link>
+            </Button>
+            {detail.status !== "rolled_back" ? (
+              <RollbackConfirmDialog
+                csvImportId={detail.id}
+                settlementDate={detail.settlement_date}
+                filename={detail.filename}
+                totalItems={detail.total_items}
+                totalAmount={detail.total_amount}
+                triggerLabel="この取込みを取り消す"
+                onConfirm={() => {
+                  rollbackMutation.mutate(detail.id);
+                }}
+                isRollingBack={rollbackMutation.isPending}
+              />
+            ) : null}
+          </>
         }
       />
+
+      {rollbackResult !== null ? (
+        <div className="space-y-4">
+          <RollbackResultCard result={rollbackResult} />
+          <Button asChild variant="outline">
+            <Link to="/csv-import" search={{ tab: "z004" }}>
+              商品別CSV取込み（Z004）を開く
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       {detail.status === "rolled_back" ? (
         <Alert>
