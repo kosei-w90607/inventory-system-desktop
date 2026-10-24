@@ -29,6 +29,7 @@ Risk: R3
 ## Test Matrix
 
 - 既存の test の名前は 2026-10-23 に `rg -n 'fn test_cleanup_old_logs_req902_|fn test_delete_old_logs_req902_' src-tauri/src` で実在を確かめた。新しい test の名前は実装で決め、下の「足す」の行に対応させる。
+- 境の日ちょうどの記録と今日の日付を見る test（C2 の `test_cleanup_old_logs_req902_keeps_recent` の 3000 日前、C3 の 3000 日前、C5 の `log_last_cleanup_date` が今日）は、test が日付を求めてから `cleanup_old_logs`・`delete_old_logs` が `Local::now()` を取るまでに 0 時を跨ぐと cutoff と今日が 1 日進み、偽の red になる。test の前後で `Local::now().date_naive()` が変わっていないことを確かめ、変わっていれば同じ日の中でやり直す等で偽の red を避ける（Plan Review round 3 の P3）。
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
