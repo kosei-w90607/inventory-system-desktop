@@ -163,6 +163,12 @@ export const commands = {
 	 */
 	rollbackCsvImport: (csvImportId: number) => typedError<RollbackResult, CmdError>(__TAURI_INVOKE("rollback_csv_import", { csvImportId })),
 	/**
+	 *  取消の前の読取り（取り消した後の要再確認・取り込み直す精算・名指す完了した棚卸し。何も書かない）
+	 *
+	 *  docs/function-design/41-cmd-pos.md §17.5 preview_rollback_csv_import
+	 */
+	previewRollbackCsvImport: (csvImportId: number) => typedError<RollbackPreview, CmdError>(__TAURI_INVOKE("preview_rollback_csv_import", { csvImportId })),
+	/**
 	 *  CSV取込み履歴の一覧を返す
 	 *
 	 *  docs/function-design/41-cmd-pos.md §17.5 list_csv_imports
@@ -348,6 +354,12 @@ export const commands = {
 };
 
 /* Types */
+// 取消で記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し（32 §15.6b）
+export type AffectedStocktake = {
+	stocktake_id: number,
+	completed_at: string,
+};
+
 // 完了の後の差（確定の差と要再確認の差を分け、確定の差だけを合計する）
 export type AfterCompletionDiff = {
 	confirmed: AfterCompletionDiffItem[],
@@ -428,6 +440,11 @@ export type CmdError = {
 	error_id: string | null,
 	// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
 	stocktake_recovery: StocktakeRecovery | null,
+	/**
+	 *  拒否の文が名指す取込みID（BIZ-03 の順 4 の拒否〈kind `import_error`〉だけ Some、ほかは null。
+	 *  TS では任意の field。40・41 §17.4）
+	 */
+	related_csv_import_id?: number | null,
 };
 
 /**
@@ -1539,6 +1556,17 @@ export type ReturnRecordSummary = {
 	register_processed: boolean,
 	note: string | null,
 	created_at: string,
+};
+
+// preview_rollback_csv_import の結果（取消の前の読取り。何も書かない。32 §15.6b）
+export type RollbackPreview = {
+	csv_import_id: number,
+	// 取り込み直す精算の番号（この取込みの精算回数）
+	settlement_no: number,
+	// 取り消した後に要再確認である商品（取消の結果と同じ作り方。取り消す前から要再確認の商品を含む。40）
+	recheck_targets: CountRecoveryTarget[],
+	// この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し（範囲による候補。完了の日時の昇順。35）
+	affected_stocktakes: AffectedStocktake[],
 };
 
 // rollback_csv_import の結果（補償の movement は作らない。ADR D7）
