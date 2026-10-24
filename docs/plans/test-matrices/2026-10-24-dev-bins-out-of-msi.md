@@ -16,7 +16,8 @@ Risk: R3
 ## Failure Modes
 
 - 誰かが tauri の crate に `src/bin/*.rs` か `[[bin]]` を戻し、次の MSI に開発用の exe が入って店の PC へ配られる（`seed_demo_data.exe` が作業フォルダーに DB を作り、22 §12 で取り込まれる経路が戻る）。
-- `default-members` から dev-tools が外れ、CI の `cargo run --bin generate_bindings` が失敗する（大きな音で落ちる）、または `cargo test` が generator の test を黙って回さなくなる・clippy・fmt が移した file を見なくなる（音なしで gate が弱まる）。
+- `default-members` から dev-tools が外れ、CI の `cargo run --bin generate_bindings` が失敗する（大きな音で落ちる）、または `cargo test` が generator の test を黙って回さなくなる・clippy が移した file を見なくなる（音なしで gate が弱まる。`cargo fmt --check` は `default-members` に依らず workspace の member を全部見る: packet の Contract Probe P3）。
+- `src-tauri/src` だけを走査する検査（I-G1 の sweep、doc-consistency の R0・R1）が、移した bin を黙って見なくなる（packet の Contract Probe P10）。
 - generator の repo の root が 1 つずれ、`90-traceability.md` を src-tauri の下に書く・`--check` が全 REQ を見失う。
 - workspace の形で `tauri build` が通らない、または main の検出を誤って MSI のショートカットが起動しない。
 - `default-run` が外れ、`npm run tauri dev` の `cargo run` が 2 つの package の bin を候補にして止まる。
@@ -34,11 +35,12 @@ Risk: R3
 | T5 | D-137 (2) test の範囲 | gate の感度 | `cd src-tauri && cargo test --bin generate_traceability -- --list` の名の集合を、Plan Commit の版（移す前）と比べる。`cd src-tauri && cargo test` の出力に dev-tools の `Running unittests src/bin/generate_traceability.rs` | 名の集合が違う・行が無い → AC5 の不合格 |
 | T6 | D-137 (2) command の形 | CLI | packet の AC6 の 3 つを repo の root で（`seed_demo_data` を `--manifest-path` で、`(cd src-tauri && cargo run --bin generate_bindings) && git diff --exit-code -- src/lib/bindings.ts`、`(cd src-tauri && cargo run --bin generate_traceability) && git diff --exit-code -- docs/function-design/90-traceability.md` と `--check`。`src-tauri` で `git diff` を打つと pathspec が存在しない path になり常に exit 0） | どれかが非 0 → AC6 の不合格 |
 | T7 | D-137 (3) | 既存の unit と CLI | generator の既存の test（`TempDir` を root にする）と T6 の再生成 | root の式を 1 つ上のままにする → T6 の再生成で `docs/function-design/` の外に書くか `--check` が ERROR（Writer が実装の前の版で 1 回だけ確かめてよい。必須にしない: 期待は T6 が持つ） |
-| T8 | D-137 (1) 実物の bundle | build（Linux） | packet の Contract Probe P6 と AC11（`npm run tauri build -- --bundles deb` の後 `dpkg-deb -c … \| grep usr/bin/`） | Plan Commit の版で 3 つの開発用の bin が出る（感度）。実装の head で main 以外が出る → AC11 の不合格 |
+| T8 | D-137 (1) 実物の bundle | build（Linux） | packet の Contract Probe P6 と AC11（`npm run tauri build -- --bundles deb` の後 `dpkg-deb -c … \| grep usr/bin/`） | Plan Commit の版で開発用の bin が 1 つ以上出る（感度。P6 の実測は `generate_traceability` の 1 つ）。実装の head で main 以外が出る → AC11 の不合格 |
 | T9 | 依存を増やさない | 差分の確かめ | packet の AC8 | `Cargo.lock` に dev-tools の外の `[[package]]` の増減 → 不合格 |
+| T10 | D-137 (2) の隣（I-G1 の sweep の範囲） | gate の感度 | `cd src-tauri && cargo test --test import_internal_contract_test test_active_sales_import_vocabulary_sweep_i_g1` | `src-tauri/dev-tools/src/bin/seed_demo_data.rs` の comment に旧い取込みの契約の語（`existing` と `_import_id` を連結した語）を書く → red（戻す） |
 | L3-1 | D-137 (1)、22 §12 の入口 | L3 | packet の Test Plan の L3-1 | 入った folder の `.exe` が 2 つ以上、または 3 つの名のどれかがある |
 | L3-2 | main の起動 | L3 | packet の Test Plan の L3-2 | スタートメニューから起動しない・ホームの画面が出ない |
-| L3-3 | D-137 の Compatibility（dev-tools の bin の Windows の resource） | L3（観測） | packet の Test Plan の L3-3 | `seed_demo_data.exe --help` が loader のエラーで止まる・`exit=0` でない |
+| L3-3 | D-137 の Compatibility（dev-tools の bin の Windows の resource） | L3（merge の条件） | packet の Test Plan の L3-3（手順書と同じ debug の `cargo run --manifest-path src-tauri\Cargo.toml --bin seed_demo_data -- --help`） | loader のエラー（`STATUS_ENTRYPOINT_NOT_FOUND` ほか）で止まる・`exit=0` でない → manifest の是正を本 lane に足して確かめ直す（packet の AC12） |
 
 ## State Lifecycle Matrix
 
@@ -50,6 +52,7 @@ not applicable: 画面・DB・cache・route の状態を変えない（build の
 |---|---|---|---|---|
 | `cargo run --bin <開発用の bin>` の呼び出し | packet の Contract Probe P8 の `24` file | なし（書き換えない） | 全部。`default-members` で同じ command が動く | T6、AC7 |
 | 開発用の bin の source の path の引用 | packet の Contract Probe P9 の `9` file | S2 の表の 6 file | `docs/DEV_SETUP_CHECKLIST.md` の完了の記録・decision-log の D-099 (D10)・`docs/backlog.md`（closeout）・`docs/research/**`・archive（履歴） | AC10 |
+| `src-tauri/src` を名指しで走査する検査 | packet の Contract Probe P10（`design_compliance_test`・`architecture_test`・`scripts/check-command-drift.sh`・I-G1 の sweep・doc-consistency の R0・R1） | I-G1 の sweep（S2 で target に `src-tauri/dev-tools/src`） | doc-consistency の R0・R1（`scripts` を変えない: packet の AC7。移した bin は R0・R1 の走査から外れ、R0 の除外 `generate_traceability\.rs` は空振りになる。scripts を触る次の lane で直す: backlog）。`design_compliance_test`・`architecture_test`・`check-command-drift.sh` は 3 つの bin に当たる物が無い | T10 |
 | `CARGO_MANIFEST_DIR` から repo の root を求める所 | `generate_traceability.rs`、`src-tauri/src/lib.rs` の `export_specta_bindings` | `generate_traceability.rs` だけ | lib の式は lib の crate（`src-tauri/`）の dir を使い、bin の場所に依らない | T6・T7 |
 
 ## Negative Paths
@@ -90,9 +93,9 @@ not applicable: 画面・DB・cache・route の状態を変えない（build の
 
 ## Mutation-style Adequacy Questions
 
-T1〜T4 は Writer が実装の後に 1 つずつ注入して red を確かめて戻す（Final Reviewer が独立に 1 つ以上を再実測する）。T1 と T2 の期待は D-137 の文から直接書く（「`src/bin` が無い」「`[[bin]]` が無い」「`default-members` に `dev-tools`」「`default-run` が `inventory-system-tauri-scaffold`」）。
+T1〜T4・T10 は Writer が実装の後に 1 つずつ注入して red を確かめて戻す（Final Reviewer が独立に 1 つ以上を再実測する）。T1 と T2 の期待は D-137 の文から直接書く（「`src/bin` が無い」「`[[bin]]` が無い」「`default-members` に `dev-tools`」「`default-run` が `inventory-system-tauri-scaffold`」）。
 
-- If a guard is removed, which test fails?: tauri の crate に bin を戻す → T1。`default-members` か `default-run` を外す → T2。
+- If a guard is removed, which test fails?: tauri の crate に bin を戻す → T1。`default-members` か `default-run` を外す → T2。I-G1 の sweep の target から dev-tools を外す → T10。
 - If a key branch is inverted, which test fails?: generator の root の式 → T6。
 - If an output field is omitted, which test fails?: 移した bin の test が回らない → T5。
 - 他の問い（mock の値・invalidate/refetch・閾値・順序・dry-run・JS の安全な整数・状態の往復）: 該当なし（manifest と build の構成だけで、値の計算・状態・wire が無い）。
@@ -101,4 +104,5 @@ T1〜T4 は Writer が実装の後に 1 つずつ注入して red を確かめ�
 
 - tauri-cli を上げて `get_binaries` が workspace の member を読むように変わったとき、T1・T2 は止めない（crate の形だけを見る）。D-137 の Revisit で tauri-cli の更新のたびに P1 を確かめ直す。T8（deb）を CI に足すのは非目的。
 - 前の MSI（PR #191 の版）の上への更新で開発用の exe が消えるかは見ない（非目的。店の PC は初回から新しい版）。
-- dev-tools の bin が Windows の resource 無しで起動するかは、L3-3 で `seed_demo_data` の 1 つを `--help` で 1 回見るだけ（`generate_bindings`・`generate_traceability` は CI の Linux で回る）。自動の test は無い（CI に Windows の build が無い）。
+- dev-tools の bin が Windows の resource 無しで起動するかは、L3-3 で `seed_demo_data` の 1 つを debug の `cargo run` で `--help` まで 1 回見るだけ（`generate_bindings`・`generate_traceability` は CI の Linux で回り、Windows native では見ない。`generate_bindings` は lib の `export_specta_bindings` の `collect_commands!` で command の code まで引くので、Windows で止まる見込みは `seed_demo_data` より高い。L3-3 が FAIL して manifest を入れれば dev-tools の bin の全部に効く）。自動の test は無い（CI に Windows の build が無い）。
+- 移した bin は doc-consistency の R0・R1 の走査から外れる（`scripts` を変えない: packet の AC7）。R0 の除外 `generate_traceability\.rs` は空振りになり、scripts を触る次の lane で R1 の走査に dev-tools を足し、その除外を消す（backlog）。
