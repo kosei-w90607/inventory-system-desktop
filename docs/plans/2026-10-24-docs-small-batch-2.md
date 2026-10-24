@@ -10,9 +10,9 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: f628c918027295b19c6572433ca30b7629996c5f
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と Plan Review の是正は packet だけ。docs の直しと定義の追加は plan-approved の後の別の run）
@@ -33,6 +33,7 @@ Final Reviewer の起動の注: 本 lane の Final Review の Claude 側は、�
 3. plan-draft → plan-gate（2026-10-24、起草役、同じ commit）: owner の判断事項は Scope に残らない（owner の選択が要る候補は Scope に入れず、起票の報告で Coordinator へ渡した。下の Non-scope）。packet が揃い commit されている。R2 で Test Design Matrix は任意で、置かない。Plan Review に出す。Codex が使えれば Codex と fresh Opus 5.5 を同じ round で、使えなければ fresh Opus 5.5 で始め Codex 分を後から足す（`docs/AGENT_OPERATING_MANUAL.md` §3.3）。
 4. plan-gate のまま round 2 へ（2026-10-24、起草役）: Plan Review round 1（対象 `d3007c38`）の是正を入れた（下の Review Response）。Coordinator の裁定で S6（定義 2 つの追加）と S7（71 §71.9）を足し、Risk を R3 に上げた（下の Risk）。R3 なので Test Design Matrix・Contract Ledger・Contract Probe・Data Safety を足し、Final Reviewer を座組表の「R3 以上」の行にした。spec-check → plan-draft の skip は変えない（S6 は D-099 の (D3) の形を写し、S7 は §71.9 の文を今の `lib.rs` に合わせるだけで、新しい設計の選択をしない）。
 5. plan-gate のまま round 3 へ（2026-10-24、起草役）: Plan Review round 2（対象 `a7a66e1e`）の是正と、owner の決定 TD-429（S5-3）を入れた（下の Review Response）。Risk・Minimum・Human Gate は変えない。本 lane の Final Review の Claude 側を fresh Opus 5.5 にした（Workflow State の注）。round 3 は Plan Review の天井（下の Owner Effort Budget）。
+6. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。Plan Review round 3（天井、対象 `57b01d3d`）の後、Coordinator の disposition「一括是正」で起草役が `f71d131c` で直し、fresh の reviewer の closure 2 本（Claude 側 fresh Opus 5.5 と Codex）が対象 `f71d131c` に P1 / P2 = 0 を報告した（下の Review Response）。closure の P3 3 件は plan-gate のまま起草役が `f628c918` で直した（Plan Commit はその版。前例: PR #201 の遷移 8）。docs の直しと定義の追加は、implementing へ進めてから別の run で行う。
 
 ## Owner Effort Budget
 
