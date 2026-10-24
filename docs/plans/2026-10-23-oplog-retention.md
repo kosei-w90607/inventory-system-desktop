@@ -6,9 +6,9 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 715148294e8b8d137496b788d2334ef5540c1af8
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: 起票は Opus 5.5 subagent（本 run の起草役）。実装の Writer は座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）の Writer 行から Coordinator が発注時に決める
@@ -26,6 +26,7 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 4. plan-draft → plan-gate（2026-10-24、Coordinator、本 commit）: owner の判断事項は owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にした（TD-407。後で owner に見せ、答えが変われば plan-gate のまま直す）。packet と Matrix が揃い commit されている。main（`843c4938`、PR #191・#200 の後）を単段で取り込んだ（衝突: decision-log の 1 か所（D-132 と D-136 が同じ末尾に足された。番号の順に両方を残した））。Plan Review round 1（fresh Opus 5.5 + Codex）に出す。
 5. plan-gate のまま是正（round 1、2026-10-24、Coordinator、本 commit）: round 1（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `879a4495` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2（fresh Opus 5.5 + Codex）で再 review する。
 6. plan-gate のまま是正（round 2、2026-10-24、Coordinator の代行の起草役、本 commit）: round 2 は両 reviewer とも approve（P1 0 / P2 0、P3 は各 3 件）。P3 の全 6 件と、K1 の owner の決定（repo 外の回答台帳 TD-418、2026-10-24。d 約 3000 日）を反映し、既定の日数を 2557 から 3000 に改めた（下の Review Response）。round 2 の approve は日数を改める前の版の plan に対するものなので、plan-gate に留め、契約の変わった版の確認（round 3）を受けてから plan-approved へ進む。
+7. plan-gate → plan-approved（2026-10-24、Coordinator の代行の起草役、本 commit）: round 3（Plan Review round 天井 3）は独立の Plan Reviewer（Writer と別の context）の Claude 側 fresh Opus 5.5 = approve（P1 0 / P2 0 / P3 6）、Codex（発注 552）= approve（P1 0 / P2 0 / P3 1）で、日数を 3000 日に改めた版の plan に P1/P2 = 0（下の Review Response）。P3 の 7 件は Coordinator の disposition（2026-10-24、round 4 は開かない）に従い plan-gate のまま起草役が `715148294e8b8d137496b788d2334ef5540c1af8` で直した（6 件の是正と backlog の 1 件の起票。Plan Commit はその版）。実装の commit はまだ無い。Scope の migration の段の前提（初回の導入が済んでいないこと）は、Coordinator が Ready の依頼の前に確かめ、済んでいれば Ready を依頼せず plan-gate に戻す。
 
 ## Owner Effort Budget
 
