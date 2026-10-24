@@ -174,6 +174,55 @@ fn test_response_only_enum_wire_serialize_req303_req501() {
     ] {
         assert_serialize(value, wire);
     }
+    // D-118 b1（Matrix W6、packet の横断の約束 Z14）: 計数・完了・要再確認の一覧・在庫連動の拒否の有限の値
+    {
+        use crate::biz::stocktake_service::{
+            CompletionBlockReason, CountRecoveryAction, RecountReason, StockCountKind,
+            StocktakeRecoveryCode,
+        };
+        for (value, wire) in [
+            (StockCountKind::Default, "default"),
+            (StockCountKind::Fresh, "fresh"),
+        ] {
+            assert_serialize(value, wire);
+        }
+        for (value, wire) in [
+            (
+                RecountReason::UndeterminedSettlement,
+                "undetermined_settlement",
+            ),
+            (RecountReason::SameDateMovement, "same_date_movement"),
+            (RecountReason::ConflictingCounts, "conflicting_counts"),
+        ] {
+            assert_serialize(value, wire);
+        }
+        for (value, wire) in [
+            (CountRecoveryAction::ActiveCount, "active_count"),
+            (CountRecoveryAction::CountNow, "count_now"),
+        ] {
+            assert_serialize(value, wire);
+        }
+        for (value, wire) in [
+            (CompletionBlockReason::Recheck, "recheck"),
+            (CompletionBlockReason::Uncounted, "uncounted"),
+            (
+                CompletionBlockReason::SettlementPending,
+                "settlement_pending",
+            ),
+        ] {
+            assert_serialize(value, wire);
+        }
+        for (value, wire) in [
+            (StocktakeRecoveryCode::RecountRequired, "recount_required"),
+            (
+                StocktakeRecoveryCode::CompletionBlocked,
+                "completion_blocked",
+            ),
+        ] {
+            assert_serialize(value, wire);
+        }
+        assert_serialize(crate::cmd::CmdErrorKind::StocktakeGuard, "stocktake_guard");
+    }
 }
 
 #[test]

@@ -59,7 +59,7 @@ Keep it factual and stable.
 - POS adapter boundary is a settled architecture constraint (`D-023`): CASIO `Z001`/`Z002`/`Z004`/`Z005`, CV17, SD-card, and PC tool details are adapter facts unless a source design doc explicitly promotes a concept to the app core.
 - REQ-401 daily report redesign is a settled design direction (`D-025`): `Z001`/`Z002`/`Z005` create app-internal daily report aggregates, while `Z004` remains item-level product-sales/inventory track after PLU verification. Daily reports must not be expanded into fake `sale_records` or `inventory_movements`.
 - `stocktake_items.valuation_cost_price_centi` freezes stocktake valuation
-- Stocktake may proceed while CSV import remains allowed (design fact, kept by D-118. The current build stops the stocktake operations and the Z004 business commit by the stop ADR `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`)
+- Stocktake may proceed while CSV import remains allowed (design fact, kept by D-118. The stop ADR `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md` was lifted and superseded by the D-118 runtime b1 on 2026-10-23: counts are saved to `stock_counts`, the stock is recomputed from records, and completion does not move stock)
 
 ## Key Domain Rules
 

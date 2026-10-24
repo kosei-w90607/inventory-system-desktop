@@ -726,6 +726,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         sales_repo::insert_sale_record(conn, &record).unwrap();
     }
