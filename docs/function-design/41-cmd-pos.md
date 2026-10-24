@@ -424,6 +424,31 @@ fn get_csv_import_record(
 
 read-only command であり、preview キャッシュ・idempotency・operation log 記録には関与しない（[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a の read-only 責務分離と同じ）。
 
+#### preview_rollback_csv_import（proposed・未実装）
+
+**関数要求**: 取消の確認（[55](55-ui-csv-import.md) UI-07-D18）が、取り消す前に何が起きるかを読む。[32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6b を呼ぶだけで、何も書かない（BIZ が取消を TX の中で当てて戻す。BIZ-03-D2）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+#[specta::specta]
+fn preview_rollback_csv_import(
+    state: State<AppState>,
+    csv_import_id: i64,
+) -> Result<RollbackPreview, CmdError>
+```
+
+**出力型**: [32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6b の RollbackPreview
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::csv_import_service::preview_rollback_csv_import(&mut conn, csv_import_id) を呼ぶ
+3. Ok → RollbackPreview をそのまま返す
+4. Err(BizError::NotFound) → kind `not_found`、Err(BizError::ValidationFailed)（取消済み）→ kind `validation`
+5. Err(other) → 17.4 の変換表に従い CmdError に変換して返す
+
+preview キャッシュ・idempotency・operation log 記録には関与しない（get_csv_import_record と同じ）。登録は §17.9 の 2 面（`src-tauri/src/lib.rs` の Specta の登録〈`collect_commands!`〉と runtime の登録〈`tauri::generate_handler!`〉）。2 面と宣言・bindings の wire 名の一致は `scripts/check-command-drift.sh` が静的に確かめる。
+
 ---
 
 ### 17.6 CMD-08 コマンド
