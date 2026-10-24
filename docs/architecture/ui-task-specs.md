@@ -215,7 +215,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 **UI-06b 在庫少一覧:**
 - 独立画面ではなく、UI-06a `/stock` への `status=low_stock` deep-link（D-047、2026-07-16、詳細は [52-ui-shared-layout.md](../function-design/52-ui-shared-layout.md) UI-12-D1）。D-138 の後は「在庫切れ・在庫少」として `/products?status=low_stock` を開き、在庫切れと在庫少を 1 つの一覧に出す
-- CMD-06 list_low_stock で閾値以下の商品を一覧取得（UI-06a 内の既存フィルタ contract を再利用、廃番除外は固定 false）
+- CMD-06 list_low_stock で閾値以下の商品を一覧取得し、廃番を除いて出す（D-138 の後は「すべて」の状態の欄にも同じ集合を廃番を含めて使う、58 契約 H・廃番除外。今の build は UI-06a 内のフィルタ contract で `list_low_stock(false)` 固定）
 
 **UI-06c 在庫変動履歴:**
 - CMD-06 list_movements で商品別の変動一覧取得

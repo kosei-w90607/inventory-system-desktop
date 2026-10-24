@@ -82,7 +82,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 | UI-02b〜05b | 入出庫履歴 | `/inventory/records` | `src/routes/inventory/records.tsx` | 入出庫 | ○ | 入庫/返品・交換/手動販売/廃棄・破損/CSV取込み/棚卸しの追跡入口。記録詳細 route は[65-inventory-record-traceability.md](65-inventory-record-traceability.md)を正本とする |
 | UI-06b | 在庫少一覧 | `/stock`（deep-link、専用 route なし） | `src/routes/stock/index.tsx`（UI-06a と共用） | 入出庫 | ○ | 独立画面は廃止し、UI-06a `status=low_stock` フィルタへの deep-link に統合（D-047、UI-12-D1）。D-138 で項目名を「在庫切れ・在庫少」にし、先を `/products?status=low_stock` にする（proposed・未実装） |
 | UI-10 | 棚卸し | `/stocktake` | `src/routes/stocktake/index.tsx`（layout: `src/routes/stocktake.tsx`、詳細: `src/routes/stocktake.records.$stocktakeId.tsx`） | 入出庫 | ○ | 入出庫エリア末尾配置（年次作業、合意書 §7.4）。`/stocktake/records/$stocktakeId` はナビ非表示の記録詳細 |
-| UI-06c | 在庫変動履歴 | `/stock/$code/movements` | `src/routes/stock/$code.movements.tsx` | （ナビ非表示） | — | $code 必須、商品詳細カードから遷移 |
+| UI-06c | 在庫変動履歴 | `/stock/$code/movements` | `src/routes/stock/$code.movements.tsx` | （ナビ非表示） | — | $code 必須、商品と在庫の行の詳細と記録の詳細から遷移（D-138。今の build は在庫照会の詳細） |
 | UI-11b | バックアップ・復元 | `/settings/backup` | `src/routes/settings/backup.tsx` | システム管理 | ○ | |
 | UI-11c | 操作ログ | `/settings/logs` | `src/routes/settings/logs.tsx` | システム管理 | ○ | |
 | UI-11a | 在庫少の基準 | `/settings/thresholds` | `src/routes/settings/thresholds.tsx` | システム管理 | ○ | nav 表示名は[69-ui-threshold-settings.md](69-ui-threshold-settings.md) UI-11a-D6（2026-07-06）で「在庫少の基準」に変更、「閾値」は画面に出さない |
@@ -114,7 +114,7 @@ export type NavItem = {
   label: string;         // サイドバー表示用
   title: string;         // ウィンドウタイトル用（§52.5）。通常 label と同一、将来分離可
   to: string | null;     // Phase 1 は `/` のみ実 path、他 18 項目は null
-  search?: Record<string, string>; // 同一 to を複数 nav 項目が共有する場合の deep-link search params（UI-12-D1、2026-07-16 追加。例: 在庫少一覧の { status: "low_stock" }）
+  search?: Record<string, string>; // 同一 to を複数 nav 項目が共有する場合の deep-link search params（UI-12-D1、2026-07-16 追加。例: 在庫切れ・在庫少〈D-138。今の build は在庫少一覧〉の { status: "low_stock" }）
   activeMatch?: { searchKey: string; is?: string; isNot?: string }; // 排他 active 判定用 predicate（UI-12-D1、2026-07-16 追加）。is=現在値との等値、isNot=非等値（現在値 undefined も isNot 成立）。持たない項目は既存 <Link activeOptions> 経路を無変更維持
   description?: string; // ホーム入口 card の 1 行説明（UI-00、2026-09-16 追加）。sidebar は読まない
   icon: LucideIcon;

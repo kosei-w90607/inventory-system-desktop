@@ -1,13 +1,15 @@
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
-> **入力ドキュメント**: ARCHITECTURE.md（UI-06a タスク仕様）、SCREEN_DESIGN.md（在庫照会画面）、screen_mockups.html（モックアップ、historical reference）、20-io-product-repo.md（IO-01 get_stock_detail / list_low_stock / search_products）、44-cmd-inventory.md（CMD-06 get_stock_detail / list_low_stock）、40-cmd-product.md（CMD-01 search_products）、57-ui-monthly-sales.md（UI-09b 業務ロジックあり版テンプレ）、56-ui-daily-sales.md（UI-09a 2 useQuery 部分障害許容テンプレ）
+> **入力ドキュメント**: ARCHITECTURE.md（UI-06a タスク仕様）、SCREEN_DESIGN.md（商品と在庫画面）、screen_mockups.html（モックアップ、historical reference）、20-io-product-repo.md（IO-01 get_stock_detail / list_low_stock / search_products）、44-cmd-inventory.md（CMD-06 get_stock_detail / list_low_stock）、40-cmd-product.md（CMD-01 search_products）、57-ui-monthly-sales.md（UI-09b 業務ロジックあり版テンプレ）、56-ui-daily-sales.md（UI-09a 2 useQuery 部分障害許容テンプレ）
 
 ## 58. UI-06a: 在庫照会画面
 
 > **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: 一覧と詳細の在庫は写し（`stock_quantity`）のまま。写しが要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（例「4〜5」）と「要再確認」を文字と icon で出す（[40](40-cmd-product.md) の商品の結果の列）。在庫少の判定と並べ替えは写しの値で行う（今のまま）。
 
-> **商品と在庫の画面への統合（D-138。proposed・未実装）**: 本画面は商品検索・一覧と 1 つの画面「商品と在庫」（route `/products`）になる（[50](50-ui-product-list.md) UI-01a-D14、owner の決定 TD-424・TD-425）。画面・URL・道具・一覧の列・0 件の契約は 50 が持つ。本書は統合の画面で、在庫の状態（§58.10 の Q-1・契約 H）、在庫切れ・在庫少の一覧（§58.6 `filterAndSortLowStockList`、UI-06a-D4・D6・D8）、行の詳細（§58.7 `StockDetailContent`、UI-06a-D5・D7）、部門候補（UI-06a-D2）、範囲外 page（UI-06a-D3）、pagination（UI-06a-D1）の契約を持ち続ける。旧契約 I（「すべて」の検索駆動表示）は 50 UI-01a-D1 で置き換えた。route `/stock` は `/products` へ寄せる（UI-01a-D19）。§58.1 の route と主動線、§58.2〜§58.5・§58.7・§58.9 の file・hook・疑似コード・test の表は今の build（統合の前）の記述で、後続の runtime の lane（[backlog](../backlog.md) の「商品と在庫の画面の統合の runtime」）が統合の形に書き換える。
+> **商品と在庫の画面への統合（D-138。proposed・未実装）**: 本画面は商品検索・一覧と 1 つの画面「商品と在庫」（route `/products`）になる（[50](50-ui-product-list.md) UI-01a-D14、owner の決定 TD-424・TD-425）。画面・URL・道具・一覧の列・0 件の契約は 50 が持つ。本書は統合の画面で、在庫の状態（§58.10 の Q-1・契約 H）、在庫切れ・在庫少の一覧（§58.6 `filterAndSortLowStockList`、UI-06a-D4・D6・D8）、行の詳細（§58.7 `StockDetailContent`、UI-06a-D5・D7）、部門候補（UI-06a-D2）、範囲外 page（UI-06a-D3）、pagination（UI-06a-D1）の契約を持ち続ける。旧契約 I（「すべて」の検索駆動表示）は 50 UI-01a-D1 で置き換えた。route `/stock` は `/products` へ寄せる（UI-01a-D19）。今の build（統合の前、`/stock` の在庫照会）の記述として残すのは次の項目で、後続の runtime の lane（[backlog](../backlog.md) の「商品と在庫の画面の統合の runtime」）が統合の形に書き換える: 下のテンプレ判定の表、§58.2 の file の表、§58.3 のデータフロー、§58.4 の schema の例と fallback の bullet、§58.5 の hook の疑似コード、§58.7 の `StockInquiryPage` の項（題・副題と疑似コード）と `SearchBar` の項、§58.9 の test の表。それ以外（§58.4 の `selected` ライフサイクルを含む）は統合の後の規則で、今の build と違う所は「今の build は…」と書いた。
 
-### 本書のテンプレ判定（業務ロジックあり版・簡潔版、共通 6 項目）
+### 本書のテンプレ判定（業務ロジックあり版・簡潔版、共通 6 項目。今の build）
+
+今の build（`/stock`）の判定。統合の後の query は一覧（`search_products`）・在庫少の集合（`list_low_stock(true)`、契約 H）・詳細・部門候補の 4 つで、URL state は [50](50-ui-product-list.md) §50.4 の key（D-138）。
 
 | 観点 | 本画面の選択 | 根拠 |
 |---|---|---|
@@ -26,10 +28,10 @@
 - **サイドバー「在庫切れ・在庫少」との関係（D-047 の先を D-138 で置換え）**: UI-06b は独立画面を作らず、サイドバーの「在庫切れ・在庫少」から統合の画面 `/products` への `search: { status: "low_stock" }` deep-link として提供する（今の build は項目名「在庫少一覧」で `/stock` への deep-link）。`status` の状態のチップ（§58.10 UI-06a-D8）をそのまま使い、REQ-302 の常設到達導線を担う。同じ route を指すサイドバー 2 項目（商品と在庫・在庫切れ・在庫少）の排他 active 判定は `docs/function-design/52-ui-shared-layout.md` §52.6 UI-12-D1 を参照
 - **対応 task**: UI-06a（[ARCHITECTURE.md §UI-06a](../architecture/ui-task-specs.md)）
 - **呼び出す CMD**:
-  - list query: `search_products(query: ProductSearchQuery)`（status === "all"）または `list_low_stock(includeDiscontinued: boolean)`（status === "stockout" | "low_stock"）
+  - 一覧: `search_products(query: ProductSearchQuery)`（status === "all"）。在庫少の集合: `list_low_stock(true)`（status === "all" の状態の欄、§58.10 契約 H）。「在庫切れ・在庫少」の一覧: `list_low_stock` の結果から廃番を除く（status === "low_stock"、§58.6 `filterAndSortLowStockList`）。今の build は status === "stockout" | "low_stock" で `list_low_stock(false)` を読み、「すべて」では読まない
   - detail query: `get_stock_detail(productCode: string)`（commit 1 で specta 化）
-- **route**: `/stock`（`src/routes/stock/index.tsx`、[52-ui-shared-layout.md](52-ui-shared-layout.md) UI-12 合意書で確定済）
-- **主動線**: UI-00 ホームの「在庫照会」ボタン / サイドバー「在庫照会」から遷移、検索欄 → 結果一覧 → 詳細カード展開 → 発注判断
+- **route**: `/products`（[50](50-ui-product-list.md) UI-01a-D14。`/stock` は寄せる、UI-01a-D19）。今の build は `/stock`（`src/routes/stock/index.tsx`、[52-ui-shared-layout.md](52-ui-shared-layout.md) UI-12 合意書）
+- **主動線**: ホームの「商品と在庫」・「在庫切れ・在庫少」の card / サイドバーの同じ 2 項目から開き、一覧 → 行の直下の詳細 → 発注判断・入庫記録・商品修正・在庫変動履歴（D-138）。今の build はホーム・サイドバーの「在庫照会」から開き、検索欄 → 結果一覧 → 詳細の展開
 - **失敗 4 状態**:
   1. list query API fail → ProductListTable 領域 Alert + toast（`stock-inquiry-list-error`）
   2. list query items 空配列 → 「該当する商品がありません」EmptyState
@@ -195,13 +197,13 @@ const searchSchema = z.object({
 - `q` / `dept` / `status` の変更で `page=1` に戻す。page 移動だけは検索条件を維持する（50 §50.4 慣行の踏襲）。対象は `status === "all"`（`search_products` 経路）のみで、在庫少 / 在庫切れ（`list_low_stock` の client filter 経路）には pagination を適用しない（既存挙動維持）
 - **範囲外 page**（UI-06a-D3、round 1 P1-2 対応）: `items` 空 かつ `total_count > 0` かつ `page > 1` のとき、通常の EmptyState（filter-empty reset action を含む）ではなく専用メッセージ「このページには表示する商品がありません」+「先頭ページに戻る」ボタン（`page=1` へ navigate、`q` / `dept` / `status` は維持）を表示する。74 §74.10（UI-11c-D8）と同型。この判定は EmptyState 系より優先する（§58.10 参照）
 
-#### `selected` ライフサイクル（race condition 回避）
+#### `selected` ライフサイクル（race condition 回避。統合の画面の規則、D-138、proposed・未実装）
 
-- **status チップ切替時** = `selected` を URL から clear（`navigate` で `selected: undefined`）。新 list query 結果 1 件で自動展開が再発火可能、状態の race を回避
-- **q / dept 変更時** = `selected` を URL から clear（status チップ切替時と同じ。新 list 取得後の非同期な含有判定を避けて race を回避する。Phase 2 では選択を「現 list 条件に対する状態」として扱い、stale な詳細カードを残さない。結果 1 件なら自動展開が再発火するため絞り込み動線は崩れない）
-- 自動展開 useEffect の発火条件は `selected == null` ガードに加え、検索条件（`status`/`q`/`dept`/`page`）単位で 1 度のみ（UI-06a-D5、`useRef` に自動展開済みの条件 key を保持）。選択中行の再クリックで `onSelect(null)` が呼ばれ展開が閉じた（R2-3）後も、同じ検索条件のままでは自動展開が再発火しない。検索条件が変わった場合は新しい条件 key として改めて 1 度だけ自動展開する
-- **list 成功時に `selected` が現 list の items に不在**（stale/手打ち URL、CSV 取込み invalidation 後の該当外化）= `selected` を clear（`navigate` で `selected: undefined`、C-P2-1）。行インライン展開（§58.8）の描画先消失を防ぎ「選択は現 list 条件に対する状態」を一貫させる。`listQuery.isSuccess` ガードで loading 中の誤判定を回避。同一検索条件で自動展開済みの場合は再展開せず収束しない（UI-06a-D5 の設計上の帰結、"selected 不在 = 詳細が必ず消える" ではないが自動での再表示も保証しない）
-- **検索前（isAllEmpty: status=all + q 空）に `selected` が残る**（手打ち/F5/bookmark URL）= `selected` を clear（Codex 実装レビュー Round 1 P2-2）。list は EmptySearchPlaceholder なのに detail query が空振りするのを防ぐ。detail query の `enabled` にも `!isAllEmpty` guard を入れて二重防御（§58.5）
+- **条件の変更**（`q`・`dept`・`status`・`discontinued`・`sort`・`dir`・`perPage`、[50](50-ui-product-list.md) §50.4）= `page=1` に戻し、`selected` を URL から clear する（`navigate` で `selected: undefined`）。新しい一覧の非同期な含有判定を避けて race を回避する。選択は「今の一覧の条件に対する状態」として扱い、stale な詳細を残さない。結果 1 件なら自動展開が再発火するので、絞り込みの動線は崩れない。page の移動は条件を変えず、`selected` は下の「今の一覧に無ければ clear」に従う
+- 自動展開 useEffect の発火条件は `selected == null` ガードに加え、条件（上の key）と `page` の組ごとに 1 度だけ（UI-06a-D5、`useRef` に自動展開済みの条件 key を保持）。選択中行の再クリックで `onSelect(null)` が呼ばれ展開が閉じた（R2-3）後も、同じ条件のままでは自動展開が再発火しない。条件が変わった場合は新しい条件 key として改めて 1 度だけ自動展開する
+- **list 成功時に `selected` が今の一覧の items に不在**（stale/手打ち URL、CSV 取込み invalidation 後の該当外化）= `selected` を clear（`navigate` で `selected: undefined`、C-P2-1）。行インライン展開（§58.8）の描画先消失を防ぎ「選択は今の一覧の条件に対する状態」を一貫させる。`listQuery.isSuccess` ガードで loading 中の誤判定を回避。同一条件で自動展開済みの場合は再展開せず収束しない（UI-06a-D5 の設計上の帰結、"selected 不在 = 詳細が必ず消える" ではないが自動での再表示も保証しない）。限定: `q` は部分一致なので、外から `q=<商品コード>&selected=<商品コード>` で開いたとき（入出庫 4 画面の「在庫を見る」〈[61](61-ui-receiving.md) UI-02-D10〉、在庫変動履歴の fallback〈[66](66-ui-stock-movements.md) UI-06c-D9〉）、その商品コードを含む商品が表示件数を超えて該当の商品が 1 ページ目に無いと、`selected` は外れる。一覧は `q` で絞られたまま残り、pager で届く（データは失わない）
+- **検索語なしの `selected`**（例 `/products?selected=<商品コード>`、検索語なしの一覧から在庫変動履歴へ行って戻ったとき）= clear しない。D-138 で検索前の案内（旧契約 I）がなくなり、引数なしでも一覧が出るので、統合の前の検索前ガード（status=all かつ `q` 空で `selected` を clear し、detail query の `enabled` も止める）は要らない。その商品が今の一覧に無ければ上の規則で clear する
+- 今の build（`/stock`）との違い: 条件の key は `q`・`dept`・`status` だけで、検索前ガード（`isAllEmpty`、Codex 実装レビュー Round 1 P2-2）がある（§58.5 の疑似コード）
 
 ### 58.5 hook 設計
 
@@ -504,7 +506,7 @@ function StockInquiryPage() {
 - `onChange` debounce 200ms で URL state `q` 更新、Enter 押下時は debounce flush して即時更新
 - 専用「スキャン」ボタンは入れない（§58.13 非目的）
 
-#### StatusChips（3 チップ、件数バッジなし、Q-5）
+#### StatusChips（2 チップ、件数バッジなし、Q-5）
 
 - shadcn `ToggleGroup`（`type="single"`）、「すべて」/「在庫切れ・在庫少」のラベルのみ（UI-06a-D8。今の build は「すべて」/「在庫切れ」/「在庫少」の 3 つ）
 - 件数バッジは表示しない（検索条件・部門フィルタとの結合で意味論が壊れる、§58.13）
@@ -519,7 +521,7 @@ function StockInquiryPage() {
 #### ProductListTable（高視認性状態表示契約 H、選択行直下インライン展開）
 
 - 列: 商品コード / 商品名 / 部門 / 取引先 / 状態 / 在庫数（`format-stock-display`、生地は単位付き）/ 売価（UI-06a-D4、7 列。今の build。統合の後の列は状態で分ける〈50 UI-01a-D16〉）
-- 取引先列（`supplier_name`）は `source` に関わらず両 view（「すべて」/「在庫少」/「在庫切れ」）で無条件に表示する。`ProductListTable` は `source` で列構成を条件分岐しない単一 component のため。値が `null` の場合は `—` を表示する
+- 取引先列（`supplier_name`）は「すべて」と「在庫切れ・在庫少」のどちらの列の組にも出す（列の組は状態で分ける、50 UI-01a-D16）。値が `null` の場合は `—` を表示する。今の build は `source` で列構成を条件分岐しない単一 component で、3 つの view に同じ 7 列を出す
 - `source` prop を `derive-stock-state(item, source)` に引き渡し、状態列で `StockStatusBadge` を表示する
   - `stockout` = `CircleAlertIcon` + 「在庫切れ」Badge
   - `low` = `TriangleAlertIcon` + 「在庫少」Badge
@@ -527,7 +529,7 @@ function StockInquiryPage() {
 - 在庫数セルの stockout red / low yellow / ok default は二次シグナルとして残す。意味そのものは状態列の日本語ラベルで伝える
 - H-6 feedback 対応として、商品コードセルと詳細 header の商品コードは `font-mono text-sm font-medium` とする。旧 `text-xs` は最小級で、全体 WebView 表示スケール導入後も読みづらさが残るため使わない
 - 行クリックで `onSelect(isSelected ? null : product_code)` 発火（UI-06a-D5、R2-3 展開行トグルクローズ） → `selected` URL state 更新（`code ?? undefined`） → **選択行の直下**に colSpan 展開行で `StockDetailContent` をインライン描画（`detailQuery` props を受け取る、collapsible 不使用 = 条件描画）。選択中行を再クリックすると `onSelect(null)` が呼ばれ展開が閉じる。展開行は `bg-muted` を明示固定し選択行と視覚的に一体化（New-1）。list 失敗時の独立描画はフォールバック `StockDetailCard` が担う（§58.8）
-- 取引先列追加後のインライン展開は `colSpan=7`。旧 `colSpan=6`（さらに旧 `colSpan=5`）は table 列数と不一致になるため regression test で防ぐ
+- インライン展開の `colSpan` は表の列数と同じにする（統合の後は「すべて」8・「在庫切れ・在庫少」7、50 UI-01a-D16。今の build は 7）。列数と違う `colSpan`（旧 6・5 を含む）は regression test で防ぐ
 
 #### EmptySearchPlaceholder（契約 I）/ Pagination（UI-06a-D1）
 
@@ -540,9 +542,9 @@ function StockInquiryPage() {
 - `StockDetailContent`: 詳細の内側描画（在庫数 / 売価 / 原価 / 最終入庫日（`format-last-date`）/ 最終販売日（`format-last-date`））+ isLoading/isError/data 全状態を内包。行インライン展開（list 成功時、`ProductListTable` の colSpan 展開行内、Card なし）と フォールバックカード（list 失敗時、`StockDetailCard` が Card で包む）で**共用**
 - `StockDetailCard`: `StockDetailContent` を Card で包む薄いラッパ（list 失敗 + selected != null のフォールバック専用、collapsible 不使用）
 - `detailQuery.isError` → `StockDetailContent` 内 inline エラー表示（部分障害許容、一覧は維持。両描画経路で共通）
-- 「商品修正」は `/products/$code/edit` への active link とし、`params.code` に対象商品コードを、`returnTo` に今の画面の URL（`/products` と search state）を渡す（50 UI-01a-D17、51 UI-01b-D2 の受け口のまま。保存・戻るで来た一覧へ戻る）。今の build は `returnTo` を渡さず、保存の後は商品一覧へ着く。
+- 「商品修正」は `/products/$code/edit` への active link とし、`params.code` に対象商品コードを、`returnTo` に統合の画面の search state を `buildProductListReturnTo` で組んだ値（`status`・`selected` を含む）を渡す（50 UI-01a-D17、[51](51-ui-product-form.md) UI-01b-D2。保存・戻るで来た一覧とその行へ戻る）。今の build は `returnTo` を渡さず、保存の後は商品一覧へ着く。
 - 「入庫記録」は `/inventory/receiving` への active link とし、search の `productCode` に対象商品コードを渡す（61 UI-02-D18。その商品を明細に 1 行入れた状態で開く）。廃番の商品の詳細にはこの導線を出さない（入庫の商品追加欄は廃番を出さない）。今の build は事前入力しない。
-- 「在庫変動履歴」は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する。現在の画面の URL（search state 込み）を `returnTo` として送る（UI-06a-D7）。UI-06c の画面本体、filter、pagination、`MovementRecord.source` 元記録リンクは [66-ui-stock-movements.md](66-ui-stock-movements.md) を正とする。
+- 「在庫変動履歴」は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する。現在の画面の URL（`location.href`、search state 込み）を `returnTo` として送る（UI-06a-D7）。2 つの導線で作る側の規約が違う: 在庫変動履歴の `returnTo` は受け側（66 UI-06c-D9）が `returnToLinkProps` で解いて router の search object で戻すので、router の直列化のままの `location.href` でよい。商品修正の `returnTo` は受け口が router の parseSearch を通らない typed parse-back（51 UI-01b-D2）なので、手組みの `buildProductListReturnTo` で組む（router の直列化は数字だけの値を引用符つきで出し、受け口が引用符ごと受ける）。UI-06c の画面本体、filter、pagination、`MovementRecord.source` 元記録リンクは [66-ui-stock-movements.md](66-ui-stock-movements.md) を正とする。
 
 ### 58.8 エラー処理（失敗 4 状態の網羅）
 
@@ -589,7 +591,7 @@ function StockInquiryPage() {
 
 #### 契約 H 在庫状態の高視認性表示（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）
 
-> （D-138 で置換え）どの状態でも、stock_quantity <= 0 は「在庫切れ」、stock_quantity > 0 で BIZ 判定済みの在庫少の集合（`list_low_stock`）に入る商品は「在庫少」、それ以外は「在庫あり」と表示する。「すべて」では一覧（`search_products`）とは別に `list_low_stock(true)`（廃番を含む。「すべて」は廃番の表示を持つため）を読み、商品コードが集合に入るかで決める。「在庫あり」は在庫少の基準（[69](69-ui-threshold-settings.md) の 2 つの key、`stock_quantity <= 基準` が在庫少）を上回ることを示す。「在庫切れ・在庫少」の一覧は同じ集合から廃番を除く。frontend は閾値を保持しない（Q-1）。在庫少の集合の読込み中は、「すべて」の stock_quantity > 0 の行の状態の欄を読込み中の印（Skeleton）にする。在庫少の集合が読めないとき、「すべて」の stock_quantity > 0 の行は状態の欄に「—」を出し、一覧の上に読めなかったことと「もう一度読む」を出す（「在庫あり」と言い切らない）。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。今の build は「すべて」で閾値判定を行わず、stock_quantity > 0 を「在庫あり」と出す（基準以上を保証しない）。
+> （D-138 で置換え）どの状態でも、stock_quantity <= 0 は「在庫切れ」、stock_quantity > 0 で BIZ 判定済みの在庫少の集合（`list_low_stock`）に入る商品は「在庫少」、それ以外は「在庫あり」と表示する。「すべて」では一覧（`search_products`）とは別に `list_low_stock(true)`（廃番を含む。「すべて」は廃番の表示を持つため）を読み、商品コードが集合に入るかで決める。「在庫あり」は在庫少の基準（[69](69-ui-threshold-settings.md) の 2 つの key、`stock_quantity <= 基準` が在庫少）を上回ることを示す。「在庫切れ・在庫少」の一覧は同じ集合から廃番を除く。frontend は閾値を保持しない（Q-1）。在庫少の集合の読込み中は、「すべて」の stock_quantity > 0 の行の状態の欄を読込み中の印（Skeleton）にする。在庫少の集合が読めないとき、「すべて」の stock_quantity > 0 の行は状態の欄に「—」を出し、一覧の上に読めなかったことと「もう一度読む」を出す（「在庫あり」と言い切らない）。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。在庫少の集合の query の key は D-052 の invalidation の集合に入れる: `src/lib/invalidation-contract.ts` で `queryKeys.lowStock(false)` を挙げる entry の全部（`rg -c 'queryKeys.lowStock\(false\)' src/lib/invalidation-contract.ts` の出力 15。入出庫 4 画面・CSV 取込み・商品の保存・閾値の保存ほか）に足し、test 側の独立 oracle（`src/test/invalidation-oracle.ts`）も同じ PR で直す（`queryKeys.lowStock(true)` は prefix でも `lowStock(false)` に当たらない。足さないと在庫の数は新しく状態の欄だけ古い）。今の build は「すべて」で閾値判定を行わず、stock_quantity > 0 を「在庫あり」と出す（基準以上を保証しない）。
 >
 > Why: 入れた後に時々、限られた商品について在庫が最低限要る数に達したかを確かめる（店主の答え Q-102・TD-423）。入庫の結果から開いた 1 商品の行（[61](61-ui-receiving.md) UI-02-D10）が「すべて」の一覧なので、「すべて」の状態の欄が基準との比べを示さないと、この確かめに答えない。新しい設定・field は足さない（基準は今の 2 つの key）。
 
@@ -616,8 +618,8 @@ function StockInquiryPage() {
 #### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）
 
 - **決定**: 「在庫変動履歴」link は現在の画面の URL（search state 込み。統合の後は `/products`、D-138。今の build は `/stock`）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`src/features/disposal/DisposalPage.tsx` の `DisposalPage` の `returnTo` と同型、新しい state を作らない）。
-- **Why**: 監査 NAV-1 のとおり、`/stock?selected=<code>` だけでは受け側の検索前ガード（§58.4）が `selected` を解除し、利用者が検索と選択をやり直す。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。
-- **Rejected**: 受け側の検索前ガードを撤去（bookmark / F5 の detail 空振り防止〈Codex Round 1 P2-2〉を壊す）/ `/stock?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）。
+- **Why**: 元の検索条件と開いていた行へ戻す。起点の監査 NAV-1 は、`/stock?selected=<code>` だけでは受け側の検索前ガード（統合の前の §58.4）が `selected` を解除し、利用者が検索と選択をやり直すことだった。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。
+- **Rejected**: `/products?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）。統合の前の Rejected「受け側の検索前ガードを撤去」は、D-138 でガードそのものが要らなくなった（引数なしでも一覧が出る、§58.4）ので外した。
 
 #### UI-06a-D2: 部門候補を listDepartments master 全件へ是正（DSR-10、round 1 P1-3、2026-08-03 batch B）
 
@@ -633,7 +635,7 @@ function StockInquiryPage() {
 
 #### UI-06a-D4: 在庫少・在庫切れ一覧の取引先列 + 取引先名優先ソート（2026-09-06）
 
-- **決定**: `ProductListTable` に取引先列（`supplier_name`、null は `—`）を追加する。列は `source` に関わらず両 view（「すべて」/「在庫少」/「在庫切れ」）に無条件で出る（単一 component のため）。並び順は `status === "stockout" | "low_stock"`（`list_low_stock` 経路）でのみ `filterAndSortLowStockList` が取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順にクライアント側でソートする。「すべて」（`search_products` 経路、`ORDER BY p.product_code`）とページングは変更しない。
+- **決定**: `ProductListTable` に取引先列（`supplier_name`、null は `—`）を追加する。取引先列は「すべて」と「在庫切れ・在庫少」のどちらの列の組にも出る（D-138 で列の組を状態で分けた、50 UI-01a-D16。D-138 の前は単一 component で 3 つの view に無条件で出していた）。並び順は `status === "stockout" | "low_stock"`（`list_low_stock` 経路）でのみ `filterAndSortLowStockList` が取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順にクライアント側でソートする。「すべて」（`search_products` 経路、`ORDER BY p.product_code`）とページングは変更しない。
 - **Why**: `list_low_stock` は既に pagination なしの全件クライアント保持（§58.5）のため、フィルタ後配列を並べ替えるだけで済むクライアント側ソートが SQL `ORDER BY` 変更より変更面積が小さい（新規 Rust test・IO 層契約変更・design doc 改訂が不要）。「すべて」の並び順を変えない要件も自然に満たす。
 - **Rejected**: `list_low_stock_products`（`product_repo.rs`）の SQL `ORDER BY` を変更する案（IO 層契約変更・新規 Rust test・`20-io-product-repo.md` 改訂を伴い変更面積が大きい上、「すべて」に影響させない制御が別途必要になる）。
 
@@ -676,7 +678,7 @@ function StockInquiryPage() {
 | 在庫状態（在庫あり） | 「在庫あり」Badge | `StockStatus = "ok"` |
 | 金額（売価） | 「￥1,234」 | `Intl.NumberFormat`（今のまま） |
 | 金額（原価、1/100 円） | 「¥83.33」・「¥1,000」 | `formatCostYen`（[共通規則](10-common-rules.md) SPEC-UNIT-D5。半角の `¥`） |
-| 画面名「在庫照会」と CMD `get_stock_detail` / `list_low_stock` の命名差異 | 画面表示「在庫照会」 | CMD は実態（詳細取得 / 在庫少一覧）に即した命名（memory `feedback-naming-must-match-reality.md`） |
+| 画面名「商品と在庫」と CMD `get_stock_detail` / `list_low_stock` の命名差異 | 画面表示「商品と在庫」（D-138。今の build は「在庫照会」） | CMD は実態（詳細取得 / 在庫少一覧）に即した命名（memory `feedback-naming-must-match-reality.md`） |
 
 ### 58.13 非目的（IO/BIZ 同型表）
 
@@ -694,7 +696,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
-| 2026-10-24 | 画面ごとの要素の見直し design lane | 商品検索・一覧との統合（proposed・未実装、D-138）。冒頭の注記、§58.1 の deep-link の先、旧契約 I の撤去、契約 H の置換え（「すべて」でも在庫少を示す）、UI-06a-D8（チップ 2 つ、検索欄の列）、廃番除外の置換え、詳細の導線の `returnTo`・`productCode`、§58.4 の `selected` の上限 100（66 UI-06c-D9 と code に合わせた）。 |
+| 2026-10-24 | 画面ごとの要素の見直し design lane | 商品検索・一覧との統合（proposed・未実装、D-138）。冒頭の注記、§58.1 の deep-link の先、旧契約 I の撤去、契約 H の置換え（「すべて」でも在庫少を示す）、UI-06a-D8（チップ 2 つ、検索欄の列）、廃番除外の置換え、詳細の導線の `returnTo`・`productCode`、§58.4 の `selected` の上限 100（66 UI-06c-D9 と code に合わせた）。Plan Review round 1 の是正: 冒頭の「今の build」の範囲を項目単位に、§58.1 の CMD・route・主動線、§58.4 の `selected` ライフサイクルを統合の後の規則に（検索前ガードの撤去、部分一致の限定）、§58.7 の商品修正の `returnTo` を `buildProductListReturnTo` に、契約 H の集合の key の D-052 の invalidation、UI-06a-D7 の Rejected、§58.12 の画面名。 |
 | 2026-10-07 | 単位の拡張 design lane | §58.6 に単位の拡張の後の formatter の契約を追加（proposed・未実装、D-113 / SPEC-UNIT-D3・D9・D11）。 |
 | 2026-09-16 | ㉖ | UI-06a-D7 追加: `StockDetailContent` の「在庫変動履歴」link が現在の `/stock` URL を `returnTo` として送る（監査 NAV-1、66 UI-06c-D9 と対） |
 | 2026-09-15 | 表示小修正 batch 2 | 在庫照会の副題、絞り込み後の「全 N 件」、在庫状態 Badge「在庫あり」を反映。 |

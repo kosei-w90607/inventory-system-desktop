@@ -12,21 +12,22 @@ Risk: R3
 
 - UI-01a-D1（[50](../../function-design/50-ui-product-list.md) §50.2）: 引数なしで開くと状態「すべて」で廃番以外の全商品が商品コード順・100 件・page 1 で出る。旧 58 契約 I（検索駆動表示）の撤去
 - UI-01a-D14: 1 つの画面「商品と在庫」、route `/products`、子の route の path は不変、サイドバーとホームの入口
-- UI-01a-D15 / §50.4: URL state の `status`（`all` / `low_stock`）・`selected`。「在庫切れ・在庫少」で検索欄・状態・部門だけを出し、他の URL の値を消さない。条件の変更で `page` と `selected` を外す
+- UI-01a-D15 / §50.4: URL state の `status`（`all` / `low_stock`）・`selected`。「在庫切れ・在庫少」で検索欄・状態・部門だけを出し、廃番の表示・並べ替え・表示件数の URL の値を消さない。条件の変更（状態を含む）で `page` を 1 に戻し `selected` を外す
 - UI-01a-D16: 一覧の列を状態で分ける（「すべて」8 列、「在庫切れ・在庫少」7 列）、操作の列なし、PLU の列なし
 - UI-01a-D17: 行のクリックで直下に詳細、再クリックで閉じる、詳細から商品修正（`returnTo`）・在庫変動履歴（`returnTo`）・入庫記録（`productCode`、廃番は出さない）
 - UI-01a-D18 / §50.7 / catalog ⑥: 何も出ない画面を作らない（失敗・0 件・範囲外 page・商品 0 件）。0 件の説明は条件に合わせる
-- UI-01a-D19: `/stock` を `/products` へ寄せる（`q`・`dept`・`selected`・`page` を写す、`stockout`・`low_stock` を `low_stock` に）
-- [58](../../function-design/58-ui-stock-inquiry.md) 契約 H（D-138 の置換え）: どの状態でも在庫切れ / 在庫少 / 在庫あり。「すべて」は `listLowStock(true)` の集合で在庫少を決める。集合の読込み中・失敗の扱い
+- UI-01a-D19: `/stock` を `/products` へ寄せる（`q`・`dept`・`selected`・`page` を写し、`page` を写すときは `perPage=50` を足す、`stockout`・`low_stock` を `low_stock` に）
+- [58](../../function-design/58-ui-stock-inquiry.md) 契約 H（D-138 の置換え）: どの状態でも在庫切れ / 在庫少 / 在庫あり。「すべて」は `listLowStock(true)` の集合で在庫少を決める。集合の読込み中・失敗の扱い。集合の key は D-052 の invalidation の集合（`queryKeys.lowStock(false)` を挙げる entry の全部）と独立 oracle に入る
+- 58 §58.4 の `selected` ライフサイクル（D-138）: 条件の変更で外す、今の一覧に無ければ外す、検索語なしの `selected` は外さない（検索前ガードの撤去）
 - 58 UI-06a-D8 / 廃番除外（置換え）: チップ 2 つ、在庫切れ・在庫少を 1 つの一覧に（廃番を除く）、検索欄は 4 列（`maker_code` を含む）
-- 58 UI-06a-D7 / [66](../../function-design/66-ui-stock-movements.md) UI-06c-D9（D-138）: 在庫変動履歴の `returnTo` は `/products` の URL、「商品と在庫へ戻る」の pin と fallback
-- [51](../../function-design/51-ui-product-form.md) UI-01b-D2（受け口は不変）: 統合の画面の `returnTo` で保存・戻るが来た一覧へ戻る
+- 58 UI-06a-D7 / [66](../../function-design/66-ui-stock-movements.md) UI-06c-D9（D-138）: 在庫変動履歴の `returnTo` は `/products` の URL（`location.href`）、「商品と在庫へ戻る」の pin と fallback（`/products?q=<code>&selected=<code>&discontinued=all`）
+- [51](../../function-design/51-ui-product-form.md) UI-01b-D2（D-138）: 作る側 `buildProductListReturnTo` と受け口 `parseProductListSearchFromReturnTo` に `status`・`selected` を足す（許す範囲〈`/products` とその search〉は変えない、作る側は手組みのまま）。統合の画面の `returnTo` で保存・戻るが来た一覧とその行へ戻る。例外: 在庫連動を始める拒否（`recount_required`）の回復で棚卸しを経た後の保存は `/products` に着く（b1〈PR #188〉の Plan Review round 3 の決定）
 - [61](../../function-design/61-ui-receiving.md) UI-02-D10・[62](../../function-design/62-ui-manual-sale.md) UI-04-D12・[63](../../function-design/63-ui-return-exchange.md) UI-03-D15・[64](../../function-design/64-ui-disposal.md) UI-05-D11: 保存の結果の保存した商品ごとの「在庫を見る」、引数なしの在庫の画面への link が無い、上の戻る導線「商品と在庫へ」
 - 61 UI-02-D18: `productCode` で開くと明細が 1 行入り URL から外れる
 - catalog ⑮ の取引 4 画面の先頭の列（61 §61.5）: 入庫の候補と明細に部門・現在庫
 - [52](../../function-design/52-ui-shared-layout.md) UI-12-D1（D-138）: 「商品と在庫」と「在庫切れ・在庫少」の排他 active
 - [53](../../function-design/53-ui-home.md) UI-00-D13: 入口 card の 3・4 枚目
-- [77](../../function-design/77-ui-bulk-price-revision.md) の 0 件の導線の label
+- [77](../../function-design/77-ui-bulk-price-revision.md) の 0 件の導線の label（「商品と在庫を開く」）
 
 ## Failure Modes
 
@@ -44,6 +45,9 @@ Risk: R3
 - FM12: サイドバーで 2 項目が同時に active、またはどちらも active にならない
 - FM13: 範囲外 page・商品 0 件の DB で何も出ない
 - FM14: 統合の画面に PLU の列・`plu` の絞り込み・一括の操作が残る、または行の「修正」の操作の列が残る
+- FM15: 入出庫・商品・閾値の保存の後に、在庫数は新しく状態の欄だけ保存の前の集合のまま（集合の key が D-052 の invalidation に無い）
+- FM16: 検索語なしの `selected` が外れて行が開かない（検索前ガードが残る）
+- FM17: 0 件の導線の label が旧い画面名のまま（77 の「商品一覧を開く」）
 
 ## Test Matrix
 
@@ -53,20 +57,25 @@ Risk: R3
 | UI-01a-D1 / 旧契約 I の撤去 | FM1 | page（既存 `src/features/stock-inquiry/StockInquiryPage.test.tsx` の検索前の案内の test を統合の page の test へ移し、期待を反転） | `test_ui01a_d1_no_search_placeholder_on_open` | 開いた直後に「商品コード、商品名、または JAN コードで検索してください」が出る（旧文言が exact で 0 件、一覧の行が 1 件以上） |
 | 契約 H | FM2 | unit（既存 `src/features/stock-inquiry/lib/derive-stock-state.test.ts` を改める） | `test_contract_h_membership_decides_low_in_all` | 在庫 2・集合に入る商品が「すべて」で `ok` になる、在庫 2・集合に入らない商品が `low` になる、在庫 0 が `stockout` 以外になる。各組に非空の期待 |
 | 契約 H | FM2 | hook（新規、統合の page の hook） | `test_contract_h_all_reads_low_stock_including_discontinued` | 「すべて」で `listLowStock` が呼ばれない、または引数が `true` でない。廃番の表示「すべて」で在庫少の廃番の商品が「在庫少」にならない |
-| 契約 H | FM3 | page（新規） | `test_contract_h_low_stock_failure_shows_unknown_not_ok` | `listLowStock` reject・`searchProducts` 成功で、在庫 > 0 の行の状態の欄が「在庫あり」になる、一覧が隠れる、知らせと「もう一度読む」が出ない。在庫 0 の行は「在庫切れ」のまま（非空の対照） |
-| 契約 H | FM3 | page（新規） | `test_contract_h_low_stock_pending_shows_skeleton` | 集合の読込み中に在庫 > 0 の行が「在庫あり」を出す |
+| 契約 H | FM3 | page（新規） | `test_contract_h_low_stock_failure_shows_unknown_not_ok` | `listLowStock` reject・`searchProducts` 成功で、在庫 > 0 の行の状態の欄が「—」でない（「在庫あり」「在庫少」の label や Skeleton が出る）、一覧が隠れる、知らせと「もう一度読む」が出ない。在庫 0 の行は「在庫切れ」のまま（非空の対照） |
+| 契約 H | FM3 | page（新規） | `test_contract_h_low_stock_pending_shows_skeleton` | 集合の読込み中に、在庫 > 0 の行の状態の欄が Skeleton でない（「在庫あり」「在庫少」の label や「—」が出る）。在庫 0 の行は「在庫切れ」のまま |
+| 契約 H / 58 §58.8 #1 | FM3 | page（新規） | `test_contract_h_low_stock_list_failure_shows_alert` | `status=low_stock` で `listLowStock` が reject のとき、一覧の失敗の Alert と再試行が出ない、0 件の空状態（「在庫切れ・在庫少の商品はありません」）が出る（失敗を 0 件として扱う）。読込み中に一覧の Skeleton でなく空状態が出る |
+| 契約 H / D-052 | FM15 | unit（既存 `src/lib/invalidation-contract.meta.test.ts`・`src/lib/invalidation-contract.static.test.ts` と独立 oracle `src/test/invalidation-oracle.ts` を改める） | `test_d052_low_stock_set_key_invalidated` | `queryKeys.lowStock(false)` を挙げる entry のどれかに統合の画面の集合の key が無い、production の SSOT と独立 oracle が食い違う |
 | UI-01a-D15 / §50.4 | FM4 | page（新規、実 router） | `test_ui01a_d15_low_stock_hides_tools_and_keeps_url` | `status=low_stock` で廃番の表示・並べ替え・表示件数・pager が出る、「取引先順」の文字が無い、「すべて」へ戻すと `sort=name&dir=desc&perPage=200&discontinued=all` が失われる |
 | UI-01a-D15 / §50.4 | FM4 | page（新規） | `test_ui01a_d15_condition_change_resets_page_and_selected` | `q`・`dept`・`status`・`discontinued`・`sort`・`perPage` の変更で `page` か `selected` が残る。page の移動だけで条件が変わる |
 | UI-06a-D8 / 廃番除外 | FM5 | unit（既存 `src/features/stock-inquiry/lib/filter-low-stock-list.test.ts` を改める） | `test_ui06a_d8_low_stock_single_list_maker_code_excludes_discontinued` | `low_stock` で在庫 0 と在庫 2 の両方が出ない、廃番が出る、`q` に `maker_code` の部分を入れて当たらない。並びが取引先名 → 在庫数 → 商品名でない |
 | UI-06a-D8 | FM5 | component（既存 `src/features/stock-inquiry/components/StatusChips.test.tsx` を改める） | `test_ui06a_d8_two_chips` | チップが「すべて」「在庫切れ・在庫少」の 2 つでない（「在庫切れ」「在庫少」単独の label が exact で 0 件） |
+| UI-01a-D8 | FM14 | component（既存 `src/features/products/components/ProductTable.test.tsx:113` の「状態」見出しの不在の assert を統合の画面の表の test へ移して改める） | `test_ui01a_d8_discontinued_badge_not_column` | 廃番が専用の列で出る、「状態」列に廃番が入る、廃番の商品名セルに「廃番」の badge が無い、「状態」列の見出しが無い（UI-01a-D16） |
 | UI-01a-D16 | FM14 | component（既存 `src/features/stock-inquiry/components/ProductListTable.test.tsx` を改める） | `test_ui01a_d16_columns_by_status` | 「すべて」の列見出しが 商品コード・商品名・部門・取引先・状態・在庫数・売価・原価 の順でない、「在庫切れ・在庫少」が 取引先・メーカー品番・商品コード・商品名・状態・在庫数・売価 でない、「PLU」「操作」の見出しがある。展開行の colSpan が列数と違う |
-| UI-01a-D17 | FM6 | page（新規、実 router） | `test_ui01a_d17_edit_returns_to_low_stock_list` | `/products?status=low_stock&dept=3&selected=X` の詳細の「商品修正」→ 保存で `status=low_stock&dept=3` に戻らない（受け口は既存 `src/features/products/lib/return-to.test.ts`） |
-| UI-01a-D17 | FM14 | component（既存 `src/features/stock-inquiry/components/StockDetailContent.test.tsx` を改める） | `test_ui01a_d17_detail_links` | 「商品修正」の href に `returnTo` が無い、「入庫記録」の href に `productCode` が無い、廃番の商品で「入庫記録」が出る、「在庫変動履歴」の `returnTo` の pathname が `/products` でない |
+| UI-01a-D17 / UI-01b-D2 | FM6 | page（新規、実 router） | `test_ui01a_d17_edit_returns_to_low_stock_list` | `/products?status=low_stock&dept=3&selected=X` の詳細の「商品修正」→ 保存・戻るで `status=low_stock&dept=3` に戻らない、X の行が開かない |
+| UI-01b-D2 | FM6・FM7 | unit（既存 `src/features/products/lib/return-to.test.ts` を改める）+ route（新規、実 router） | `test_ui01b_d2_return_to_round_trips_status_selected_numeric_code` | `buildProductListReturnTo({ status: "low_stock", dept: 3, q: "1234567890123", selected: "1234567890123" })` を `parseProductListSearchFromReturnTo` で読んだ値が、`status`・`selected` を落とす、`q`・`selected` が string の `"1234567890123"` でない（number か引用符つき）。実 router で商品修正の保存の後、`/products` の route の parse の後の `q`・`selected` が string でない、その行が開かない。作る側を router の href（`location.href`）にすると `q` が引用符つきの検索語になって落ちる |
+| UI-01a-D17 | FM14 | component（既存 `src/features/stock-inquiry/components/StockDetailContent.test.tsx` を改める） | `test_ui01a_d17_detail_links` | 「商品修正」の `returnTo` が今の search state の `buildProductListReturnTo` の値でない、「入庫記録」の href に `productCode` が無い、廃番の商品で「入庫記録」が出る、「在庫変動履歴」の `returnTo` の pathname が `/products` でない |
 | UI-01a-D17 / UI-06a-D5 | — | component（既存 `ProductListTable.test.tsx`） | `test_ui01a_d17_row_click_toggles_detail` | 行のクリックで詳細が開かない、もう一度押して閉じない、行に遷移の button がある |
-| §50.4 / UI-06c-D9 | FM7 | route（新規、実 router） | `test_products_route_numeric_code_round_trip` | `q=00123&selected=00123` で開いた後の parse で `q`・`selected` が string の `"00123"` でない、該当の行が開かない |
-| UI-01a-D19 | FM8 | route（新規、実 router） | `test_stock_redirects_to_products_with_mapping` | `/stock?status=stockout&q=a&dept=2&page=3&selected=X` が `/products?status=low_stock&q=a&dept=2&page=3&selected=X` に着かない。`status=low_stock` も `low_stock`、`status=all` と不正値は `status` なし |
-| UI-06c-D9（D-138） | FM8 | page（既存 `src/features/stock-movements/StockMovementsPage.test.tsx` の該当の test を改める） | `test_ui06c_d9_back_pins_products` | 「商品と在庫へ戻る」の label でない、`returnTo=/products?...` で元の search に戻らない、`returnTo=/stock?...`・欠落で `/products?q=<code>&selected=<code>` に着かない（数字だけの商品コードを含む） |
-| UI-02-D10 ほか 4 画面 | FM9 | page（既存 `src/features/receiving/ReceivingPage.test.tsx`・`src/features/return-exchange/ReturnExchangePage.test.tsx`・`src/features/manual-sale/ManualSalePage.test.tsx`・`src/features/disposal/DisposalPage.test.tsx` を改める） | `test_result_panel_view_stock_links_per_saved_item` | 保存の結果に保存した 2 商品の「在庫を見る」が無い、href が `/products` で `q`・`selected` に各商品コードを持たない、「在庫照会へ戻る」「在庫照会へ」の文言が残る（exact で 0 件） |
+| §50.4 / UI-06c-D9 | FM7 | route（新規、実 router） | `test_products_route_numeric_code_round_trip` | `search={{ q: "1234567890123", selected: "1234567890123" }}` で開いた後の parse で `q`・`selected` が string の `"1234567890123"` でない、該当の行が開かない（値は JSON の数として読めるものにする。`00123` は先頭の 0 で `JSON.parse` が失敗し、引用符つきの直列化の筋を通らない） |
+| 58 §58.4 | FM16 | page（新規） | `test_selected_without_q_opens_detail` | `/products?selected=X`（`q` なし、X は既定の一覧の 1 ページ目にある）で X の詳細が開かない、`selected` が URL から外れる、`getStockDetail` が呼ばれない |
+| UI-01a-D19 | FM8 | route（新規、実 router） | `test_stock_redirects_to_products_with_mapping` | `/stock?status=stockout&q=a&dept=2&page=3&selected=X` が `/products?status=low_stock&q=a&dept=2&page=3&perPage=50&selected=X` に着かない（`perPage=50` が無い）。`page` の無い `/stock?q=a` に `perPage` が付く。`status=low_stock` も `low_stock`、`status=all` と不正値は `status` なし |
+| UI-06c-D9（D-138） | FM8 | page（既存 `src/features/stock-movements/StockMovementsPage.test.tsx` の該当の test を改める） | `test_ui06c_d9_back_pins_products` | 「商品と在庫へ戻る」の label でない、`returnTo=/products?...` で元の search に戻らない、`returnTo=/stock?...`・欠落で `/products?q=<code>&selected=<code>&discontinued=all` に着かない（数字だけの商品コード、廃番の商品を含む。廃番の商品で行が開かない） |
+| UI-02-D10 ほか 4 画面 | FM9 | page（既存 `src/features/receiving/ReceivingPage.test.tsx`・`src/features/return-exchange/ReturnExchangePage.test.tsx`・`src/features/manual-sale/ManualSalePage.test.tsx`・`src/features/disposal/DisposalPage.test.tsx` を改める） | `test_result_panel_view_stock_links_per_saved_item` | 保存の結果に保存した 2 商品の「在庫を見る」が無い、押した先の `/products` の route の parse の後の `q`・`selected` が各商品コードの string でない（数字だけの商品コードを含む。href の文字列は見ない）、その行が開かない、「在庫照会へ戻る」「在庫照会へ」の文言が残る（exact で 0 件） |
 | UI-02-D18 | FM10 | page（新規） | `test_ui02_d18_product_code_prefills_once` | `?productCode=X` で明細が 1 行にならない、URL に `productCode` が残る、再 mount（F5 相当）で 2 行になる、`getStockDetail` でなく `searchProducts` で引く |
 | UI-02-D18 | FM10 | page（新規） | `test_ui02_d18_unknown_or_discontinued_not_added` | 不明（`not_found`）・廃番の商品コードで明細が入る、案内の文が出ない |
 | catalog ⑮ / 61 §61.5 | — | component（既存 `ReceivingPage.test.tsx`） | `test_receiving_candidate_and_line_columns` | 入庫の複数件候補と明細の先頭の列が 商品コード・商品名・部門・現在庫 でない |
@@ -74,6 +83,7 @@ Risk: R3
 | UI-01a-D18 | FM13 | page（新規） | `test_ui01a_d18_no_blank_screen_cases` | 範囲外 page で「先頭ページに戻る」が出ない（既存の UI-06a-D3 の test を移す）、商品 0 件の DB（絞り込み既定）で「商品がありません」と「商品を登録する」が出ない・「絞り込みを解除」が出る、一覧の失敗で Alert が出ない |
 | UI-12-D1（D-138） | FM12 | component（既存 `src/components/layout/SidebarLink.test.tsx`・`src/config/navigation.test.ts` を改める） | `test_ui12_d1_products_exclusive_active` | `/products` で「商品と在庫」だけ、`/products?status=low_stock` で「在庫切れ・在庫少」だけが active でない。「商品検索・一覧」「在庫照会」「在庫少一覧」の項目が残る |
 | UI-00-D13 | — | component（既存 `src/features/home/HomePage.test.tsx`） | `test_ui00_d13_quick_action_cards` | 3・4 枚目が「商品と在庫」（`/products`）・「在庫切れ・在庫少」（`/products?status=low_stock`）でない |
+| 77 Empty | FM17 | page（既存 `src/features/products/PriceRevisionPage.test.tsx` の 0 件の導線の test〈`:774`〉を改める） | `test_ui14_empty_link_label` | 絞り込みなしの 0 件の導線が「商品と在庫を開く」でない、先が `/products` でない、旧 label「商品一覧を開く」が exact で残る |
 | UI-01a-D10〜D12 | FM14 | page（既存 `src/features/products/ProductListPage.test.tsx`） | `test_ui01a_no_plu_tools_on_merged_screen` | 統合の画面に「PLU」列・`plu` の絞り込み・一括の対象化の button がある（D-117 の runtime が先なら既存の test のまま） |
 
 ## State Lifecycle Matrix
@@ -81,8 +91,8 @@ Risk: R3
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 一覧（`searchProducts`） | 引数なしで全商品（UI-01a-D1） | Skeleton、道具は操作できる | 行を出す | 入出庫・CSV 取込み・商品の保存の後（D-052 の SSOT、今の consumer の集合に統合の画面を入れる） | 条件の変更 | 戻る・`returnTo` で同じ条件 | F5 で URL から同じ一覧 | Alert + 再試行（§50.7） | 再試行で同じ payload | `test_ui01a_d1_*`、`test_ui01a_d18_no_blank_screen_cases` |
-| 在庫少の集合（`listLowStock(true)`） | 「すべて」で 1 回 | 在庫 > 0 の状態の欄を Skeleton | 状態を決める | 一覧と同じ（在庫が動く mutation） | 「もう一度読む」 | 同上 | 同上 | 「—」と知らせ（契約 H） | 「もう一度読む」 | `test_contract_h_*` |
-| 開いている行（`selected`） | なし（1 件なら自動展開、UI-06a-D5） | 詳細の読込み中 | 詳細 | 条件の変更で外す | 行の再選択 | `returnTo` で同じ行 | F5 で同じ行 | 詳細の inline エラー | 別の行・再試行 | `test_ui01a_d15_condition_change_resets_page_and_selected`、`test_products_route_numeric_code_round_trip` |
+| 在庫少の集合（`listLowStock(true)`） | 「すべて」で 1 回 | 在庫 > 0 の状態の欄を Skeleton | 状態を決める | D-052 の `queryKeys.lowStock(false)` を挙げる entry の全部（在庫が動く mutation と閾値の保存。契約 H） | 「もう一度読む」 | 同上 | 同上 | 「—」と知らせ（契約 H） | 「もう一度読む」 | `test_contract_h_*`、`test_d052_low_stock_set_key_invalidated` |
+| 開いている行（`selected`） | なし（1 件なら自動展開、UI-06a-D5）。検索語なしの `selected` も開く（58 §58.4） | 詳細の読込み中 | 詳細 | 条件の変更で外す。今の一覧に無ければ外す | 行の再選択 | `returnTo` で同じ行 | F5 で同じ行 | 詳細の inline エラー | 別の行・再試行 | `test_ui01a_d15_condition_change_resets_page_and_selected`、`test_products_route_numeric_code_round_trip`、`test_selected_without_q_opens_detail` |
 | 入庫の `productCode` | URL に 1 つ | `getStockDetail` の読込み中 | 明細 1 行、URL から外す | — | — | — | F5 で再度入らない | 案内の文、明細なし | 商品追加欄から入れる | `test_ui02_d18_*` |
 
 ## Adjacent Pattern Audit
@@ -90,8 +100,8 @@ Risk: R3
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
 | 引数なしの `/stock` への link（E-02） | `rg -n 'to[=:] ?"/stock"' src --glob '!*.test.*'` の出力 11 行（記録の 4 画面の 8 行、サイドバー 2 行、在庫変動履歴 1 行。packet 2.8） | 記録の 4 画面の結果（→「在庫を見る」）と上の戻る導線（→ `/products`）、サイドバー 2 項目（→ `/products`）、在庫変動履歴の fallback（→ `/products`） | なし | `test_result_panel_view_stock_links_per_saved_item`、`test_ui12_d1_products_exclusive_active`、`test_ui06c_d9_back_pins_products` |
-| `/products` への link | `src/features/products/PriceRevisionPage.tsx` の `PriceRevisionPage` の 0 件の導線、`src/features/products/lib/return-to.ts`、商品フォームの戻る | label だけ（77）、受け口は不変 | 受け口の規則（UI-01b-D2）は変えない | 既存 `src/features/products/lib/return-to.test.ts` |
-| `returnTo` の数字だけの商品コード（GA5） | 66 UI-06c-D9 の `stockInquirySearchSchema`、`/products` の search schema（`src/features/products/search.ts`） | `/products` の `q`・`selected` を string で往復 | — | `test_products_route_numeric_code_round_trip` |
+| `/products` への link | `src/features/products/PriceRevisionPage.tsx` の `PriceRevisionPage` の 0 件の導線、`src/features/products/lib/return-to.ts`、商品フォームの戻る | 77 の label、`return-to.ts` の作る側と受け口に `status`・`selected` | 許す範囲（`/products` とその search、UI-01b-D2）は変えない。作る側を router の href に替えない（数字だけの値の引用符つきの直列化） | `test_ui01b_d2_return_to_round_trips_status_selected_numeric_code`、`test_ui14_empty_link_label` |
+| `returnTo` の数字だけの商品コード（GA5） | 66 UI-06c-D9 の `stockInquirySearchSchema`、`/products` の search schema（`src/features/products/search.ts`）、商品修正の受け口（`src/features/products/lib/return-to.ts` の typed parse-back） | `/products` の `q`・`selected` を string で往復。商品修正の `returnTo` は手組みと typed parse-back のまま | — | `test_products_route_numeric_code_round_trip`、`test_ui01b_d2_return_to_round_trips_status_selected_numeric_code` |
 | 商品を探す検索欄の列（catalog ⑨） | 商品一覧・在庫照会の `SearchBar`、一括価格改定の `PriceRevisionFilters`、在庫少の画面の絞り込み `filterAndSortLowStockList` | 在庫少の絞り込みに `maker_code` | 入出庫履歴の記録の検索（記録を探す別の問い）、棚卸しの対象確認欄（D-118 の (b)） | `test_ui06a_d8_low_stock_single_list_maker_code_excludes_discontinued` |
 | 取引 4 画面の候補・明細の列（catalog ⑮） | 入庫・返品交換・手動販売・廃棄破損の候補と明細（packet 段 1 の S-07〜S-10） | 入庫の候補に現在庫、明細に部門・現在庫 | 棚卸しの候補（並走の b1・b2、D-118 の (b)） | `test_receiving_candidate_and_line_columns` |
 
@@ -115,7 +125,7 @@ Risk: R3
 - wire type: command・DTO は変えない（`search_products`・`list_low_stock`・`get_stock_detail`）
 - internal type: `StockStatus` に「集合が読めない」状態を足す（契約 H）
 - producer/consumer: URL の producer は統合の画面・記録の 4 画面の結果・在庫変動履歴・`/stock` の redirect、consumer は `/products` の route schema と入庫の route schema
-- round-trip token: `returnTo`（入れ子を含む、66 の `detailReturnTo`）、`productCode`
+- round-trip token: `returnTo`（入れ子を含む、66 の `detailReturnTo`）、商品修正の `returnTo`（手組みと typed parse-back、51 UI-01b-D2）、`productCode`
 - precision/range: 該当なし
 - cross-language parse: router の `parseSearch`（JSON.parse）で数字だけの商品コードが number にならない
 
@@ -123,10 +133,10 @@ route / search の往復は href だけでなく、受け側の parse の後の�
 
 ## Compatibility Checks
 
-- old schema/input: `/stock` の旧 URL・旧 `returnTo`（`test_stock_redirects_to_products_with_mapping`、`test_ui06c_d9_back_pins_products` の `/stock` の fallback）、旧 `status=stockout`
+- old schema/input: `/stock` の旧 URL・旧 `returnTo`（`test_stock_redirects_to_products_with_mapping`、`test_ui06c_d9_back_pins_products` の `/stock` の fallback）、旧 `status=stockout`。限定: 統合の前の在庫照会で選んだ表示件数 100・200 はローカルの値で URL に無く、寄せた先で再現しない（`page` は `perPage=50` で写す。50 UI-01a-D19）
 - new schema/input: `/products` の `status`・`selected`、入庫の `productCode`
 - output order: 「すべて」は URL の並べ替え（既定は商品コード昇順）、「在庫切れ・在庫少」は取引先名 → 在庫数 → 商品名
-- optional field behavior: `status=low_stock` の間も `sort`・`dir`・`perPage`・`discontinued`・`page` を URL に残す
+- optional field behavior: `status=low_stock` の間も `sort`・`dir`・`perPage`・`discontinued` を URL に残す（`page` は状態の変更で 1 に戻る）
 
 ## Data Safety Checks
 
@@ -134,7 +144,7 @@ route / search の往復は href だけでなく、受け側の parse の後の�
 - generated outputs: `src/routeTree.gen.ts` は `npm run generate:routes` の出力
 - secrets: 該当なし
 - local-only files: 該当なし
-- synthetic sample boundaries: 数字だけの商品コード（`00123` の型）は合成
+- synthetic sample boundaries: 数字だけの商品コード（JSON の数として読める `1234567890123` の型）は合成
 
 ## Main Wiring / Integration Checks
 
@@ -146,10 +156,10 @@ route / search の往復は href だけでなく、受け側の parse の後の�
 ## Mutation-style Adequacy Questions
 
 - If a mock value is changed so it differs from the design-doc expected value: `listLowStock` の mock の集合を変えて、状態の欄が集合に従う（`test_contract_h_membership_decides_low_in_all`）。
-- If invalidate/refetch changes the value before versus after the operation: 入庫の保存の後に「在庫を見る」で開いた行の在庫と状態が保存の後の値（D-052 の invalidation）。
+- If invalidate/refetch changes the value before versus after the operation: 入庫の保存の後に「在庫を見る」で開いた行の在庫と状態が保存の後の値（D-052 の invalidation、`test_d052_low_stock_set_key_invalidated`）。
 - If a key branch is inverted: `status` の分岐（`all` で `listLowStock` の結果だけを出す）→ `test_ui01a_d16_columns_by_status`・`test_ui06a_d8_*`。
 - If a threshold comparison changes: frontend は閾値を持たない（集合の有無だけを見る）。BIZ の `<=` は既存の Rust の test。
-- If a guard is removed: `productCode` を URL から外す guard → `test_ui02_d18_product_code_prefills_once`。廃番の除外 → `test_ui06a_d8_*`・`test_ui02_d18_unknown_or_discontinued_not_added`。
+- If a guard is removed: `productCode` を URL から外す guard → `test_ui02_d18_product_code_prefills_once`。逆に撤去する guard（検索前ガード）が残る → `test_selected_without_q_opens_detail`。廃番の除外 → `test_ui06a_d8_*`・`test_ui02_d18_unknown_or_discontinued_not_added`。
 - If an output field is omitted: 詳細の link の `returnTo`・`productCode` → `test_ui01a_d17_detail_links`。
 - If output order changes: 列の順 → `test_ui01a_d16_columns_by_status`、並び → `test_ui06a_d8_*`。
 - If dry-run performs a side effect: 該当なし。

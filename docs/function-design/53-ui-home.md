@@ -276,7 +276,7 @@ shadcn `Tooltip` を本 PR commit 0 で導入済（`src/components/ui/tooltip.ts
 
 ### 53.8 備考
 
-- **大ボタン 4 つ目 = 商品管理**（Q-1 採用、モックアップ準拠）。月次売上はサイドバー「毎日の業務」エリア経由で遷移（[ui-task-specs.md §UI-12](../architecture/ui-task-specs.md) サイドバー定義既済）。商品管理は Phase 3 UI-01a 実装まで pending disabled
+- **大ボタンの 3・4 つ目**: D-138 の後は「商品と在庫」と「在庫切れ・在庫少」（下の UI-00-D13）。今の build は 3 つ目が在庫照会、4 つ目が商品管理（Q-1 採用、モックアップ準拠）。月次売上はサイドバー「毎日の業務」エリア経由で遷移（[ui-task-specs.md §UI-12](../architecture/ui-task-specs.md) サイドバー定義既済）
 - **UI-00-D13（D-138、2026-10-24、proposed・未実装）**: 在庫照会と商品検索・一覧が 1 つの画面「商品と在庫」になる（[50](50-ui-product-list.md) UI-01a-D14）ので、「毎日の作業」の 3 枚目を「商品と在庫」（`/products`）、4 枚目を「在庫切れ・在庫少」（`/products?status=low_stock`、サイドバーの同名の項目と同じ先）にする。Why: 2 つの入口が同じ画面を指すと選ぶ手間だけが残る（Hick の法則）。空いた枠に発注の準備の一覧を置くと、ホームの在庫切れ・在庫少の件数のすぐ近くから 1 回でその一覧を開ける（今は在庫照会を開いてチップを押す 2 回）。件数の card は今のまま導線にしない（D-089）。Rejected: 月次売上を置く（日次売上の画面のタブから 1 回で開ける）、3 枚にする（2×2 の格子が欠ける）。見え方は runtime の Windows native L3 で owner が確かめる
 - **pending route UX**: Tooltip + `aria-disabled` + cursor-not-allowed の 3 層で誤クリック防止（D-2）。サイドバー pending と一貫
 - **specta 化済み 4 コマンド**: `get_daily_sales` / `list_low_stock` / `list_plu_dirty` / `list_csv_imports`（commit 1 `2c1ac37` 完了）。本書 §53.3 はこれら specta 化前提で記述
