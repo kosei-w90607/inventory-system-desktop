@@ -943,7 +943,7 @@ Use concise ADR-style entries.
 - Revisit: ⑤ の起票時（登録する版の番号、旧関数の撤去、本決定の (2)(3) の終了）。design lane が精算の同一性の比較方法や系列を変える結論を出したとき（`pos_import_sources` の列や D3 の拒否の見直し）。② 〜 ④ の途中で、通常起動に先に入れたい部分が出たとき（SPEC-STOP-D6 の部分解除の禁止との関係を owner に諮る）。
 
 - Superseded in part by: D-118（2026-10-16）。(2)(3) で `#[cfg(test)]` に置いた時点証拠の schema・関数・型（`schema_time_evidence.rs`、`csv_import_service/time_evidence.rs`、`stocktake_service/time_evidence.rs`、`inventory_repo` ほかの test 内の module）は、置き換えた設計の runtime の lane が外す。③ 〜 ⑤ の列は D-118 の runtime に置き換わる。
-- Superseded in part（2026-10-23、D-118 の runtime の b1）: (2)(3) の `#[cfg(test)]` の時点証拠の schema・関数・型は b1 で repo から外した（停止 ADR の 5 つの入口・旧本体と同じ PR。[Plan Packet](plans/2026-10-22-stocktake-count-runtime-b1.md)）。
+- Superseded in part（2026-10-23、D-118 の runtime の b1）: (2)(3) の `#[cfg(test)]` の時点証拠の schema・関数・型は b1 で repo から外した（停止 ADR の 5 つの入口・旧本体と同じ PR。[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）。
 
 ## D-111: 毎日の売上データはレジの SD から直接読む（CV17 は PLU の書込みだけ）（2026-10-06）
 

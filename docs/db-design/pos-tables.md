@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は b1 で外した）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりで、表の列とほかの項目は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)、migration v11）で入った。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は b1 で外した）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりで、表の列とほかの項目は b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)、migration v11）で入った。
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|

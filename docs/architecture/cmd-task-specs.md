@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み。(a) は command を足さない）
 
-SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）は command の名前と引数を変えず、CMD-11 の `run_integrity_check`・`fix_integrity` の戻り値の型（[36](../function-design/36-biz-integrity-check.md)）だけが変わった。以下は b1（[Plan Packet](../plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の数の上書きの command の公開登録を外した。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は b1 で同じ PR に入れた。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
+SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）は command の名前と引数を変えず、CMD-11 の `run_integrity_check`・`fix_integrity` の戻り値の型（[36](../function-design/36-biz-integrity-check.md)）だけが変わった。以下は b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の数の上書きの command の公開登録を外した。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は b1 で同じ PR に入れた。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
