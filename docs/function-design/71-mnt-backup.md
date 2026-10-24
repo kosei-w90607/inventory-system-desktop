@@ -447,10 +447,10 @@ entry error / filename filter の production-only / test-only 分岐が存在し
 
 ### 71.9 lib.rs 起動シーケンスの変更
 
-**追加箇所**: MNT-02 操作ログ自動削除（ステップ6）の後、State管理（ステップ8）の前
+**追加箇所**: `src-tauri/src/lib.rs` の `run` の setup で、DB の初期化（`prepare_database`）と操作ログの自動削除（`mnt::log_manager::cleanup_old_logs`）の後、State 管理（`app.manage`）の前に `run_startup_auto_backup` を呼ぶ
 
 ```
-// 7. 自動バックアップチェック（起動時）
+// 自動バックアップチェック（起動時。lib.rs の run_startup_auto_backup の本体）
 // backup_dir は設定値を優先、未設定/空ならデフォルト（app_data/backups）
 // 設定読取の DB error 時はチェックをスキップして起動継続（MNT-01-D2）
 match mnt::backup::resolve_backup_dir(&conn, &app_data) {
