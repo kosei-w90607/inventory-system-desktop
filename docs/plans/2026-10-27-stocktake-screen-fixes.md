@@ -75,13 +75,13 @@ Goal Invariant:
 
 - 棚卸しの一覧の「最終カウント」に、効く計数の業務日（「前の日の分を入れる」で選んだ日付、既定は保存した日。`YYYY-MM-DD`）が出る。前の日の分を入れた商品は、一覧でその日付に見える。
 - 商品フォームで「POS販売で在庫を減らす」を「減らす」にした保存が `recount_required` で拒否されたとき、その欄の直下に、画面にある語（欄の名と「減らす」「減らさない」）だけで原因と直し方を書いた案内と「今の数を入れる」が出て、案内へ focus が移る。
-- 「今の数を入れる」の欄は、route の `product` が外れても（別の商品の読込みの途中でも）その商品の保存の成功で閉じ、`/stocktake/` に留まる。
+- 「今の数を入れる」の欄は、route の `product` が外れても（別の商品の読込みの途中でも、保存の応答の保留中でも）その商品の保存の成功で閉じ、`/stocktake/` に留まる（保存を始めた時の `returnTo` へ戻らない）。
 
 ### 失敗定義
 
 - 一覧の最終カウントが保存の時刻のまま、または未入力の行・業務日の無い行に日付や時刻が出る。`actual_count` が 0 の行に「—」が出る。
 - 商品フォームの案内に「在庫連動」が残る、BIZ の message をそのまま出す、上部に残って欄の近くに出ない、出ても focus が移らない、「今の数を入れる」の導線や離脱の確認（UI-USW-D1）が変わる。
-- route の `product` が外れた後の保存で欄が閉じない、閉じるべきでない欄（別の商品へ変わった欄の未保存の入力）を閉じる、`returnTo` の無いのに戻る。
+- route の `product` が外れた後の保存で欄が閉じない、閉じるべきでない欄（別の商品へ変わった欄の未保存の入力）を閉じる、`returnTo` が無いのに戻る、route の `product` が外れた後に保存の時の `returnTo` へ戻る、外れていない（別の商品の読込みが失敗した）のに戻らない。
 
 ### 非目的
 
@@ -100,7 +100,7 @@ operator の操作と画面の状態を変える packet なので、店の通常
 | 今日 10-27、棚卸し中。商品 A は未計数 | 棚卸しの画面で A を検索し、「前の日の分を入れる」で 10-26 を選び、数 5 を「数を保存」 | 一覧の A の行の「最終カウント」が `2026-10-26`（時刻なし） | 次の商品へ | 73 UI-10-D10 の段落、§73.6 |
 | 同じ。商品 B は未計数 | B を検索し、数 3 を「数を保存」（日付は今日のまま） | B の行の「最終カウント」が `2026-10-27` | — | 同じ |
 | 同じ。A の行 | A を検索し「入れ直す」で 4 | A の行が `2026-10-27`（fresh な計数は今日） | — | 73 の D-118 の節の「入れ直す」 |
-| 商品 C は「減らさない」で、その間の Z004 の売上がある | 商品の修正で C の「POS販売で在庫を減らす」を「減らす」にして「保存する」 | 欄の直下に「「POS販売で在庫を減らす」にできません」と文、「今の数を入れる」。画面がその案内へ移る（focus）。入力は「減らす」のまま | 「今の数を入れる」→ 離脱の確認で「破棄して移動」 | 51 の D-118 の節 |
+| 商品 C は「減らさない」で、共有 JAN が無く、連動なしの Z004 の売上があり、その売上より後の効く計数が無い（保存が `recount_required` になる。30 の在庫連動を始める・ADR D8） | 商品の修正で C の「POS販売で在庫を減らす」を「減らす」にして「保存する」 | 欄の直下に「「POS販売で在庫を減らす」にできません」と文、「今の数を入れる」。画面がその案内へ移る（focus）。入力は「減らす」のまま | 「今の数を入れる」→ 離脱の確認で「破棄して移動」 | 51 の D-118 の節 |
 | 棚卸しの画面の「今の数を入れる」の欄が C で開いた | 棚を数えて「今の数を保存」 | C の修正の画面へ戻る（DB の値で「減らさない」）。もう一度「減らす」にして保存すると通る | 保存 | 73 の D-118 の節（b1 のまま） |
 | 「今の数を入れる」の欄が C で開いている | サイドバーの「棚卸し」を押し、その後に C の数を保存 | 欄が閉じ、棚卸しの画面に留まる（戻らない） | — | 73 の D-118 の節（本 lane） |
 
@@ -159,7 +159,8 @@ backlog の項目は「Coordinator の裁定待ち」。裁定は Coordinator �
 
 | 対象 | 変更 | 作る所 | 読む所・test |
 |---|---|---|---|
-| route の `product` の effect | `searchProduct === undefined`（status の読込み後）のとき、遅い保存の応答の照合（`standaloneCodeRef`）を今の欄の商品（`standaloneFieldCodeRef`）へ戻し、その商品の閉じ待ち（`standalonePendingCloseRef`）があれば実行する（`settleStandaloneLoadFailure` の後始末と同じ。error の文は出さない）。途中の読込みの応答は今の cleanup の `standaloneSeqRef` の加算で捨てる（変えない） | `src/features/stocktake/StocktakePage.tsx` の `StocktakePage` の route の effect（必要なら後始末を小さな関数に切り出し、`settleStandaloneLoadFailure` と共有する） | Matrix の SF4〜SF6、既存の U9 の 6 本（期待を変えない） |
+| route の `product` の effect | `searchProduct === undefined`（status の読込み後）のとき、遅い保存の応答の照合（`standaloneCodeRef`）を今の欄の商品（`standaloneFieldCodeRef`）へ戻し、その商品の閉じ待ち（`standalonePendingCloseRef`）があれば実行する（`settleStandaloneLoadFailure` の後始末と同じ。error の文は出さない）。途中の読込みの応答は今の cleanup の `standaloneSeqRef` の加算で捨てる（変えない） | `src/features/stocktake/StocktakePage.tsx` の `StocktakePage` の route の effect（必要なら後始末を小さな関数に切り出し、`settleStandaloneLoadFailure` と共有する） | Matrix の SF4・SF6、既存の U9 の 8 つの宣言（期待を変えない） |
+| 保存の後の戻り先（`handleStandaloneSaved` の `finish`） | 保存を始めた時に捕らえた戻り先（`returnTo`）は、route の `product` が外れたら失効し、`finish` を実行する時点で外れていれば戻らずに閉じて `/stocktake/` に留まる。外れていなければ今のまま（保存の時の `returnTo` へ戻る）。route が別の商品へ変わってその読込みが失敗しただけでは失効させない（U9 の N1〈1571 行〉・N1b〈1760 行〉が `onReturnTo("/products/P-005/edit")` を期待する。その期待を保つ）。今の `finish` は `doSave` が mutate の前に捕らえた `onSaved` の closure の `search` で決めるので、実行する時点の route の `product` を読む（例: route の search の最新の値を ref に置く） | `src/features/stocktake/StocktakePage.tsx` の `handleStandaloneSaved` | Matrix の SF5、既存の U9 の 8 つの宣言（期待を変えない） |
 
 ### S3 商品フォームの拒否の案内（関門 6 の (i) と b1 の食い違い (3)）
 
@@ -202,13 +203,13 @@ closeout（merge の後の別の R0 PR）で: `docs/Plans.md` の関門 6 を済
 |---|---|---|---|
 | #172・#190・#194・#196・#197・#201・#204 | なし | — | — |
 | #202（`agent/screen-elements-redesign`） | `docs/function-design/51-ui-product-form.md` | D-118 の節の 2 つ目の項 | 7.1 の設計判断の表ほか（D-118 の節の 2 つ目の項は #202 の版でも main と同じ文） |
-| #193（`agent/stocktake-count-runtime-b2`。branch の差分は docs 5 で重なりなし、予定 path と重なる） | `docs/function-design/51-ui-product-form.md` | D-118 の節の 2 つ目の項 | 節の見出しと 4 つ目の項（在庫数の表示） |
+| #193（`agent/stocktake-count-runtime-b2`。branch の差分は docs 5 で重なりなし、予定 path と重なる） | `docs/function-design/51-ui-product-form.md` | D-118 の節の 2 つ目の項と、節の見出しの注記の 1 句 | 節の見出しと 4 つ目の項（在庫数の表示） |
 | 同 | `src/features/stocktake/StocktakePage.tsx` | `StocktakeItemList` の最終カウントの 1 セル、`StocktakePage` の route の effect | `recheckQuery` を hook へ切り出す（`StocktakePage` の上の方の宣言） |
 | 同 | `src/features/products/ProductFormPage.tsx` | 上部の Alert・`RECOUNT_REQUIRED_TEXT`・focus・`ProductForm` への `stockSyncNotice` | `ProductForm` への `stockRecheck` の prop |
 | 同 | `src/features/products/components/ProductForm.tsx` | props の `stockSyncNotice` と在庫の節の描画 | props の `stockRecheck` と「現在庫」の欄の badge |
 | 同 | `src/features/products/ProductFormPage.test.tsx` | U12（SF2・SF3 に書き換え） | U4 の追加 |
 
-merge の順: #202 → #193 → 本 lane（実装は #193 の merge の後に `origin/main` を単段で取り込んでから。`git -c merge.directoryRenames=false merge origin/main`）。本 lane の plan-first の commit（51・73）は #202・#193 の merge の後の同期で 51 の見出しと 4 つ目の項を相手の版にする。L3 は本 lane が merge train の先頭になってから頼む（#193 と path を共有するので L3 を束ねない。`docs/DEV_WORKFLOW.md` Wave Operation）。
+merge の順: #202 → #193 → 本 lane（実装は #193 の merge の後に `origin/main` を単段で取り込んでから。`git -c merge.directoryRenames=false merge origin/main`）。本 lane の plan-first の commit（51・73）は #202・#193 の merge の後の同期で 51 の 4 つ目の項を相手の版にし、51 の見出しは相手の版（在庫数の表示は b2 で実装済み）に本 lane の注記の 1 句（2 つ目の項の案内の場所・文・focus は画面の小口の lane で proposed）を足した形にする。L3 は本 lane が merge train の先頭になってから頼む（#193 と path を共有するので L3 を束ねない。`docs/DEV_WORKFLOW.md` Wave Operation）。
 
 ## Non-scope
 
@@ -220,9 +221,9 @@ merge の順: #202 → #193 → 本 lane（実装は #193 の merge の後に `o
 ## Acceptance Criteria
 
 - AC1（test）: `npm test -- src/features/stocktake src/features/products` が全 PASS し、Matrix の SF1〜SF6 の test 名が `rg -c` で各 1 件見つかる（`rg -c 'SF1 ' src/features/stocktake/StocktakePage.test.tsx` ほか、Matrix の Test Matrix の表の file ごと）。
-- AC2（一覧の時刻の撤去）: `rg -c 'formatCountedAt\(item\.counted_at\)' src/features/stocktake/StocktakePage.tsx` が baseline `1`（2026-10-27、`50f97a76`）→ 完了時 0 件（exit 1）。`rg -c 'item\.count_business_date' src/features/stocktake/StocktakePage.tsx` が完了時 1 以上。
+- AC2（一覧の時刻の撤去）: `rg -c 'formatCountedAt\(item\.counted_at\)' src/features/stocktake/StocktakePage.tsx` が baseline `1`（2026-10-27、`50f97a76`）→ 完了時 0 件（exit 1）。一覧のセルに固有の条件 `rg -c 'item\.count_business_date === null' src/features/stocktake/StocktakePage.tsx` が baseline 0 件（exit 1。2026-10-27、`b0eb03e0`）→ 完了時 1 以上（S1 の条件の式。`item.count_business_date` だけの式は欄の文脈の写し〈189 行〉で baseline から 1 なので使わない）。
 - AC3（商品フォームの語）: `rg -c '在庫連動にできません' src/features/products/ProductFormPage.tsx` が baseline `2` → 完了時 0 件（exit 1）。`rg -F -c '「POS販売で在庫を減らす」にできません' src/features/products/ProductFormPage.tsx` が baseline exit 1 → 完了時 1 以上。
-- AC4（正本の proposed の撤去）: `rg -c '今の build は' docs/function-design/73-ui-stocktake.md` が本 commit の後 `2` → 完了時 0 件（exit 1）。`rg -c 'proposed・未実装' docs/function-design/73-ui-stocktake.md` が本 commit の後 `4` → 完了時 `1`（更新履歴の本 lane の行だけ）。`rg -c '今の build は b1 の実装のまま' docs/function-design/51-ui-product-form.md` が本 commit の後 `1` → 完了時 0 件（exit 1）。
+- AC4（正本の proposed の撤去）: `rg -c '今の build は' docs/function-design/73-ui-stocktake.md` が本 commit の後 `2` → 完了時 0 件（exit 1）。`rg -c 'proposed・未実装' docs/function-design/73-ui-stocktake.md` が本 commit の後 `4` → 完了時 `1`（更新履歴の本 lane の行だけ）。`rg -c '今の build は b1 の実装のまま' docs/function-design/51-ui-product-form.md` が本 commit の後 `1` → 完了時 0 件（exit 1）。節の見出しの注記 `rg -c '画面の小口の lane で proposed' docs/function-design/73-ui-stocktake.md docs/function-design/51-ui-product-form.md` が本 commit の後 各 `1`（Plan Review round 1 の是正の後、2026-10-27）→ 完了時 0 件（exit 1。見出しを実装済みの書き方に戻す）。
 - AC5（frontend の gate）: `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` が exit 0（`docs/DEV_WORKFLOW.md` Verification Gates の Frontend の行）。
 - AC6（docs）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-27-stocktake-screen-fixes.md` が ERROR 0。
 - AC7（manual）: L3-1・L3-2 が PASS（下の Test Plan）で、helper の manual の record に残る（`python3 scripts/pr-gate.py status --pr <PR 番号>` の manual の行）。
@@ -233,7 +234,7 @@ merge の順: #202 → #193 → 本 lane（実装は #193 の merge の後に `o
 - 必要な設計成果物: New or changed operator workflow, route/search state, Japanese wording → 73・51 の更新（updated in this PR、本 commit）。SCREEN_DESIGN・UI_TECH_STACK は existing sufficient（画面の一覧と D-052 の entry を変えない）。decision-log・ADR は不要（画面の中の表示の決定で、横断の決定でない）。
 - plan にしかない durable な判断の昇格先: 最終カウントの日付 → 73 UI-10-D10 の段落。欄の閉じ方 → 73 の D-118 の節。案内の場所・文・focus・型で分岐 → 51 の D-118 の節。b1 の食い違い (1)(2) の閉じ方は正本の変更なし（既に正本と code にある）。
 - 前提・制約と、延期した design gap: owner の判断事項 (i) は A に決まった（TD-452）。共有 JAN の文は Non-scope。
-- 絶対保証の自己点検: 「欄は保存の成功で閉じる」の例外は、保存の応答の保留中に欄が別の商品へ変わった場合（その欄は閉じない。U9 の「Final Review G1」「N1b」の既存の test）と保存の失敗（閉じない。U9 の失敗の test）。「未入力の行は —」の例外は無い（業務日を持つ未入力の行も「—」）。
+- 絶対保証の自己点検: 「欄は保存の成功で閉じる」の例外は、保存の応答の保留中に欄が別の商品へ変わった場合（その欄は閉じない。U9 の「Final Review G1」「N1b」の既存の test）と保存の失敗（閉じない。U9 の失敗の test）。「保存の後は `returnTo` へ戻る」の例外は、閉じる時点で route の `product` が外れている場合（戻らずに留まる。S2）。「未入力の行は —」の例外は無い（業務日を持つ未入力の行も「—」）。
 - 判定: ready（正本で決めきれない振舞いは owner の判断事項 (i) だけで、A に決まった〈TD-452〉）。
 
 ## Registration / Generation Obligations
@@ -273,7 +274,7 @@ Test Design Matrix: [2026-10-27-stocktake-screen-fixes](test-matrices/2026-10-27
 
 - targeted tests: `npm test -- src/features/stocktake src/features/products`。
 - negative tests: 未入力の行（業務日あり）の「—」、`actual_count` 0 の行の日付、BIZ の message を出さない、上部に案内が無い、別の商品へ変わった欄を閉じない（既存の U9）。
-- compatibility checks: 既存の U9 の 6 本・U12 の離脱の確認（`ProductFormPage.unsaved-guard.test.tsx`）が期待を変えずに通る。
+- compatibility checks: 既存の U9 の 8 つの宣言（`rg -c '"U9 ' src/features/stocktake/StocktakePage.test.tsx` → `8`。`it.each` の 2 つを含む）・U12 の離脱の確認（`ProductFormPage.unsaved-guard.test.tsx`）が期待を変えずに通る。
 - data safety checks: 合成の fixture だけ。
 - main wiring/integration checks: `StocktakePage` の route の effect と `ProductFormPage` → `ProductForm` の slot を実際の component で描く（RTL）。
 
@@ -283,14 +284,14 @@ L3（Human Gate `manual`。Windows native の `npm run tauri dev`。1 回の通�
 
 | # | 画面 / 見る場所 | 到達手順 | 合格基準 | 入力物 |
 |---|---|---|---|---|
-| L3-1 | `/stocktake`、一覧の「最終カウント」 | 棚卸し中に、未計数の商品 X を検索 →「前の日の分を入れる」で昨日を選ぶ → 数を入れて「数を保存」。続けて別の未計数の商品 Y を今日の日付のまま保存 | X の行が昨日の日付、Y の行が今日の日付で、どちらも時刻が無い。未入力の行は「—」 | 進行中の棚卸しと未計数の商品 2 つのある dev の DB（Coordinator が用意。b1・b2 の L3 の後の DB で足りる） |
-| L3-2 | `/products/{C}/edit`、在庫の節 | 「減らさない」で、その間の Z004 の売上がある商品 C を開く →「POS販売で在庫を減らす」を「減らす」にして「保存する」→ 出た案内の「今の数を入れる」→「破棄して移動」→ 数を入れて「今の数を保存」 | 保存の後、画面が「POS販売で在庫を減らす」の欄の直下の案内まで移り、見出し「「POS販売で在庫を減らす」にできません」と文が読める（「在庫連動」の語が無い）。画面の上部に同じ案内が無い。棚卸しを経て C の修正の画面へ戻る | 商品 C（`pos_stock_sync=false` で、連動なしの Z004 の売上のある商品。b1 の L3 の台本の在庫連動を始める段と同じ形）。Coordinator が DB を用意し、商品コードを依頼に書く |
+| L3-1 | `/stocktake`、一覧の「最終カウント」 | 棚卸し中に、未計数の商品 X を検索 →「前の日の分を入れる」で昨日を選ぶ → 数を入れて「数を保存」。続けて別の未計数の商品 Y を今日の日付のまま保存 | X の行が昨日の日付、Y の行が今日の日付で、どちらも時刻が無い。未入力の行は「—」 | 進行中の棚卸しと未計数の商品 2 つ（X・Y）のある dev の DB。X・Y は計数が無いか、効く計数の日付が昨日より前（昨日以後の計数があると、昨日を入れても効くのはそちらで一覧はその日付を出す）。Coordinator が用意する（b1・b2 の L3 の後の DB は、この条件を満たす 2 つを選べば足りる） |
+| L3-2 | `/products/{C}/edit`、在庫の節 | 商品 C を開く →「POS販売で在庫を減らす」を「減らす」にして「保存する」→ 出た案内の「今の数を入れる」→「破棄して移動」→ 数を入れて「今の数を保存」 | 保存の後、画面が「POS販売で在庫を減らす」の欄の直下の案内まで移り、見出し「「POS販売で在庫を減らす」にできません」と文が読める（「在庫連動」の語が無い）。画面の上部に同じ案内が無い。棚卸しを経て C の修正の画面へ戻る | 商品 C（`pos_stock_sync=false`、共有 JAN が無く、連動なしの Z004 の売上があり、その売上より後の効く計数が無い商品。保存が `recount_required` になる〈30 の在庫連動を始める・ADR D8〉）。Coordinator が DB を用意し、商品コードを依頼に書く |
 
 欄の閉じ方（S2）は route の切り替えと応答の順の組合せで、目で確かめるには操作の速さに依る（L3 Eligibility の (3) の手前の再現の手順）ので L3 に入れず、SF4〜SF6 の自動 test で示す。
 
 ## Review Focus
 
-- S2 の後始末が、今の欄の商品の閉じ待ちだけを実行し、別の商品へ変わった欄（未保存の入力）を閉じないこと（既存の U9 の 6 本の期待）。
+- S2 の後始末が、今の欄の商品の閉じ待ちだけを実行し、別の商品へ変わった欄（未保存の入力）を閉じないこと（既存の U9 の 8 つの宣言の期待）。閉じる時点で route の `product` が外れていれば保存の時の `returnTo` へ戻らず、外れていなければ（別の商品の読込みの失敗を含む）今のまま戻ること（SF5、U9 の N1・N1b）。
 - S1 が `actual_count` の null と 0 を分け、業務日の無い行で保存の時刻へ戻らないこと。
 - S3 の案内が型で分岐し（message を解析しない）、BIZ の message を出さないこと。focus が導線の button でなく案内の領域に移ること。
 - この変更で不要になる記述・条件・code が残っていないか（下の節）。
@@ -303,7 +304,8 @@ L3（Human Gate `manual`。Windows native の `npm run tauri dev`。1 回の通�
 - 73 の UI-10-D10 の決定の 1. の「最終カウントは既存 `formatMovementDateTime` と同じ…」は決定の履歴として残し、上の段落で置き換えを示した（73 の他の置き換えと同じ書き方）。
 - backlog の (1)(2) は b1 の Gated Amendment の 2 本目で既に済んでいる（上の裁定の材料）。closeout で項目を外す。
 - `StocktakeItemDetail.counted_at`: S1 の後、frontend は一覧で読まなくなる（`rg -n "counted_at" src/features --glob '!*.test.*'` で 1477 行目だけ）。撤去は wire（bindings・Rust の DTO・TS の fixture）を変える R3 の別の変更で、明細の `stocktake_items.counted_at` の列は BIZ が写しとして書き続けるので、本 lane では残す。closeout の backlog の整理で候補に残すかを Coordinator が決める。
-- 不要になる条件: なし（S2 は分岐を 1 つ足すが、今の `searchProduct === undefined` の早い return を置き換える形で、新しい state を足さない）。
+- 不要になる条件: なし（S2 は今の `searchProduct === undefined` の早い return を置き換える分岐と、`finish` が実行する時点の route の `product` を読む手段〈例: ref 1 つ〉を足す。新しい state は足さない）。
+- Matrix の M11（閉じ待ちを商品の照合なしで実行する）: 等価の mutant（閉じ待ちは欄の商品 = 保存した商品のときだけ置かれ、`[standaloneTarget]` の effect が欄の変わるたびに消す）なので必須の red に置かない（Plan Review round 1）。照合の条件は既存の code で、残す。
 
 ## Contract Ledger
 
@@ -311,8 +313,9 @@ L3（Human Gate `manual`。Windows native の `npm run tauri dev`。1 回の通�
 |---|---|---|---|---|
 | UI-10-D10（最終カウント列 = 効く計数の業務日、未入力・業務日 null は「—」、時刻へ戻さない） | 73 UI-10-D10 の段落・§73.6 | S1 | SF1 | L3-1 |
 | UI-10-D10（見出し「最終カウント」・差異列・在庫列は変えない） | 73 §73.6・§73.10 | 変えない | T16（SF1 に書き換えた後も差異・在庫の assert を保つ） | — |
-| 73 D-118 の節「今の数を入れる」（route の `product` が外れても欄は残り、その商品の保存の成功で閉じて留まる。途中の読込みの応答は捨てる） | 73 冒頭の D-118 の節 | S2 | SF4〜SF6 | 非対象（Test Plan の理由） |
-| 73 D-118 の節「今の数を入れる」（`returnTo` の許す先、保存の後に戻る、別の商品の欄を閉じない、失敗で戻らない） | 73 冒頭の D-118 の節 | 変えない | 既存の U9 の 6 本（失敗の test を含む） | b1 の L3 で済み |
+| 73 D-118 の節「今の数を入れる」（route の `product` が外れても欄は残り、その商品の保存の成功で閉じる。途中の読込みの応答は捨てる） | 73 冒頭の D-118 の節 | S2 | SF4・SF6 | 非対象（Test Plan の理由） |
+| 73 D-118 の節「今の数を入れる」（保存の時の `returnTo` は route の `product` が外れたら失効し、閉じる時点で外れていれば留まる。別の商品の読込みの失敗だけでは失効しない） | 73 冒頭の D-118 の節 | S2 | SF5、U9 の N1・N1b | 非対象（Test Plan の理由） |
+| 73 D-118 の節「今の数を入れる」（`returnTo` の許す先、保存の後に戻る、別の商品の欄を閉じない、失敗で戻らない） | 73 冒頭の D-118 の節 | 変えない | 既存の U9 の 8 つの宣言（失敗の test を含む） | b1 の L3 で済み |
 | 73 D-118 の節「b1 の画面の細部」（検索で開く欄の「入れ直す」の文） | 73 冒頭 | 変えない（b1 の食い違い (2) は済み） | T6 | — |
 | UI-10-D4・§73.10（確定 CTA「棚卸しを確定する」） | 73 | 変えない（b1 の食い違い (1) は済み） | T11 ほか 20 の locator | — |
 | 51 D-118 の節の 2（欄の直下・見出しと文・型で分岐・BIZ の message を出さない・案内へ focus・導線の search） | 51 | S3 | SF2・SF3 | L3-2 |
@@ -336,4 +339,15 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（`b0eb03e0`。fresh Opus 5.5 と Codex。両方 reject）
+
+Coordinator の裁定は全件受理。行は 出所・重大度・裁定・直した所。
+
+- Opus F1・Codex #1（P2、probe で再現）、受理: 保存を始めた時に捕らえた `returnTo` が route の `product` が外れても失効せず、閉じるときに商品フォームへ戻る。→ S2 に「保存の後の戻り先」の行（失効と、`finish` を実行する時点で外れていれば留まる。外れていなければ今のまま、別の商品の読込みの失敗だけでは失効しない）、Goal の最小完了条件と失敗定義、Design Readiness の絶対保証、Review Focus、Contract Ledger。73 の冒頭の D-118 の節の「今の数を入れる」の行と更新履歴。Matrix の SF5 を `returnTo` 付きの fixture の 3 つの順（応答の前に外れる・閉じ待ちの後に外れる・B を挟まない）に、mutant M12〜M14 を足した
+- Codex #2（P2）、受理: Ordinary Operation と L3-2 の商品 C の条件が `recount_required` を保証しない。→ 両方を「共有 JAN が無く、連動なしの Z004 の売上があり、その売上より後の効く計数が無い」（30 の在庫連動を始める・ADR D8）に揃えた
+- Codex #3（P2）・Opus F2（P3）、受理: M11 は等価の mutant。→ Matrix の Mutation の表から外し理由を 1 文に、SF6 は既存の「B の欄へ変われば A の閉じ待ちを破棄する」契約の確かめに書き直した。「この変更で不要になるもの」に 1 行
+- Opus F3（P3）、受理: AC2 の後半 `rg -c 'item\.count_business_date'` は baseline で既に 1。→ 一覧のセルに固有の `rg -c 'item\.count_business_date === null'`（baseline exit 1 → 完了時 1 以上）に替えた
+- Opus F4（P3）、受理: 「U9 の 6 本」は `it.each` の 2 つを拾わない。→ `rg -c '"U9 '` → `8` の「8 つの宣言」に直した（S2・Test Plan・Review Focus・Contract Ledger・Matrix）
+- Opus F5（P3）、受理: 73 の冒頭の新しい文の「など」が M1 の WARN を 1 足す。→ 「サイドバーの「棚卸し」の link で外れても」に直した
+- Opus F6（P3）、受理: L3-1 の X・Y に昨日以後の計数があると誤って FAIL する。→ L3-1 の入力物に「X・Y は計数が無いか、効く計数の日付が昨日より前」を足した
+- Opus F7（P3）、受理: 51・73 の節の見出しの「b1 で実装済み」が本文の proposed と食い違って読める。→ 両方の見出しに本 lane の proposed の 1 句を足し、節の所有表と merge の順の同期の手順（51 の見出しは相手の版に本 lane の 1 句を足す）を直した。AC4 に見出しの注記の撤去を足した
