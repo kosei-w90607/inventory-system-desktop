@@ -12,7 +12,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -29,6 +29,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 1. kickoff → spec-check（2026-10-27、起草役）: Coordinator の発注（TD-421・TD-426、関門の 8）を Scope にし、規模を数えて 1 lane・1 PR と決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役）: 対象の正本は [30](../function-design/30-biz-product-service.md) §4.8 の手順 4・§4.9 の手順 0・BIZ-01-D1・BIZ-01-D5・BIZ-01-D8、[master-tables](../db-design/master-tables.md) の `jan_code` の列と「jan_code の形式 validation を DB に置かない理由」、[60](../function-design/60-ui-product-import.md) UI-01c-D5・D8・D16・§60.5・§60.6、ADR SPEC-STK-CNT-D4（共有 JAN）。BIZ-01-D1 が CSV の取込みを JAN の形の検証の対象外と明記しているので、正本の置き換えが要る（下の Design Readiness）。
 3. design → plan-draft（2026-10-27、起草役、本 commit）: BIZ-01-D10・UI-01c-D18・D-140 を正本に置き、BIZ-01-D1 と master-tables の「対象外」の句を置き換えた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」は 5 件とも推奨を既定にした）。plan-gate へは、#196 の merge の後に `origin/main` を同期してから Coordinator が進める（前文）。
+4. plan-draft → plan-gate（2026-10-27、Coordinator）: packet と Test Design Matrix は commit 済み。前文の順のとおり #196 が先に merge し（`f9a10762`）、`origin/main`（`ab009c1d`）を単段で同期した（`baab4ae0`）。手順書 `docs/initial-load-runbook.md` が base に入り、S3 の手順書の行が指す所（「今の事実」の「黙って入る形」の行、J5 の「変わる所」、流れ 1 の手順 4 の「初回の導入の版のプレビューが名指しで止める」の 3 か所、流れ 2 の手順 4）が今の版にあることを確かめた。owner の判断事項 5 件は推奨を既定のまま（出所は AI の調べで Human Gate の必須にしない）。Plan Review へ出す（fresh Opus 5.5 + Codex）。
 
 本 commit で変えた正本（plan-first）:
 
