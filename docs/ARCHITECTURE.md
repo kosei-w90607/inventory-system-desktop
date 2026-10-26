@@ -296,8 +296,6 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ## 4. 未確定事項
 
-- **IO-04（PLUフォーマッター）**: 2026-07-03 field gate により、現場ツール CV17 1.1.1 / SR-S4000 向けの `.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と、`CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。
-- **宅急便部門**: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL
 - **Q40（障害時の対応）**: 画面ごとの CmdError と retry（UI-13 ほか）と共通の Error Boundary は実装済み。包括的な障害時対応の方針の残りは [backlog](backlog.md) の Q40 の項目が追う
 
 ---
