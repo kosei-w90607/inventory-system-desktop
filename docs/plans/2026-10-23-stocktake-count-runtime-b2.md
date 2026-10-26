@@ -31,7 +31,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 - Phase: implementing
 - Risk: R3
 - Plan Commit: 33831dd3c01266b0b458c0d8c8d189ad9895672c
-- Amendments: none
+- Amendments: bcde6607b6b39cd4f4819d7cd382d90891f04141
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と実装）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
