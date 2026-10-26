@@ -299,6 +299,6 @@ INSERT INTO app_settings (key, value, updated_at) VALUES
 ('backup_retention_days',      '3',     '2026-04-03T00:00:00'),
 ('tax_rate_standard',          '10',    '2026-04-03T00:00:00'),
 ('tax_rate_reduced',           '8',     '2026-04-03T00:00:00'),
-('log_retention_days',         '365',   '2026-04-03T00:00:00');
+('log_retention_days',         '3000',  '2026-04-03T00:00:00');
 "#
 }
