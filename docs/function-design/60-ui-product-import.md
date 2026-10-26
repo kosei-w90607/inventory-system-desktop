@@ -36,9 +36,9 @@
 | REQ-104 / UI-01c | UI-01c-D8 | `error_rows.length > 0` でも commit は許可する。ただし取り込む対象は `valid_rows` + 上書き選択済み duplicate のみで、エラー行は取り込まない。 | IO/BIZ はエラー行と正常行を同じ preview に返す。正常行まで止めると初期投入作業が進まない。エラー行の除外は件数と文言で明示する。 |
 | REQ-104 / UI-01c | UI-01c-D9 | `valid_rows.length === 0` かつ上書き選択 0 件の場合、「取り込む」ボタンは disabled にし、理由を日本語で表示する。 | 操作可能に見えて何も起きない状態は避ける。disabled だけにせず、何が不足しているかをテキストで伝える。 |
 | REQ-104 / products cache | UI-01c-D10 | commit 成功後の invalidation は [D-052](../decision-log.md) C3 と `src/lib/invalidation-contract.ts` を正本とし、結果画面から `/products` へ戻る導線を出す。 | 商品 master・在庫・PLU・棚卸し consumer を一貫して stale 化し、画面側の key 列挙を廃止する。 |
-| REQ-104 / UI-01c | UI-01c-D11 | 完了画面は `created_count` / `updated_count` / `skipped_count` をサマリカードまたは数値帯で示し、「商品一覧へ戻る」「別のCSVを取り込む」の 2 動線に絞る。 | 初期投入作業では連続取込もあり得る。完了後の次の一手を明示しつつ、余分な action を増やさない。 |
+| REQ-104 / UI-01c | UI-01c-D11 | 完了画面は `created_count` / `updated_count` / `skipped_count` をサマリカードまたは数値帯で示し、「商品と在庫へ戻る」「別のCSVを取り込む」の 2 動線に絞る（画面名は D-138 の後〈proposed・未実装〉。今の build の完了の link は「商品一覧を確認」〈`src/features/products/ProductImportPage.tsx:97`〉、見出しの戻る〈`:26`〉は「商品一覧へ戻る」）。 | 初期投入作業では連続取込もあり得る。完了後の次の一手を明示しつつ、余分な action を増やさない。 |
 | REQ-104 / UI-01c | UI-01c-D12 | 画面を離れても DB 書込み途中の cancel/resume は提供しない。`committing` 中は画面内操作を disabled にし、commit 完了後の結果で確認する。 | backend commit は単一 TX。途中 cancel は設計されておらず、UI だけでキャンセル可能に見せると誤認を招く。 |
-| REQ-104 / UI-01c | UI-01c-D13 | Windows native L3 は owner 目視確認を必須にする。確認対象は FilePicker（native dialog + 任意 drop、D-054/UI-01c-D14）、エラー行と重複行の区別、上書き確認、日本語文言、結果サマリ、商品一覧への戻り導線。 | 新規 operator-facing screen であり、CSV 作業は初期導入時に失敗影響が大きい。CI / unit test だけでは視認性と操作の分かりやすさを判断できない。 |
+| REQ-104 / UI-01c | UI-01c-D13 | Windows native L3 は owner 目視確認を必須にする。確認対象は FilePicker（native dialog + 任意 drop、D-054/UI-01c-D14）、エラー行と重複行の区別、上書き確認、日本語文言、結果サマリ、商品と在庫の画面への戻り導線（D-138 の後。今の build は商品一覧）。 | 新規 operator-facing screen であり、CSV 作業は初期導入時に失敗影響が大きい。CI / unit test だけでは視認性と操作の分かりやすさを判断できない。 |
 | REQ-104 / UI-01c | UI-01c-D14 | ファイル選択を共通 FilePicker（native dialog + 任意 drop、D-054）へ移行し、UI-01c-D3 の plain input 方式を supersede する。`dragDropEnabled: false` は drop 維持のため据え置き。 | D3 の却下理由（plugin-dialog 未導入・scope 増）は foundation PR（2026-06-26）と日報 PR #125 の path-based 実証で解消済み。WebView2 白画面バグの再発面を picker 一箇所へ集約する。 |
 | REQ-104 / limit | UI-01c-D15 | 商品 import は CMD 早期拒否 + BIZ（`preview_import`）安全網の**二重**で `CSV_IMPORT_FILE_SIZE_LIMIT`（constants.rs）超過を validation error で拒否する（D-054）。 | UI だけが拒否する未仕様上限は直接 IPC で bypass 可能。売上 / 日報が持つ CMD 早期拒否 + BIZ 安全網の既存二重防御パターン（ARCHITECTURE resource-safety 例外）と同型に揃える。 |
 | REQ-104 / SPEC-PLS-D6 | UI-01c-D16 | 任意列 `PLU対象` を preview に表示し、`1` / `0` / 空欄の意味を説明する。`1` だが JAN が不正な行は warning + 実適用値 `対象外` を同じ行に表示する。 | CSV を commit する前に operator が自動補正と更新対象を確認できる。warning を色だけで表さない。 |
@@ -123,7 +123,7 @@ UI-01c 実装 PR では以下を generated binding に出す。
 - 重複行は行番号 + 商品コード + 商品名 + `スキップ / 上書き` の二択で示す。既定はスキップ。
 - 取込ボタンの label は、上書き選択がある場合 `選択した内容で取り込む`、新規のみの場合 `取り込む` とする。
 - `committing` 中は取込ボタン、ファイル選択、上書き切替を disabled にする。戻る / reset は commit 完了後に出す。
-- `result` では `created_count`, `updated_count`, `skipped_count` を数値で示し、`商品一覧へ戻る` と `別のCSVを取り込む` を出す。
+- `result` では `created_count`, `updated_count`, `skipped_count` を数値で示し、`商品と在庫へ戻る` と `別のCSVを取り込む` を出す（UI-01c-D11。今の build は `商品一覧を確認`）。
 
 ## 60.6 Error / Recovery
 

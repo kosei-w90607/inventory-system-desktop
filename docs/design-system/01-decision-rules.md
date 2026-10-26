@@ -453,8 +453,9 @@ scroll を伴う遷移はどれか？
 │              ├─ DSR-15 の origin 判定を通る → `to`(pathname) / `search`(object) へ
 │              │   分解して戻る（文字列 `to` に query を埋め込まない）
 │              ├─ `options.pathname` を渡した導線は、解決した pathname が一致しない
-│              │   場合も不正値として扱う（例: 在庫変動履歴の「在庫照会へ戻る」は
-│              │   `/stock` に pin する）
+│              │   場合も不正値として扱う（例: 在庫変動履歴の「商品と在庫へ戻る」は
+│              │   `/products` に pin する。D-138 の後、proposed・未実装。今の build は
+│              │   「在庫照会へ戻る」で `/stock` に pin する）
 │              └─ 欠落・不正・pin 不一致 → helper は `null` を返し、呼出側が書いた
 │                  遷移先ごとの既定 hub へ戻る
 └─ No  → その導線固有の契約に従う
