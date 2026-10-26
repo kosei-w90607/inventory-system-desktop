@@ -21,7 +21,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 | destructive の確認 dialog の今の置き場 | 11 file（`AlertDialogAction` を使う production の file） | `rg -l 'AlertDialogAction' src -g '!*.test.*'` → 11（下の Matrix の Adjacent Pattern Audit） |
 | 画面 | 3（CSV取込みの詳細〈65〉、Z004 タブの結果の画面と上の導線〈55〉、`/csv-import` の search） | 下の Scope の S3 |
 | migration・DB の列 | 0（取消の本体と列は b1。preview は書かない） | — |
-| 予定 path | 48（Rust 17・TS 17・docs 14〈packet と Matrix を含む〉。下の「予定 path の一覧」。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を足した） | 下の一覧の行数（`grep -c` で拡張子ごとに数えた） |
+| 予定 path | 50（Rust 17・TS 18・docs 15〈packet と Matrix を含む〉。下の「予定 path の一覧」。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を、Gated Amendment 3 で `docs/UI_TECH_STACK.md` と `src/hooks/unsaved-changes-guard-sweep.test.ts` を足した） | 下の一覧の行数（`grep -c` で拡張子ごとに数えた） |
 
 手法: **1 lane・1 PR のまま S1〜S4 の段に積む。** 理由: 新しい書く経路は無く（取消の本体は b1）、足すのは読取り 1 つ（取消を TX の中で当てて戻す preview）と、順 4 の拒否の文と詳細への link（error に取込みID の任意の field）、入口・確認・導線の画面だけで、48 path は 1 回の L3（10 分の見込み）で確かめられる（Plan Review round 3 の是正で足した 8 path のうち 4 つ〈`daily_report_import_cmd.rs`・`plu_export_cmd.rs`・`product_cmd.rs`・`settings_cmd.rs`〉は、`CmdError` の literal ごとに None の 1 行を足すだけ）。段は検証の単位で切る（S1 BIZ・IO と S2 CMD・wire は 1 つの Rust の検証の単位、S3 画面は frontend の検証の単位、S4 は docs と生成物）。b1 の後に merge するので、実装は b1 の merge と同期の後に着手する（b1 の取消の本体と `RollbackResult.recheck_targets`・要再確認の一覧の部品に依る）。
 
@@ -52,6 +52,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 9. plan-approved → implementing（2026-10-25、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`8db97271`、#188 b1 の merge を含む）を単段で merge した（`6e622424`、衝突なし）。AC の baseline の command を同期の後に逐語で再測し、変わったのは b1 の merge で本 packet が見込んだ 4 つだけ（`parse.rs` の `既に取り込まれています（精算 {}）` が 1、`RecheckTargetList.tsx` が在り `renderAction?: ` は 0、`bash scripts/check-command-drift.sh` が `D=71 H=71 S=71 T=71`〈b1 の command 3 つ〉、55 §55.0 の `取消の画面入口は結果 step だけ` が 0〈b1 が節ごと外した〉）。どれも上の b1 の head の版の baseline と同じ値で、AC の完了時の期待は変わらない。
 10. implementing のまま Gated Amendment 1（2026-10-26、Coordinator、本 commit）: 実装の Writer の S1〜S4 の後の Draft の run（40124364647）が Rust の 1 件だけ red だった。b1 の `src-tauri/src/cmd/stocktake_cmd.rs` の `test_complete_stocktake_cmd_req205_completion_blocked_wire`（b1 Matrix W4）が `CmdError` の wire を JSON 全体の完全一致で照合し、本 lane が足した `related_csv_import_id`（W3 の契約で順 4 の拒否のほかは `null`。`src-tauri/src/cmd/mod.rs` の `CmdError` は `skip_serializing_if` を持たない）が期待に無い。file が予定 path に無かったので Writer は編集前に止まった。起票の Adjacent Pattern Audit の `CmdError` に field を足す行が、wire 全体を照合するこの test を拾っていなかった（`serde_json::to_value(&error)` の完全一致は repo でこの 1 本。相談役の反例探しで確かめた）。本 amendment で予定 path に `stocktake_cmd.rs` を足し（48 path、Rust 17）、所有表に行を足し、Matrix の Adjacent Pattern Audit の行と「既存の test の移し方」の T6 を足した。test の期待 JSON に 1 key を足すだけで、test の名前・REQ-205 の参照・完全一致の照合の強さは変えない（REQ-205 の振舞いは変えず、wire の契約〈41 §17.4〉への期待の追随）。`skip_serializing_if` で key を消す案は W3・U11 (3)・41 §17.4 と食い違い、tauri-specta の command ごとの検証（unified mode）も拒むので採らない。AC は変わらない（AC4 の `cargo test` が覆う。traceability は test の名前と REQ の参照が変わらないので変わらない）。登録は次の commit で本 commit の SHA を `Amendments` に足す。review は Final Review broad に含める（前例: PR #172 の Gated Amendment 1）。
 11. implementing のまま Gated Amendment 2（2026-10-27、Coordinator の裁定、文面は起草役〈Opus 5.5〉、`47b76883`）: Final Review broad（head `bf2eae8e`）の 2 本は Claude 側 Fable 5 = approve（P1/P2/P3 0）、Codex 589 = reject（P2 3 / P3 1）で、P2 が 1 件も重ならなかった。相談役（Fable 5）の反例探しで 4 件とも現物で成立し、Coordinator が 4 件とも受理した。P2-1（preview の途中の失敗で TX を明示に閉じない）は 32 §15.6b 手順 5 の今の契約に code を合わせる（`tx.finish()` の形。無条件の `tx.rollback()` は真因を覆う）。P2-2（取消の応答を待つ間に結果の画面・詳細の画面から離脱できる）は、Contract Ledger の除外「55 §55.7（取消と preview は block しない）」を覆した。理由は、PR #172 で日報取込みタブの同型の P2 を受理して止めたので同じ画面の 2 つのタブで振舞いを揃えることと、離脱の後に失敗すると別の画面の Toast だけになり再試行の導線を失うこと（D-127「問題は起きたその画面で名指し」）。タブの切替えは router の遷移でなく blocker が効かないので、取消中は TabsTrigger を disabled にする（相談役の反例）。P2-3（詳細の取消の結果が `importId` に紐づかない）は内側の component を `key={importId}` で作り直す。P3-1 は RB6 に等値境界の fixture を足す。起草役の観察のうち、取込みの応答を待つ間と日報取込みタブの取消の応答を待つ間のタブの切替え（同型の穴）と、param の route の state（`key`・`remountDeps` 0 件）は本 lane の範囲の外で、Matrix の Adjacent Pattern Audit の除外と PR の Follow-up に置く。止めたときに文を出さない点は #172 と同じ扱いにし、残りの危険に記録した。AC の数（5）と予定 path（48）は変わらない。Final Reviewer の Claude 側を座組表の当面 Fable 5（TD-410）に揃えた。broad の後の packet の変更なので、是正の後は新しい head の fresh broad（Minimum の 2 本）を取る。
+12. implementing のまま Gated Amendment 3（2026-10-27、Coordinator）: GA2 の是正の Writer が、4 件の是正と commit の後の full の `npm test` で、予定 path の外の既存 test `src/hooks/unsaved-changes-guard-sweep.test.ts` の `T16`（`useBlocker` を直接使う production の file を 3 つの完全一致で固定する。UI-12 / UI-USW-D3）が red になり、編集の前に止まった。GA2 の Adjacent Pattern Audit の `useBlocker(` の行が `-g '!*.test.*'` で test を外して数えたので、test の中に production の path の集合を固定する型を拾わなかった（GA1 の T6 と同じ型の取りこぼし）。相談役（Fable 5）の反例探しで、同じ型の固定の test を test を含めて洗い直し、当たるのは T16 だけ（ほかの sweep の 7 file と Rust の 4 binary は green）と確かめた。あわせて、`useBlocker` の直接使用の例外の正本は UI_TECH_STACK §6.11 UI-USW-D1 の「importing ガード 2 hook のみ」の列挙で、test だけ直すと正本と食い違うこと、GA2 で足した 55 §55.7 の「UI-07-D15 (6) と揃える」が PR #172 で入る節への前方の参照で、本 lane が先に merge すると宙づりになることが分かった。裁定: 予定 path に `docs/UI_TECH_STACK.md` と `src/hooks/unsaved-changes-guard-sweep.test.ts` を足し（50 path）、UI-USW-D1 と T16 の題名は hook を列挙する言い方を 55 §55.7 の持ち主で決める言い方に置き換え（D-127 継ぎ足さない）、T16 の期待の集合に 1 行足す（完全一致は弱めない）。55 §55.7 の前方の参照は外す（上の「Gated Amendment 3 で是正の Writer が直す正本と test」）。Matrix に T8 を足し、Adjacent Pattern Audit の `useBlocker(` の行を test を含めて数える形にした。AC は変わらない（AC4 の full の `npm test` が T16 を覆う）。登録は次の commit で本 commit の SHA を `Amendments` に足す。review は GA2 の是正と同じ fresh broad に含める。
 
 ## Owner Effort Budget
 
@@ -242,6 +243,14 @@ Final Review broad（head `bf2eae8e`）の差し戻しの是正。本 GA の com
 - [65](../function-design/65-inventory-record-traceability.md) §65.5a: 「失敗」の項に取消の応答を待つ間の止め（55 §55.7・§55.11 を引く）、「成功」の項に、取消の結果は表示している取込みのものだけで、別の取込みの詳細へ移ると出さないこと。
 - 55・65 の更新履歴の行。
 
+### Gated Amendment 3 で是正の Writer が直す正本と test
+
+GA2 の是正の Writer が、予定 path の外の既存 test で止まった（下の遷移の記録 12）。本 GA の commit は packet と Matrix だけで、下の正本と test は是正の Writer が同じ PR で直す。
+
+- `docs/UI_TECH_STACK.md` §6.11 の UI-USW-D1: 「画面側での `useBlocker` 直接使用は禁止し、sweep test で機械強制する（既存例外 = CSV 取込み / 日報取込みの importing ガード 2 hook のみ）」の括弧の列挙を、持ち主で決める言い方に置き換える: 例外は 55 §55.7 が持つ進行中の処理のガードの hook（取込みの応答と、取消の応答を待つ間）だけで、どの hook かは 55 §55.7 が名指す。hook の名や数を UI_TECH_STACK に並べない（hook を足すたびに列挙を継ぎ足さない。D-127）。UI-USW-D3 の除外 (a)「進行中処理ガード既設（§55.7 所有）」は今の文のままで合う。更新履歴の行を足す。
+- `src/hooks/unsaved-changes-guard-sweep.test.ts` の `T16`: 期待の集合（完全一致）に `src/features/csv-import/hooks/useRollbackCsvImport.ts` を 1 行足す（照合の形と強さは変えない）。test の題名の「既存2 hook」を UI-USW-D1 と同じ持ち主の言い方（55 §55.7 の進行中の処理のガードの hook と共通警告 hook）に直す。traceability は describe の `UI-12` の token だけを見るので変わらない。
+- 55 §55.7 の GA2 で足した段落の末尾「日報取込みタブの取消の止め（UI-07-D15 (6)）と揃える。」を外す。UI-07-D15 (6) は PR #172 が足す節で、本 branch には無い（本 lane が先に merge すると宙づりの参照が main に入る）。#172 との相互の参照は、後に merge する方が足す（下の所有表の 55 の行）。
+
 ### S1 BIZ と IO（`csv_import_service`・`stocktake_service`・`stocktake_repo`）
 
 | 対象 | 変更 | 作る所 | 読む所・test |
@@ -314,17 +323,20 @@ Final Review broad（head `bf2eae8e`）の差し戻しの是正。本 GA の com
 | `src/features/stocktake/components/RecheckTargetList.tsx`（b1 の file を本 lane で変える） | b1: 要再確認の一覧の部品（棚卸しの画面と取込み・取消の結果が `renderAction` を渡して使う） | `renderAction` を任意にし、省略したときは「操作」列と入れ直しの文を出さない | b1 の版を起点に props の 1 つと省略の分岐だけを足す。今の 2 つの呼出し元は変えない（b1 への依存の 3） |
 | `src/lib/query-keys.ts` | b1: `stocktake.recheckList`。#194: backup の key | `inventoryRecords.csvImportRollbackPreview` | 別の key |
 | 32・41・55・65 | b1: D-118 の節・停止の節・取消と確定の手順。#172: 55 の UI-07-D15・UI-07-D16・§55.7 の解除の行と更新履歴 | 本 commit の新しい節と、上の「b1 の merge の後に同期する節」 | 新しい節は hunk が重ならない。同期する節は b1 の版を起点に本 lane の分だけ直す |
-| `docs/function-design/55-ui-csv-import.md` §55.7 の解除の行（Gated Amendment 2 で足した） | #172（`agent/sd-direct-read-runtime`、`f0d6d1b0`）: 「`result` / `error` / `idle` / `parsing` / `preview` の各 state では block しない」の行に「（本節は Z004 タブの `useCsvImportFlow`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)）」を足した（`git show origin/agent/sd-direct-read-runtime:docs/function-design/55-ui-csv-import.md` の 411 行。本 branch では 413 行で、足す前の文のまま。2026-10-27） | 同じ行を、取消の応答を待つ間の `result` を止める形に書き直す（上の「Gated Amendment 2 で是正の Writer が直す正本の節」） | 同じ行で衝突する。後に merge する方が先の版を起点に当て直す（両方の意味を残す: Z004 タブは取消の応答を待つ間も止める、日報取込みタブの止めは UI-07-D15 (6)） |
+| `docs/function-design/55-ui-csv-import.md` §55.7 の解除の行（Gated Amendment 2 で足した） | #172（`agent/sd-direct-read-runtime`、`f0d6d1b0`）: 「`result` / `error` / `idle` / `parsing` / `preview` の各 state では block しない」の行に「（本節は Z004 タブの `useCsvImportFlow`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)）」を足した（`git show origin/agent/sd-direct-read-runtime:docs/function-design/55-ui-csv-import.md` の 411 行。本 branch では 413 行で、足す前の文のまま。2026-10-27） | 同じ行を、取消の応答を待つ間の `result` を止める形に書き直す（上の「Gated Amendment 2 で是正の Writer が直す正本の節」） | 同じ行で衝突する。後に merge する方が先の版を起点に当て直す（両方の意味を残す: Z004 タブは取消の応答を待つ間も止める、日報取込みタブの止めは UI-07-D15 (6)）。Gated Amendment 3 で本 lane の §55.7 の段落から UI-07-D15 (6) への前方の参照を外したので、相互の参照（Z004 タブの止めと日報取込みタブの止めを並べる文）は後に merge する方が足す |
+| `docs/UI_TECH_STACK.md` §6.11 UI-USW-D1（Gated Amendment 3） | PR #212（`agent/jan-dup-custom-code`）: §6 の invalidation の表の行（別の節）。PR #172 は触らない | UI-USW-D1 の括弧の例外の言い方 | 別の節。衝突しない |
+| `src/hooks/unsaved-changes-guard-sweep.test.ts` T16（Gated Amendment 3） | どの open な lane も触らない（PR #172 は日報取込みの止めを既存の hook の中に置き、この test を変えない） | 期待の集合に 1 行、題名 | — |
 | 20・35・40・SCREEN_DESIGN・FUNCTION_DESIGN・cmd-task-specs・ui-task-specs | b1: D-118 の節と停止の記述、40 §5.3 の `stocktake_recovery`。b2: 20・40・65・SCREEN_DESIGN の b2 の分。#198: 20・SCREEN_DESIGN の操作ログの保持。#203: 35・ui-task-specs・SCREEN_DESIGN の旧表記の記録 | 上の「b1 の merge の後に同期する節」 | b1・b2 の版を起点に本 lane の分だけ直す |
 | `src/lib/bindings.ts`・`docs/function-design/90-traceability.md` | 生成物 | 生成物 | 取り込んだ後に再生成 |
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-48 path（Rust 17・TS 17・docs 14。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を足した）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+50 path（Rust 17・TS 18・docs 15。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を、Gated Amendment 3 で `docs/UI_TECH_STACK.md` と `src/hooks/unsaved-changes-guard-sweep.test.ts` を足した）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
 docs/FUNCTION_DESIGN.md
 docs/SCREEN_DESIGN.md
+docs/UI_TECH_STACK.md
 docs/architecture/cmd-task-specs.md
 docs/architecture/ui-task-specs.md
 docs/function-design/20-io-product-repo.md
@@ -368,6 +380,7 @@ src/features/csv-import/types.ts
 src/features/inventory-records/CsvImportRecordDetailPage.test.tsx
 src/features/inventory-records/CsvImportRecordDetailPage.tsx
 src/features/stocktake/components/RecheckTargetList.tsx
+src/hooks/unsaved-changes-guard-sweep.test.ts
 src/lib/bindings.ts
 src/lib/query-keys.ts
 src/routes/csv-import/index.tsx
