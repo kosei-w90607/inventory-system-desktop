@@ -183,7 +183,7 @@
 - **対応仕様**: QR-06 / REQ-902（ログ管理: 操作ログ記録/一覧/自動削除）/ TRACE-D3（操作ログは業務記録の代替にしない）
 - **レイアウト判断**:
   - UI-11c はシステム管理エリアの独立画面として扱う。PR #164（履歴境界の前の番号で private archive の記録。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）でroute（`/settings/logs`）と`src/config/navigation.ts`の`ui-11c` active化を実装済み。DraftのP2/P3 remediationは完了し、fresh再監査とWindows native L3は未完了である。
-  - 本画面は**閲覧 MVP**。CSV出力、ログの保持設定変更・手動削除、診断ログファイル/ディレクトリ導線（MNT-04）は別 task とする（365日超の自動削除は既存 `72-mnt-log-manager.md` の起動時 cleanup のまま、archive は作らない）。
+  - 本画面は**閲覧 MVP**。CSV出力、ログの保持設定変更・手動削除、診断ログファイル/ディレクトリ導線（MNT-04）は別 task とする（保持日数（既定は [72](function-design/72-mnt-log-manager.md) MNT-02-D1）を過ぎた操作ログの自動削除は既存 `72-mnt-log-manager.md` の起動時 cleanup のまま、archive は作らない）。
   - 期間（開始日・終了日、JST暦日、片側指定可）と個別 operation_type で絞り込み、既定は直近30暦日・全種別。operation_type の選択肢は現在ページ/現在の絞り込み結果からではなく、保持中ログ全体の distinct 値から生成する。
   - 各行の明示的な「詳細を表示」ボタンで直下に detail_json を展開し、展開中は可視text「詳細を閉じる」に変える。Enter / Spaceはnative button契約で動作し、行全体clickは追加しない。既知フィールドの日本語要約を優先し、生JSONは既定で折りたたみの「技術情報」に隠す。
   - 関連業務記録リンクは、detail_json が明示的な `record_type` + `record_id` の組を持つ場合だけ表示する。JSONの任意キーからの推測はしない。
