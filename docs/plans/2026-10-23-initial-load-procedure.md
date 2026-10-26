@@ -6,9 +6,9 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 979f8e99ab7ebd399930447df1103b31c001af61
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -31,7 +31,9 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 9. plan-gate のまま是正（closure の後、2026-10-25、起草役、`d9e9fcff`）: closure の指摘の是正（Review Response 参照）と base 同期（`origin/main` `8db97271` を merge。導入の前の関門の本 lane の項目は 6 から 8 になった）。手順書の方向は変えないので plan-gate に留める。
 10. plan-gate のまま是正（closure 2、2026-10-26、起草役、`7174f0ba`）: closure 2 の Claude 側の reject（P2 1 / P3 3）を Coordinator の裁定（相談役の反例探しを入れた）に沿って直した（下の Review Response の closure 2）。設計の方向は変えないので plan-gate に留め、closure 3（Claude 側 fresh Opus 5.5 + Codex）に出す。
 11. plan-gate のまま是正（closure 3、2026-10-26、起草役、`6f167bc1`）: closure 3 の 2 本の reject（B・G の未 closure、Claude 側の P3 5 件）を Coordinator の裁定（相談役の反例探しを入れた）に沿って直した（下の Review Response の closure 3）。同じ round の前に `origin/main`（`5506c7a4`）を単段で取り込んだ（`8ea82ab5`）。設計の方向は変えないので plan-gate に留め、closure 4（Claude 側 fresh Opus 5.5 + Codex）に出す。
-12. plan-gate のまま closure 4 を記録し、P3 を直す（2026-10-26、Coordinator、本 commit）: closure 4 の 2 本（Claude 側 fresh Opus 5.5 = approve P3 4、Codex = approve P1 / P2 / P3 0。Codex は是正の後の手順 5 の block を Windows PowerShell 5.1 で回した）が P1 / P2 = 0 を報告した（下の Review Response の closure 4）。Claude 側の P3 4 件と、Contract Probe P3・Matrix の Residual Test Gaps の「5.1 でまだ回していない」を、plan-gate のまま本 commit で直した（Plan Commit はこの版。前例: PR #197 の遷移 8・PR #201 の遷移 8）。
+12. plan-gate のまま closure 4 を記録し、P3 を直す（2026-10-26、Coordinator、`979f8e99`）: closure 4 の 2 本（Claude 側 fresh Opus 5.5 = approve P3 4、Codex = approve P1 / P2 / P3 0。Codex は是正の後の手順 5 の block を Windows PowerShell 5.1 で回した）が P1 / P2 = 0 を報告した（下の Review Response の closure 4）。Claude 側の P3 4 件と、Contract Probe P3・Matrix の Residual Test Gaps の「5.1 でまだ回していない」を、plan-gate のまま本 commit で直した（Plan Commit はこの版。前例: PR #197 の遷移 8・PR #201 の遷移 8）。
+13. plan-gate → plan-approved（2026-10-26、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。closure 4 の 2 本（Claude 側 fresh Opus 5.5・Codex）が `6f167bc1` に P1 / P2 = 0 を報告し、その P3 を `979f8e99` で直した（遷移 12）。Plan Commit は `979f8e99`（前例: PR #197 の遷移 8）。
+14. plan-approved → implementing（2026-10-26、Coordinator、本 commit。state だけ）: 遷移表の唯一の入口。本 lane は docs だけで、成果物の手順書は plan-first の変更に置いた（遷移 3）。Final Review の record は packet が implementing の head でしか受けない（helper）ので、plan-approved と同じ commit で進める（前例: PR #168・#202）。直後の commit で `origin/main`（PR #203 の merge の後）を単段で取り込み、その head を Final Review broad（Minimum 2）に出す。
 
 ## Owner Effort Budget
 
