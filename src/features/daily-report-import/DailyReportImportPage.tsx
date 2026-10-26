@@ -593,7 +593,7 @@ function DailyReportResultStep({
             </Link>
           </Button>
           {onBackToSdList && (
-            <Button variant="outline" onClick={onBackToSdList}>
+            <Button variant="outline" onClick={onBackToSdList} disabled={isRollingBack}>
               SD の一覧へ戻る
             </Button>
           )}

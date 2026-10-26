@@ -677,4 +677,52 @@ describe("useDailyReportImportFlow_req401", () => {
       expect(result.current.state.status).toBe("result");
     });
   });
+
+  it("REQ-401 / UI-07-D15 (6): rollback 中も useBlocker と beforeunload で result 画面を離れない", async () => {
+    let resolveRollback!: (
+      value: Awaited<ReturnType<typeof commands.rollbackDailyReportImport>>,
+    ) => void;
+    mockRollback.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRollback = resolve;
+      }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { result } = renderHook(() => useDailyReportImportFlow(), {
+      wrapper: makeWrapper(queryClient),
+    });
+    const lastBlocker = () =>
+      mockUseBlocker.mock.calls[mockUseBlocker.mock.calls.length - 1]?.[0] as
+        | { shouldBlockFn: () => boolean; enableBeforeUnload: () => boolean }
+        | undefined;
+
+    await chooseAndConfirmThree(() => result.current);
+    await waitFor(() => {
+      expect(result.current.state.status).toBe("preview");
+    });
+    act(() => {
+      result.current.confirmImport(false);
+    });
+    await waitFor(() => {
+      expect(result.current.state.status).toBe("result");
+    });
+    expect(lastBlocker()?.shouldBlockFn()).toBe(false);
+
+    act(() => {
+      result.current.rollback(501);
+    });
+    await waitFor(() => {
+      expect(result.current.isRollingBack).toBe(true);
+    });
+    expect(lastBlocker()?.shouldBlockFn()).toBe(true);
+    expect(lastBlocker()?.enableBeforeUnload()).toBe(true);
+
+    resolveRollback({ status: "ok", data: makeRollback() });
+    await waitFor(() => {
+      expect(result.current.state.status).toBe("idle");
+    });
+    expect(lastBlocker()?.shouldBlockFn()).toBe(false);
+  });
 });

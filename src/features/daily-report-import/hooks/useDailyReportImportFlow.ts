@@ -100,11 +100,6 @@ export function useDailyReportImportFlow() {
   );
   const queryClient = useQueryClient();
 
-  useBlocker({
-    shouldBlockFn: () => state.status === "importing",
-    enableBeforeUnload: () => state.status === "importing",
-  });
-
   const onParsed = (data: DailyReportPreviewResponse) => {
     dispatch({
       type: "parse_succeeded",
@@ -205,6 +200,13 @@ export function useDailyReportImportFlow() {
     onError: () => {
       toast.error("取り消しに失敗しました。もう一度お試しください");
     },
+  });
+
+  // 取込み中と取消の応答を待つ間は画面を離れない（§55.6 の rollback の行「result 画面は維持」）
+  const blocking = state.status === "importing" || rollbackMutation.isPending;
+  useBlocker({
+    shouldBlockFn: () => blocking,
+    enableBeforeUnload: () => blocking,
   });
 
   const scanSd = useCallback(

@@ -310,6 +310,36 @@ describe("DailyReportImportPage SD UI-07-D15 REQ-401", () => {
     expect(within(row("Z001_A.CSV")).getByText("取り込めます")).toBeInTheDocument();
   });
 
+  it("REQ-401 / UI-07-D15 (6): while a rollback is pending, SD の一覧へ戻る is disabled", async () => {
+    mockCommit.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        daily_report_import_id: 7,
+        status: "completed",
+        report_date: "2026-03-21",
+        gross_amount: 12000,
+        net_amount: 11000,
+        warning_count: 0,
+      },
+    });
+    vi.mocked(commands.rollbackDailyReportImport).mockReturnValueOnce(new Promise(() => undefined));
+    const user = await scanWith(makeScan([candidate("A", "NotImported")]));
+    await user.click(within(row("Z001_A.CSV")).getByRole("button", { name: "確認する" }));
+    await screen.findByText("取込み内容");
+    await user.click(screen.getByRole("button", { name: "取り込む" }));
+    await screen.findByText("日報取込み完了");
+    expect(screen.getByRole("button", { name: "SD の一覧へ戻る" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "取り消す" }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "取り消す" }),
+    );
+
+    expect(await screen.findByText("取り消し中…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "SD の一覧へ戻る" })).toBeDisabled();
+    expect(screen.getByText("日報取込み完了")).toBeInTheDocument();
+  });
+
   it("REQ-401 / UI-07-D15 (6): after importing A, SD の一覧へ戻る shows A imported and B still importable without rescanning", async () => {
     mockCommit.mockResolvedValueOnce({
       status: "ok",
