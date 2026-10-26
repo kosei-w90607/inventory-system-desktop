@@ -47,6 +47,9 @@ pub use crate::db::receiving_repo::{ReceivingRecordDetail, ReceivingRecordWithSu
 pub use crate::db::return_repo::{ReturnRecordDetail, ReturnRecordSummary};
 // CMD-06 用 re-export
 pub use crate::db::inventory_repo::MovementQuery;
+// 業務記録の詳細の wire 型（D-083 の re-export の許可表に載る。在庫変動の画面は StockHistoryItem）
+#[allow(unused_imports)]
+pub use crate::db::inventory_repo::MovementRecord;
 pub use crate::db::product_repo::StockDetail;
 pub use inventory_service::StockHistoryItem;
 
