@@ -47,7 +47,7 @@ Risk: R2
 Reason:
 docs だけで runtime の契約（DB・command・DTO・画面・format・merge gate）を変えない。関門の表と backlog の項目の並べ直しは、どの作業を導入の前に置くかの計画の文で、R2 の「docs change that affects maintainability but not runtime contracts」に当たる。`docs/function-design/10-common-rules.md` の SPEC-UNIT-D2 と `docs/UI_TECH_STACK.md` の UI-USW-D4 は句を今の事実（答えの有無・backlog の行き先）に合わせるだけで、契約の値（1 cm まで受ける、native close は保証しない）を変えない。R0 にしない理由: 関門の区分と項目は owner の決定を写す意味の変更で、「non-semantic doc cleanup」でない。
 
-required gate の green / red: この変更で変わる required gate は無い見込み（docs の差分で、doc check の ERROR 0 を AC1・AC2 で確かめる）。
+required gate の green / red: この変更で変わる required gate は無い見込み（docs の差分で、doc check の ERROR 0 を AC1・AC2 で確かめる。classifier は `traceability=true` を出し CI は traceability の検査を回すが、手元の実行で OK。下の Test Plan）。
 
 ## Goal
 
@@ -84,12 +84,12 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 
 ### S1 関門に載せる要素の行き先
 
-区分の決め方: owner が決めたもの（TD-463）は confirmed。owner が「X の後に決める」と答えたもの、または前提（他の lane・実機の確かめ）で形が決まるものは precondition-dependent。owner が v1.0 の前と答えたが関門を決めた TD-345 より前の答えのもの、正本が go-live の前と書くが関門に足すかは owner が選ぶもの、AI の調べから出たものは candidate（AGENTS.md の「AI の review から出た要件は owner の確認の前に Human Gate の必須にしない」）。
+区分の決め方: owner が決めたもの（TD-463）は confirmed。owner が「X の後に決める」と答えたもの、または前提（他の lane・実機の確かめ）で形が決まるものは precondition-dependent。ただし owner の選択肢に「関門に足す」を含むもの（G2）は、X の後に決めるものでも candidate。owner が v1.0 の前と答えたが関門を決めた TD-345 より前の答えのもの、正本が go-live の前と書くが関門に足すかは owner が選ぶもの、AI の調べから出たものは candidate（AGENTS.md の「AI の review から出た要件は owner の確認の前に Human Gate の必須にしない」）。
 
 | 要素 | 関門の区分（理由） | backlog の項目（中身の置き場） | 結果 |
 |---|---|---|---|
 | G1 共有 JAN の色違いの群と JAN の無い品の v1.0 の扱い | precondition-dependent（C1 の実機の後に owner が決める、TD-461） | 「JAN の無い商品の店内コードと色ごとのバーコードの表」に今の決定（ADR SPEC-STK-CNT-D4、TD-296）・TD-363・TD-453・TD-461・C1（TD-454）を足した。DATA-2 にその項目への指しを足した | 直した |
-| G2 PLU をレジへ書く時期と D-070 の「初日から自動在庫連動」 | candidate（owner が C3 の後に A = PLU を書いてから導入〈関門に足す〉/ B = 導入を先にし PLU の書込みに期限 / C = 導入を先にし初期在庫の起点を PLU を書く日の計数にそろえる、から選ぶ。TD-462。起票の後の Coordinator の調べ〈2026-10-27〉で読みが事実と分かり、前提で形が決まる precondition-dependent の書き方が事実と食い違うので candidate に移した） | 新しい項目「PLU をレジへ書く時期と D-070 の自動在庫連動」。事実（BIZ-03 は Z004 の行を JAN だけで引き当て、部門キーの売上は Z004 に載らず Z005 だけ、店は全部の商品を部門キーで売る〈PLU-24、2026-07-23〉、今のレジの登録で引き当たる在庫 Excel の JAN はごく一部）を名指し、D-070 と D-117 の Why がこの事実と食い違うことを書いた（D-070 の本文は変えない）。「PLU の部門リンクの値と 21 個目の部門」の Q-055 を C3 への置換え（TD-296・TD-459）に直した | 直した |
+| G2 PLU をレジへ書く時期と D-070 の「初日から自動在庫連動」 | candidate（owner が C3 の後に A = PLU を書いてから導入〈関門に足す〉/ B = 導入を先にし PLU の書込みに期限 / C = 導入を先にし初期在庫の起点を PLU を書く日の計数にそろえる、から選ぶ。TD-462。起票の後の Coordinator の調べ〈2026-10-27〉で読みが事実と分かり、前提で形が決まる precondition-dependent の書き方が事実と食い違うので candidate に移した） | 新しい項目「PLU をレジへ書く時期と D-070 の自動在庫連動」。事実（BIZ-03 は Z004 の行を JAN だけで引き当て、部門キーの売上は Z004 に載らず Z005 だけ、店は全部の商品を部門キーで売る〈PLU-24、2026-07-23〉、今のレジの登録で引き当たる在庫 Excel の JAN はごく一部）を名指し、D-070 と D-117 の Why がこの事実と食い違うことを書いた（D-070 の本文は変えない）。事実の段落の正本はこの項目だけで、Plans の関門の子は 1〜2 文とこの項目の名、Plans の `## 次の行動` の D-070 の段落は関門への指し 1 文。「PLU の部門リンクの値と 21 個目の部門」の Q-055 を C3 への置換え（TD-296・TD-459）に直した | 直した |
 | G3 Z004 の経路の受入台本の第 2 版と go-live の検証の流れ | precondition-dependent（台本の形は b2 と G2 で決まる） | 「旧「次の行動」の未完了項目」の節の「⑤ go-live 検証 flow」を、着手対象の項目「go-live の検証の流れ（受入台本の第 2 版）」へ置き換えた（D-070 の ⑤ と Impact、ACCEPTANCE_SCENARIO の第 1 版の対象外、project-memory の 1 つの go-live の検証の流れ）。空になった節の見出しを外した | 直した |
 | G4 日報・月次の画面の導入前受入（UI-09a-D13・UI-09b-D9） | candidate（正本は go-live の前と書くが、関門に足すかと G3 に束ねるかは owner が選ぶ） | 既存の「日報画面の Excel 印刷・バインダー代替受入判定」に UI-09b-D9・関門の candidate・G3 に束ねる候補を足した（項目名は `docs/project-memory.md` が引くので変えない） | 直した |
 | G5 デザインの刷新を v1.0 の前に | candidate（owner は TD-296 で v1.0 の前と決めたが TD-345 より前の答え） | 新しい項目「デザインの刷新（v1.0 の前）」で、書体・棚卸し画面 D1・card の面色・44px・「商品と在庫」の統合 runtime と、刷新の入力の項目を名で引く。Plans の `## 次の行動` の TD-296 の句にこの項目への指しを足した。「棚卸し画面 D1 の実装」の「棚卸しの runtime (b) と組にする」を b1 の起票の決定（TD-377〜TD-379 の (i)）に置き換えた | 直した |
@@ -119,7 +119,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 ### S4 古い記述
 
 - `docs/Plans.md` の precondition-dependent の「PLU をレジへ書くのは … Q-055 の後」: Q-055 が C3 に置き換わったこと（TD-296・TD-459）と G2 の事実を読み込み、candidate の子へ移した（S1 の G2）。
-- `docs/Plans.md` の `## 次の行動` の D-070 の段落の「v1.0 の自動在庫連動に残る条件は … b2」: 「アプリの側の条件は b2」とし、G2 の事実（PLU を書く前の導入では Z004 の自動在庫連動はほとんど動かない）と関門への指しを書き加えた。D-070 の本文は owner の決定の前なので変えない。
+- `docs/Plans.md` の `## 次の行動` の D-070 の段落の「v1.0 の自動在庫連動に残る条件は … b2」: 「アプリの側の条件は b2」とし、関門への指しを 1 文書き加えた（PLU を書く前の導入では Z004 の自動在庫連動はほとんど動かないので、PLU をレジへ書く時期は関門の candidate で owner が決める。事実の段落は backlog の G2 の項目）。D-070 の本文は owner の決定の前なので変えない。
 - `docs/Plans.md` の `## 製品の未決判断` の D-111 の未決 A の「owner の判断待ち」: 消さないと決めた（TD-296）に置き換えた。`docs/decision-log.md` の D-111 の末尾に「未決 A の答え」の行を 1 行足した（D-114 の未決 B の行と同じ並び。新しい決定の番号は使わない）。`docs/backlog.md` の「日報取込み標準手順の残設計」の「ここに残るのは写しの保持期間（D-111 の未決 A）」から保持期間を外し、決めたことを括弧に書いた。
 - `docs/backlog.md` の「棚卸しの数の置き場と在庫数の求め直しの runtime」の子の日次の EJ 取込みへの申し送りの「同じ申し送りの (4) は下の子」: (4) を移した新しい項目の名に直した。
 
@@ -153,7 +153,7 @@ merge の順: 本 lane（docs だけ、R2）を先に merge する想定。後�
 - 訪店の段取り（G9）と、C1・C3 の中身（repo の外）。
 - `docs/decision-log.md` の D-070・D-118・D-122・D-128・D-138 の本文（決定の記録で、本 lane は書き換えない。D-128 (3) の「未回答の問い Q-098」は決定の時点の記録として残す）。
 - [37](../function-design/37-biz-daily-report-import-service.md) の Non-scope の「写しの保持期間・削除と、PC の外への backup（D-111 の未決 A・B）」（BIZ-08 の範囲外の列挙で、消さない決定の後も削除の機能は範囲外のまま正しい）。
-- 56 UI-09a-D19 の紙の切替えの順（D13 の受入 → 運用開始 → (2) の確かめ → 切替え）と G8 の「導入の時期を日報の紙の切替えに合わせる」の関係の整理（owner の決定を写しただけで、D19 は変えない。下の Review Focus）。
+- 56 UI-09a-D19 の紙の切替えの順（D13 の受入 → 運用開始 → (2) の確かめ → 切替え）。D19 は変えない。G8 は導入の日だけを決め（関門が全部済んだ後の月の初め、TD-464）、紙の切替えは D19 の順のとおり導入の後の別の日と Plans に書いた（Plan Review round 1 の #1）。
 - code・migration・bindings・route・画面の文言。
 
 ## Acceptance Criteria
@@ -166,7 +166,7 @@ baseline は起点 `3573dc67` で下の command を実行した出力（起票�
 - AC-S1-1（読んで確かめる）: `docs/Plans.md` の「導入の前の関門」で、S1 の表の各要素が表の区分にあり、各子の箇条が「backlog の「〈名〉」」で終わるか backlog の名を含み、その名の項目が `docs/backlog.md` にある（`rg -n -F '<名>' docs/backlog.md` が 1 行以上）。
 - AC-S1-2: `rg -n -F 'Q-055 の後' docs/Plans.md`・`rg -n -F 'owner の判断待ち。B（写しを' docs/Plans.md`・`rg -n -F '間に合わないときの方針は未回答。backlog' docs/Plans.md` が何も出さない（exit 1）。
 - AC-S1-3: `rg -c 'TD-46[1-4]' docs/Plans.md` が 1 以上で、TD-461・TD-462・TD-463・TD-464 がそれぞれ `docs/Plans.md` に出る（`rg -n -F 'TD-461' docs/Plans.md` ほか 4 つ）。
-- AC-S1-4（読んで確かめる）: G2 の事実が `docs/Plans.md`（`## 次の行動` の D-070 の段落と関門の candidate）と `docs/backlog.md` の項目で名指され、出所（BIZ-03・PLU-24・Coordinator の調べ）を引き、件数の実値を書かず（「ごく一部」）、owner の選択肢 A / B / C が書かれている。`rg -n -F '読みがある' docs/Plans.md docs/backlog.md` が何も出さない（exit 1）。
+- AC-S1-4（読んで確かめる）: G2 の事実の段落が `docs/backlog.md` の項目「PLU をレジへ書く時期と D-070 の自動在庫連動」の 1 か所にあり、出所（BIZ-03・PLU-24・Coordinator の調べ）を引き、件数の実値を書かず（「ごく一部」）、owner の選択肢 A / B / C が書かれている。`docs/Plans.md` は `## 次の行動` の D-070 の段落の関門への指し 1 文と、関門の candidate の子（1〜2 文、B・C が D-070 の「初日から」を改める決定になること、backlog の名）だけを持つ。`rg -n -F 'Coordinator の調べ、2026-10-27' docs/Plans.md docs/backlog.md` が backlog の 1 行だけを出し、`rg -n -F '読みがある' docs/Plans.md docs/backlog.md` が何も出さない（exit 1）。
 - AC-S2-1: `rg -n -F '在庫の振替（詰め替え・切り分け）の `movement_type`（2026-10-20 の点検' docs/backlog.md` と `rg -n -F '本 runtime の起票で、この前提と UI-03-D8 の既定の関係を確かめる' docs/backlog.md` が何も出さない（exit 1。親の下の子を置き換えた）。
 - AC-S2-2: `rg -n '^## 旧「次の行動」の未完了項目' docs/backlog.md` が何も出さない（exit 1）。
 - AC-S2-3: `rg -n -F '別 backlog' docs/UI_TECH_STACK.md` が何も出さない（exit 1）で、`rg -n -F 'native の window の close で取込み・取消・未保存の 3 つの止めを横断して扱う' docs/backlog.md docs/UI_TECH_STACK.md` が 2 行（両 file に 1 行ずつ）。
@@ -179,7 +179,7 @@ baseline は起点 `3573dc67` で下の command を実行した出力（起票�
 - 引用する設計正本（節まで）: `docs/Plans.md` の `## 導入の前の関門`（TD-345 の形）、`docs/decision-log.md` の D-070（Decision の ⑤・Impact）・D-111（未決 A・B と Revisit）・D-114（Decision (8) と Revisit の更新・migration の前の保全）・D-118（Revisit の共有 JAN）・D-123、ADR [2026-10-16-stocktake-count-placement](../adr/2026-10-16-stocktake-count-placement.md) SPEC-STK-CNT-D4、[56](../function-design/56-ui-daily-sales.md) UI-09a-D13・D19、[57](../function-design/57-ui-monthly-sales.md) UI-09b-D9、[63](../function-design/63-ui-return-exchange.md) UI-03-D8、[71](../function-design/71-mnt-backup.md) MNT-01-D3、[10](../function-design/10-common-rules.md) SPEC-UNIT-D2、`docs/UI_TECH_STACK.md` UI-USW-D4、`docs/ACCEPTANCE_SCENARIO.md` の `## 目的と判定方法`、`docs/initial-load-runbook.md` の J2〜J4 と流れ 1・流れ 2 の手順 6、`docs/project-memory.md` の Z004 の field-check の行と go-live の検証の流れの行、b1 の [packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md) の owner の判断事項 (i)〜(iii)。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。
 - plan にしかない durable な判断の昇格先: 本 packet が決める判断は 2 つ。(1) S1 の区分の決め方（owner の答えの時点と TD-345 の前後で candidate にする）。昇格先は関門の各子の箇条の理由の句そのもの。(2) G3 の ⑤ を着手対象の項目へ移し空の節を外す。昇格先は backlog の項目そのもの。どちらも既存の規則（D-127、AGENTS.md の AI 由来の要件の扱い）の適用で、decision-log には足さない。D-111 の未決 A の答えは owner の決定の写しで、D-111 の末尾の行が置き場。
-- 前提・制約と延期した gap: G2 の事実は Coordinator の調べ（2026-10-27）の写しで、PLU を書く時期の決定は owner（C3 の後）。D-070 と D-117 の Why の書き直しはその決定の後。56 UI-09a-D19 と G8 の関係は下の Review Focus で問う。
+- 前提・制約と延期した gap: G2 の事実は Coordinator の調べ（2026-10-27）の写しで、PLU を書く時期の決定は owner（C3 の後）。D-070 と D-117 の Why の書き直しはその決定の後（B・C を選べば新しい D）。G8 は導入の日だけを決め、56 UI-09a-D19 の紙の切替えの順は変えない（Non-scope）。
 - 絶対保証の自己点検: 本 lane は「〜できない」「必ず〜」を新しく書かない。G6 の「既定のまま保存すると在庫が黙って動かない」は b1 の起票で確かめた関係の写し（PLU で売る在庫連動の商品の返品だけが Z004 で反映される）。
 - 判定: ready。
 
@@ -203,19 +203,19 @@ not applicable: 起点は現地調査・実機確認・外部 tool の振舞い�
 
 Test Design Matrix は作らない: R2 で、確かめは `rg` の件数と読む確かめ（AC）で足りる（Risk Tiers の R2 は Matrix を任意にする）。
 
-- targeted tests: AC1〜AC3。code を変えないので Rust・frontend の test と traceability の検査は足さない。
+- targeted tests: AC1〜AC3。code を変えないので Rust・frontend の test は足さない。traceability の検査は classifier が `traceability=true` を出すので CI が回す（`docs/function-design/10-common-rules.md` を触るため）。手元では Plan Review round 1 の reviewer が対象 `2e7739c7` で `cargo run --offline --bin generate_traceability -- --check` を回し「OK（ERROR 0 件 / WARN 0 件）」。round 1 の是正は 10 を触らない。
 - negative tests: AC-S1-2・AC-S2-1・AC-S2-2・AC-S2-3 の前半・AC-S3-1・AC-S9-1（旧い表現・禁じた語が残らないこと）。
 - compatibility checks: AC1（link の先の file の実在）、AC-S1-1（関門の名が backlog にある）。
 - data safety checks: 上の data safety の AC。
 - main wiring/integration checks: AC-S1-1・AC-S1-4（読んで確かめる）。
-- classifier: `bash scripts/ci/classify-changes.sh --base 3573dc67487fb8f3987f250539870abb2d6ff45c --head HEAD` の出力を PR の Validation に写す（`workflow=true` が出たら Final Review Minimum を 2 に直す）。
+- classifier: `bash scripts/ci/classify-changes.sh --base 3573dc67487fb8f3987f250539870abb2d6ff45c --head HEAD` の出力は `rust=false`・`rust_drift=true`・`frontend=false`・`docs=true`・`env=false`・`generated=false`・`traceability=true`・`workflow=false`・`unknown=false`（round 1 の是正の run で取った）。PR の Validation に写す（`workflow=true` が出たら Final Review Minimum を 2 に直す）。
 
 ## Review Focus
 
 - S1 の区分の決め方（candidate と precondition-dependent の分け方）が owner の決定と合うか。特に G3（D-070 の入口条件なので confirmed に近い）を precondition-dependent に、G4（正本が go-live の前と書く）を candidate に置いたこと。
 - 関門の文が「中身は backlog の〈名〉」の形を守り、関門の文に中身を継ぎ足していないか（D-127）。
 - G2 の事実の写しが出所（`src-tauri/src/biz/csv_import_service/parse.rs` の `find_by_jan_code` の引き当て、`docs/plu-export-and-real-csv-verification.md` の PLU-24）と合い、件数の実値を書いていないか。G6 の b1 の起票の関係の写しが b1 の packet と合うか。
-- G8 の「導入の時期を日報の紙の切替え（56 UI-09a-D19）に合わせる」が、D19 の順（D13 の受入 → 運用開始 → 紙の照合 → 切替え）と食い違って読めないか。食い違うなら、owner の決定の写し方を直すか、D19 を直す別の判断を Coordinator が owner に諮る。
+- G8 の節の冒頭の文（導入は関門が全部済んだ後の月の初め、紙の切替えは D19 の順のとおり導入の後の別の日）が、56 UI-09a-D19 の順（D13 の受入 → 運用開始 → 紙の照合 → 切替え）と食い違わずに読めるか。
 - この変更で不要になる記述・条件が他に無いか（D-127）。
 - 並走の lane との衝突の見込み（上の所有の表）が正しいか。
 
@@ -225,5 +225,19 @@ docs だけの lane で、変更は plan-first の commit に入れた（上の 
 
 ## Review Response
 
-</content>
-</invoke>
+### Plan Review round 1（対象 `2e7739c7`）
+
+reviewer は fresh Opus 5.5（fork でない）。reject（P1 0 / P2 1 / P3 7）。Codex の Plan Review は使用量の枠のため行わず、fresh Opus だけで進める（`docs/AGENT_OPERATING_MANUAL.md` §3.3、repo 外の回答台帳 TD-465）。裁定は Coordinator（2026-10-27、全件受理）、是正は起草役。
+
+| finding | 重大度 | 裁定 | 是正（直した所） |
+|---|---|---|---|
+| Opus #1: Plans の G8 の文「紙の切替え（UI-09a-D19）に合わせる」が D19 の順（(2) の照合は運用開始の後）と両立しない | P2 | 受理 | `docs/Plans.md` の `## 導入の前の関門` の冒頭を「導入は関門が全部済んだ後の月の初め（TD-464）。紙の切替えは D19 の順のとおり (2) の照合の後の月の初めで、導入の日とは別」に直した。TD-464 の「紙の切替えに合わせる」は Coordinator が選択肢の説明に書いた句で、owner が選んだのは「関門が揃い次第」なので、D19 を変えずにこの形にした（Coordinator の裁定）。packet の Non-scope・Design Readiness・Review Focus を決着した形に直した |
+| Opus #2: G2 の B・C は D-070 の「初日から」を改める選択なのに書いていない | P3 | 受理 | `docs/Plans.md` の関門の candidate の G2 の子に「B・C は D-070 の「初日から」を改める決定になる（決めるときは新しい D）」。packet の Design Readiness にも同じ句 |
+| Opus #3: native close の項目の「取消（55 §55.7）」は base の §55.7 に無い | P3 | 受理 | `docs/backlog.md` の「native の window の close で取込み・取消・未保存の 3 つの止めを横断して扱う」に「取消の止めは PR #197 が §55.7 に足す」の出所 |
+| Opus #4: G2 の事実の段落が Plans の 2 か所と backlog にほぼ同文で 3 か所 | P3 | 受理 | 正本を backlog の「PLU をレジへ書く時期と D-070 の自動在庫連動」1 か所にし、Plans の関門の子を 1〜2 文と backlog の名に、Plans の `## 次の行動` の D-070 の段落を関門への指し 1 文に縮めた。packet の S1 の G2 の行・S4・AC-S1-4 を合わせた |
+| Opus #5: 「導入の後に溜まった記録は後から直せない」は b1 の packet の (iii) に無い断定 | P3 | 受理 | `docs/Plans.md` の G6 の子と `docs/backlog.md` の「返品・交換の `register_processed` の既定と差額だけの戻しの交換」から外した |
+| Opus #6: 区分の決め方の規則と G2 の candidate が食い違う | P3 | 受理 | packet の S1 の区分の決め方に「owner の選択肢に「関門に足す」を含むもの（G2）は、X の後に決めるものでも candidate」 |
+| Opus #7: Test Plan の「traceability の検査は足さない」が classifier の出力と合わない | P3 | 受理 | packet の Risk と Test Plan に classifier の出力（`traceability=true`・`rust_drift=true` ほか）と、round 1 の reviewer の traceability の検査の結果を書いた |
+| Opus #8: 「導入に効くかもしれないもの」の (3) Q-103 に主題が無い | P3 | 受理 | `docs/backlog.md` の (3) に主題「商品ごとの最低限の在庫数」。(2) Q-099 は主題「評価方法の届出」が既にあるので変えない |
+
+起草役が是正の中で見つけたもの: round 1 の版の本 packet の末尾に、起票の run の tool の呼出しの閉じ tag の 2 行が残っていた。外した。
