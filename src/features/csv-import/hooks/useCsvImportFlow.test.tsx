@@ -92,7 +92,7 @@ function renderFlow(queryClient: QueryClient) {
 function lastRenderBlocks(): { route: boolean; beforeUnload: boolean } {
   const options = mockUseBlocker.mock.calls
     .slice(blockerMark.calls)
-    .map((call) => call[0] as BlockerOptions);
+    .map((call) => call[0] as unknown as BlockerOptions);
   return {
     route: options.some((o) => o.shouldBlockFn()),
     beforeUnload: options.some((o) =>
