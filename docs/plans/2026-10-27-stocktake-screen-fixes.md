@@ -22,7 +22,7 @@ wave に属さない単独の lane。出所は owner の決定（2026-10-24、re
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -39,6 +39,7 @@ wave に属さない単独の lane。出所は owner の決定（2026-10-24、re
 1. kickoff → spec-check（2026-10-27、起草役）: Coordinator の発注（関門 6 と backlog の 2 項目）を範囲にし、規模を数えて 1 lane にした（上の「規模と手法」）。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役）: 対象の正本は 73 の冒頭の D-118 の節（「今の数を入れる」）・UI-10-D10・§73.6・§73.12・§73.13 と、51 の D-118 の節の 2 つ目の項。一覧の最終カウントの日付（73 UI-10-D10 は `counted_at` と書く）と商品フォームの文（51 は BIZ と同じ文を書く）は正本の変更が要る。route の `product` が外れたときの欄の閉じ方は 73 に書いていない。
 3. design → plan-draft（2026-10-27、起草役、本 commit）: 上の 3 点を 73・51 に本 packet と同じ commit で置いた（proposed・未実装と今の build を併記）。製品の振舞いで owner の判断が要る問いは 1 つ（下の「owner の判断事項」）で、推奨を既定にして進める（owner の方針、repo 外の回答台帳 TD-401）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-27、Coordinator）: packet と Test Design Matrix は commit 済み。owner の判断事項 (i) は A に決まった（repo 外の回答台帳 TD-452、前の commit `d79289a0` で反映）。b1 の packet との食い違いは Coordinator の裁定で (1) a・(2) a（済みとして閉じる）・(3) a（51 の正本どおり欄の直下へ移し、関門 6 の (i) の語の直しと 1 つにする、S3）。Plan Review へ出す（fresh Opus 5.5 + Codex）。
 
 ## Owner Effort Budget
 
