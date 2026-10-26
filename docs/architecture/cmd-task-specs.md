@@ -1,8 +1,8 @@
 # タスク仕様（CMD層）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118。(a) は command を足さない）
+## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み。(a) は command を足さない）
 
-SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）は command の名前と引数を変えず、CMD-11 の `run_integrity_check`・`fix_integrity` の戻り値の型（[36](../function-design/36-biz-integrity-check.md)）だけが変わった。以下は (b)。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の update_count の公開登録を外す。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は runtime で行い、この docs の同期では生成しない。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
+SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。(a)（ADR SPEC-STK-CNT-D12）は command の名前と引数を変えず、CMD-11 の `run_integrity_check`・`fix_integrity` の戻り値の型（[36](../function-design/36-biz-integrity-check.md)）だけが変わった。以下は b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入った。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の数の上書きの command の公開登録を外した。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は b1 で同じ PR に入れた。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
@@ -113,8 +113,11 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 |-----------|------|-----------|------|
 | start_stocktake | なし | BIZ-06 開始 | Result（stocktake_id） |
 | get_stocktake_items | StocktakeQuery（stocktake_id, department_id?, counted_only?, page） | BIZ-06 棚卸しアイテム一覧 | StocktakeItemList（items[], progress{counted, total}） |
-| update_count | UpdateCountRequest（stocktake_item_id, actual_count） | BIZ-06 カウント | Result（success, difference） |
-| complete_stocktake | stocktake_id, force_fill | BIZ-06 確定 | StocktakeResult（total_cost, adjusted_items[]） |
+| save_stock_count | SaveStockCountRequest（product_code, count_value, fresh, business_date, stocktake_item_id?） | BIZ-06 計数の保存 | StockCountSaveResult（D-118 の b1。42） |
+| preview_stock_count_placement | product_code, business_date | BIZ-06 後入力の確認と計数の欄の文脈 | CountPlacementPreview |
+| zero_uncounted_items | stocktake_id, product_codes, business_date | BIZ-06 0 にする | StockCountSaveResult[] |
+| list_recheck_products | なし | BIZ-06 要再確認の一覧 | CountRecoveryTarget[] |
+| complete_stocktake | stocktake_id | BIZ-06 確定 | StocktakeResult（total_cost, total_items, integrity_result）。拒否は `stocktake_guard`（completion_blocked） |
 
 ### CMD-11: 設定・ログコマンド群
 

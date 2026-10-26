@@ -1,29 +1,19 @@
-//! rollback_csv_import — CSV取込みのロールバック（論理無効化 + 在庫補正）
+//! rollback_csv_import — CSV取込みのロールバック（論理無効化 + 求め直し）
 
-use crate::biz::csv_import_service::commit::{apply_void_stock_corrections, import_suspended};
 use crate::biz::csv_import_service::RollbackResult;
+use crate::biz::stock_ledger::recompute_for_settlement_change;
+use crate::biz::stocktake_service::recheck_targets;
 use crate::biz::BizError;
 use crate::db::sales_repo;
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{DbConnection, DbError};
 
-/// 指定 csv_import を論理無効化する。現行buildでは一時停止中で、最初の文で停止する。
-///
-/// docs/function-design/32-biz-csv-import-service.md §15.0（SPEC-STOP-D1）
-pub fn rollback_csv_import(
-    _conn: &mut DbConnection,
-    _csv_import_id: i64,
-) -> Result<RollbackResult, BizError> {
-    Err(import_suspended())
-}
-
-/// 旧本体: 指定 csv_import を論理無効化し、在庫を補正する。呼出し元は test だけ（SPEC-STOP-D3）
+/// 指定 csv_import の売上と movement を無効にし、求め直す（補償の movement は作らない。計数は消さない。ADR D7）
 ///
 /// 冪等（既に rolled_back なら何もせず成功を返す）。
 ///
-/// docs/function-design/32-biz-csv-import-service.md §15.5
-#[cfg_attr(not(test), expect(dead_code))]
-pub(crate) fn legacy_rollback_csv_import(
+/// docs/function-design/32-biz-csv-import-service.md §15.5 と「計数の置き場と在庫の求め直しの契約」の取消
+pub fn rollback_csv_import(
     conn: &mut DbConnection,
     csv_import_id: i64,
 ) -> Result<RollbackResult, BizError> {
@@ -41,45 +31,38 @@ pub(crate) fn legacy_rollback_csv_import(
             success: true,
             voided_sale_count: 0,
             voided_movement_count: 0,
-            stock_corrections: Vec::new(),
+            recheck_targets: Vec::new(),
         });
     }
 
-    // 2. TX開始
-    let tx = conn
-        .transaction()
-        .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
+    let tx = conn.transaction().map_err(DbError::from)?;
 
-    // 3. sale_records の無効化
+    // 2. 売上と movement の無効化、取込みの状態
     let voided_sale_count = sales_repo::void_sale_records_by_import(&tx, csv_import_id)?;
-
-    // 4. inventory_movements の無効化と在庫補正データ取得
-    let voided_movements =
-        sales_repo::void_movements_by_reference(&tx, "csv_import", csv_import_id)?;
-    let voided_movement_count = voided_movements.len();
-
-    // 5. 在庫補正
-    let stock_corrections = apply_void_stock_corrections(&tx, &voided_movements)?;
-
-    // 6. csv_imports の status 更新
+    let voided_movement_count =
+        sales_repo::void_movements_by_reference(&tx, "csv_import", csv_import_id)?.len();
     sales_repo::update_csv_import_status(
         &tx,
         csv_import_id,
         sales_repo::CsvImportStatus::RolledBack.as_str(),
     )?;
 
-    // 7. COMMIT
-    tx.commit()
-        .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
+    // 3. 精算の一覧が変わるので、計数を持つ全ての商品とこの取込みの商品を求め直す（ADR D2）
+    let codes: Vec<String> = recompute_for_settlement_change(&tx, csv_import_id)?
+        .into_iter()
+        .map(|(code, _)| code)
+        .collect();
+    let targets = recheck_targets(&tx, &codes)?;
 
-    // 8. TX外: 操作ログ記録（best-effort）
-    let detail = format!(
-        r#"{{"csv_import_id":{},"voided_sale_count":{},"voided_movement_count":{},"stock_corrections":{}}}"#,
-        csv_import_id,
-        voided_sale_count,
-        voided_movement_count,
-        serde_json::to_string(&stock_corrections).unwrap_or_else(|_| "[]".to_string())
-    );
+    tx.commit().map_err(DbError::from)?;
+
+    // 4. TX外: 操作ログ記録（best-effort）
+    let detail = serde_json::json!({
+        "csv_import_id": csv_import_id,
+        "voided_sale_count": voided_sale_count,
+        "voided_movement_count": voided_movement_count,
+    })
+    .to_string();
     let log = NewOperationLog {
         operation_type: "csv_rollback".to_string(),
         summary: format!("CSV取込みを取消しました: ID {}", csv_import_id),
@@ -89,11 +72,10 @@ pub(crate) fn legacy_rollback_csv_import(
         tracing::warn!(error = %e, "操作ログ記録に失敗");
     }
 
-    // 9. 結果返却
     Ok(RollbackResult {
         success: true,
         voided_sale_count,
         voided_movement_count,
-        stock_corrections,
+        recheck_targets: targets,
     })
 }

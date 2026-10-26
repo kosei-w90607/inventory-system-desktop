@@ -24,6 +24,7 @@ export const invalidationContract = {
     queryKeys.pluSlotSummary(),
     queryKeys.stockMovements.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   productImport: () => [
     queryKeys.productList.root(),
@@ -34,6 +35,7 @@ export const invalidationContract = {
     queryKeys.stocktake.itemsRoot(),
     queryKeys.productForm.root(),
     queryKeys.inventoryRecords.stocktakeDetailRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   receiving: () => [
     queryKeys.receivings.root(),
@@ -44,6 +46,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   returnExchange: (registerProcessed: boolean) => [
     queryKeys.returns.root(),
@@ -56,6 +59,7 @@ export const invalidationContract = {
           queryKeys.stockMovements.root(),
           queryKeys.productForm.root(),
           queryKeys.stocktake.itemsRoot(),
+          queryKeys.stocktake.recheckList(),
         ]
       : []),
   ],
@@ -69,6 +73,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   disposal: () => [
     queryKeys.disposals.root(),
@@ -79,6 +84,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   csvImportCommit: () => [
     queryKeys.csvImportLists(),
@@ -91,6 +97,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   csvImportRollback: () => [
     queryKeys.csvImportLists(),
@@ -103,6 +110,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   dailyReportImport: () => [
     queryKeys.dailyReportImportLists(),
@@ -113,8 +121,17 @@ export const invalidationContract = {
     queryKeys.stocktake.status(),
     queryKeys.stocktake.itemsRoot(),
     queryKeys.inventoryRecords.root(),
+    queryKeys.stocktake.recheckList(),
   ],
-  stocktakeCountUpdate: () => [queryKeys.stocktake.itemsRoot()],
+  stocktakeCountUpdate: () => [
+    queryKeys.stocktake.itemsRoot(),
+    queryKeys.productList.root(),
+    queryKeys.lowStock(false),
+    queryKeys.stockInquiryRoot(),
+    queryKeys.stockMovements.root(),
+    queryKeys.productForm.root(),
+    queryKeys.stocktake.recheckList(),
+  ],
   stocktakeComplete: () => [
     queryKeys.stocktake.status(),
     queryKeys.stocktake.itemsRoot(),
@@ -125,6 +142,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.inventoryRecords.root(),
+    queryKeys.stocktake.recheckList(),
   ],
   integrityFix: () => [
     queryKeys.productList.root(),
@@ -133,6 +151,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.stocktake.recheckList(),
   ],
   thresholdSave: () => [
     queryKeys.thresholdSettings.settings(),

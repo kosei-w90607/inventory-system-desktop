@@ -38,7 +38,13 @@ function ok(data: boolean): CheckResult {
 function failure(): CheckResult {
   return {
     status: "error",
-    error: { kind: "internal", message: "保存先に書けません", field: null, error_id: null },
+    error: {
+      kind: "internal",
+      message: "保存先に書けません",
+      field: null,
+      error_id: null,
+      stocktake_recovery: null,
+    },
   };
 }
 

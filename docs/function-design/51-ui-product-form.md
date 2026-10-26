@@ -1,13 +1,13 @@
 ## 7. UI-01b: 商品登録・修正
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。1〜3 つ目の項目は b1 で実装済み、在庫数の表示は b2 で proposed・未実装）
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の商品フォームの側。拒否と回復先は [30](30-biz-product-service.md) と [40](40-cmd-product.md) から受ける。旧 ADR（時点証拠）の `ej_unverified` の間の在庫連動の提案値 false と拒否の文言、非連動化の警告と「在庫数は未調整です」の案内は持たない（置き換えた）。
 
 - 共有 JAN: create / update が `validation`（field `pos_stock_sync` か `jan_code`）で拒否されたら、BIZ の message（「同じ JAN の商品（{商品コード}）があるため、在庫連動にできません」）を該当の欄の近くに出す（今の field 付きの validation の出し方。message を解析しない）。入力値と dirty の状態を保ち、成功の toast や一覧への遷移をしない。在庫連動を自動で off にして再送しない。
-- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、回復先（`active_count` なら棚卸しの明細、`count_now` なら [73](73-ui-stocktake.md) の「今の数を入れる」へ商品コードと returnTo を渡す）への導線を出す。入力値を保つ。
+- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、「今の数を入れる」の導線（回復先の `active_count`・`count_now` のどちらも [73](73-ui-stocktake.md) の「今の数を入れる」の入口。`/stocktake/` の search に `product`〈商品コード〉と `returnTo`〈`/products/{商品コード}/edit`〉を渡す）を出す（b1 の実装は文と導線を商品フォームの上部の warning の Alert に置いた。在庫連動の checkbox を持つ `ProductForm.tsx` は b1 の Scope の外のため）。入力値を保つ。導線は route の遷移なので、既存の離脱の確認（UI-USW-D1・D2。在庫連動の checkbox を変えたので dirty）を通る: 「破棄して移動」で離れ、「編集を続ける」なら留まる（guard を外さない。未保存の入力を持ち越さない）。戻った商品フォームは DB の値（在庫連動は付いていない）で開くので、利用者は在庫連動を付け直して保存する。商品フォーム自身の `returnTo`（UI-01b-D2）は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る（b1 の Plan Review round 3 の是正）。
 - 在庫連動をやめる（true → false）は警告も確認も出さない。
-- 在庫数の表示: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
+- 在庫数の表示（b2）: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
 
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >

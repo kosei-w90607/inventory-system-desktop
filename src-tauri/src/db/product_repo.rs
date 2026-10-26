@@ -736,6 +736,31 @@ pub fn find_by_jan_code(conn: &DbConnection, jan_code: &str) -> Result<Vec<Produ
     Ok(products)
 }
 
+/// 在庫連動の商品と同じ JAN を別の商品が持つ組（JAN の昇順、商品コードの昇順。36 の共有 JAN の違反の一覧）
+pub(crate) fn list_shared_jan_conflicts(
+    conn: &DbConnection,
+) -> Result<Vec<(String, Vec<String>)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT jan_code, product_code FROM products
+         WHERE jan_code IN (SELECT jan_code FROM products WHERE jan_code IS NOT NULL
+                            GROUP BY jan_code HAVING COUNT(*) > 1 AND MAX(pos_stock_sync) = 1)
+         ORDER BY jan_code, product_code",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut groups: Vec<(String, Vec<String>)> = Vec::new();
+    for (jan, code) in rows {
+        match groups.last_mut() {
+            Some((last, codes)) if *last == jan => codes.push(code),
+            _ => groups.push((jan, vec![code])),
+        }
+    }
+    Ok(groups)
+}
+
 /// plu_dirty=1 の商品一覧を返す（PLU書出しの差分モード、BIZ-04 list_plu_dirty 用）
 ///
 /// 20-io-product-repo.md §2.3 find_plu_dirty_products

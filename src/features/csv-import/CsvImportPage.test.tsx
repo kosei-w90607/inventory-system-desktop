@@ -18,6 +18,7 @@ function flow(overrides: Partial<Flow> = {}): Flow {
     selectFile: vi.fn(),
     confirmImport: vi.fn(),
     rollback: vi.fn(),
+    rollbackResult: null,
     dismissError: vi.fn(),
     isParsing: false,
     isImporting: false,
@@ -44,11 +45,11 @@ describe("CsvImportPage_req401", () => {
     expect(screen.getByText("daily report req401 content")).toBeInTheDocument();
   });
 
-  it("test_csv_import_page_req401_suspended_z004_tab_shows_notice_and_blocks_confirm", async () => {
-    // SPEC-STOP-D4 / 55 §55.0: 文言は 55 の正本から転記する。
+  it("U16 stocktake and z004 writes are enabled", async () => {
+    // 停止の案内が無く、Z004 の「取り込む」が押せる（SPEC-STOP-D6 で 5 つの入口を一度に外した）
     const user = userEvent.setup();
     const confirmImport = vi.fn();
-    const suspendedFlow = flow({
+    const previewFlow = flow({
       state: {
         status: "preview",
         preview: {
@@ -59,7 +60,8 @@ describe("CsvImportPage_req401", () => {
           },
           matched_summary: { count: 1, total_amount: 500, warnings: [] },
           error_summary: { count: 0, items: [] },
-          duplicate_check: { status: "NoDuplicate", same_date_imports: [] },
+          settlement_gaps: [],
+          settlement_date_after_today: false,
           preview_created_at: "2026-03-21T10:00:00",
         },
         previewToken: "token-1",
@@ -67,24 +69,16 @@ describe("CsvImportPage_req401", () => {
       },
       confirmImport,
     });
-    vi.mocked(useCsvImportFlow).mockImplementation(() => suspendedFlow);
+    vi.mocked(useCsvImportFlow).mockImplementation(() => previewFlow);
     render(<CsvImportPage />);
 
     await user.click(screen.getByRole("tab", { name: "商品別CSV取込み（Z004）" }));
 
-    const title = screen.getByText("商品別CSV（Z004）の取込みは一時停止中です");
-    const notice = title.closest('[data-slot="alert"]');
-    expect(notice).toHaveAttribute("data-variant", "warning");
-    expect(notice).toHaveTextContent(
-      "取込みや取消で在庫が二重に減ったり戻ったりする不具合を直しています。直るまで、取込みの確定と取消はできません。ファイルの内容確認（プレビュー）と日報の取込みはできます。",
-    );
-    expect(notice?.querySelector('svg.lucide-triangle-alert[aria-hidden="true"]')).not.toBeNull();
-
+    expect(screen.queryByText(/停止中/)).not.toBeInTheDocument();
     expect(screen.getByText("紐付け結果")).toBeInTheDocument();
     const importButton = screen.getByRole("button", { name: "取り込む" });
-    expect(importButton).toBeDisabled();
+    expect(importButton).toBeEnabled();
     await user.click(importButton);
-    expect(confirmImport).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "ファイルを選び直す（商品別CSV）" })).toBeEnabled();
+    expect(confirmImport).toHaveBeenCalledTimes(1);
   });
 });
