@@ -48,9 +48,9 @@ wave に属さない単独の lane。出所は owner の決定（2026-10-24、re
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（2026-10-27。起票は TD-433 の決定から Coordinator が発注し、owner に問うていない） | 4（owner の判断事項 1、L3 と画面の確かめ 1、Ready 1、merge 1） | 2 | 6 = 0 + 4 + 2 |
+| 介入 | 6 | 1（2026-10-27。起票は TD-433 の決定から Coordinator が発注した。owner の判断事項 (i) を選択肢で問い、A に決まった〈repo 外の回答台帳 TD-452〉） | 3（L3 と画面の確かめ 1、Ready 1、merge 1） | 2 | 6 = 1 + 3 + 2 |
 
-owner の操作の回数を減らす工夫: (1) owner の判断事項は L3 の依頼に束ね、画面を見たまま「この日付でよい / 時刻も要る」の記号 1 つで返せる形にする（decision point は数える）。(2) L3 は 2 画面の 1 本の台本で、各段の PASS / FAIL だけを返してもらう。画面の確かめ（Human Visual Confirmation）を同じ 1 回に含める。(3) L3 の起点の DB と商品は Coordinator が用意する（下の Test Plan の「L3 の入力物」）。owner は DB も file も作らない。(4) Ready と merge は 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
+owner の操作の回数を減らす工夫: (1) owner の判断事項 (i) は plan-gate の前に選択肢 1 つで答えてもらった（TD-452）。(2) L3 は 2 画面の 1 本の台本で、各段の PASS / FAIL だけを返してもらう。画面の確かめ（Human Visual Confirmation）を同じ 1 回に含める。(3) L3 の起点の DB と商品は Coordinator が用意する（下の Test Plan の「L3 の入力物」）。owner は DB も file も作らない。(4) Ready と merge は 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -109,7 +109,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ## owner の判断事項
 
-正本で一意に決まらない製品の振舞いは 1 つ。推奨を既定にして Scope・AC・Matrix を書いた（owner の方針、repo 外の回答台帳 TD-401）。
+正本で一意に決まらない製品の振舞いは 1 つ。推奨を既定にして Scope・AC・Matrix を書いた（owner の方針、repo 外の回答台帳 TD-401）。**owner の決定（2026-10-27、repo 外の回答台帳 TD-452）: A（数えた日）。** Scope・AC・Matrix は既定のまま変わらない。
 
 (i) 棚卸しの一覧の「最終カウント」に何の日付を出すか（73 UI-10-D10 は保存の時刻と書くが、b1 で計数は業務日で効くようになり、owner の所感〈TD-433〉は一覧に入れた日付が出ないことを挙げた。ADR と 73 は一覧の列を決めていない）:
 
@@ -224,16 +224,16 @@ merge の順: #202 → #193 → 本 lane（実装は #193 の merge の後に `o
 - AC4（正本の proposed の撤去）: `rg -c '今の build は' docs/function-design/73-ui-stocktake.md` が本 commit の後 `2` → 完了時 0 件（exit 1）。`rg -c 'proposed・未実装' docs/function-design/73-ui-stocktake.md` が本 commit の後 `4` → 完了時 `1`（更新履歴の本 lane の行だけ）。`rg -c '今の build は b1 の実装のまま' docs/function-design/51-ui-product-form.md` が本 commit の後 `1` → 完了時 0 件（exit 1）。
 - AC5（frontend の gate）: `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` が exit 0（`docs/DEV_WORKFLOW.md` Verification Gates の Frontend の行）。
 - AC6（docs）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-27-stocktake-screen-fixes.md` が ERROR 0。
-- AC7（manual）: L3-1・L3-2 が PASS（下の Test Plan）で、helper の manual の record に残る（`python3 scripts/pr-gate.py status --pr <PR 番号>` の manual の行）。owner の判断事項 (i) の答えを同じ依頼で受ける。
+- AC7（manual）: L3-1・L3-2 が PASS（下の Test Plan）で、helper の manual の record に残る（`python3 scripts/pr-gate.py status --pr <PR 番号>` の manual の行）。
 
 ## Design Readiness
 
 - 引用する設計正本（節まで）: 73 の冒頭の D-118 の節（「今の数を入れる」の行・「b1 の画面の細部」）、UI-10-D10 とその段落、§73.5 の 3（前に保存した数）、§73.6（最終カウント列）、§73.10（見出し）、§73.12、§73.13 の L3-3。51 の D-118 の節の 1・2 つ目の項、UI-USW-D1・D2。ADR [2026-10-16-stocktake-count-placement](../adr/2026-10-16-stocktake-count-placement.md) の D3（業務日で効く）・D5（入れ直す）。35 の「計数の保存」（明細の `actual_count`・`counted_at` は効く計数の写し）と「読取り」（`count_business_date`）。30 の在庫連動を始める（BIZ の message）。60 の「idle」（列名「POS在庫連動」）。
 - 必要な設計成果物: New or changed operator workflow, route/search state, Japanese wording → 73・51 の更新（updated in this PR、本 commit）。SCREEN_DESIGN・UI_TECH_STACK は existing sufficient（画面の一覧と D-052 の entry を変えない）。decision-log・ADR は不要（画面の中の表示の決定で、横断の決定でない）。
 - plan にしかない durable な判断の昇格先: 最終カウントの日付 → 73 UI-10-D10 の段落。欄の閉じ方 → 73 の D-118 の節。案内の場所・文・focus・型で分岐 → 51 の D-118 の節。b1 の食い違い (1)(2) の閉じ方は正本の変更なし（既に正本と code にある）。
-- 前提・制約と、延期した design gap: owner の判断事項 (i) を推奨 A で書いた（答えで Gated Amendment）。共有 JAN の文は Non-scope。
+- 前提・制約と、延期した design gap: owner の判断事項 (i) は A に決まった（TD-452）。共有 JAN の文は Non-scope。
 - 絶対保証の自己点検: 「欄は保存の成功で閉じる」の例外は、保存の応答の保留中に欄が別の商品へ変わった場合（その欄は閉じない。U9 の「Final Review G1」「N1b」の既存の test）と保存の失敗（閉じない。U9 の失敗の test）。「未入力の行は —」の例外は無い（業務日を持つ未入力の行も「—」）。
-- 判定: ready（正本で決めきれない振舞いは owner の判断事項 (i) だけで、推奨を既定にした）。
+- 判定: ready（正本で決めきれない振舞いは owner の判断事項 (i) だけで、A に決まった〈TD-452〉）。
 
 ## Registration / Generation Obligations
 
@@ -278,7 +278,7 @@ Test Design Matrix: [2026-10-27-stocktake-screen-fixes](test-matrices/2026-10-27
 
 Writer の完了の条件: L3 の前に `cargo check --release`（`docs/DEV_WORKFLOW.md` Implementation Rules。Rust は変えないが owner の native build の前の決まり）。
 
-L3（Human Gate `manual`。Windows native の `npm run tauri dev`。1 回の通しの台本で、各段の PASS / FAIL と owner の判断事項 (i) の答えを返してもらう）:
+L3（Human Gate `manual`。Windows native の `npm run tauri dev`。1 回の通しの台本で、各段の PASS / FAIL を返してもらう）:
 
 | # | 画面 / 見る場所 | 到達手順 | 合格基準 | 入力物 |
 |---|---|---|---|---|
