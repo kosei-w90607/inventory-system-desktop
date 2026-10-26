@@ -1,19 +1,19 @@
 # Plan Packet: 店の PC で本物のデータを入れ始める初期投入の手順を決める
 
-wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は操作ログの保持の lane `docs/plans/2026-10-23-oplog-retention.md`〈別の branch〉。docs だけ）。導入の前の関門の candidate「初期投入の手順」（[Plans の導入の前の関門](../Plans.md#導入の前の関門)、`docs/backlog.md` の同名の項目、owner の決定 repo 外の回答台帳 TD-345）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
+wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は操作ログの保持の lane `docs/archive/plans/2026-10-23-oplog-retention.md`〈別の branch〉。docs だけ）。導入の前の関門の candidate「初期投入の手順」（[Plans の導入の前の関門](../../Plans.md#導入の前の関門)、`docs/backlog.md` の同名の項目、owner の決定 repo 外の回答台帳 TD-345）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
 
-規模と手法（起票の最初に数えた）: 触る file は 3（新しい管理者の手順書 `docs/initial-load-runbook.md`、`docs/PROJECT_HANDOFF.md` の案内の 1 行、`docs/backlog.md` の「初期投入の手順」の項目）と本 packet と Test Design Matrix（`docs/plans/test-matrices/2026-10-23-initial-load-procedure.md`）。設計正本（function-design・db-design・SCREEN_DESIGN・ADR・decision-log）・code・migration・wire の型は 0。手順書は既存の契約（26 §18.3、30 §4.8・§4.9 と BIZ-01-D5・D6・D8、60 UI-01c、master-tables の departments と独自コードルール、ADR SPEC-STK-CNT-D3・D4、68 §68.4、71 §71.5、D-123）を引いて並べ、正本に無い管理者の判断（行の種類の分け方、CSV の側の確かめ、予行演習、取り込む前の backup と照合、照合が合わないときの戻し方、入れた後の誤りの直し方）を足す。その組は下の Contract Ledger。手法: 1 lane のまま（手順書 1 つで、正本も code も変えないので分ける境が無い）。round 2 の是正で、owner の決定 J5 = b（repo 外の回答台帳 TD-421、2026-10-24）を受け、`docs/Plans.md` の導入の前の関門に 1 項と、その中身の backlog の項目を足した（触る file は 4。下の Scope）。round 2 の Codex の是正で、owner の決定（repo 外の回答台帳 TD-426、2026-10-24）を受け、関門の 8 の検査に `JANコード` の桁とチェックディジットを足した（触る file は変わらない）。
+規模と手法（起票の最初に数えた）: 触る file は 3（新しい管理者の手順書 `docs/initial-load-runbook.md`、`docs/PROJECT_HANDOFF.md` の案内の 1 行、`docs/backlog.md` の「初期投入の手順」の項目）と本 packet と Test Design Matrix（`docs/archive/plans/test-matrices/2026-10-23-initial-load-procedure.md`）。設計正本（function-design・db-design・SCREEN_DESIGN・ADR・decision-log）・code・migration・wire の型は 0。手順書は既存の契約（26 §18.3、30 §4.8・§4.9 と BIZ-01-D5・D6・D8、60 UI-01c、master-tables の departments と独自コードルール、ADR SPEC-STK-CNT-D3・D4、68 §68.4、71 §71.5、D-123）を引いて並べ、正本に無い管理者の判断（行の種類の分け方、CSV の側の確かめ、予行演習、取り込む前の backup と照合、照合が合わないときの戻し方、入れた後の誤りの直し方）を足す。その組は下の Contract Ledger。手法: 1 lane のまま（手順書 1 つで、正本も code も変えないので分ける境が無い）。round 2 の是正で、owner の決定 J5 = b（repo 外の回答台帳 TD-421、2026-10-24）を受け、`docs/Plans.md` の導入の前の関門に 1 項と、その中身の backlog の項目を足した（触る file は 4。下の Scope）。round 2 の Codex の是正で、owner の決定（repo 外の回答台帳 TD-426、2026-10-24）を受け、関門の 8 の検査に `JANコード` の桁とチェックディジットを足した（触る file は変わらない）。
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 979f8e99ab7ebd399930447df1103b31c001af61
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
 - Plan Reviewer: fresh Opus 5.5 + Codex（座組表 docs/AGENT_OPERATING_MANUAL.md ## 座組 どおり）
-- Final Reviewer: Fable 5.1（Claude 側。座組表の「R3 以上と design lane で Fable 5.1」）+ Codex（座組表どおり）
+- Final Reviewer: Fable 5（Claude 側、R3 以上。座組表の当面の Fable 5〈TD-410〉）+ Codex（座組表どおり）
 - Final Review Minimum: 2
 - Human Gate: ready,merge,r4
 - Branch: agent/initial-load-procedure
@@ -106,7 +106,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `docs/PROJECT_HANDOFF.md`: 案内の表に手順書の行を 1 行足す（template の Registration / Generation Obligations「source / workflow doc 新設」）。
 - `docs/backlog.md`: 「初期投入の手順」の項目を、手順書への案内・業務の入力の前後の戻し方・残る作業に置き換え（「設計が無い」と「決めること」の列挙を外す）、そのすぐ下に導入の前の関門の 8 の runtime の項目「商品 CSV のプレビューで黙って入る形の行を止める」（R の見込み・触る正本・AC の要旨・起票で決める候補）を置く。他の行は変えない。
 - `docs/Plans.md`: 導入の前の関門の confirmed に 8（商品 CSV のプレビューの検査、owner の決定 TD-421・TD-426）を 1 項足す。中身は backlog の上の項目を名で引く（既存の関門の 5 と同じ書き方）。D-097 は helper が `Plans.md` を読まないことと `## 次の行動` の pointer の規則で、関門の項目を足すことを妨げない。
-- `docs/plans/test-matrices/2026-10-23-initial-load-procedure.md`（新規、R4 の Test Design Matrix）: 手順の分岐ごとの期待と、それを壊す誤った読み。
+- `docs/archive/plans/test-matrices/2026-10-23-initial-load-procedure.md`（新規、R4 の Test Design Matrix）: 手順の分岐ごとの期待と、それを壊す誤った読み。
 
 型・JSON・関数・DTO の形は変えない（作る所・読む所・fixture・test の呼び方の列挙は不要）。
 
@@ -126,7 +126,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | `docs/PROJECT_HANDOFF.md` | 案内の表の手順書の行 | 本 lane（他の PR の差分と Scope に無い） |
 | `docs/initial-load-runbook.md`・本 packet・Matrix | 全体 | 本 lane（新規） |
 
-この変更で不要になる記述・条件・code（D-127 の問い）: backlog の「初期投入の手順」の項目の「設計が無い」と「決めること」の列挙（手順書の J1〜J5 と重なり、原価の 1/100 円は PR #184 で済んだ）と「入れた後のやり直しは DB の作り直しになり」は、手順書への案内と残る作業に置き換えた（上の Scope）。J5 = b（TD-421）で初回の導入の版のプレビューが止める形になったので、手順書の流れ 1 の手順 4・5 の手作業の確かめのうち、13 桁の数字の `商品コード` で `JANコード` が空の行の数え、保存した file のメモ帳での `E+` の検索と行の数、`商品コード` の重複と上限の確かめ（今のプレビューも行の error にする）を外した。backlog の後続の候補の行は、関門の runtime の項目に置き換えた。TD-426 で、backlog の項目の起票で決める候補から JAN の check digit の候補（旧 (3)）を外して確定の検査に移し、手順書の J4 の変わる所の「関門の 8 の検査が 8 桁に当たらない版では手順 4 で数える」の句と、流れ 1 の手順 4 の表示形式 `0` の別の道を外し、手順 4 の確かめの列を「数字だけの `商品コード` が `JANコード` と同じでない行」の 1 つにした（13 桁で空でなく違う行・J4 の a の 8 桁で空の行・先頭の 0 が落ちた 12 桁の行を 1 つの式で数える）。桁の数どおりの `TEXT` で新しく生まれる誤り（8 桁の値に 13 桁の形式）は TD-426 の検査を通るので、手順 4 に確かめを 1 つ足した（backlog の候補 (4)）。30 BIZ-01-D1 と master-tables の「CSV の取込みは JAN の形の検証の対象外」の句は、関門の 8 の runtime の lane が置き換える（backlog の項目の触る正本。設計正本は本 lane の Non-scope）。30 BIZ-01-D8 の「Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む」は今も正しく（換算は手順書の流れ 1 の手順 3）、#188 が 30 を触るので本 lane は変えない（手順書が 30 を引く）。closure の是正で、手順 4 の `COUNT` の確かめ（数値のまま残ったセル）を手順 5 の保存した file の確かめに置き換え（数値のまま残ったセルは file の形の外れとして名指される）、手順 4 の「最大」と 0 の行の数を控える作業を外し（後の段で使わない）、Contract Probe の P1 の延期の推論を外した。MSI の手順書（#190・#191 が触る）と 22 §16 の作り直しの手順の「6. 初期投入をやり直す」（開発・試験 DB の作り直しの手順で、店の DB に当てない）は変えない。
+この変更で不要になる記述・条件・code（D-127 の問い）: backlog の「初期投入の手順」の項目の「設計が無い」と「決めること」の列挙（手順書の J1〜J5 と重なり、原価の 1/100 円は PR #184 で済んだ）と「入れた後のやり直しは DB の作り直しになり」は、手順書への案内と残る作業に置き換えた（上の Scope）。J5 = b（TD-421）で初回の導入の版のプレビューが止める形になったので、手順書の流れ 1 の手順 4・5 の手作業の確かめのうち、13 桁の数字の `商品コード` で `JANコード` が空の行の数え、保存した file のメモ帳での `E+` の検索と行の数、`商品コード` の重複と上限の確かめ（今のプレビューも行の error にする）を外した。backlog の後続の候補の行は、関門の runtime の項目に置き換えた。TD-426 で、backlog の項目の起票で決める候補から JAN の check digit の候補（旧 (3)）を外して確定の検査に移し、手順書の J4 の変わる所の「関門の 8 の検査が 8 桁に当たらない版では手順 4 で数える」の句と、流れ 1 の手順 4 の表示形式 `0` の別の道を外し、手順 4 の確かめの列を「数字だけの `商品コード` が `JANコード` と同じでない行」の 1 つにした（13 桁で空でなく違う行と J4 の a の 8 桁で空の行を 1 つの式で数える。先頭の 0 が落ちた 12 桁の行は、`商品コード` と `JANコード` が同じなら式が数えないので、手順 5 の形の確かめと関門 8 のプレビューが受け持つ）。桁の数どおりの `TEXT` で新しく生まれる誤り（8 桁の値に 13 桁の形式）は TD-426 の検査を通るので、手順 4 に確かめを 1 つ足した（backlog の候補 (4)）。30 BIZ-01-D1 と master-tables の「CSV の取込みは JAN の形の検証の対象外」の句は、関門の 8 の runtime の lane が置き換える（backlog の項目の触る正本。設計正本は本 lane の Non-scope）。30 BIZ-01-D8 の「Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む」は今も正しく（換算は手順書の流れ 1 の手順 3）、#188 が 30 を触るので本 lane は変えない（手順書が 30 を引く）。closure の是正で、手順 4 の `COUNT` の確かめ（数値のまま残ったセル）を手順 5 の保存した file の確かめに置き換え（数値のまま残ったセルは file の形の外れとして名指される）、手順 4 の「最大」と 0 の行の数を控える作業を外し（後の段で使わない）、Contract Probe の P1 の延期の推論を外した。MSI の手順書（#190・#191 が触る）と 22 §16 の作り直しの手順の「6. 初期投入をやり直す」（開発・試験 DB の作り直しの手順で、店の DB に当てない）は変えない。
 
 ## Non-scope
 
@@ -138,7 +138,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0（ERROR なし）。起票の前の baseline（2026-10-23、本 branch の起点 `eed07d37`）: exit 0、`結果: WARN 12 件（ERROR なし）`（WARN は既存の `cost_price` 系の DB_DESIGN の未定義）。
-- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-23-initial-load-procedure.md` が exit 0。
+- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-10-23-initial-load-procedure.md` が exit 0。
 - AC3: `rg -n 'initial-load-runbook.md' docs/PROJECT_HANDOFF.md docs/backlog.md` が両 file で hit する。baseline（`eed07d37`）: `rg exit=1`。
 - AC4: `rg -n '^## ' docs/initial-load-runbook.md` が「なぜ 1 度で入れ切るか」「今の事実」「入れる前に決めること」「流れ 1」「流れ 2」「流れ 3」「入れた後に誤りを見つけたら」を出す。baseline: file が無い（`rg exit=2`）。
 - AC5: `sed 's/。/。\n/g' docs/initial-load-runbook.md | rg -n '作り直' | rg -v '作り直さない|作り直しで行わない|作り直しの範囲'` が何も出さない（後ろの `rg` の exit 1。文ごとに分けてから除くので、同じ行の別の文に隠れない）と、`rg -c '入れた後のやり直しを DB の作り直しで行わない' docs/initial-load-runbook.md` が `1`。入れた後のやり直しを DB の作り直しで行う文が無く、行わない文があることを見る（Goal の失敗定義の 2 行目）。
@@ -291,7 +291,7 @@ R4 の Contract Probe（`docs/DEV_WORKFLOW.md` Plan Packet Rules）は、外部�
 
 ## Implementation Results
 
-Fill after implementation.
+本 lane は docs だけで、code・migration・wire の型・設計正本は変えていない。店の PC で本物のデータを入れ始める初期投入を、管理者の手順書 `docs/initial-load-runbook.md` に 1 つに並べた: 在庫 Excel から商品 CSV を作る流れ（行の種類の分け方、桁を保つ `TEXT` の列と確かめの列、保存した file の形の確かめ）、開発用の Windows での予行演習、店の PC での投入（取り込む前の backup、取込み、照合、合わないときの戻し方）、入れた後に誤りを見つけたときの直し方。owner の判断事項は J1〜J5 に既定と答えで変わる所を書き、J5 = b（TD-421）と TD-426 で、商品 CSV のプレビューが黙って入る形の行を止める検査を導入の前の関門の 8 として `docs/Plans.md` に足し、中身を backlog の「商品 CSV のプレビューで黙って入る形の行を止める」に置いた（runtime は PR #209 の lane）。`docs/PROJECT_HANDOFF.md` に手順書の案内を足し、backlog の「初期投入の手順」の項目を手順書への案内と残る作業に置き換えた。予行演習と店の PC での投入は初回の導入の版の後に残る。
 
 ## Review Response
 
@@ -428,3 +428,5 @@ Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 4）、Codex = approv
 | C4-3 | Claude 側 3（P3） | 流れ 2 の手順 6 の `Out-GridView` の前に `$f` に写した CSV の path を入れる、を足した |
 | C4-4 | Claude 側 4（P3） | Ordinary Operation の 3 行目の初期状態に、元の在庫 Excel を開ける PC を足した |
 | C4-5 | Coordinator | Contract Probe P3 と Matrix の Residual Test Gaps の「BOM の確かめの行は 5.1 でまだ回していない」を、closure 4 の Codex の実測で置き換えた |
+
+Final Review と merge（2026-10-27、closeout で追記）: Final Review broad（head `fb5e2d05`）は Claude 側 Fable 5 = approve（P3 2）、Codex 600 = reject（P2 1: 手順書の J3 を c にすると、照合が元 Excel の数と比べるので正しい投入でも進めない）。相談役（Fable 5）の反例探しで J3 の b と J4 の a にも同じ型の穴があり、3 件を受理して `526317af` で手順書の J3・J4 の行の「変わる所」に照合の比べ先と 8 桁の数字の商品コードの JAN の守りを書いた。closure（head `526317af`）は Claude 側 Fable 5 = approve、Codex 603 = approve（P2 closed、新規 0）で、helper の review の record は pass。r4 は owner の承認で pass。Ready の後の hosted CI の `Merge gate` が success で、owner の R4 の承認と Ready・merge の承認（repo 外の回答台帳 TD-450）の後に helper 経由で merge した（[PR #196](https://github.com/kosei-w90607/inventory-system-desktop/pull/196)）。Final broad の Claude 側の P3 2 件は本 closeout で直した: (1) Workflow State の Final Reviewer 行の「Fable 5.1」を、実際に Final を行った Fable 5（座組表の当面の値、TD-410）にした。(2) D-127 の段落の「先頭の 0 が落ちた 12 桁の行を 1 つの式で数える」の句を、`商品コード` と `JANコード` が同じ 12 桁の行は式が数えず、手順 5 の形の確かめと関門 8 のプレビューが受け持つ、に直した。
