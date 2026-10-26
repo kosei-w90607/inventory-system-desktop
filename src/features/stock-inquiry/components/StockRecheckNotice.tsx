@@ -23,7 +23,12 @@ export function StockRecheckNotice({ productCode, stockRecheck }: StockRecheckNo
 
 function RecheckNotice({ productCode }: { productCode: string }) {
   const recheckQuery = useRecheckProducts();
-  const target = recheckQuery.data?.find((item) => item.product_code === productCode);
+  // 理由は取得が成功し取得中でないときだけ（data は成功か、再取得の失敗の後の cache にだけある。
+  // 失敗・取得中に cache の古い理由を出さない）
+  const fresh = !recheckQuery.isError && !recheckQuery.isFetching;
+  const target = fresh
+    ? recheckQuery.data?.find((item) => item.product_code === productCode)
+    : undefined;
   const reasons = target ? formatRecountReasons(target.recount_reasons) : [];
   return (
     <Alert variant="warning">

@@ -46,7 +46,7 @@ function renderNotice(stockRecheck: boolean) {
     waitFor(() => {
       expect(qc.getQueryState(queryKeys.stocktake.recheckList())?.status).toBe(status);
     });
-  return { ...rendered, settled };
+  return { ...rendered, qc, settled };
 }
 
 const OTHER_REASON = "同じ日に違う数が保存されています";
@@ -105,8 +105,9 @@ describe("StockRecheckNotice（D-118 b2）", () => {
       },
     });
     const failed = renderNotice(true);
-    await expectGuideAndLink();
+    // 失敗が確定した後に題・案内・link を見る（失敗で案内全体を消す回帰を拾う）
     await failed.settled("error");
+    await expectGuideAndLink();
     expect(screen.queryByText(OWN_REASON)).not.toBeInTheDocument();
     failed.unmount();
 
@@ -115,9 +116,36 @@ describe("StockRecheckNotice（D-118 b2）", () => {
       data: [target("OTHER", ["conflicting_counts"])],
     });
     const missing = renderNotice(true);
-    await expectGuideAndLink();
     await missing.settled("success");
+    await expectGuideAndLink();
     expect(screen.queryByText(OTHER_REASON)).not.toBeInTheDocument();
     expect(screen.queryByText(OWN_REASON)).not.toBeInTheDocument();
+  });
+
+  it("U10 refetch failure after success hides cached reasons but keeps guide and link", async () => {
+    // REQ-301（Matrix U10）: 保存の後の再取得が失敗したら、cache に残った古い理由を出さない
+    mockListRecheckProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: [target("U10-REC", ["conflicting_counts"])],
+    });
+    const notice = renderNotice(true);
+    expect(await screen.findByText(OTHER_REASON)).toBeInTheDocument();
+
+    mockListRecheckProducts.mockResolvedValue({
+      status: "error",
+      error: {
+        kind: "internal",
+        message: "読取りに失敗しました",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
+    });
+    await notice.qc.invalidateQueries({ queryKey: queryKeys.stocktake.recheckList() });
+    await notice.settled("error");
+    await waitFor(() => {
+      expect(screen.queryByText(OTHER_REASON)).not.toBeInTheDocument();
+    });
+    await expectGuideAndLink();
   });
 });
