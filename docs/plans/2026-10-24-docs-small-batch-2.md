@@ -13,7 +13,7 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 - Phase: implementing
 - Risk: R3
 - Plan Commit: f628c918027295b19c6572433ca30b7629996c5f
-- Amendments: 975090bff4d2b7220c2a38a5561e70e0a4fa6772
+- Amendments: 975090bff4d2b7220c2a38a5561e70e0a4fa6772, ffa57b09590a8d08193585d547afc9968e691c84
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と Plan Review の是正は packet だけ。docs の直しと定義の追加は plan-approved の後の別の run）
 - Plan Reviewer: fresh Opus 5.5（fork でない）+ Codex。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
