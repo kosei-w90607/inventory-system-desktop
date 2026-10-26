@@ -35,7 +35,7 @@ export function useRollbackCsvImport({
       toast.error("取り消しに失敗しました。もう一度お試しください");
     },
   });
-  // §55.7: 取消の応答を待つ間は route の移動と window の close を止める（2 つの入口に共通）。
+  // §55.7: 取消の応答を待つ間は route の移動とリロード等の page の離脱を止める（2 つの入口に共通。native の window の close は §55.7 の「止める範囲」のとおり保証しない）。
   // pending は onSuccess / onError の後に外れるので、Toast と再取得の後に解ける
   useBlocker({
     shouldBlockFn: () => mutation.isPending,

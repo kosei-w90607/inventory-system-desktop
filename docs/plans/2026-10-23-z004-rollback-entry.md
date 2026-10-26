@@ -259,7 +259,7 @@ Final Review broad（head `b55e1d1f`）の差し戻し（Codex 605 の P2・P3�
 - [55](../function-design/55-ui-csv-import.md) §55.7 の importing の段落の「止める範囲」: route の移動（`useBlocker`）とリロード等の page の離脱（`enableBeforeUnload`）。native の window の close（×・Alt+F4）は [UI_TECH_STACK](../UI_TECH_STACK.md) UI-USW-D4 のとおり保証しない（Tauri 2.11.1 の native の close は `WindowEvent::CloseRequested` の経路で、webview の `beforeunload` を経ない）。DB は取消の単一の transaction（`src-tauri/src/biz/csv_import_service/rollback.rs` の `rollback_csv_import`）で守られ、失うのは結果の通知だけ。取消の応答を待つ間の段落（UI-07-D18）と §55.11 の「取消の実行と後」は、この範囲を引く。
 - 55 §55.7 の importing の段落: 本節が名指す進行中の処理のガードの hook に `useDailyReportImportFlow` を足し、3 つ（`useCsvImportFlow`・`useDailyReportImportFlow`・`useRollbackCsvImport`）と書いた（UI-USW-D1 が 55 §55.7 に委ねる名指し。T16 の期待の 4 件から共通警告 hook の `useUnsavedChangesWarning` を除いた 3 つと同じ）。#172 との重なりは下の所有表の 55 §55.7 の行。
 - 本 packet と Matrix の、取消の止めが window の close を止めると書いた文を、止める範囲の言い方に直した。Matrix の U12・U13 は native の close を止める test を求めていない（U12 は `enableBeforeUnload` に渡す値、U13 は push の止め）ので、test は足さない。
-- 本 commit の編集の範囲の外で、同じ前提の文が残る所（直し方は Coordinator が決める）: [65](../function-design/65-inventory-record-traceability.md) §65.5a の「失敗」の項（「route の移動と window の close を止め」）と、`src/features/csv-import/hooks/useRollbackCsvImport.ts` の comment（「route の移動と window の close を止める」）。
+- 同じ前提の文が残っていた [65](../function-design/65-inventory-record-traceability.md) §65.5a の「失敗」の項と `src/features/csv-import/hooks/useRollbackCsvImport.ts` の comment も、同じ止める範囲の言い方に直した（Coordinator、GA4 の 2 つ目の commit。code の振舞いは変えない）。
 
 ### S1 BIZ と IO（`csv_import_service`・`stocktake_service`・`stocktake_repo`）
 
