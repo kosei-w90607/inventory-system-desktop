@@ -232,6 +232,8 @@ export function useDailyReportImportFlow() {
     (candidateKey: string) => {
       if (state.status !== "sd_list") return;
       const candidate = state.scan.candidates.find((item) => item.candidate_key === candidateKey);
+      // 手で選んだときの文を SD から来た preview に持ち越さない
+      setLastSelectionError(null);
       dispatch({
         type: "sd_candidate_selected",
         candidateKey,

@@ -310,6 +310,18 @@ describe("DailyReportImportPage SD UI-07-D15 REQ-401", () => {
     expect(within(row("Z001_A.CSV")).getByText("取り込めます")).toBeInTheDocument();
   });
 
+  it("REQ-401 / UI-07-D15 (5) / UI-07-D16 (c): a selection text on the SD list is not carried into the SD preview", async () => {
+    const user = await scanWith(makeScan([candidate("A", "NotImported")]));
+    mockOpen.mockResolvedValueOnce(["C:\\a\\notes.CSV"]);
+    await user.click(screen.getByRole("button", { name: "ファイルを選んで取り込む" }));
+    const unknown = "Z001・Z002・Z005 のどれかの名前のファイルを選んでください。";
+    expect(await screen.findByText(unknown)).toBeInTheDocument();
+
+    await user.click(within(row("Z001_A.CSV")).getByRole("button", { name: "確認する" }));
+    await screen.findByText("取込み内容");
+    expect(screen.queryByText(unknown)).not.toBeInTheDocument();
+  });
+
   it("REQ-401 / UI-07-D15 (6): while a rollback is pending, SD の一覧へ戻る is disabled", async () => {
     mockCommit.mockResolvedValueOnce({
       status: "ok",
