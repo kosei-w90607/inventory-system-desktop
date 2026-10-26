@@ -14,14 +14,14 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: e948ac1b1df12bc8583acd647a60929713dcc8cd
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
-- Final Reviewer: Fable 5.1（Claude 側、R3・design lane）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Reviewer: Fable 5（Claude 側、R3・design lane。座組表の当面の Fable 5〈TD-410〉）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
 - Branch: agent/screen-elements-redesign
@@ -30,8 +30,8 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 1. kickoff → spec-check（2026-10-24、起草役）: owner の所感（TD-413・TD-415）を受けた Coordinator の発注で、対象を「商品・在庫を探す・見る・直す画面の要素の見直し」とし、段 1〜段 3 と置換えまでを本 lane の範囲にした。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-24、起草役、同じ commit）: 触る正本は `docs/SCREEN_DESIGN.md`（§1 画面一覧、§3 の在庫照会・商品検索・一覧・入出庫履歴ほか、§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮、D-047 と `docs/function-design/52-ui-shared-layout.md` の UI-12-D1。在庫照会の契約 I（58 §58.10）と商品一覧の UI-01a-D1（50 §50.2）が「初めて開いたときに何を出すか」を画面ごとに逆に決めており、owner の所感がその片方を問うので、設計の更新が要る（design へ進む）。設計の中身は段 1〜段 3 で作る。design → plan-draft は段 3 で owner が採否を決め、正本の置換えの文ができてから。
-3. design → plan-draft（2026-10-24、起草役、段 3 の commit）: 条件「設計の出力が正本にある」は、D-138（decision-log）と [50](../function-design/50-ui-product-list.md) UI-01a-D1・D14〜D19・§50.4・§50.6・§50.7、[58](../function-design/58-ui-stock-inquiry.md) の冒頭の注記・契約 H・UI-06a-D8・廃番除外・§58.7、52 UI-12-D1、53 UI-00-D13、61 UI-02-D10・D18、62〜64 の保存の結果、66 UI-06c-D9、02 ⑥・⑨・⑮、`docs/SCREEN_DESIGN.md` §1〜§4 で満たす（段 3 の対応表）。条件「未解決の設計の問いが無い」は、決定 1・決定 2（TD-424・TD-425）と Q-1・Q-2（TD-422・TD-423）で決まり、段 3 の細部は design-system の原則から決めた（段 3 の 3.4）ことで満たす。Open Questions の Q-3（商品ごとの最低限の数）は答えが無いときの既定が D-138 の形（今の基準との比べ）で、設計を止めない。
-4. plan-draft → plan-gate（2026-10-24、起草役、次の commit）: 条件「packet が完成して commit 済み、R3 の Test Design Matrix が commit 済み」は、段 3 の commit `e58f8aaf`（packet の段 3・Scope・Boundary / Wire Contract・Contract Ledger と `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`）で満たす。owner の判断を待つ事項は無い（Q-3 は既定つきで止めない）。Plan Review へ出すのは Coordinator。
+3. design → plan-draft（2026-10-24、起草役、段 3 の commit）: 条件「設計の出力が正本にある」は、D-138（decision-log）と [50](../../function-design/50-ui-product-list.md) UI-01a-D1・D14〜D19・§50.4・§50.6・§50.7、[58](../../function-design/58-ui-stock-inquiry.md) の冒頭の注記・契約 H・UI-06a-D8・廃番除外・§58.7、52 UI-12-D1、53 UI-00-D13、61 UI-02-D10・D18、62〜64 の保存の結果、66 UI-06c-D9、02 ⑥・⑨・⑮、`docs/SCREEN_DESIGN.md` §1〜§4 で満たす（段 3 の対応表）。条件「未解決の設計の問いが無い」は、決定 1・決定 2（TD-424・TD-425）と Q-1・Q-2（TD-422・TD-423）で決まり、段 3 の細部は design-system の原則から決めた（段 3 の 3.4）ことで満たす。Open Questions の Q-3（商品ごとの最低限の数）は答えが無いときの既定が D-138 の形（今の基準との比べ）で、設計を止めない。
+4. plan-draft → plan-gate（2026-10-24、起草役、次の commit）: 条件「packet が完成して commit 済み、R3 の Test Design Matrix が commit 済み」は、段 3 の commit `e58f8aaf`（packet の段 3・Scope・Boundary / Wire Contract・Contract Ledger と `docs/archive/plans/test-matrices/2026-10-24-screen-elements-redesign.md`）で満たす。owner の判断を待つ事項は無い（Q-3 は既定つきで止めない）。Plan Review へ出すのは Coordinator。
 5. plan-gate → plan-approved（2026-10-26、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。Plan Review round 3（天井）の後、Coordinator の disposition「一括是正」で `2f359519` を作り（同時に base を同期）、closure（Claude 側 fresh Opus 5.5 と Codex）の Codex 側の固定の不足（A〜D）を `edbd6046` で、Claude 側の closure 2 の P3 を `e948ac1b` で直した。closure 2 の 2 本（Claude 側 fresh Opus 5.5 が `edbd6046` に approve P3 2、Codex が P3 を直した `e948ac1b` に approve P1 / P2 / P3 0、未 closure 0）が P1 / P2 = 0 を報告した（下の Review Response）。Plan Commit は Codex の closure が監査した `e948ac1b`（前例: PR #203 の遷移 6）。
 6. plan-approved → implementing（2026-10-26、Coordinator、本 commit。state だけ）: 遷移表の唯一の入口。本 lane は docs だけの design lane で、Final Review の record は packet が implementing の head でしか受けない（helper）ので、plan-approved と同じ commit で進める（前例: PR #168・#163）。直後の commit で `origin/main`（PR #198 の merge の後）を単段で取り込み、その head を Final Review broad に出す。
 
@@ -115,7 +115,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 索引・要約: `docs/ARCHITECTURE.md`（UI-01a・UI-06a・UI-06b の行）、`docs/FUNCTION_DESIGN.md`（UI-06a の要約の 2 行の「検索駆動表示契約 I」に撤去の注記。索引の link の文字は変えない）、`docs/architecture/ui-task-specs.md`（UI-12 のサイドバー、UI-00 の大ボタン、UI-01a、UI-06a・UI-06b）
 - design-system: `docs/design-system/01-decision-rules.md`（DSR-18 の木の図の例）、`docs/design-system/02-component-catalog.md`（⑥ 空状態の説明・filter-empty の採用箇所、⑧ 廃番の確認の説明の画面名、⑨ 商品を探す検索欄の列、⑮ 取引 4 画面の先頭の列、更新履歴）
 - 決定と後続: `docs/decision-log.md`（D-138、D-047 の Superseded in part の行）、`docs/backlog.md`（「商品と在庫の画面の統合の runtime」、「商品ごとの最低限の在庫数」）
-- Matrix: `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`
+- Matrix: `docs/archive/plans/test-matrices/2026-10-24-screen-elements-redesign.md`
 - Plan Review round 1 の是正で触った節（上の file の中。`## Review Response` の round 1）: 50 UI-01a-D3・D8・D15・D17・D19・§50.4・§50.5・§50.7・§50.8、51 UI-01b-D2、58 の冒頭の注記・テンプレ判定・§58.1・§58.4 の `selected` ライフサイクル・§58.7・契約 H・UI-06a-D4・D7・§58.12・更新履歴、52 §52.3 の UI-06c の行・§52.4 の型の例、53 §53.8、61 UI-02-D10・§61.9、62〜64 の result の行、66 の入力ドキュメント・§66.1・UI-06c-D9・§66.3、ui-task-specs の UI-06b、backlog の runtime の項目
 
 変えないもの: `docs/spec/requirements.md`（REQ と task の対応）、各設計書の `> 対応仕様:` の行、`docs/FUNCTION_DESIGN.md` の索引の link の文字（traceability の生成の入力は link の文字だけ〈`src-tauri/src/bin/generate_traceability.rs` の `parse_index_links`〉。UI-01a と UI-06a の ID を 1 つの画面で持つので変えない）、`docs/diagrams/current-system.md`（今の build の図。runtime の lane が直す）。`docs/Plans.md` は変えない（`## 次の行動` に `docs/plans/` を指す pointer の行が既にあり、D-097 の D6 は lane ごとの行を足さない）。
@@ -135,7 +135,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC3（段 1）: 重なる画面の組（`### 重なる画面の組` の O-n）と、初めて開いたときに何も出ない所（`### 初めて開いたときに何も出ない所` の E-n）の一覧があり、解決案を含まない。
 - AC4（段 2）: 白紙の骨組みが、店の仕事の流れ（`docs/project-memory.md`・`docs/spec/requirements.md`）と design-system の正本が引く文献だけから組まれ、今の画面の形を前提にしていない。各要素に根拠（文献の原則か店の事実の ID）がある。
 - AC5（段 3）: 段 1 の重なりの組と何も出ない所の全部に、owner が選べる選択肢（今のままを含む）と、各案の利点・失うもの・後続の runtime の大きさの見込み（`未実測` を含む）がある。owner の採否が repo 外の回答台帳の ID で引ける。
-- AC6（置換え）: 採った形が正本に書かれ、旧い契約（契約 I ほか）の置換えの行がある。`bash scripts/doc-consistency-check.sh` と `--target plan docs/plans/2026-10-24-screen-elements-redesign.md` が ERROR 0。
+- AC6（置換え）: 採った形が正本に書かれ、旧い契約（契約 I ほか）の置換えの行がある。`bash scripts/doc-consistency-check.sh` と `--target plan docs/archive/plans/2026-10-24-screen-elements-redesign.md` が ERROR 0。
 - AC7: 差分が docs だけ（`git diff --name-only origin/main...HEAD` が `docs/` の下だけ）。公開 repo に店のデータ・owner の原文が無い。
 
 ## Design Readiness
@@ -187,9 +187,9 @@ command・DTO・bindings は変えない（`search_products`・`list_low_stock(i
 
 ## Test Plan
 
-本 lane は docs だけで、自動 test の追加は無い。Test Design Matrix は `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`（段 3 で置いた）で、採った形の契約ごとに後続の runtime が足す test の行（節の ID つき）を持つ。
+本 lane は docs だけで、自動 test の追加は無い。Test Design Matrix は `docs/archive/plans/test-matrices/2026-10-24-screen-elements-redesign.md`（段 3 で置いた）で、採った形の契約ごとに後続の runtime が足す test の行（節の ID つき）を持つ。
 
-- targeted tests: 本 lane は無い。`bash scripts/doc-consistency-check.sh` と `--target plan docs/plans/2026-10-24-screen-elements-redesign.md` を ERROR 0 で通す
+- targeted tests: 本 lane は無い。`bash scripts/doc-consistency-check.sh` と `--target plan docs/archive/plans/2026-10-24-screen-elements-redesign.md` を ERROR 0 で通す
 - negative tests: 本 lane は無い。0 件・読込みの失敗・範囲外の page・在庫少の集合の失敗は Matrix の UI-01a-D18・契約 H の行
 - compatibility checks: URL の search params の互換（`/stock` の寄せ・`returnTo` の着地・数字だけの商品コード）は Matrix の UI-01a-D19・UI-06c-D9・§50.4 の行
 - data safety checks: 差分に owner の原文・店のデータが無いことを目で確かめる
@@ -530,7 +530,7 @@ Q-1 が a なので 2.8 の推奨（決定 1 = A・決定 2 = a）は動かず�
 
 ### 3.3 Q-2 の「最低限要る在庫の数に達したか」の扱い
 
-正本の閾値の定義を実読した: 在庫少の基準は `app_settings` の `stock_low_threshold`（個数の単位の数、初期値 3）と `stock_low_threshold_fabric`（長さの単位の cm、初期値 500）の 2 つで、BIZ の `list_low_stock` が `stock_quantity <= ?` で比べる（`docs/function-design/10-common-rules.md` の在庫少の基準の行、`docs/DB_DESIGN.md` の初期値と適用ルールの行、[69](../function-design/69-ui-threshold-settings.md)）。商品ごとの基準は無い。
+正本の閾値の定義を実読した: 在庫少の基準は `app_settings` の `stock_low_threshold`（個数の単位の数、初期値 3）と `stock_low_threshold_fabric`（長さの単位の cm、初期値 500）の 2 つで、BIZ の `list_low_stock` が `stock_quantity <= ?` で比べる（`docs/function-design/10-common-rules.md` の在庫少の基準の行、`docs/DB_DESIGN.md` の初期値と適用ルールの行、[69](../../function-design/69-ui-threshold-settings.md)）。商品ごとの基準は無い。
 
 - confirmed（新しい設定・field を足さない）: 統合の画面の状態の欄を、どの状態でも在庫少の集合で決める（58 契約 H の置換え）。「すべて」でも `list_low_stock(true)` を読み、集合に入る在庫ありの商品を「在庫少」、入らない商品を「在庫あり」（基準を上回る）と出す。入庫などの保存の結果の「在庫を見る」はその商品の行を「すべて」で開くので、状態の欄が「今の基準に達したか」に答える。今の契約 H のままだと「すべて」は在庫少を出さず（「在庫あり」は基準以上を保証しない）、この確かめに答えない。集合の読込み中は Skeleton、失敗は「—」と知らせで、言い切らない。
 - owner への問いの候補（Open Questions の Q-3）: 店主の言う「最低限要る数」が商品ごとに違うなら、今の基準（単位の種類ごとの 2 つの値）では表せない。商品ごとの基準は商品の field・商品フォーム・`list_low_stock`・商品 CSV を変える別の lane になる。出所は店主の答え（TD-423）で、AI の review の起源の要件ではない。答えが無い間は confirmed の形で進め、本 lane と runtime の lane を止めない。
@@ -555,7 +555,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 
 ### 3.6 旧い言い方の sweep
 
-置き換えた契約の旧い言い方を docs 全体で `rg` した。分類: 置換え（本 PR で直した）／今の build（統合の前の振舞いの記述として残し、runtime の lane が直す。backlog の項目の清掃の基準〈`rg` の 2 つの command〉に入る）／履歴（日付つきの経緯・更新履歴・decision-log の本文。append-only）／一般名（`list_low_stock` の機能の名や一覧の種類の名で、画面の名でない）／対象外。数は Plan Review round 3 の是正の後の head（base 同期の後）で数えた（A〜D の印の 6 行は Plan Review closure の是正の後の head で数えた。他の 12 行の数はこの head でも同じ）: `rg -n -F '<語>' docs --glob '!docs/archive/**' --glob '!docs/research/**' --glob '!docs/plans/2026-10-24-screen-elements-redesign.md' --glob '!docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md'` の行数と file ごとの行数。
+置き換えた契約の旧い言い方を docs 全体で `rg` した。分類: 置換え（本 PR で直した）／今の build（統合の前の振舞いの記述として残し、runtime の lane が直す。backlog の項目の清掃の基準〈`rg` の 2 つの command〉に入る）／履歴（日付つきの経緯・更新履歴・decision-log の本文。append-only）／一般名（`list_low_stock` の機能の名や一覧の種類の名で、画面の名でない）／対象外。数は Plan Review round 3 の是正の後の head（base 同期の後）で数えた（A〜D の印の 6 行は Plan Review closure の是正の後の head で数えた。他の 12 行の数はこの head でも同じ）: `rg -n -F '<語>' docs --glob '!docs/archive/**' --glob '!docs/research/**' --glob '!docs/archive/plans/2026-10-24-screen-elements-redesign.md' --glob '!docs/archive/plans/test-matrices/2026-10-24-screen-elements-redesign.md'` の行数と file ごとの行数。
 
 | 旧い言い方（`rg -F`） | hit の行数（file ごと） | 分類 |
 |---|---|---|
@@ -613,7 +613,7 @@ owner の採否（A・a）の中で、画面の細部は design-system の原則
 
 ## Implementation Results
 
-本 lane は docs だけで、実装の段で足す code は無い。置き換えた正本と箇所は段 3 の 3.2 と Scope（段 3 の commit）。
+本 lane は docs だけの design lane で、画面の code・wire・migration は変えていない。owner の採否（TD-424・TD-425）と店主の答え（TD-422・TD-423）を受け、在庫照会と商品検索・一覧を 1 つの画面「商品と在庫」にし、初めて開いたら全商品の一覧を出す形を D-138 として decision-log に置き、設計正本・design-system・`docs/SCREEN_DESIGN.md` の該当の文を置き換えた（箇所は段 3 の 3.2 と Scope）。統合の実装は後続の runtime の lane（backlog の「商品と在庫の画面の統合の runtime」）が Matrix の test の設計に沿って行う。商品ごとの最低限の在庫数（Q-3）は D-138 の既定のまま、backlog の候補（owner の確認の前に必須にしない）に残した。
 
 ## Review Response
 
@@ -703,3 +703,5 @@ reviewer: Claude 側（fresh Opus 5.5。reject〈形式上〉、新しい P1 0 /
 ### Plan Review closure 2（2026-10-25、対象 `edbd6046`、Coordinator）
 
 Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 2）。Codex は利用上限（解除 2026-10-31）で、owner の決定（repo 外の回答台帳 TD-438）により reset の後に Codex の closure を流す。P3 の 2 件を受理して直した: (1) Contract Ledger の UI-02-D4 系の行の出典と docs に 62〜64 の §x.5 と SCREEN_DESIGN の返品・交換画面の明細を足した（Matrix の行に合わせた）。(2) Matrix の `test_ui01a_d15_low_stock_hides_tools_and_keeps_url` の行の並びの期待を、mock が返した順を見るだけの同語反復にならない形にした（mock は商品名の降順で返し、3 商品は取引先順と違う順にして、行は mock の順のまま出す〈画面で並べ直さない〉）。
+
+Final Review と merge（2026-10-27、closeout で追記）: Final Review broad（head `892fd56e`）は Claude 側 Fable 5 = approve（P3 2、`63976d9e` で直した）と Codex 588 = approve（P3 1）。base 同期（`50f97a76`）と Fable の P3 の是正の後の closure（head `77131caa`）は Codex 592 = approve（新規 P1 / P2 0、P3 1）で、helper の review の record は pass。Ready の後の hosted CI の `Merge gate` が success で、owner の承認（repo 外の回答台帳 TD-448）の後に helper 経由で merge した（[PR #202](https://github.com/kosei-w90607/inventory-system-desktop/pull/202)）。merge の前に受けた P3 のうち次の 2 件は本 closeout で直した: (1) Codex 588: Matrix の Mutation Probes の「分岐の反転」の検出先が、その分岐を通らない component（`test_ui01a_d16_columns_by_status`）と純関数（`test_ui06a_d8_*`）の test だったので、実際の一覧の結果を見る hook / page の test（`test_ui01a_d1_default_lists_all_active_products`）に替えた。(2) Codex 592: Workflow State の Final Reviewer 行の「Fable 5.1」を、実際に Final を行った Fable 5（座組表の当面の値、TD-410）にした。
