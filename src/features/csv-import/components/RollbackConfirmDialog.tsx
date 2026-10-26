@@ -76,8 +76,9 @@ function RollbackConfirmContent({
     gcTime: 0,
     retry: 0,
   });
-  // 読み直しの間は前の値を出さない（cache を使い回さない）
-  const preview = previewQuery.isFetching ? undefined : previewQuery.data;
+  // 読み直しの間と読み直しの失敗では前の値を出さない（cache を使い回さない。失敗でも data は残る）
+  const preview =
+    previewQuery.isSuccess && !previewQuery.isFetching ? previewQuery.data : undefined;
   const error = previewQuery.isFetching ? null : previewQuery.error;
 
   return (

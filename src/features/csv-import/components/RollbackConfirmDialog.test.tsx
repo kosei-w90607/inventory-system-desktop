@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
@@ -51,7 +51,7 @@ function cmdError(kind: CmdError["kind"], message: string): CmdError {
 
 function renderDialog() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <RollbackConfirmDialog
         csvImportId={31}
@@ -65,6 +65,7 @@ function renderDialog() {
       />
     </QueryClientProvider>,
   );
+  return { ...view, queryClient };
 }
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -208,4 +209,30 @@ it("REQ-401: 確認を開くたびに取消の前の読取りをやり直す", a
   expect(await within(dialog).findByText("二回目の商品")).toBeInTheDocument();
   expect(mockPreview).toHaveBeenCalledTimes(2);
   expect(within(dialog).getByRole("button", { name: "取り消す" })).toBeEnabled();
+});
+
+it("REQ-401: 読めた後の読み直しが失敗したら、前の読取りを使わず「取り消す」を押せない", async () => {
+  const user = userEvent.setup();
+  mockPreview.mockResolvedValueOnce({
+    status: "ok",
+    data: preview({ recheck_targets: [target({ product_name: "一回目の商品" })] }),
+  });
+  mockPreview.mockResolvedValueOnce({ status: "error", error: cmdError("internal", "合成の失敗") });
+  const { queryClient } = renderDialog();
+
+  const dialog = await openDialog(user);
+  expect(await within(dialog).findByText("一回目の商品")).toBeInTheDocument();
+  expect(within(dialog).getByRole("button", { name: "取り消す" })).toBeEnabled();
+
+  // 開いたままの読み直し（接続の復帰や再取得）が失敗する
+  await act(() => queryClient.refetchQueries());
+
+  expect(
+    await within(dialog).findByText(
+      "取り消した後のようすを読み込めませんでした。閉じてから、もう一度開いてください",
+    ),
+  ).toBeInTheDocument();
+  expect(mockPreview).toHaveBeenCalledTimes(2);
+  expect(within(dialog).queryByText("一回目の商品")).toBeNull();
+  expect(within(dialog).getByRole("button", { name: "取り消す" })).toBeDisabled();
 });
