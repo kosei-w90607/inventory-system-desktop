@@ -68,10 +68,13 @@ pub fn preview_rollback_csv_import(
     // 3. この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し（35 の判定を BIZ-06 で）
     let affected_stocktakes = completed_stocktakes_comparing_settlement(conn, &settlement)?;
 
-    // 4〜5. 取消の本体を TX の中で当て、明示の rollback で戻す（drop に頼らない。操作ログは書かない）
+    // 4〜5. 取消の本体を TX の中で当て、手順 4 の成否によらず明示に閉じる（drop に頼らない。操作ログは書かない）。
+    // finish は既定の DropBehavior::Rollback で ROLLBACK を出し、SQLite が自動で戻した TX では何もしない。
+    // 閉じる失敗を先に返し、閉じられたら手順 4 の失敗（真因）をそのまま返す
     let tx = conn.transaction().map_err(DbError::from)?;
-    let recheck_targets = apply_rollback(&tx, csv_import_id)?.recheck_targets;
-    tx.rollback().map_err(DbError::from)?;
+    let applied = apply_rollback(&tx, csv_import_id);
+    tx.finish().map_err(DbError::from)?;
+    let recheck_targets = applied?.recheck_targets;
 
     Ok(RollbackPreview {
         csv_import_id,
