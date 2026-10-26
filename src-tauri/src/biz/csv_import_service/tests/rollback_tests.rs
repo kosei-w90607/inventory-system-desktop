@@ -579,4 +579,27 @@ fn test_preview_rollback_csv_import_req401_affected_completed_stocktakes() {
     let record_before = record(&conn);
     rollback_csv_import(&mut conn, before_1.csv_import_id).unwrap();
     assert_eq!(record(&conn), record_before);
+
+    // (f)(g) 等値境界（OR のもう片側が偽の取込み）。精算 201・202 は精算日がどちらも完了日 04-20 と同じ日で、
+    // 完了の日時は 0 時でない（日時の全体で比べると精算日 < 完了の日時になる）。完了の時点の精算の n は 201
+    let (_dir2, mut conn2) = setup_test_db();
+    create_test_product_with_jan(&conn2, "B-001", JAN_B, 10, true);
+    let at_n = commit_import(&mut conn2, make_z004_bytes(201, "2026-04-20", &line), "e");
+    let completed_at = "2026-04-20T18:00:00";
+    conn2
+        .execute(
+            "INSERT INTO stocktakes (started_at, status, completed_at, total_cost, cutoff_import_id)
+             VALUES ('2026-04-20T09:00:00', 'completed', ?1, 0, ?2)",
+            rusqlite::params![completed_at, at_n.csv_import_id],
+        )
+        .unwrap();
+    let boundary = conn2.last_insert_rowid();
+    let same_day_after = commit_import(&mut conn2, make_z004_bytes(202, "2026-04-20", &line), "f");
+    // (f) 精算回数 = n（精算日 = 完了日で日付の側は偽）は名指す
+    assert_eq!(
+        named(&mut conn2, at_n.csv_import_id),
+        vec![(boundary, completed_at.to_string())]
+    );
+    // (g) 精算回数 > n で精算日 = 完了日（日付の部分で比べる）は名指さない
+    assert!(named(&mut conn2, same_day_after.csv_import_id).is_empty());
 }
