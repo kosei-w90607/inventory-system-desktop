@@ -12,9 +12,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 852951a6248f5cf736d77d37605bac4f4f7feb78
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（起票は本 run の起草役。実装は plan-approved の後の別の run で `subagent_type: writer`）
@@ -33,6 +33,7 @@ manual なし: 製品の runtime・画面・配布物を変えない検査 scrip
 3. plan-draft → plan-gate（2026-10-24、起草役、本 commit。state だけ）: packet と Test Design Matrix は前の commit `4e963c0c` で揃っている。Plan Review（Plan Reviewer 行の 2 本）へ出す。
 4. plan-gate のまま round 1 の是正（2026-10-24、起草役）: Review Response 参照。round 2 の Plan Review へ出す。
 5. plan-gate のまま round 2 の是正（2026-10-24、Writer）: Review Response 参照。round 3（天井）の Plan Review へ出す。
+6. plan-gate → plan-approved（2026-10-26、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。round 3（天井）の後の closure 1〜3 の是正を経て、closure 4 の 2 本（Claude 側 fresh Opus 5.5 が `268b513e` に approve P3 1、Codex 577 が P3 を直した `852951a6` に approve P1 / P2 / P3 0）が P1 / P2 = 0 を報告した（下の Review Response の closure 4）。Plan Commit は Codex の closure が監査した `852951a6`（前例: PR #203 の遷移 6）。実装は #201 の merge の後に `origin/main` を単段で取り込んでから始める（上の Scope の #201 との順）。
 
 ## Owner Effort Budget
 
@@ -520,4 +521,4 @@ Claude 側（fresh Opus 5.5）= reject（P2 1 / P3 1）、Codex 572 = reject（P
 
 ### closure 4（Plan Review の closure 4、head `268b513e`、是正 2026-10-25、Coordinator）
 
-Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 1）。Codex 577 は利用上限（解除 2026-10-31）で未実行で、owner の決定（repo 外の回答台帳 TD-438）により reset の後に流す。P3（D2 の走査の限界の 1 文目の原因の構文に JSX の属性の文字列が無い。属性の文字列は `\` を escape と読まず行をまたげる）を受理し、「regex literal と JSX（文と属性の文字列）」に直した。D7 は同じ文を写す。
+Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 1）。Codex 577 は利用上限で遅れ、reset の後（2026-10-26）に P3 を直した `852951a6` で流して approve（P1 0 / P2 0 / P3 0。Plan Review の closure なので PR へ投稿せず、報告は repo 外の発注の記録）。Codex の AC4（`bash scripts/tests/run-workflow-tests.sh`）は初回だけ `doc-consistency-plan-packet.test.sh` が `plan-approved` の fixture を「Phase 行なし」として拒否し、変更なしの単独の再実行と suite の再実行は通った（checker と test は base から不変。原因はまだ分からず、実装の run で AC4 を回すときに再び見る）。P3（D2 の走査の限界の 1 文目の原因の構文に JSX の属性の文字列が無い。属性の文字列は `\` を escape と読まず行をまたげる）を受理し、「regex literal と JSX（文と属性の文字列）」に直した。D7 は同じ文を写す。
