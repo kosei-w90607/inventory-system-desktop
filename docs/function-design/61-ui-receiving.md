@@ -1,6 +1,6 @@
 # 61. UI-02: 入庫記録
 
-> **計数の置き場と在庫の求め直し（D-118。(a) は実装済み、(b) は proposed・未実装）**: この画面の日付の欄の意味は「品が動いた日」（入庫は品が店に届いた日で、納品書の日付ではない）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。(a) で入ったのは、この日付を業務日として movement に書くこと（`biz/inventory_service/common.rs` の `validate_business_date`）と、計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`）。計数を保存する公開の経路・精算の窓・この画面への反映は (b)。欄の見出し・説明の文言の細部は runtime の lane。
+> **計数の置き場と在庫の求め直し（D-118。(a) と b1 で実装済み）**: この画面の日付の欄の意味は「品が動いた日」（入庫は品が店に届いた日で、納品書の日付ではない）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。(a) で入ったのは、この日付を業務日として movement に書くこと（`biz/inventory_service/common.rs` の `validate_business_date`）と、計数と入出庫の窓の計算（`biz/stock_ledger.rs` の `judge` → `from_count` → `derive`）。計数を保存する公開の経路と精算の窓は D-118 の b1 で入った（入出庫の保存は要再確認の一覧を再取得する。UI_TECH_STACK の D-118 の段落）。この画面の欄の見出し・説明の文言は b1 で変えていない。
 
 > 対応仕様: REQ-201 / REQ-209 / UI-02
 >
@@ -36,6 +36,7 @@
 | REQ-201 / product add suggest | UI-02-D14 | 商品追加欄に live 候補プレビュー（catalog ⑮ ProductAddSuggest / SPEC-SUGGEST-D1〜D11）を追加する。Enter commit 経路（UI-02-D4）とフォーカス戻し（UI-02-D5）は不変。lock source は既存 `isFormLocked` 派生 state、候補確定は既存の複数件候補テーブル選択と同一 handler。 | variant B。純 autocomplete 型（Enter 追加廃止）はスキャナ Enter が候補 async 読込み前に届くため退行・不採用（owner 方針 2026-08-04）。契約正本は catalog ⑮ に一元化し、画面 doc には画面固有の結線のみ置く（5 画面複製 drift 防止）。 |
 | REQ-209 / SPEC-PRV-D8 | UI-02-D15 | 保存成功時に `ReceivingCreateResult.cost_diffs` があれば原価差分ダイアログを開き、入庫記録が保存済みであることを明示したうえで、商品ごとに「マスタ原価をこの実原価に更新する」か見送る。承諾時は `revise_product_price` を新売価 = 現売価据え置き、新原価 = 入庫実原価で呼ぶ。見送り時は入庫記録を残したまま、商品マスタの原価を変更しない。 | 手芸用品以外は入庫伝票が価格改定の唯一の導線。自動上書きは約定値引きを恒久化する恐れがあるため、商品ごとの確認を必須にする。見送りは無記録とし、差分が残れば次回入庫で再提示する。 |
 | REQ-201 / REQ-206 / return | UI-02-D16 | 保存結果と recent list の「詳細を見る」は、search state を含む現在の `/inventory/receiving` URL を `returnTo` として入庫記録詳細へ送る（DSR-18）。 | 詳細確認後に入庫作業画面へ戻れるようにする。送信・検証・fallback の横断規範は DSR-18 を正とし、本書では入庫画面の producer だけを固定する。 |
+| REQ-201 / scope | UI-02-D17 | 取り寄せ（客注）の品が届いたときは入庫に記録しない（owner の決定、repo 外の回答台帳 TD-350、2026-10-20）。アプリの検査・画面の文言は足さず、決まりを本書に置く。 | [project-memory](../project-memory.md) の Store Premises Facts の棚卸しの項: 取り寄せは先払いで、受注の時点で JAN が分からないことがあるのでレジで部門キーで打ち、先払いの取り寄せ品はお渡し待ちの間に棚卸しになっても数えない。店の在庫として数えない品を入庫に記録すると、在庫数に入ってしまう。 |
 
 ## 61.2 Component / Route 構成
 
@@ -171,6 +172,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-10-23 | docs の小口（[Plan Packet](../archive/plans/2026-10-23-docs-small-batch.md) の S5） | UI-02-D17 を追加: 取り寄せ（客注）の品を入庫に記録しない決まり（TD-350）。 |
 | 2026-09-10 | PR #50 | 取引先ピッカー runtime を反映。検索・追加後の自動選択と指定なしへの復帰を実装。 |
 | 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。§61.9 に picker dialog の検索・追加・自動選択で閉じるテスト観点を追加。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-02-D16 を追加し、保存結果 / recent list の詳細導線に入庫画面への `returnTo` 送信契約を設定。 |

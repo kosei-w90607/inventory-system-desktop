@@ -1,8 +1,8 @@
 # テーブル定義（POS連携）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(b) は proposed・未実装、移行の止まりだけ (a) で実装済み）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりだけで、表の列とほかの項目は (b)（proposed・未実装）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は b1 で外した）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりで、表の列とほかの項目は b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)、migration v11）で入った。
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
@@ -12,9 +12,10 @@
 
 - 精算回数・マシンNo. を読めない Z004（従来の形）は取り込まない（preview で拒む。[32](../function-design/32-biz-csv-import-service.md) の新契約）。
 - 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
-- 精算日と精算回数の順の食い違い、別の machine_no、欠けた精算回数の知らせは BIZ が active な取込みの `settlement_date`・`settlement_no`・`machine_no` から判定する（新しい表を持たない）。
+- 精算日と精算回数の順の食い違いと欠けた精算回数の知らせは active な取込みの `settlement_date`・`settlement_no` から、別の machine_no は取り消したものを含む全ての Z004 の取込みの `machine_no` から、BIZ が判定する（新しい表を持たない。[32](../function-design/32-biz-csv-import-service.md) の表の順 2）。
 - 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
-- 移行: 既存の取込みがある DB では runtime の migration は止まる（(a) の migration v9 で実装済み。tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
+- 取込みID（`csv_imports.id`、AUTOINCREMENT）は使い回さない（取消は status を変えるだけで行を消さない）。fresh な計数と棚卸しの完了は、保存・完了の時点の `MAX(csv_imports.id)` を取込みのカーソル（tracking の `stock_counts.seen_import_id`・`stocktakes.cutoff_import_id`）に残し、精算回数ではなく取込みID で「保存・完了の前に取り込んだ精算か」を決める（ADR D3・D6。精算回数は取消の後に別の取込みが再び使う。b1 の Plan Review closure〈Codex〉の是正）。
+- 移行: 既存の取込みがある DB では runtime の migration は止まる（(a) の migration v9 で実装済み。tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は b1 の migration v11 が足した（[22 §20](../function-design/22-mnt-migration.md)、ADR SPEC-STK-CNT-D12）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
@@ -38,6 +39,8 @@ Z004ファイルの取込み履歴。重複取込み防止、ロールバック�
 | skipped_count | INTEGER | NOT NULL, DEFAULT 0 | スキップされた行数（マスタ未登録＋行エラー） |
 | status | TEXT | NOT NULL, CHECK(status IN ('completed','completed_partial','rolled_back')) | 状態 |
 | imported_at | TEXT | NOT NULL | 取込み日時（YYYY-MM-DDTHH:MM:SS） |
+| machine_no | TEXT | CHECK(machine_no IS NOT NULL AND machine_no <> '') | マシンNo.（leading zero を保つ文字列。v11、D-118 の b1。冒頭の D-118 の節） |
+| settlement_no | INTEGER | CHECK(settlement_no IS NOT NULL AND settlement_no >= 0) | 精算回数（v11、D-118 の b1） |
 
 ### statusの値
 
@@ -374,7 +377,7 @@ COMMIT後に:
 - products.jan_codeで検索（product_codeへのfallbackはしない）
 - ヒット1件 → matched（紐付け成功）
 - ヒット0件 → 前の JAN の別名（[master-tables](master-tables.md) §1a、D-122、proposed・未実装）があればその商品で matched、無ければ unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
-- ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（グループコード商品は色を区別しない方針のため。常に同じ商品に紐付く決定的ルール）
+- ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（常に同じ商品に紐付く決定的ルール。先頭へ割り当てる限界は [backlog](../backlog.md) の DATA-2。共有 JAN の行を在庫連動の外〈売上だけ記録〉にする形は D-118 の Compatibility が決めた後の形〈(b) は proposed・未実装〉で、今の build は先頭へ紐付ける）
 
 **返品の扱い**:
 - quantity < 0 または amount < 0 → 返品として許可（ここで弾かない）
@@ -451,6 +454,7 @@ BEGIN TRANSACTION内で:
 | note | TEXT | NULLABLE | 備考 |
 | is_voided | BOOLEAN | NOT NULL, DEFAULT 0 | 論理無効化フラグ。ロールバック時に1 |
 | created_at | TEXT | NOT NULL | 作成日時（YYYY-MM-DDTHH:MM:SS） |
+| stock_linked | INTEGER | NOT NULL, DEFAULT 0, CHECK(stock_linked IN (0,1)) | 取込みのときの在庫連動（v11、D-118 の b1。Z004 の確定だけが行の `pos_stock_sync` を書き、手動の売上ほかは 0） |
 
 ### 設計意図
 - **自動と手動を同じテーブルに統合した理由**: 売上レポート（日次・月次）では自動売上と手動売上をまとめて表示する。別テーブルだと毎回UNIONが必要になり、集計クエリが複雑になる。sourceカラムで区別すれば1テーブルで完結

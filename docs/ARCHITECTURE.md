@@ -1,8 +1,8 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。表のほかの責務は (b)（proposed・未実装）で、以下の現行のタスク構成・依存関係を (b) の実装済みとして読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存・完了・Z004 の識別と確定と取消・要再確認の一覧・共有 JAN と在庫連動を始める検査・MNT の migration v11 が入り、停止の入口を外した。商品の画面の範囲の表示と在庫変動の履歴の計数の行は b2（proposed・未実装）。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
@@ -10,7 +10,7 @@
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
 | BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
 | IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | 列と表を足す migration（(a) の v9。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
+| MNT | 列と表を足す migration（(a) の v9、b1 の v11。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
 
@@ -205,7 +205,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | ID | タスク名 | 責務 |
 |----|---------|------|
 | MNT-01 | バックアップ・リストア | SQLiteファイルのコピーバックアップ。自動（設定時刻）/手動。保持日数管理。リストア（バックアップファイルからDB復元）。PC の外の控え（USB メモリへ自動で写して照合）と復元の前の控えの確かめ（D-114） |
-| MNT-02 | 操作ログ管理 | operation_logsへの記録（operation_type命名規約に従う）。閲覧画面用のページング取得。365日超の自動削除（アプリ起動時1日1回） |
+| MNT-02 | 操作ログ管理 | operation_logsへの記録（operation_type命名規約に従う）。閲覧画面用のページング取得。保持日数（既定 3000 日、帳簿書類の 7 年に足りる長さ。D-136）を超えたものの自動削除（アプリ起動時1日1回） |
 | MNT-03 | スキーママイグレーション | schema_versionテーブルでバージョン管理。アプリ起動時にスキーマバージョン確認→必要ならALTER TABLE実行 |
 | MNT-04 | アプリケーション診断ログ | tracing基盤による全層横断のファイルログ。エラー箇所・入力データ・モジュール名を記録。日次ローテーション、30日保持。REQ-700対応 |
 
@@ -296,8 +296,6 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ## 4. 未確定事項
 
-- **IO-04（PLUフォーマッター）**: 2026-07-03 field gate により、現場ツール CV17 1.1.1 / SR-S4000 向けの `.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と、`CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。
-- **宅急便部門**: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL
 - **Q40（障害時の対応）**: 画面ごとの CmdError と retry（UI-13 ほか）と共通の Error Boundary は実装済み。包括的な障害時対応の方針の残りは [backlog](backlog.md) の Q40 の項目が追う
 
 ---

@@ -220,6 +220,7 @@ describe("CsvImportRecordDetailPage (REQ-206 / REQ-207)", () => {
         message: "CSV取込み記録が見つかりません: 404",
         field: null,
         error_id: null,
+        stocktake_recovery: null,
       },
     });
 

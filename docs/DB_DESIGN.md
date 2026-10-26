@@ -1,8 +1,8 @@
 # 在庫管理システム テーブル定義書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。以下のテーブル一覧・インデックス方針と ER 図は (a) の表と列を載せている（列と制約の正本は下の各 db-design の同名の節）。(b) の分は proposed・未実装。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。b1 の列（`csv_imports.machine_no`・`settlement_no`、`sale_records.stock_linked`、`stock_counts.seen_import_id`、`stocktake_items.valuation_quantity`、`stocktakes.cutoff_import_id`・`cutoff_count_id`・`cutoff_movement_id`）と Z004 と phase を結ぶ CHECK は migration v11（[22 §20](function-design/22-mnt-migration.md)）で入った。以下のテーブル一覧・インデックス方針と ER 図はその表と列を載せている（列と制約の正本は下の各 db-design の同名の節）。
 
 - 写しの列（`stock_recheck`・範囲）と在庫連動・共有 JAN: [master](db-design/master-tables.md)。入出庫の TX との接続: [transaction](db-design/transaction-tables.md)。
 - Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
@@ -45,7 +45,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 | 15 | price_history | 在庫追跡 | REQ-102 | 価格変更履歴 |
 | 16 | stocktakes | 棚卸し | REQ-205 | 棚卸しヘッダ |
 | 17 | stocktake_items | 棚卸し | REQ-205 | 棚卸し明細（商品ごとの実カウント） |
-| 17a | stock_counts | 棚卸し | REQ-205 | 計数の置き場（日付と精算の並びの位置を持つ append-only の計数。migration v9、D-118 の (a)。保存する経路は (b)） |
+| 17a | stock_counts | 棚卸し | REQ-205 | 計数の置き場（日付と精算の並びの位置を持つ append-only の計数。migration v9、D-118 の (a)。保存する経路と取込みのカーソルの列 `seen_import_id` は b1〈v11〉） |
 | 18 | operation_logs | システム | QR-06 | 操作ログ |
 | 19 | app_settings | システム | QR系 | アプリ設定（キー・バリューストア） |
 
@@ -194,11 +194,11 @@ jan_codeとfile_hash以外に、以下のインデックスを初期設定する
 - **設定画面**: 利用者が変更可能。入力バリデーションで0以下の値は拒否（最小値=1）
 - **商品個別閾値**: 初期バージョンでは全商品一律。将来拡張でproductsにcustom_low_thresholdカラムを追加する余地を残す
 
-### D-5: 操作ログ保持期間（2026-03-29 確定）
-- **保持期間**: 365日（app_settingsにlog_retention_days=365を追加）
+### D-5: 操作ログ保持期間（2026-03-29 確定、2026-10-23 に decision-log D-136 で改定）
+- **保持期間**: 3000 日（帳簿書類の 7 年〈申告の期限の翌日から〉に足りる長さ。app_settings の log_retention_days。2026-03-29 の確定は 365 日）。保持日数を確定できないとき（数でない・0）は消さない（[72](function-design/72-mnt-log-manager.md) MNT-02-D1）
 - **自動削除タイミング**: アプリ起動時に1日1回だけ実行。前回チェック日をapp_settings（log_last_cleanup_date）に記録し、同日中は再実行しない
 - **削除の記録**: 削除件数をoperation_logs（operation_type='log_cleanup'）に1件記録。例: 「42件の操作ログを削除しました（2025-03-29以前）」
-- **アーカイブ**: 不要。1年以上前のログが必要な場合はバックアップから復元
+- **アーカイブ**: 不要。保持日数を過ぎたログは DB から消える。保持期間を過ぎた後の復元は保証しない（残る backup〈保持は別の設定、既定 3 日〉に残るかは、その backup の作成の時点による）
 
 ### 技術的認知負荷の軽減方針
 - 俺（Claude）は設計判断の根拠と困りそうなケースを毎回セットで出す
