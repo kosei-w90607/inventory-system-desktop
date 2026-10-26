@@ -69,6 +69,40 @@ function makeRollback(): RollbackResult {
   return { success: true, voided_sale_count: 1, voided_movement_count: 1, recheck_targets: [] };
 }
 
+interface BlockerOptions {
+  shouldBlockFn: () => boolean;
+  enableBeforeUnload?: boolean | (() => boolean);
+}
+
+/// 最後の render の始めの useBlocker の呼出し数。renderHook の callback で毎 render 書き換える
+const blockerMark = { calls: 0 };
+
+function renderFlow(queryClient: QueryClient) {
+  return renderHook(
+    () => {
+      blockerMark.calls = mockUseBlocker.mock.calls.length;
+      return useCsvImportFlow();
+    },
+    { wrapper: makeWrapper(queryClient) },
+  );
+}
+
+/// 最後の render が登録した全ての blocker（importing と取消の止め）。どれかが true なら止まる
+/// （@tanstack/history は blockers を順に見て 1 つでも true なら止める）
+function lastRenderBlocks(): { route: boolean; beforeUnload: boolean } {
+  const options = mockUseBlocker.mock.calls
+    .slice(blockerMark.calls)
+    .map((call) => call[0] as BlockerOptions);
+  return {
+    route: options.some((o) => o.shouldBlockFn()),
+    beforeUnload: options.some((o) =>
+      typeof o.enableBeforeUnload === "function"
+        ? o.enableBeforeUnload()
+        : o.enableBeforeUnload === true,
+    ),
+  };
+}
+
 function makeWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -312,9 +346,7 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    const { result } = renderHook(() => useCsvImportFlow(), {
-      wrapper: makeWrapper(queryClient),
-    });
+    const { result } = renderFlow(queryClient);
 
     act(() => {
       result.current.selectFile({
@@ -333,23 +365,58 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
       expect(result.current.state.status).toBe("importing");
     });
 
-    const blockerOptions = mockUseBlocker.mock.calls[mockUseBlocker.mock.calls.length - 1]?.[0] as
-      | {
-          shouldBlockFn: () => boolean;
-          enableBeforeUnload: boolean | (() => boolean);
-        }
-      | undefined;
-    expect(blockerOptions?.shouldBlockFn()).toBe(true);
-    expect(
-      typeof blockerOptions?.enableBeforeUnload === "function"
-        ? blockerOptions.enableBeforeUnload()
-        : blockerOptions?.enableBeforeUnload,
-    ).toBe(true);
+    // Matrix T7: 最後の render の全ての blocker を読む（取消の止めが後に呼ばれても importing の止めを見る）
+    expect(lastRenderBlocks()).toEqual({ route: true, beforeUnload: true });
 
     resolveCommit({ status: "ok", data: makeResult() });
     await waitFor(() => {
       expect(result.current.state.status).toBe("result");
     });
+  });
+
+  it("REQ-401 / UI-07-D18: 取消の応答を待つ間は useBlocker と beforeunload で画面を離れず、失敗すれば離れられる", async () => {
+    // 55 §55.7・§55.11（Matrix U12）: 取消の止めは共有の hook（useRollbackCsvImport）の 1 か所
+    let resolveRollback!: (value: Awaited<ReturnType<typeof commands.rollbackCsvImport>>) => void;
+    mockRollback.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRollback = resolve;
+      }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { result } = renderFlow(queryClient);
+    await reachResult(result);
+    expect(lastRenderBlocks()).toEqual({ route: false, beforeUnload: false });
+
+    act(() => {
+      result.current.rollback(401);
+    });
+    await waitFor(() => {
+      expect(result.current.isRollingBack).toBe(true);
+    });
+    expect(lastRenderBlocks()).toEqual({ route: true, beforeUnload: true });
+
+    resolveRollback({
+      status: "error",
+      error: {
+        kind: "internal",
+        message: "合成の取消の失敗",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
+    });
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "取り消しに失敗しました。もう一度お試しください",
+      );
+    });
+    await waitFor(() => {
+      expect(result.current.isRollingBack).toBe(false);
+    });
+    expect(result.current.state.status).toBe("result");
+    expect(lastRenderBlocks()).toEqual({ route: false, beforeUnload: false });
   });
 
   it("test_import_rollback_req401_failure_retries_same_id_success_refetches_remaining_aggregate", async () => {

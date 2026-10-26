@@ -136,6 +136,52 @@ describe("CsvImportPage_req401", () => {
     expect(screen.getByText("daily report req401 content")).toBeInTheDocument();
   });
 
+  it("REQ-401: 取消の応答を待つ間はタブを切り替えられない", async () => {
+    // 55 §55.7（Matrix U14）: タブの切替えは router の遷移でなく blocker が効かない。
+    // Radix の TabsContent は選ばれていないタブを unmount し、Z004 の flow ごと消えるので disabled で止める
+    const user = userEvent.setup();
+    const resultState = {
+      status: "result" as const,
+      result: {
+        csv_import_id: 401,
+        status: "completed" as const,
+        total_items: 1,
+        total_amount: 500,
+        skipped_count: 0,
+        settlement_gaps: [],
+        settlement_date_after_today: false,
+        recheck_targets: [],
+      },
+      settlementDate: "2026-03-21",
+      filename: "Z004_0001.CSV",
+    };
+    const z004Tab = () => screen.getByRole("tab", { name: "商品別CSV取込み（Z004）" });
+    const dailyTab = () => screen.getByRole("tab", { name: "日報取込み" });
+
+    vi.mocked(useCsvImportFlow).mockImplementation(() =>
+      flow({ state: resultState, isRollingBack: true }),
+    );
+    const { unmount } = renderRoute("/csv-import?tab=z004");
+    await waitFor(() => {
+      expect(dailyTab()).toBeDisabled();
+    });
+    expect(z004Tab()).toBeDisabled();
+    await user.click(dailyTab());
+    expect(z004Tab()).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("daily report req401 content")).toBeNull();
+    unmount();
+
+    vi.mocked(useCsvImportFlow).mockImplementation(() =>
+      flow({ state: resultState, isRollingBack: false }),
+    );
+    renderRoute("/csv-import?tab=z004");
+    expect(await screen.findByRole("tab", { name: "商品別CSV取込み（Z004）" })).toBeEnabled();
+    expect(dailyTab()).toBeEnabled();
+    await user.click(dailyTab());
+    expect(dailyTab()).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("daily report req401 content")).toBeInTheDocument();
+  });
+
   it("REQ-401: 同じ精算の別の版の拒否の Alert から、名指した取込みの詳細へ進める", async () => {
     // 55 UI-07-D18 の順 4 の拒否からの導線（Matrix U11）: link を出すかと ID は related_csv_import_id だけで決め、
     // 文から読まない。parseAndValidateCsv の拒否が実の flow を通って ErrorState に出る

@@ -457,6 +457,57 @@ describe("CsvImportRecordDetailPage の取消（65 §65.5a TRACE-D13）", () => 
     expect(screen.queryByRole("button", { name: "この取込みを取り消す" })).toBeNull();
   });
 
+  it("REQ-401: 取消の応答を待つ間は詳細の画面から移れず、失敗すれば移れる", async () => {
+    // 55 §55.7・§55.11、65 §65.5a（Matrix U13）: 止めは共有の hook にあり、詳細の入口にも効く。
+    // memory history の止めは push と replace だけに効くので、link の押下で試す
+    const user = userEvent.setup();
+    mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
+    let resolveRollback!: (value: Awaited<ReturnType<typeof commands.rollbackCsvImport>>) => void;
+    mockRollback.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRollback = resolve;
+      }),
+    );
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ["/csv-import/records/41?returnTo=%2Fcsv-import"],
+      }),
+    });
+    render(
+      <QueryClientProvider client={makeQueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    await confirmRollback(user);
+    expect(await screen.findByRole("button", { name: /取り消し中…/ })).toBeDisabled();
+    await user.click(screen.getByRole("link", { name: "前の画面へ戻る" }));
+    expect(router.state.location.pathname).toBe("/csv-import/records/41");
+    expect(screen.getByRole("heading", { name: "CSV取込み #41" })).toBeInTheDocument();
+
+    resolveRollback({
+      status: "error",
+      error: {
+        kind: "internal",
+        message: "合成の取消の失敗",
+        field: null,
+        error_id: null,
+        stocktake_recovery: null,
+      },
+    });
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "取り消しに失敗しました。もう一度お試しください",
+      );
+    });
+    expect(await screen.findByRole("button", { name: "この取込みを取り消す" })).toBeEnabled();
+    await user.click(screen.getByRole("link", { name: "前の画面へ戻る" }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/csv-import");
+    });
+  });
+
   it("REQ-401: 取消の失敗は Toast で、同じ ID のまま再試行できる", async () => {
     const user = userEvent.setup();
     mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
