@@ -6,7 +6,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 **規模と手法（1 lane・1 PR。実装は test を先に赤にしてから 1 段で直す）**: 2026-10-27 に本 worktree（HEAD `50f97a76`）で数えた。
 
-- 触る設計正本: plan-first（本 commit と round 1 の是正）で 7 file（30・60・master-tables・SCREEN_DESIGN・ui-task-specs・biz-task-specs・decision-log）。実装の PR では手順書 1（#196 の merge の後）と生成物 1（`docs/function-design/90-traceability.md`）。
+- 触る設計正本: plan-first（本 commit と round 1・round 2 の是正）で 7 file（30・60・master-tables・SCREEN_DESIGN・ui-task-specs・biz-task-specs・decision-log）。実装の PR では手順書 1（#196 の merge の後）と生成物 1（`docs/function-design/90-traceability.md`）。
 - code: 3 file（`src-tauri/src/biz/product_service.rs` の 1 関数の追加と preview・commit の呼出し・test、`src/features/products/import/ProductImportPreview.tsx` の表示の 2 か所、その test）。wire の型・command・bindings・DB・migration は変えない。
 - 手法: 判定は行の値だけの 1 関数で、preview と commit が同じ関数を呼ぶ。画面はエラー行の表示の制限を外して 1 文を足すだけ。BIZ と画面は 1 つの利用者の結果（その画面で名指して止める）なので分けない。Matrix の T1〜T6 と T9 を先に書いて red を確かめ、関数と表示を足して green にし、契約が置き換わった既存 test 3 本（T7・T8・T10）を同じ commit で直す。
 
@@ -34,7 +34,7 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 本 commit で変えた正本（plan-first）:
 
 - `docs/function-design/30-biz-product-service.md`: BIZ-01-D1 の適用の経路を「手入力の create と商品 CSV の取込み」に置き換え（「CSV/Z004 import 経路は対象外、preview_import / commit_import は検証を追加しない」の句を外した）、§4.8 の手順 4 に形の検査の行を足し、`PLU対象=1` の warning の対象を「13 桁でない JAN（空か 8 桁）」に直し、§4.9 の手順 0 とエラーハンドリングに形の再検証を足し、BIZ-01-D10（F1〜F4 の判定と文、順、通るもの、却下、範囲、Revisit）を BIZ-01-D5 の後に置いた。
-- `docs/function-design/60-ui-product-import.md`: UI-01c-D18（エラー行の全件表示と表の上の 1 文）、UI-01c-D16 の warning の対象の文、§60.5 のエラー行、§60.6 の行エラー、§60.9 の D16・D18、§60.10 の履歴。
+- `docs/function-design/60-ui-product-import.md`: UI-01c-D18（エラー行の全件表示と表の上の 1 文）、UI-01c-D5 の 50 行の制限の対象を新規登録可能行と重複行に（round 2 の是正、Review Response 参照）、UI-01c-D16 の warning の対象の文、§60.5 のエラー行、§60.6 の行エラー、§60.9 の D16・D18、§60.10 の履歴。
 - `docs/db-design/master-tables.md`: `jan_code` の列の説明と「jan_code の形式 validation を DB に置かない理由」の「import 経路は対象外」の句。
 - `docs/SCREEN_DESIGN.md`: 商品一括インポート画面のレイアウト判断に 1 行（黙って入る形の行の名指しとエラー行の全件）。
 - `docs/architecture/ui-task-specs.md`: UI-01c の利用者操作フローの手順 2 の「不正 JAN の warning」を「13 桁でない JAN（空か 8 桁）の warning」に。
@@ -138,7 +138,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|
 | 正本 7 file | 上の「本 commit で変えた正本」 | 本 commit（biz-task-specs は round 1 の是正の commit） |
 | `docs/function-design/90-traceability.md` | `cd src-tauri && cargo run --bin generate_traceability` で再生成（REQ-104・REQ-907 の test の名前と数が変わる。手で直さない） | 実装 |
-| `docs/initial-load-runbook.md`（#196 が足し、plan-gate の前の同期で base に入った） | #196 の merge の後の同期の版で、本 lane が入った後の形に合わせる: 「今の事実」の「黙って入る形」の行（「今のアプリには無い」「初回の導入の版では」の未来の書き方を今の版の事実に。止める 3 つの形と、止めない形〈8 桁の数字の商品コード、`00000` で始まる 13 桁、商品コードと JAN の不一致〉を分けて書く）、「入れる前に決めること」の J5 の「変わる所」、流れ 1 の「初回の導入の版のプレビューが…」の 3 か所（手順 2 の 1 か所と手順 4 の 2 か所。AC-12）、流れ 2 の手順 4 の J5 の注、「入れた後に誤りを見つけたら」の JAN の行（プレビューが止める行の文を今の版に）。下の「owner の判断事項」で owner が既定と違う答えを選んだら、その形の手作業の確かめ（流れ 1 の手順 4 の該当の確かめの列）を外す | 実装（#196 の merge の後） |
+| `docs/initial-load-runbook.md`（#196 が足し、plan-gate の前の同期で base に入った） | #196 の merge の後の同期の版で、本 lane が入った後の形に合わせる: 「今の事実」の「黙って入る形」の行（「今のアプリには無い」「初回の導入の版では」の未来の書き方を今の版の事実に。止める 3 つの形と、止めない形〈8 桁の数字の商品コード、12 桁の数字の商品コードで JAN が空、`00000` で始まる 13 桁、商品コードと JAN の不一致〉を分けて書く）、「入れる前に決めること」の J5 の「変わる所」、流れ 1 の「初回の導入の版のプレビューが…」の 3 か所（手順 2 の 1 か所と手順 4 の 2 か所。AC-12）、流れ 2 の手順 4 の J5 の注、「入れた後に誤りを見つけたら」の JAN の行（プレビューが止める行の文を今の版に）。下の「owner の判断事項」で owner が既定と違う答えを選んだら、その形の手作業の確かめ（流れ 1 の手順 4 の該当の確かめの列）を外す | 実装（#196 の merge の後） |
 
 `docs/backlog.md` と `docs/Plans.md` は本 lane で触らない（前文。closeout で項目と関門の 8 に完了を付ける）。
 
@@ -174,7 +174,7 @@ merge の順: #196 → （#202 は merge の直前で、本 lane より先の見
 ### この変更で不要になるもの（D-127）
 
 - 正本: BIZ-01-D1 の「CSV/Z004 import 経路と既存 DB 行は対象外（実店舗データ互換のため寛容性を意図的に維持し、preview_import / commit_import は検証を追加しない）」、master-tables の `jan_code` の列の「import 経路・既存行は対象外」と「CSV/Z004 import 経路には非 JAN 値・非 13 桁値が実在し得る」、§4.8 の手順 4 の PLU の warning の「または check digit 不正」、UI-01c-D16 と ui-task-specs の「不正 JAN の warning」、biz-task-specs の BIZ-01 の「不正 JAN の `1` は warning + `0`」。どれも本 commit と round 1 の是正で置き換えた（足すのでなく置き換え。AC-7 の削除の検査）。
-- 手順書の手作業: 流れ 1 の手順 4 が「プレビューが止める」としている 3 つの形の注は、本 lane で今の版の事実になる（S3）。本 lane が止めない形の手作業の確かめ（8 桁の数字の商品コード〈J4 の a のとき〉、数字だけの商品コードと JAN の不一致、`00000` で始まる 13 桁）は残る（owner の判断事項の既定）。
+- 手順書の手作業: 流れ 1 の手順 4 が「プレビューが止める」としている 3 つの形の注は、本 lane で今の版の事実になる（S3）。本 lane が止めない形の手作業の確かめ（8 桁の数字の商品コード〈J4 の a のとき〉、数字だけの商品コードと JAN の不一致〈12 桁の数字の商品コードで JAN が空の行を含む。BIZ-01-D10 の「通るもの」と Revisit〉、`00000` で始まる 13 桁）は残る（owner の判断事項の既定）。
 - code: `is_plu_target_eligible_jan` のチェックディジットの判定は、preview では形の誤った JAN の行が先にエラー行になるので結果を変えなくなる。外さない: 外しても観測できる振舞いは変わらず、`should_default_plu_target`（BIZ-01-D2、チェックディジットを見ない互換）と 1 つにすると、DB の行に使う導出と CSV の `PLU対象=1` の判定の意味の違いが code から消えるため。`PLU対象=1` の warning の文（`JAN が13桁でないため対象外として取り込みます`）は空と 8 桁の JAN にそのまま当たるので変えない。
 - test: T7・T8・T10 の、置き換わった契約（CSV が形の誤った JAN〈チェックディジット・長さ・文字〉を受け入れる）を期待する部分（上の S1）。
 - 画面: エラー行の表の「他 N 件」の段落（UI-01c-D18 で全件にするので不要）。
@@ -183,7 +183,7 @@ merge の順: #196 → （#202 は merge の直前で、本 lane より先の見
 
 5 件。どれも出所は初期投入の手順の lane（PR #196）の Plan Review の AI の調べで、owner の確認の前に必須にしない（AGENTS.md の「owner の所感は原文で扱う」）。owner の方針（repo 外の回答台帳 TD-401）で推奨を既定にして書き進めた。答えで変わる所はどれも、BIZ-01-D10 の表の 1 行・Matrix の 1〜2 行・手順書の手作業の確かめの 1 列で、wire・画面の形は変わらない（(3) の a を除く）。
 
-1. **8 桁の数字の `商品コード` で `JANコード` が空の行を止めるか**（候補 (1)）: (a) F2 に足して止める。(b) 止めない（推奨・既定、precondition-dependent）。推奨の理由: 手順書の J4 の既定 b（8 桁の JAN の商品は独自コードにし、8 桁は `JANコード` に入れる）ではこの形の行が出ない。店の今の独自コードに 8 桁の数字のものがあるかは確かめていない（あれば (a) は正しい行を止める）。J4 で a を選ぶなら (a) に替える。答えで変わる所: BIZ-01-D10 の F2 の条件（「13 桁」→「8 桁か 13 桁」）、Matrix の T2 の 8 桁の行の期待、手順書の流れ 1 の手順 4 の確かめ。
+1. **8 桁の数字の `商品コード` で `JANコード` が空の行を止めるか**（候補 (1)）: (a) F2 に足して止める。(b) 止めない（推奨・既定、precondition-dependent）。推奨の理由: 手順書の J4 の既定 b（8 桁の JAN の商品は独自コードにし、8 桁は `JANコード` に入れる）では初期投入の CSV にこの形の行が出ない。ただし手入力の create は 8 桁の JAN もそのまま商品コードにする（`src-tauri/src/biz/product_service.rs` の `test_create_product_req101_accepts_valid_jan_8_and_jan_13` が `96385074`・`49123456` で `product_code` が JAN と同じことを assert する）ので、J4 の答えと関係なく導入の後に 8 桁の JAN の商品コードの商品ができ、その商品を CSV で上書きして `JANコード` を空にすると JAN が黙って消える（30 BIZ-01-D10 の Revisit。既定は変えない）。店の今の独自コードに 8 桁の数字のものがあるかは確かめていない（あれば (a) は正しい行を止める）。J4 で a を選ぶなら (a) に替える。答えで変わる所: BIZ-01-D10 の F2 の条件（「13 桁」→「8 桁か 13 桁」）、Matrix の T2 の 8 桁の行の期待、手順書の流れ 1 の手順 4 の確かめ。
 2. **数字だけの `商品コード` が `JANコード` と同じでない行を止めるか・知らせるか**（候補 (2)。(1) を含む）: (a) 行の error、(b) warning、(c) どちらもしない（推奨・既定）。推奨の理由: 売上の引き当ては `jan_code` で行うので、`JANコード` が正しい形なら商品コードと違っても Z004 は引き当たる（害は名前の整い方だけ）。害のある部分集合（13 桁の数字の商品コードで JAN が空）は F2 が止める。(b) の warning は新規登録候補の表の 50 行の外に隠れるので、UI-01c-D17 の warning のまとめ（JAN の別名の runtime の lane、proposed・未実装）が無いと全件を名指せない。答えで変わる所: BIZ-01-D10 の表に 1 行、Matrix に 1 行、手順書の流れ 1 の手順 4 の不一致の確かめの列（(a) なら外す）。
 3. **上書きで JAN を消す行（`JANコード` が空か列が無く、今の JAN を消す。13 桁の数字の商品コードの商品は F2 で既に止まる）を warning で知らせるか**（候補 (3)）: (a) 本 lane で warning を足す、(b) JAN の別名の runtime の lane で足す（推奨・既定）、(c) 足さない。推奨の理由: 初期投入は空の DB への新規の行だけで、上書きは導入の後の操作なので関門の 8 の条件に要らない。重複行の warning の表示と、50 行の外の warning の全件のまとめは UI-01c-D17（同じ lane）が作るので、同じ lane に置くと表示を 2 度作らずに済む。JAN を消すのは意図した契約（30 BIZ-01-D8 の上書きの段、§4.9.2 の「JAN を空にする変更」）なので止めずに知らせる形になる。(a) にすると本 lane に重複行の warning の表示（`ImportDuplicateRow.import_row.warnings` を画面に出す）と画面の test が増え、UI-01c-D17 の一部を先に作ることになる。答えで変わる所: (a) なら Scope の S1 に warning の文と判定、S2 に重複行の warning の表示、Matrix に 2 行、L3 に 1 項目、介入の見込みは変わらない。(b) なら JAN の別名の runtime の lane の backlog の項目に申し送る（closeout で Coordinator が足す）。
 4. **13 桁で `00000` から始まる `JANコード` を止めるか**（候補 (4)。8 桁の JAN に 13 桁の Excel の形式を当てた値。EAN-8 と EAN-13 の重みが揃うのでチェックディジットが合い、F4 を通る。全部 0 の 13 桁〈`0000000000000`〉も合う）: (a) 行の error にする、(b) 止めない（推奨・既定、precondition-dependent）。推奨の理由: 8 桁の JAN の商品をレジが Z004 にどう書くかを確かめていない（[pos-tables](../db-design/pos-tables.md) の Z004 の JAN 正規化は「13 桁 JAN にならないコード〈8 桁独自コード + `EEEEEE` 等〉」を `invalid_jan` にする）。それが分かるまで、`00000` の 13 桁が誤りと言い切れない。手順書の流れ 1 の手順 4 の手作業の確かめは残る。8 桁の JAN をレジに載せるかを決める backlog の lane（「JAN の無い商品の店内コードと色ごとのバーコードの表」）で Z004 の形が分かったら見直す（BIZ-01-D10 の Revisit）。答えで変わる所: BIZ-01-D10 の表に 1 行、Matrix の T3 に 2 行、手順書の確かめの列（(a) なら外す）。
@@ -203,13 +203,13 @@ L3 を置くかは owner に問わない（発注の「L3 を省かず」と、`
 ## Acceptance Criteria
 
 - AC-1（preview の 3 つの形）: `cd src-tauri && cargo test --lib -- test_preview_import_req104_rejects_exponent_form_codes test_preview_import_req104_rejects_13_digit_code_without_jan test_preview_import_req104_validates_jan_shape_and_check_digit` の 3 本（Matrix の T1〜T3）が PASS。各 test はエラー行の `errors` を BIZ-01-D10 の文と完全一致で比べ、同じ CSV の正しい行が valid_rows に残ることを見る。
-- AC-2（上書きの候補にも当たる）: `cd src-tauri && cargo test --lib test_preview_import_req104_shape_check_applies_to_overwrite_candidates`（T4）が PASS: 既存の 13 桁の数字の商品コードの商品に対し、`JANコード` が空の行とチェックディジットの合わない行はエラー行で `duplicate_rows` に無く、同じ JAN の行は `duplicate_rows` にある。
+- AC-2（上書きの候補にも当たる）: `cd src-tauri && cargo test --lib test_preview_import_req104_shape_check_applies_to_overwrite_candidates`（T4）が PASS: 既存の 13 桁の数字の商品コードの商品に対し、`JANコード` が空の行とチェックディジットの合わない行はエラー行で `duplicate_rows` に無く、同じ JAN の行は `duplicate_rows` にある。JAN を持つ既存の独自コードの商品に対し `JANコード` が空の行は `duplicate_rows` にあり、上書きの後に JAN が空になる（T4 (d)）。
 - AC-3（commit の再検証）: `cd src-tauri && cargo test --lib test_commit_import_req104_revalidates_code_shape_before_tx`（T5）が PASS: preview を通らない wire の行（F1〜F4 の各 1 行を、正しい新規の行の後に置く）で `ValidationFailed` の文が BIZ-01-D10 の文と一致し、`products` の行の数と `inventory_movements` の行の数が呼ぶ前と同じ。
 - AC-4（通るもの）: `cd src-tauri && cargo test --lib test_preview_import_req104_keeps_accepted_code_forms`（T6）が PASS: BIZ-01-D10 の「通るもの」の各形（JAN が空の独自コード、13 桁の数字の商品コードと同じ JAN、13 桁の数字の商品コードと違う正しい JAN、`49123456`・`96385074`、先頭 2 の店内コード、同じ JAN の 2 行〈在庫連動 0〉、12 桁・14 桁の数字の商品コードで JAN が空）が valid_rows に入る。
 - AC-5（置き換わった既存 test）: `cd src-tauri && cargo test --lib -- test_preview_import_req907_warns_and_disables_plu_target_without_13_digit_jan test_commit_import_req907_blank_plu_target_derives_for_new_and_preserves_overwrite test_commit_import_req104_derives_plu_target_like_backfill_and_keeps_on_overwrite test_should_default_plu_target_req907_preserves_invalid_check_digit_compatibility test_create_product_req101_rejects_invalid_jan_wire_with_exact_message test_create_product_req101_accepts_valid_jan_8_and_jan_13` が PASS（T7・T8・T10 は S1 のとおり直し、ほかの 3 本は変えない）。`rg -n 'fn test_preview_import_req907_warns_and_disables_invalid_jan_plu_target' src-tauri/src` が出力なし（exit 1。baseline 2026-10-27 `50f97a76` は 1 行 `src-tauri/src/biz/product_service.rs:3978`）。T10 は名前を変えないので `rg -n 'fn test_commit_import_req104_derives_plu_target_like_backfill_and_keeps_on_overwrite' src-tauri/src` は 1 行のまま（baseline `048dfcbb`: `src-tauri/src/biz/product_service.rs:5145`）。
 - AC-6（画面）: `npm test -- src/features/products/import/ProductImportPreview.test.tsx` が PASS し、T9（`UI-01c-D18`: エラー行 60 件の preview で、行の番号 61 の行と最後の行の文が表に出てエラー行の card の中に「他 」で始まる段落が無く、表の上の 1 文が出る。新規登録候補の表は 50 行のまま）を含む。`rg -c 'error_rows.slice\(0, MAX_VISIBLE_ROWS\)' src/features/products/import/ProductImportPreview.tsx` が出力なし（exit 1）。baseline（2026-10-27、`50f97a76`）: `rg -n 'error_rows.slice\(0, MAX_VISIBLE_ROWS\)' …` は 1 行（174 行）、`rg -c 'slice\(0, MAX_VISIBLE_ROWS\)' …` は `3`（完了時は `2`）。
-- AC-7（正本の置き換え）: `rg -n 'preview_import / commit_import は検証を追加しない|import 経路・既存行は対象外|CSV/Z004 import 経路には|不正 JAN の `1` は warning' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md'` が出力なし（exit 1）。baseline（`50f97a76`）: 30 に 1 件、master-tables に 2 件、biz-task-specs に 1 件（`git show 50f97a76:<path> | rg -c …` の出力 `1`・`2`・`1`。biz-task-specs は round 1 の監査の `048dfcbb` でも `1`）。decision-log は D-140 の Compatibility が旧い句を引くので除く。`rg -c 'BIZ-01-D10' docs/function-design/30-biz-product-service.md` が `7`、`rg -c 'UI-01c-D18' docs/function-design/60-ui-product-import.md` が `5`（本 commit の時点の値。実装の run で正本を直したら数え直して PR に書く）。
-- AC-8（感度）: Matrix の Mutation の M1〜M8 を production 側にだけ注入すると、それぞれの「red になる test」が red（`cd src-tauri && cargo test --lib -- <test 名>` が exit 101、T9 は `npm test -- src/features/products/import/ProductImportPreview.test.tsx` が exit 1）、戻すと green で `git diff --exit-code` が exit 0。結果は PR の Validation に書く（tracked に test の数を書かない）。
+- AC-7（正本の置き換え）: `rg -n 'preview_import / commit_import は検証を追加しない|import 経路・既存行は対象外|CSV/Z004 import 経路には|不正 JAN の `1` は warning' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md'` が出力なし（exit 1）。baseline（`50f97a76`）: 30 に 1 件、master-tables に 2 件、biz-task-specs に 1 件（`git show 50f97a76:<path> | rg -c …` の出力 `1`・`2`・`1`。biz-task-specs は round 1 の監査の `048dfcbb` でも `1`）。decision-log は D-140 の Compatibility が旧い句を引くので除く。`rg -c 'BIZ-01-D10' docs/function-design/30-biz-product-service.md` が `7`、`rg -c 'UI-01c-D18' docs/function-design/60-ui-product-import.md` が `6`（round 2 の是正の commit の時点の値。UI-01c-D5 の行が D18 を引くので round 1 の `5` から 1 増えた。実装の run で正本を直したら数え直して PR に書く）。
+- AC-8（感度）: Matrix の Mutation の M1〜M9 を production 側にだけ注入すると、それぞれの「red になる test」が red（`cd src-tauri && cargo test --lib -- <test 名>` が exit 101、T9 は `npm test -- src/features/products/import/ProductImportPreview.test.tsx` が exit 1）、戻すと green で `git diff --exit-code` が exit 0。結果は PR の Validation に書く（tracked に test の数を書かない）。
 - AC-9（gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が exit 0、`cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（再生成の後）、`npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` が exit 0。bindings は変わらない（`cd src-tauri && cargo run --bin generate_bindings` の後 `git diff --exit-code src/lib/bindings.ts` が exit 0）。L3 があるので `cd src-tauri && cargo check --release` が exit 0（Writer の完了条件）。
 - AC-10（docs）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-27-product-csv-preview-check.md` が ERROR 0。
 - AC-11（範囲）: `git diff --name-only origin/main...HEAD` が本 packet の Scope の予定 path 14 の内に収まる。
@@ -309,7 +309,7 @@ Writer の完了条件に `cd src-tauri && cargo check --release`（L3 の build
 | BIZ-01-D2（`should_default_plu_target` のチェックディジットを見ない互換） | 30 BIZ-01-D2 | 変えない | `test_should_default_plu_target_req907_preserves_invalid_check_digit_compatibility`、T8、T10 | — |
 | §4.8 手順 4 の `PLU対象=1` の warning（13 桁でない JAN = 空か 8 桁） | 30 §4.8、60 UI-01c-D16 | 変えない（文・判定） | T7 | — |
 | 共有 JAN の検査（SPEC-STK-CNT-D4。形の検査の後に当たる。adjacent-contract sweep で足した） | 30 の「計数の置き場と在庫の求め直しの契約」、ADR SPEC-STK-CNT-D4 | 変えない | 既存 `test_import_req104_shared_jan_row_error_both_directions_and_commit_recheck`（`rg -n 'fn test_.*shared_jan'` で在ることを確かめた、2026-10-27）、T6 の同じ JAN の 2 行 | — |
-| BIZ-01-D8 の上書きの段（JAN を消す上書きは意図した契約。13 桁の数字の商品コードの商品だけ F2 で止まる） | 30 BIZ-01-D8、§4.9.2 | 変えない | T4（13 桁は止まる）、T6（独自コードの上書きで JAN が空の行は通る） | — |
+| BIZ-01-D8 の上書きの段（JAN を消す上書きは意図した契約。13 桁の数字の商品コードの商品だけ F2 で止まる） | 30 BIZ-01-D8、§4.9.2 | 変えない | T4（(a) 13 桁は止まる、(d) 独自コードの上書きで JAN が空の行は `duplicate_rows` に入り、上書きの後に JAN が空になる） | — |
 | UI-01c-D18（エラー行の全件と 1 文） | 60 UI-01c-D18、§60.5、§60.6 | S2 | T9 | L3-1・L3-3 |
 | UI-01c-D5（新規登録候補・重複行の 50 行の制限は残す） | 60 UI-01c-D5 | 変えない | 既存の `ProductImportPreview` の test（制限の test は無い。T9 が重複行の表の制限を変えないことは見ない。Review Focus で見る） | — |
 | UI-01c-D8（エラー行があっても正しい行は取り込める） | 60 UI-01c-D8 | 変えない | `ProductImportPage.test.tsx` の「UI-01c-D8: エラー行だけの preview では commit を実行しない」ほか | L3-2 |
@@ -365,3 +365,14 @@ Coordinator の裁定は全件受理。是正は packet・Matrix・正本 2 file
 - Opus #8（P3、受理）: 12 桁の数字の `商品コード` で `JANコード` が空の行を通す理由と、手作業に任せたままにしない趣旨（D-127）を 30 BIZ-01-D10 の「通るもの」に書き、Revisit に挙げた（Design Readiness も合わせた）。
 - Opus #9（P3、受理）: L3 の fixture の JAN も既存の商品と重ならない合成の値（golden を使わず、先頭 2 の店内の範囲）にすると書き、L3-1 の `49123456` を外した。
 - Codex #5（P3、受理）: L3-3 の到達手順を今の HEAD のボタン名「続けてインポート」にした（D-138 の表示名が先に入れば「別のCSVを取り込む」）。
+
+### Plan Review round 2（監査の SHA `4c13b572`、fresh Opus 5.5 と Codex。どちらも approve、P3 だけ）
+
+Coordinator の裁定は全件受理。是正は packet・Matrix・正本 2 file（30・60）の文だけで、code・test は変えない。
+
+- 独立性: Codex 616 は報告の中で `## Review Response` の冒頭と前 round の見出しを 1 行読んだと申告した。判定の根拠に使っていないとするが独立性を満たさないので、plan-gate の判定は独立に approve した fresh Opus の round 2 で行い、616 は参考とする（MANUAL §3.3、Codex の使用量の枠が尽きかけ。repo 外の回答台帳 TD-465）。
+- Opus #1（P3、受理）: 60 UI-01c-D5 の文を「新規登録可能行と重複行の詳細テーブルは先頭 50 行（エラー行は UI-01c-D18 で全件）」に置き換えた（継ぎ足さない）。AC-7 の `UI-01c-D18` の数を `6` に直した。
+- Opus #2・Codex #1（P3、受理、同じ指摘）: Matrix の T4 に (d)「JAN を持つ既存の独自コードの商品、CSV の `JANコード` が空 → `duplicate_rows` に入り、上書きの後に JAN が空」を足し（既存の商品は `create_product` で作れないので作り方も書いた）、Contract Ledger の BIZ-01-D8 の行が引く test を T6 から T4 (d) に直し、AC-2 に (d) を足した。(d) を壊す mutant M9 を足し、AC-8 を M1〜M9 にした。
+- Opus #3（P3、受理）: 30 BIZ-01-D10 の「通るもの」の 12 桁の文を「当面は手順書の流れ 1 の手順 4 の不一致の確かめが拾う（Revisit で決める）」に置き換え、S3 の「止めない形」と「この変更で不要になるもの」の手作業の残りに 12 桁の数字の商品コードで JAN が空の行を足した。
+- Opus #4（P3、受理）: owner の判断事項 (1) の推奨の理由と 30 BIZ-01-D10 の Revisit に、手入力の create が 8 桁の JAN を商品コードにする事実（`test_create_product_req101_accepts_valid_jan_8_and_jan_13`）と、導入の後の上書きで JAN が黙って消える筋を足した（既定は変えない）。
+- Opus #5（P3、受理）: 30 BIZ-01-D10 の F1 の文の直し方を「元の Excel でその列を文字列の値にして（TEXT の列）保存し直す。セルが既に E+ の文字なら元の資料から入れ直す」にし（手順書の流れ 1 の手順 4 と同じ。D-127）、Matrix の T1 の oracle の literal を同じ文に直した。

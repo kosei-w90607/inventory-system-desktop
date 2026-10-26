@@ -24,7 +24,7 @@ oracle は設計正本の文（BIZ-01-D10 の表の文、UI-01c-D18 の 1 文）
 - FM3: 7 桁（先頭の 0 の落ち）・12 桁・全角・チェックディジットの誤りの `JANコード` が入る。
 - FM4: 検査が新規の行だけに当たり、上書きの候補の行（13 桁の数字の商品コードの JAN を消す行を含む）を通す。
 - FM5: preview を通らない wire の行を commit が書く。または commit が途中の行まで書いてから止まる。
-- FM6: 今通る形（共有 JAN、先頭 2 の店内コード、8 桁の正しい JAN、JAN の無い独自コード、12・14 桁の数字の商品コード）を止める。
+- FM6: 今通る形（共有 JAN、先頭 2 の店内コード、8 桁の正しい JAN、JAN の無い独自コード、12・14 桁の数字の商品コード、13 桁の数字でない商品の JAN を消す上書き）を止める。
 - FM7: 手入力の create の JAN の文・判定が CSV の文に変わる。
 - FM8: 51 件目以降のエラー行が画面に出ない。
 - FM9: 文が BIZ-01-D10 と違う（直し方の欠け、列の名の取り違え、値の写し漏れ）。
@@ -37,10 +37,10 @@ oracle は設計正本の文（BIZ-01-D10 の表の文、UI-01c-D18 の 1 文）
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| F1（2 列、`E`/`e`、小数点の有無） | FM1・FM9 | integration | T1 `test_preview_import_req104_rejects_exponent_form_codes` | 行 `4.90123E+12`（商品コード、JAN は正しい 13 桁）・`5E+12`（同じ）・JAN `4.90123e+12`（商品コードは独自）・両方 `4.9E+12` の行が error_rows に無いか、errors が `商品コードが指数の形です: '4.90123E+12'。Excel で桁が失われた値なので、元の資料から全部の桁を文字列で入れ直してください` 等の文と違うか、両方の行で 2 つ（商品コード → JANコード の順）でないとき。同じ CSV の正しい行 1 つが valid_rows に無いとき |
+| F1（2 列、`E`/`e`、小数点の有無） | FM1・FM9 | integration | T1 `test_preview_import_req104_rejects_exponent_form_codes` | 行 `4.90123E+12`（商品コード、JAN は正しい 13 桁）・`5E+12`（同じ）・JAN `4.90123e+12`（商品コードは独自）・両方 `4.9E+12` の行が error_rows に無いか、errors が `商品コードが指数の形です: '4.90123E+12'。Excel が桁を落として書いた値です。元の Excel でその列を文字列の値にして（TEXT の列）保存し直してください。セルが既に E+ の文字なら、元の資料から全部の桁を入れ直してください` 等の文と違うか、両方の行で 2 つ（商品コード → JANコード の順）でないとき。同じ CSV の正しい行 1 つが valid_rows に無いとき |
 | F2（13 桁ちょうど、列が無いときも） | FM2・FM9 | integration | T2 `test_preview_import_req104_rejects_13_digit_code_without_jan` | `JANコード` の列がある CSV で商品コード `4901234567887`・JAN 空の行と、`JANコード` の列が無い CSV の同じ行が、errors `商品コードが13桁の数字でJANコードが空です: '4901234567887'。JANを商品コードにした商品は、JANコードにも同じ値を入れてください` の 1 つの error 行にならないとき |
 | F3・F4（JAN の判定の共有と CSV の文） | FM3・FM7・FM9 | integration | T3 `test_preview_import_req104_validates_jan_shape_and_check_digit` | 独自コードの行で JAN `4912345`（7 桁）・`490123456788`（12 桁）・`４９０１２３４５６７８８７`（全角）が F3 の文、`4901234567890`・`49123457` が F4 の文の 1 つの error 行にならないとき。同じ CSV の `4901234567887`・`49123456` の行が valid_rows に無いとき |
-| §4.8 手順 4（上書きの候補） | FM4 | integration | T4 `test_preview_import_req104_shape_check_applies_to_overwrite_candidates` | 既存の商品（商品コード `4901234567887`・JAN 同じ、`create_product` で作る）と既存の独自コードの商品に対し、CSV の上書きの候補の行 (a) `4901234567887`・JAN 空、(b) 独自コード・JAN `4901234567890`、(c) `4901234567887`・JAN 同じ を確かめる。(a) と (c) は同じ商品コードなので別の CSV（別の `preview_import` の呼出し）にする（同じ CSV だと後の行に CSV の中の商品コードの重複の error が付く）。(a)・(b) が error_rows でなく duplicate_rows に出るか、errors が F2・F4 の文の 1 つでないとき。(c) が duplicate_rows に無いとき |
+| §4.8 手順 4（上書きの候補）、BIZ-01-D8 の上書きの段（13 桁の数字でない商品の JAN を消す上書き） | FM4・FM6 | integration | T4 `test_preview_import_req104_shape_check_applies_to_overwrite_candidates` | 既存の商品（商品コード `4901234567887`・JAN 同じ、`create_product` で作る）と既存の独自コードの商品、JAN を持つ既存の独自コードの商品（JAN `49123456`。`create_product` は JAN を商品コードにするので、`commit_import` の新規の行か test の DB への直の挿入で作る）に対し、CSV の上書きの候補の行 (a) `4901234567887`・JAN 空、(b) 独自コード・JAN `4901234567890`、(c) `4901234567887`・JAN 同じ、(d) JAN を持つ独自コードの商品の商品コード・JAN 空 を確かめる。(a) と (c) は同じ商品コードなので別の CSV（別の `preview_import` の呼出し）にする（同じ CSV だと後の行に CSV の中の商品コードの重複の error が付く）。(a)・(b) が error_rows でなく duplicate_rows に出るか、errors が F2・F4 の文の 1 つでないとき。(c) が duplicate_rows に無いとき。(d) が errors の無い行として duplicate_rows に無いか、その行を `overwrite_codes` に入れた `commit_import` の後に商品の `jan_code` が空（`None`）でないとき（13 桁の数字でない商品の JAN を消す上書きは意図した契約。BIZ-01-D8 の上書きの段） |
 | §4.9 手順 0 | FM5・FM9 | integration | T5 `test_commit_import_req104_revalidates_code_shape_before_tx` | 正しい新規の行 1 つの後に F1〜F4 の行を 1 つずつ置いた 4 回の `commit_import`（`overwrite_codes` 空）が、`ValidationFailed` で F1〜F4 の文（その行の最初の文）を返さないか、`products` と `inventory_movements` の行の数が呼ぶ前と違うとき（正しい行も入っていない）。上書きの行（既存の独自コードの商品、JAN `4901234567890`、`overwrite_codes` にその商品）でも同じ |
 | BIZ-01-D10 の「通るもの」 | FM6 | integration | T6 `test_preview_import_req104_keeps_accepted_code_forms` | 独自コードで JAN 空、`4901234567887` に同じ JAN、`4901234567887` に違う正しい JAN `4901234567894`（合成。チェックディジットが合うことを起票の時点に計算で確かめた）、独自コードに `49123456`・`96385074`、先頭 2 の店内コード `2000000000039`、同じ JAN を持つ独自コードの 2 行（`POS在庫連動` 0）、`490123456788`（12 桁）と `49012345678870`（14 桁）の商品コードで JAN 空の各行のどれかが valid_rows に無いとき。`4901234567887` に同じ JAN の行と違う正しい JAN の行は同じ商品コードなので、別の CSV（別の `preview_import` の呼出し）で確かめる（同じ CSV だと後の行に CSV の中の商品コードの重複の error が付く） |
 | §4.8 手順 4 の PLU の warning（置き換わった部分の直し） | FM6・FM9 | integration | T7 `test_preview_import_req907_warns_and_disables_plu_target_without_13_digit_jan`（今の `test_preview_import_req907_warns_and_disables_invalid_jan_plu_target` を改名して直す） | `PLU-C2-NONE`（JAN 空）と `PLU-C2-SHORT`（JAN `49123456`）が valid_rows で warning `JAN が13桁でないため対象外として取り込みます` と `plu_target = Some(false)` でないとき。`PLU-C2-CHECK`（`2000000000038`）が error_rows で F4 の文でないとき |
@@ -129,6 +129,7 @@ production 側だけに注入し、戻して green を確かめる。結果は P
 | M6 | F3・F4 の判定を長さと文字だけにする（チェックディジットを見ない） | T3（`4901234567890`・`49123457`）・T4 (b)・T7 |
 | M7 | F4 の文を F3 の文に取り違える（variant の写しを入れ替える） | T3・T7・T10 |
 | M8 | エラー行の表を `slice(0, MAX_VISIBLE_ROWS)` に戻す | T9 |
+| M9 | 上書きの候補の行（同じ商品コードの商品が DB にある行）にだけ、F2 を「13 桁の数字の `商品コード`」の条件なしで当てる（`JANコード` が空の上書きの行を全部 error にする。新規の行は今のまま） | T4 (d) |
 
 - If a key branch is inverted, which test fails? M1・M6（T3 の valid の行が error になる側も T6 が見る）。
 - If a threshold comparison changes, which test fails? M4。
