@@ -344,6 +344,7 @@
   - route は `/products/new`（新規）と `/products/$code/edit`（修正）を分ける。新規 / 修正を query param だけで切り替えない
   - UI は tauri-specta で生成済みの `commands.createProduct` / `commands.updateProduct` / `commands.toggleDiscontinue` / `commands.listSuppliers` を使う
   - create mode の商品コードは「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がない場合は保存前に止める
+  - （proposed・未実装、D-141）入れた JAN をほかの商品が使っているときは、保存で確認のダイアログを開き、使っている商品を名指して「独自コードで登録する」（JAN を持ったまま独自コードで登録し、同じ JAN の商品は全て在庫連動なし）と「戻る」を出す（UI-01b-D26）。JAN がほかの商品に無いときは今どおり JAN を商品コードにする
   - edit mode では `product_code` / `jan_code` / `stock_quantity` を読取専用にする。`stock_unit` は個数の単位の商品だけ個数の単位どうしで変えられ、長さの単位の商品は読取専用（D-119、UI-01b-D23）
   - 取引先候補は取引先マスタ全件を取得し、「新しい取引先を追加」からメーカー/ブランドを漸進追加できる（UI-01b-D7 / D21）。改名・統合は UI-15 取引先管理（[function-design/78-ui-supplier-management.md](function-design/78-ui-supplier-management.md)）で扱う
   - 保存成功後は商品一覧へ戻る。`returnTo` は `/products` 一覧 route とその search params だけを許可し、`/products/new`、`/products/$code/edit`、`/products/import`、外部 URL、他画面 route は `/products` に戻す
