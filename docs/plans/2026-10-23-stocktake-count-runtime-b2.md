@@ -24,7 +24,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 | migration・DB の列 | 0（写しの 3 列と `stock_counts` は v9 にある。ADR D12） | — |
 | 予定 path | 64（Rust 9・TS 32・docs 23。下の「予定 path の一覧」。Gated Amendment 1 で `docs/architecture/io-task-specs.md` と `docs/architecture/ui-task-specs.md` を足した） | 下の一覧の行数 |
 
-手法: **1 lane・1 PR のまま S1〜S5 の段に積む。** 理由: 読取りと表示だけで migration も書く経路も無く、b1 と同じ大きさの分割（配布の単位としての安全の検討）が要らない。62 path は b1 の 148 の 4 割で、1 回の L3（4 画面の見た目）で確かめられる。段は compile の単位で切る（S1 IO → S2 BIZ → S3 CMD と wire は 1 つの Rust の検証の単位、S4 画面は frontend の検証の単位、S5 は docs と生成物）。b1 の後に merge するので、b1 の merge の前に実装しない（b1 の merge と同期が実装の開始の前の条件）。
+手法: **1 lane・1 PR のまま S1〜S5 の段に積む。** 理由: 読取りと表示だけで migration も書く経路も無く、b1 と同じ大きさの分割（配布の単位としての安全の検討）が要らない。64 path は b1 の 148 の 4 割で、1 回の L3（4 画面の見た目）で確かめられる。段は compile の単位で切る（S1 IO → S2 BIZ → S3 CMD と wire は 1 つの Rust の検証の単位、S4 画面は frontend の検証の単位、S5 は docs と生成物）。b1 の後に merge するので、b1 の merge の前に実装しない（b1 の merge と同期が実装の開始の前の条件）。
 
 ## Workflow State
 
@@ -276,7 +276,7 @@ b1 とは stacked で、b2 は b1 の merge の後に `origin/main` を単段で
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-62 path（Rust 9・TS 32・docs 21）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+64 path（Rust 9・TS 32・docs 23）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
 docs/ARCHITECTURE.md

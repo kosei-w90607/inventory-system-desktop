@@ -882,24 +882,6 @@ struct MovementSourceLink {
 {
   "items": [
     {
-      "kind": "count",
-      "business_date": "2026-03-23",
-      "settlement_no": null,
-      "saved_at": "2026-03-23T20:10:00",
-      "movement": null,
-      "count": {
-        "id": 4,
-        "count_value": 14,
-        "stock_unit": "pcs",
-        "count_kind": "default",
-        "stocktake_id": 2,
-        "source": {
-          "label": "棚卸し #2",
-          "route": "/stocktake/records/2"
-        }
-      }
-    },
-    {
       "kind": "movement",
       "business_date": "2026-03-23",
       "settlement_no": 102,
@@ -920,6 +902,24 @@ struct MovementSourceLink {
         "created_at": "2026-03-23T19:45:00"
       },
       "count": null
+    },
+    {
+      "kind": "count",
+      "business_date": "2026-03-23",
+      "settlement_no": null,
+      "saved_at": "2026-03-23T20:10:00",
+      "movement": null,
+      "count": {
+        "id": 4,
+        "count_value": 14,
+        "stock_unit": "pcs",
+        "count_kind": "default",
+        "stocktake_id": 2,
+        "source": {
+          "label": "棚卸し #2",
+          "route": "/stocktake/records/2"
+        }
+      }
     }
   ],
   "total_count": 8,
