@@ -46,8 +46,9 @@ pub use crate::db::manual_sale_repo::ManualSaleRecordDetail;
 pub use crate::db::receiving_repo::{ReceivingRecordDetail, ReceivingRecordWithSupplier};
 pub use crate::db::return_repo::{ReturnRecordDetail, ReturnRecordSummary};
 // CMD-06 用 re-export
-pub use crate::db::inventory_repo::{MovementQuery, MovementRecord};
+pub use crate::db::inventory_repo::MovementQuery;
 pub use crate::db::product_repo::StockDetail;
+pub use inventory_service::StockHistoryItem;
 
 use std::fmt;
 
