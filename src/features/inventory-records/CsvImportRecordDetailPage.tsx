@@ -75,6 +75,12 @@ const ERROR_TYPE_LABELS = {
 } as const;
 
 export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecordDetailPageProps) {
+  // 取消の結果と取消の mutation は表示している取込みのものだけ（65 §65.5a）。同じ route の param が
+  // 変わっても component は再 mount されないので、取込みID で作り直す
+  return <CsvImportRecordDetailBody key={importId} importId={importId} returnTo={returnTo} />;
+}
+
+function CsvImportRecordDetailBody({ importId, returnTo }: CsvImportRecordDetailPageProps) {
   const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.csvImportDetail(importId),

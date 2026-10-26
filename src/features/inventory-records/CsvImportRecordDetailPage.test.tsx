@@ -508,6 +508,55 @@ describe("CsvImportRecordDetailPage の取消（65 §65.5a TRACE-D13）", () => 
     });
   });
 
+  it("REQ-401: 取り消した後に別の取込みの詳細へ移ると、前の取込みの取消の結果を出さない", async () => {
+    // 65 §65.5a（Matrix U15）: 同じ route の param が変わると、詳細の state を取込みID で作り直す
+    const user = userEvent.setup();
+    let rolledBack = false;
+    mockGetCsvImportRecord.mockImplementation((id: number) =>
+      Promise.resolve({
+        status: "ok",
+        data: makeDetail({
+          id,
+          ...(id === 41 && rolledBack ? { status: "rolled_back", movements: [] } : {}),
+        }),
+      }),
+    );
+    mockRollback.mockImplementation(() => {
+      rolledBack = true;
+      return Promise.resolve({
+        status: "ok",
+        data: {
+          success: true,
+          voided_sale_count: 1,
+          voided_movement_count: 1,
+          recheck_targets: [recheckTarget()],
+        },
+      });
+    });
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/csv-import/records/41"] }),
+    });
+    render(
+      <QueryClientProvider client={makeQueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    await confirmRollback(user);
+    expect(await screen.findByRole("region", { name: "数え直しが必要な商品" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "商品別CSV取込み（Z004）を開く" })).toBeInTheDocument();
+    expect(await screen.findByText("この取込みは取消済みです")).toBeInTheDocument();
+
+    await router.navigate({ to: "/csv-import/records/$importId", params: { importId: "42" } });
+
+    expect(await screen.findByRole("heading", { name: "CSV取込み #42" })).toBeInTheDocument();
+    expect(screen.queryByText("取込みを取り消しました")).toBeNull();
+    expect(screen.queryByRole("region", { name: "数え直しが必要な商品" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "商品別CSV取込み（Z004）を開く" })).toBeNull();
+    expect(screen.getByRole("button", { name: "この取込みを取り消す" })).toBeEnabled();
+  });
+
   it("REQ-401: 取消の失敗は Toast で、同じ ID のまま再試行できる", async () => {
     const user = userEvent.setup();
     mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
