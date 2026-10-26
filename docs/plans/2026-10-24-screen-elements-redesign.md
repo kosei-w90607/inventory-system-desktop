@@ -14,9 +14,9 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: e948ac1b1df12bc8583acd647a60929713dcc8cd
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -32,6 +32,8 @@ wave に属さない単独の lane（design lane、docs だけ。画面の code 
 2. spec-check → design（2026-10-24、起草役、同じ commit）: 触る正本は `docs/SCREEN_DESIGN.md`（§1 画面一覧、§3 の在庫照会・商品検索・一覧・入出庫履歴ほか、§4「在庫照会のREQ統合」）、`docs/function-design/` の 50・53・58・61〜66・67・73・77、`docs/design-system/02-component-catalog.md` の ⑥・⑨・⑮、D-047 と `docs/function-design/52-ui-shared-layout.md` の UI-12-D1。在庫照会の契約 I（58 §58.10）と商品一覧の UI-01a-D1（50 §50.2）が「初めて開いたときに何を出すか」を画面ごとに逆に決めており、owner の所感がその片方を問うので、設計の更新が要る（design へ進む）。設計の中身は段 1〜段 3 で作る。design → plan-draft は段 3 で owner が採否を決め、正本の置換えの文ができてから。
 3. design → plan-draft（2026-10-24、起草役、段 3 の commit）: 条件「設計の出力が正本にある」は、D-138（decision-log）と [50](../function-design/50-ui-product-list.md) UI-01a-D1・D14〜D19・§50.4・§50.6・§50.7、[58](../function-design/58-ui-stock-inquiry.md) の冒頭の注記・契約 H・UI-06a-D8・廃番除外・§58.7、52 UI-12-D1、53 UI-00-D13、61 UI-02-D10・D18、62〜64 の保存の結果、66 UI-06c-D9、02 ⑥・⑨・⑮、`docs/SCREEN_DESIGN.md` §1〜§4 で満たす（段 3 の対応表）。条件「未解決の設計の問いが無い」は、決定 1・決定 2（TD-424・TD-425）と Q-1・Q-2（TD-422・TD-423）で決まり、段 3 の細部は design-system の原則から決めた（段 3 の 3.4）ことで満たす。Open Questions の Q-3（商品ごとの最低限の数）は答えが無いときの既定が D-138 の形（今の基準との比べ）で、設計を止めない。
 4. plan-draft → plan-gate（2026-10-24、起草役、次の commit）: 条件「packet が完成して commit 済み、R3 の Test Design Matrix が commit 済み」は、段 3 の commit `e58f8aaf`（packet の段 3・Scope・Boundary / Wire Contract・Contract Ledger と `docs/plans/test-matrices/2026-10-24-screen-elements-redesign.md`）で満たす。owner の判断を待つ事項は無い（Q-3 は既定つきで止めない）。Plan Review へ出すのは Coordinator。
+5. plan-gate → plan-approved（2026-10-26、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。Plan Review round 3（天井）の後、Coordinator の disposition「一括是正」で `2f359519` を作り（同時に base を同期）、closure（Claude 側 fresh Opus 5.5 と Codex）の Codex 側の固定の不足（A〜D）を `edbd6046` で、Claude 側の closure 2 の P3 を `e948ac1b` で直した。closure 2 の 2 本（Claude 側 fresh Opus 5.5 が `edbd6046` に approve P3 2、Codex が P3 を直した `e948ac1b` に approve P1 / P2 / P3 0、未 closure 0）が P1 / P2 = 0 を報告した（下の Review Response）。Plan Commit は Codex の closure が監査した `e948ac1b`（前例: PR #203 の遷移 6）。
+6. plan-approved → implementing（2026-10-26、Coordinator、本 commit。state だけ）: 遷移表の唯一の入口。本 lane は docs だけの design lane で、Final Review の record は packet が implementing の head でしか受けない（helper）ので、plan-approved と同じ commit で進める（前例: PR #168・#163）。直後の commit で `origin/main`（PR #198 の merge の後）を単段で取り込み、その head を Final Review broad に出す。
 
 ## Owner Effort Budget
 
