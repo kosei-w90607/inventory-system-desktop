@@ -3,7 +3,7 @@
 
 ## 58. UI-06a: 在庫照会画面
 
-> **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: 一覧と詳細の在庫は写し（`stock_quantity`）のまま。写しが要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（例「4〜5」）と「要再確認」を文字と icon で出す（[40](40-cmd-product.md) の商品の結果の列）。在庫少の判定と並べ替えは写しの値で行う（今のまま）。詳細（UI-06b）は、写しが要再確認なら在庫数の下に要再確認の案内を出す（b2 の Plan Review round 1 の是正、2026-10-23。出所は AI の review で、owner の確認の前の既定）: warning の Alert（icon と文字）に、題「数え直しが必要です」、本文に理由（[35](35-biz-stocktake-service.md) の `list_recheck_products` の当該の商品の `recount_reasons` を、[73](73-ui-stocktake.md) の要再確認の一覧と同じ文で）と「棚卸しの画面で、棚の数を数えて入れ直してください。」、link「棚卸しの画面で入れ直す」（73 の「今の数を入れる」の入口。search の `product` に商品コード、`returnTo` は付けない）。案内を出すかは写しの `stock_recheck` で決め、当該の商品が一覧に無い・理由が空・一覧の読取りが読込み中か失敗なら、理由を出さずに題・案内・link を出す（一覧の読取りで詳細を止めない）。[66](66-ui-stock-movements.md) の見出しも同じ部品。
+> **計数の置き場と在庫の求め直し（D-118、b2 で実装済み）**: 一覧と詳細の在庫は写し（`stock_quantity`）のまま。写しが要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（`formatStockOrRange` の形「{low}〜{high} {単位}」。例「8〜9 個」）と「要再確認」の①状態の badge（文字と icon）を出す（[40](40-cmd-product.md) の商品の結果の列。部品は [66](66-ui-stock-movements.md) と同じ `StockWithRecheck`）。状態の badge（在庫あり・在庫少・在庫切れ）は写しで決まり、範囲の端では決めない。在庫少の判定と並べ替えは写しの値で行う（今のまま）。詳細（UI-06b）は、写しが要再確認なら在庫数の下に要再確認の案内を出す（b2 の Plan Review round 1 の是正、2026-10-23。出所は AI の review で、owner の確認の前の既定）: warning の Alert（icon と文字）に、題「数え直しが必要です」、本文に理由（[35](35-biz-stocktake-service.md) の `list_recheck_products` の当該の商品の `recount_reasons` を、[73](73-ui-stocktake.md) の要再確認の一覧と同じ文で）と「棚卸しの画面で、棚の数を数えて入れ直してください。」、link「棚卸しの画面で入れ直す」（73 の「今の数を入れる」の入口。search の `product` に商品コード、`returnTo` は付けない）。案内を出すかは写しの `stock_recheck` で決め、当該の商品が一覧に無い・理由が空・一覧の読取りが読込み中か失敗なら、理由を出さずに題・案内・link を出す（一覧の読取りで詳細を止めない）。部品は `StockRecheckNotice`（要再確認の一覧の query は 73 と同じ `useRecheckProducts`）で、[66](66-ui-stock-movements.md) の見出しも同じ部品。
 
 ### 本書のテンプレ判定（業務ロジックあり版・簡潔版、共通 6 項目）
 

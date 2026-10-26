@@ -1,6 +1,6 @@
 // src/features/stock-movements/components/MovementTable.tsx
 //
-// REQ-303 / REQ-207: 商品別 movement table。
+// REQ-303 / REQ-207: 業務記録詳細の「関連する在庫変動」の movement table（在庫変動の画面は StockHistoryTable。増減と元記録の欄を共有する）。
 // 設計: docs/function-design/66-ui-stock-movements.md §66.5
 
 import { ArrowDown, ArrowRight, ArrowUp } from "lucide-react";
