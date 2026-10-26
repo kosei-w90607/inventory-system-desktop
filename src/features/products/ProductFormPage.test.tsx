@@ -16,12 +16,17 @@ import {
 } from "./lib/test-fixtures";
 import { ProductFormPage } from "./ProductFormPage";
 
+// U4: 離脱の確認に渡した dirty を記録する（何も変えないと false のまま）
+const unsavedDirty = vi.hoisted(() => [] as boolean[]);
 vi.mock("@/hooks/useUnsavedChangesWarning", () => ({
-  useUnsavedChangesWarning: () => ({
-    isBlocked: false,
-    continueEditing: vi.fn(),
-    discardAndProceed: vi.fn(),
-  }),
+  useUnsavedChangesWarning: (dirty: boolean) => {
+    unsavedDirty.push(dirty);
+    return {
+      isBlocked: false,
+      continueEditing: vi.fn(),
+      discardAndProceed: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("@/lib/bindings", () => ({
@@ -463,5 +468,46 @@ describe("ProductFormPage (UI-01b)", () => {
       product: "P-005",
       returnTo: "/products/P-005/edit",
     });
+  });
+});
+
+describe("ProductFormPage の現在庫（D-118 b2、51）", () => {
+  it("U4 edit form shows read-only stock range and recheck badge without dirty state", async () => {
+    // REQ-102 / REQ-301 / SPEC-STK-CNT-D3（Matrix U4）: 修正の画面の読取り専用の「現在庫」に範囲、label の隣に badge。
+    // 何も変えなければ dirty にならない（離脱の確認が出ない）
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [makeMockDepartment()] });
+    mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({
+        stock_quantity: 9,
+        stock_recheck: true,
+        stock_range_low: 7,
+        stock_range_high: 12,
+      }),
+    });
+    unsavedDirty.length = 0;
+    renderWithClient(
+      <ProductFormPage mode="edit" productCode="P-001" onNavigateToList={vi.fn()} />,
+    );
+
+    const stock = await screen.findByLabelText("現在庫");
+    await waitFor(() => {
+      expect(stock).toHaveValue("7〜12 個");
+    });
+    expect(stock).toHaveAttribute("readonly");
+    const label = screen.getByText("現在庫", { selector: "label" });
+    const badge = within(label.parentElement ?? label).getByText("要再確認");
+    expect(badge).toHaveAttribute("data-tone", "warning");
+    expect(unsavedDirty[unsavedDirty.length - 1]).toBe(false);
+  });
+
+  it("U4 create form has no recheck badge", async () => {
+    // REQ-101（Matrix U4）: 登録の画面は今のまま
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [makeMockDepartment()] });
+    mockListSuppliers.mockResolvedValue({ status: "ok", data: [] });
+    renderWithClient(<ProductFormPage mode="create" onNavigateToList={vi.fn()} />);
+    expect(await screen.findByLabelText("初期在庫（必須）")).toHaveValue("0");
+    expect(screen.queryByText("要再確認")).not.toBeInTheDocument();
   });
 });
