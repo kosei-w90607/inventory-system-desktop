@@ -661,7 +661,8 @@ fn delete_old_logs(conn: &DbConnection, retention_days: u32) -> Result<usize, Db
 戻り値: 削除した行数
 
 **処理ステップ**:
-1. カットオフ日を計算: `chrono::Local::now().date_naive() - chrono::Duration::days(retention_days)`
+1. カットオフ日を計算: `chrono::Local::now().date_naive().checked_sub_days(chrono::Days::new(u64::from(retention_days)))`
+   - `None`（日付の範囲の外。それより前の記録は無い）→ 何も消さず `Ok(0)` を返す（panic しない。[72](72-mnt-log-manager.md) §72.4 の手順 4、MNT-02-D1）
 2. カットオフ日をISO 8601の日付開始時刻に変換: `{YYYY-MM-DD}T00:00:00`
 3. `DELETE FROM operation_logs WHERE created_at < ?1`
 4. `conn.changes()` で削除行数を取得して返す

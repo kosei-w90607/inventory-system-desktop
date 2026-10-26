@@ -229,5 +229,5 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | tax_rate_standard | 10 | 標準税率 |
 | tax_rate_reduced | 8 | 軽減税率 |
 | last_plu_export_at | 2026-03-21T15:00:00 | 最後のPLU書出し日時 |
-| log_retention_days | 365 | 操作ログ保持日数 |
+| log_retention_days | 3000 | 操作ログ保持日数（帳簿書類の 7 年に足りる長さ。[72](../function-design/72-mnt-log-manager.md) MNT-02-D1、D-136） |
 | log_last_cleanup_date | 2026-03-29 | 最後にログ削除チェックした日付 |
