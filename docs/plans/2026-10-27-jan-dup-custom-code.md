@@ -22,9 +22,9 @@ wave に属さない単独の lane（2026-10-27 に同時に起票した 4 本�
 
 1. kickoff → spec-check（2026-10-27、起草役）: 発注書の範囲（D4 との関係、画面の振舞い、商品 CSV の経路との一貫性、並走との重なり）を範囲にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役）: 30 §4.2 の手順 3a（JAN を商品コードにし、商品コードの重複で `DuplicateProductCode`）と 51 の商品フォームには、JAN をほかの商品が使っているときの知らせと独自コードの道が無い。30・40・51・SCREEN_DESIGN・UI_TECH_STACK・decision-log を直す必要がある。
-3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の出力（30 BIZ-01-D10、51 UI-01b-D26、40 の変換、UI_TECH_STACK の invalidation の entry、D-141）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 2 問は owner の方針〈repo 外の回答台帳 TD-401〉で推奨を既定にした。下の「owner の判断事項」）。
+3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の出力（30 BIZ-01-D11、51 UI-01b-D26、40 の変換、UI_TECH_STACK の invalidation の entry、D-141）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 2 問は owner の方針〈repo 外の回答台帳 TD-401〉で推奨を既定にした。下の「owner の判断事項」）。
 
-plan-gate へ進める前に Coordinator がすること: (1) main（`ee5b221a`、PR #202 の merge を含む。起票の起点 `50f97a76` の後に入った）を単段で取り込む（`git -c merge.directoryRenames=false merge origin/main`）。予想する衝突は `docs/decision-log.md` の末尾（#202 の D-138 と本 lane の D-141。番号の順に両方を残す）だけ。51・SCREEN_DESIGN・backlog・UI_TECH_STACK の #202 の hunk は本 lane の hunk と別の行（下の節の所有表）。(2) 関門 8 の lane の予定 path と節を取り直し、下の所有表を直す（同時の起票なので本 run からは見えない）。(3) 30 の局所の決定の ID `BIZ-01-D10` が関門 8 の lane と重ならないかを確かめ、重なれば後に merge する方が採番し直す（`docs/DEV_WORKFLOW.md` Review Rules の連番契約の採番）。
+plan-gate へ進める前に Coordinator がすること: (1) main（`ee5b221a`、PR #202 の merge を含む。起票の起点 `50f97a76` の後に入った）を単段で取り込む（`git -c merge.directoryRenames=false merge origin/main`）。予想する衝突は `docs/decision-log.md` の末尾（#202 の D-138 と本 lane の D-141。番号の順に両方を残す）だけ。51・SCREEN_DESIGN・backlog・UI_TECH_STACK の #202 の hunk は本 lane の hunk と別の行（下の節の所有表）。(2) 関門 8 の lane の予定 path と節を取り直し、下の所有表を直す（同時の起票なので本 run からは見えない）。(3) 30 の局所の決定の ID: 関門 8 の lane（PR #209）が `BIZ-01-D10` を使うので、本 lane は `BIZ-01-D11` にした（2026-10-27、Coordinator。済み）。
 
 ## Owner Effort Budget
 
@@ -102,7 +102,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 commit で変えた正本（plan-first）:
 
-- `docs/function-design/30-biz-product-service.md`: §4.2 の `ProductCreateRequest`（`shared_jan_custom_code: bool`）・`ProductCreateResult` の `warnings` の意味・手順 3a・3a2・3b・9・エラーハンドリング、設計判断 BIZ-01-D10 の新設、§4.10 の `JanInUse`。冒頭の「計数の置き場と在庫の求め直しの契約」の共有 JAN の項の field を `pos_stock_sync` だけにした（JAN の側の field `jan_code` で返す経路が無くなるため）。
+- `docs/function-design/30-biz-product-service.md`: §4.2 の `ProductCreateRequest`（`shared_jan_custom_code: bool`）・`ProductCreateResult` の `warnings` の意味・手順 3a・3a2・3b・9・エラーハンドリング、設計判断 BIZ-01-D11 の新設、§4.10 の `JanInUse`。冒頭の「計数の置き場と在庫の求め直しの契約」の共有 JAN の項の field を `pos_stock_sync` だけにした（JAN の側の field `jan_code` で返す経路が無くなるため）。
 - `docs/function-design/40-cmd-product.md`: `BizError::JanInUse` の変換（kind `duplicate`・field `jan_code`）、冒頭の StocktakeRecovery の項の field を `pos_stock_sync` だけにした。
 - `docs/function-design/51-ui-product-form.md`: UI-01b-D26 の新設、冒頭の共有 JAN の項、UI-01b-D25 の理由の「商品コードの重複で止まる」、§7.2・§7.5 Create 5・§7.6・§7.8・§7.9。
 - `docs/SCREEN_DESIGN.md`: 商品登録・修正画面のレイアウト判断に 1 項。
@@ -114,10 +114,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `src-tauri/src/biz/mod.rs`: `BizError::JanInUse(String)` と `Display`（「JAN 使用中: {message}」の形。ほかの variant と同じ並び）。
 - `src-tauri/src/biz/product_service.rs`:
-  - `ProductCreateRequest` に `pub shared_jan_custom_code: bool`（doc comment に BIZ-01-D10）。
-  - `create_product` の手順 3（30 §4.2 の 3a・3a2・3b）: 3a は `product_repo::find_by_jan_code` と `find_by_product_code` で使っている商品を集め（商品コードの昇順、同じ商品は 1 つ）、message を BIZ-01-D10 の形で作って `JanInUse` を返す。3a2 は `generate_custom_code` の後、`find_by_jan_code` の在庫連動の商品ごとに `product_repo::update_product`（`pos_stock_sync: Some(false)`）・`recompute_stock`・`system_repo::insert_operation_log`（`product_update`、BIZ-01-D7 の detail を `serde_json` で組む）を行い warnings を足す。手順 9 で warnings を返す。
+  - `ProductCreateRequest` に `pub shared_jan_custom_code: bool`（doc comment に BIZ-01-D11）。
+  - `create_product` の手順 3（30 §4.2 の 3a・3a2・3b）: 3a は `product_repo::find_by_jan_code` と `find_by_product_code` で使っている商品を集め（商品コードの昇順、同じ商品は 1 つ）、message を BIZ-01-D11 の形で作って `JanInUse` を返す。3a2 は `generate_custom_code` の後、`find_by_jan_code` の在庫連動の商品ごとに `product_repo::update_product`（`pos_stock_sync: Some(false)`）・`recompute_stock`・`system_repo::insert_operation_log`（`product_update`、BIZ-01-D7 の detail を `serde_json` で組む）を行い warnings を足す。手順 9 で warnings を返す。
   - 手順 3b の field の選び分け（今の `if req.pos_stock_sync { "pos_stock_sync" } else { "jan_code" }`）を `pos_stock_sync` だけにする（下の「この変更で不要になるもの」）。
-  - test（`mod tests`、REQ-101 を付ける。名前は実装で決める）: Matrix の B1〜B9 を足す。直す test（理由は旧い契約〈JAN を商品コードにして共有 JAN の組を作る〉が BIZ-01-D10 で置き換わったため）: `test_create_product_req101_duplicate_jan`（期待を `DuplicateProductCode` から `JanInUse` へ）、`test_create_product_req101_rejects_shared_jan_with_stock_linked`（1 つ目と 3 つ目の create は `JanInUse` になるので、D4 の拒否の case を 3a2 の経路〈Matrix の B5〉へ移す。field `jan_code` の assert は外す）。ほかに `cargo test` で red になる create の test があれば、旧い契約に依るものだけを同じ理由で直し、PR に列挙する（D4 のほかの経路の test は変えない）。
+  - test（`mod tests`、REQ-101 を付ける。名前は実装で決める）: Matrix の B1〜B9 を足す。直す test（理由は旧い契約〈JAN を商品コードにして共有 JAN の組を作る〉が BIZ-01-D11 で置き換わったため）: `test_create_product_req101_duplicate_jan`（期待を `DuplicateProductCode` から `JanInUse` へ）、`test_create_product_req101_rejects_shared_jan_with_stock_linked`（1 つ目と 3 つ目の create は `JanInUse` になるので、D4 の拒否の case を 3a2 の経路〈Matrix の B5〉へ移す。field `jan_code` の assert は外す）。ほかに `cargo test` で red になる create の test があれば、旧い契約に依るものだけを同じ理由で直し、PR に列挙する（D4 のほかの経路の test は変えない）。
   - `ProductCreateRequest` の literal: `rg -n 'ProductCreateRequest \{' src-tauri` の 11 行（struct の定義 1、`default_create_request` の signature の行 1 とその本体 1、test の literal 8。2026-10-27 に確かめた）のうち、`..default_create_request()` を使わない所に `shared_jan_custom_code: false` を足す。
 - `src-tauri/src/cmd/mod.rs`: `From<BizError> for CmdError` に `JanInUse(message)` → `{ kind: Duplicate, message, field: Some("jan_code") }`。test（REQ-905 の命名に合わせる）に変換の 1 本（Matrix の C1）。
 - 生成物: `src/lib/bindings.ts`（`cd src-tauri && cargo run --bin generate_bindings`。差分は `ProductCreateRequest` の `shared_jan_custom_code: boolean` の 1 行の見込み）、`docs/function-design/90-traceability.md`（`cd src-tauri && cargo run --bin generate_traceability`。手で直さない）。
@@ -142,7 +142,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | file | 節 | 所有 |
 |---|---|---|
-| `docs/function-design/30-biz-product-service.md` | §4.2 の `ProductCreateRequest`・`ProductCreateResult`・手順 3〜3b・9・エラーハンドリング・BIZ-01-D10、§4.10 の enum の 1 行、冒頭の共有 JAN の項の field の句 | 本 lane。関門 8 の lane は §4.8・§4.9 と §4.2 の BIZ-01-D1 の段落（手順 1 と 2 の間。発注 597 の読むもの）。重なりは plan-gate の前に Coordinator が取り直す |
+| `docs/function-design/30-biz-product-service.md` | §4.2 の `ProductCreateRequest`・`ProductCreateResult`・手順 3〜3b・9・エラーハンドリング・BIZ-01-D11、§4.10 の enum の 1 行、冒頭の共有 JAN の項の field の句 | 本 lane。関門 8 の lane は §4.8・§4.9 と §4.2 の BIZ-01-D1 の段落（手順 1 と 2 の間。発注 597 の読むもの）。重なりは plan-gate の前に Coordinator が取り直す |
 | `src-tauri/src/biz/product_service.rs` | `ProductCreateRequest`・`create_product`・create の test（`test_create_product_req101_*` の並び） | 本 lane。関門 8 の lane は `preview_import`・`commit_import` とその test。共有の `shared_jan_conflict` は本 lane も関門 8 も変えない見込み |
 | `src-tauri/src/biz/mod.rs` | `BizError` の variant と `Display` の arm | #172・#197 も variant を足す（同じ enum の末尾近く）。先に merge した方の版を起点に後の方が同期で並べる（本 lane は後） |
 | `src-tauri/src/cmd/mod.rs` | `From<BizError> for CmdError` の arm と test | #172・#197 も arm を足す。同上 |
@@ -221,15 +221,15 @@ AC1・AC2・AC13 の結果と `bash scripts/ci/classify-changes.sh --base 50f97a
 ## Design Readiness
 
 - 引く設計正本（節まで）: 30 §4.2（手順 1〜9、BIZ-01-D1）・§4.3（BIZ-01-D6）・§4.4（BIZ-01-D7、在庫連動の切替の求め直し）・§4.10・冒頭の「計数の置き場と在庫の求め直しの契約」（共有 JAN、在庫連動を始める〈D8〉）、ADR SPEC-STK-CNT-D2 の表の「在庫連動の切替」の行・D4（共有 JAN の段）・D8、40 の BizError → CmdError の変換・CmdErrorKind の enum 契約（D-061）、51 冒頭の D-118 の節・UI-01b-D4・D5・D6・D13・D14・D15・D16〜D18・D25・§7.5・§7.6、UI_TECH_STACK の冒頭の段落と D-052（§2.5）、master-tables の `products.jan_code`（UNIQUE を付けない理由、グループコード）、D-028（JAN を使っていない行）、33 の同一 JAN の判定（PLU）、repo 外の回答台帳 TD-338・TD-349・TD-352・TD-401。
-- 必要な設計成果物（Design artifact selection）: 「New or changed BIZ ... error ...」→ 30（updated in this PR、BIZ-01-D10）、「New or changed Tauri command, DTO, generated binding ...」→ 30・40 と下の Boundary / Wire Contract（updated in this PR）、「New or changed operator workflow ... Japanese wording」→ SCREEN_DESIGN・51（updated in this PR、UI-01b-D26）、UI_TECH_STACK（updated in this PR: invalidation の entry。部品は既存の AlertDialog で、技術の選定は existing sufficient）、「Durable cross-cutting choice」→ decision-log D-141（updated in this PR）。「New or changed table, column ...」は当たらない（DB の列・制約は変えない。master-tables は existing sufficient: `jan_code` は UNIQUE を付けず、共有 JAN を DB に置ける）。
-- plan にしかない durable な判断の昇格先: 無い（全て 30 BIZ-01-D10・51 UI-01b-D26・D-141 に置いた）。owner の判断事項の選択肢は D-141 の Alternatives にも置いた。
+- 必要な設計成果物（Design artifact selection）: 「New or changed BIZ ... error ...」→ 30（updated in this PR、BIZ-01-D11）、「New or changed Tauri command, DTO, generated binding ...」→ 30・40 と下の Boundary / Wire Contract（updated in this PR）、「New or changed operator workflow ... Japanese wording」→ SCREEN_DESIGN・51（updated in this PR、UI-01b-D26）、UI_TECH_STACK（updated in this PR: invalidation の entry。部品は既存の AlertDialog で、技術の選定は existing sufficient）、「Durable cross-cutting choice」→ decision-log D-141（updated in this PR）。「New or changed table, column ...」は当たらない（DB の列・制約は変えない。master-tables は existing sufficient: `jan_code` は UNIQUE を付けず、共有 JAN を DB に置ける）。
+- plan にしかない durable な判断の昇格先: 無い（全て 30 BIZ-01-D11・51 UI-01b-D26・D-141 に置いた）。owner の判断事項の選択肢は D-141 の Alternatives にも置いた。
 - 前提・制約と延期した gap: Q1・Q2 は推奨を既定にした（上）。同じ JAN の群の売価・税率の違いは PLU の画面で知らせる（Q2 (a)、延期しても安全な理由: PLU の書出しは群を要修正にして出さず、黙って誤った売価をレジに入れない）。
 - 絶対保証の自己点検: 「登録の後に D4 が破れない」は、create の手順 3b が変更の後の状態で検査するので、3a2 の外し忘れや UI の外からの呼出し（在庫連動のまま flag を送る）でも拒む。「失敗したら何も変わらない」は、3a2 の外しと next_seq の引上げを同じ TX に置き、RAII で戻す（Matrix の B5・B6・B8）。「JAN をほかの商品が使っていれば必ず知らせる」は、商品コードと JAN の 2 つを見るが、JAN の別名（D-122、`product_jan_aliases`）は見ない（別名は `jan_code` でなく、51 UI-01b-D25 のまま。D-141 の Compatibility）。同時の登録は単一の利用者・単一の接続（`AppState` の mutex）で起きない見込みで、起きても INSERT の一意制約が `DuplicateProductCode` で止める。
 - 判定: ready（Q1・Q2 は推奨を既定にし、答えで変わる所を名指した）。
 
 ## Contract Audit（新しく足す契約の文の境界の一巡）
 
-| 観点 | 契約の文（30 BIZ-01-D10・手順 3a/3a2/3b、51 UI-01b-D26） | 確かめたこと |
+| 観点 | 契約の文（30 BIZ-01-D11・手順 3a/3a2/3b、51 UI-01b-D26） | 確かめたこと |
 |---|---|---|
 | 安全な整数の範囲 | 「独自コードを振る（§4.3）」 | 新しい数を足さない。独自コードの番号の i64 の上限は §4.3 の手順 3c・3d の今の検査（`この部門の独自コードの番号を振れません`）が 3a2 でも効き、TX を戻す。wire の新しい field は bool で、JS の数の範囲に触れない |
 | 0 の表示 | 「外す商品は 0、warnings は空」「件数で省かない」 | JAN をほかの商品が使っていない（0 件）なら `JanInUse` を返さず JAN を商品コードにする（3a）。3a2 で外す商品が 0 なら warnings は空で、toast は説明を出さない（空の行を出さない。Matrix の B7・U3 の空の case）。名指しの一覧が 0 件で出ることは無い（0 件なら知らせない） |
@@ -298,9 +298,9 @@ Test Design Matrix: `docs/plans/test-matrices/2026-10-27-jan-dup-custom-code.md`
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| BIZ-01-D10 (1) JAN をほかの商品が使っていれば `JanInUse` で全てを名指す（JAN と商品コードの 2 つ、昇順、印） | 30 §4.2 手順 3a・BIZ-01-D10 | `create_product` の手順 3a | B1・B2 | L3-1 |
+| BIZ-01-D11 (1) JAN をほかの商品が使っていれば `JanInUse` で全てを名指す（JAN と商品コードの 2 つ、昇順、印） | 30 §4.2 手順 3a・BIZ-01-D11 | `create_product` の手順 3a | B1・B2 | L3-1 |
 | TD-338（JAN がほかの商品に無ければ JAN を商品コード） | 30 §4.2 手順 3a | 同上（今の形を保つ） | 既存の `test_create_product_req101_jan`、B3 | — |
-| BIZ-01-D10 (2) `shared_jan_custom_code` で独自コード + JAN、群の在庫連動を外す、求め直し、BIZ-01-D7 のログ、warnings | 30 §4.2 手順 3a2・9、BIZ-01-D7、ADR SPEC-STK-CNT-D2 の表の「在庫連動の切替」 | 手順 3a2 | B4・B7・B9 | L3-2 |
+| BIZ-01-D11 (2) `shared_jan_custom_code` で独自コード + JAN、群の在庫連動を外す、求め直し、BIZ-01-D7 のログ、warnings | 30 §4.2 手順 3a2・9、BIZ-01-D7、ADR SPEC-STK-CNT-D2 の表の「在庫連動の切替」 | 手順 3a2 | B4・B7・B9 | L3-2 |
 | 共有 JAN の不変条件（ADR SPEC-STK-CNT-D4）を変更の後の状態で検査、field `pos_stock_sync` | 30 冒頭の共有 JAN の項、§4.2 手順 3b | 手順 3b（field の選び分けを外す） | B5 | — |
 | 失敗で全てを戻す（外し・next_seq・商品） | 30 §4.2 エラーハンドリング | TX の RAII | B5・B6・B8 | — |
 | BIZ-01-D6 の発番（接頭辞の無い部門で止まる、番号の上限） | 30 §4.3 | 既存の `generate_custom_code` を 3a2 から呼ぶ | B6、既存の §4.3 の test | — |

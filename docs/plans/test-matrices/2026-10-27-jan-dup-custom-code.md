@@ -1,6 +1,6 @@
 # Test Design Matrix: 新規登録で、入れた JAN をほかの商品が使っているとき独自コードで登録できる道
 
-Plan Packet: `docs/plans/2026-10-27-jan-dup-custom-code.md`。oracle は設計正本（30 §4.2 BIZ-01-D10・手順 3a/3a2/3b、40 の変換、51 UI-01b-D26、UI_TECH_STACK 冒頭の段落）から独立に写す。production の文字列・集合を test に import しない。
+Plan Packet: `docs/plans/2026-10-27-jan-dup-custom-code.md`。oracle は設計正本（30 §4.2 BIZ-01-D11・手順 3a/3a2/3b、40 の変換、51 UI-01b-D26、UI_TECH_STACK 冒頭の段落）から独立に写す。production の文字列・集合を test に import しない。
 
 ## Risk
 
@@ -8,9 +8,9 @@ Risk: R3
 
 ## Contracts Under Test
 
-- BIZ-01-D10 (1): 新規登録で入れた JAN を、ほかの商品が JAN か商品コードとして持てば `JanInUse` で止め、message が使っている全ての商品を商品コードの昇順で名指す（印「（在庫連動）」「（廃番）」「（在庫連動・廃番）」）。何も書かない。
+- BIZ-01-D11 (1): 新規登録で入れた JAN を、ほかの商品が JAN か商品コードとして持てば `JanInUse` で止め、message が使っている全ての商品を商品コードの昇順で名指す（印「（在庫連動）」「（廃番）」「（在庫連動・廃番）」）。何も書かない。
 - TD-338: JAN をどの商品も使っていなければ JAN を商品コードにする（今の形）。
-- BIZ-01-D10 (2): `shared_jan_custom_code = true` で独自コードを振り JAN を持たせ、同じ JAN の在庫連動の商品を同じ TX で在庫連動なしにし、求め直し、`product_update` のログ（detail `{"pos_stock_sync":{"old":true,"new":false}}`）と warnings で名指す。
+- BIZ-01-D11 (2): `shared_jan_custom_code = true` で独自コードを振り JAN を持たせ、同じ JAN の在庫連動の商品を同じ TX で在庫連動なしにし、求め直し、`product_update` のログ（detail `{"pos_stock_sync":{"old":true,"new":false}}`）と warnings で名指す。
 - 30 §4.2 手順 3b: 変更の後の状態で D4 を検査、field `pos_stock_sync`。
 - 30 §4.2 エラーハンドリング: 3a2 より後の失敗で、外した在庫連動・next_seq・商品が全て戻る。
 - 40: `JanInUse` → kind `duplicate`・field `jan_code`・message はそのまま。
@@ -38,17 +38,17 @@ Risk: R3
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
-| B1 | BIZ-01-D10 (1) JAN で名指す・並び・印 | ほかの商品の `jan_code` を見ない / 並び不定 / 印の欠け | unit（実 DB） | 新設（REQ-101。例 `test_create_product_req101_rejects_jan_in_use_naming_all_products`）: IO で直に 4 商品を置く（D4 の違反の組も fixture として置ける。`seed_jan_product` の形）: 商品コード J・`jan_code` = 別の値 K・在庫連動の X、`jan_code` = J の `HZ-0003`（在庫連動なし・廃番）・`HZ-0002`（在庫連動・廃番）・`HZ-0001`（在庫連動なし）をこの順に INSERT。J で create（flag false）→ `Err(JanInUse(m))`、m = `この JAN（J）はほかの商品が使っています: J「X の名前」（在庫連動）、HZ-0001「…」、HZ-0002「…」（在庫連動・廃番）、HZ-0003「…」（廃番）`（完全一致。J は数字なので商品コードの昇順で先頭）。商品の数・部門の next_seq・操作ログの数が変わらない | 3a が `find_by_product_code` だけを見る（M1）、2 つの検索の結果を連結の順のまま並べる（M8: `jan_code` の側を先に連結すると J が末尾になる）、印を付けない・組合せの印を誤る |
+| B1 | BIZ-01-D11 (1) JAN で名指す・並び・印 | ほかの商品の `jan_code` を見ない / 並び不定 / 印の欠け | unit（実 DB） | 新設（REQ-101。例 `test_create_product_req101_rejects_jan_in_use_naming_all_products`）: IO で直に 4 商品を置く（D4 の違反の組も fixture として置ける。`seed_jan_product` の形）: 商品コード J・`jan_code` = 別の値 K・在庫連動の X、`jan_code` = J の `HZ-0003`（在庫連動なし・廃番）・`HZ-0002`（在庫連動・廃番）・`HZ-0001`（在庫連動なし）をこの順に INSERT。J で create（flag false）→ `Err(JanInUse(m))`、m = `この JAN（J）はほかの商品が使っています: J「X の名前」（在庫連動）、HZ-0001「…」、HZ-0002「…」（在庫連動・廃番）、HZ-0003「…」（廃番）`（完全一致。J は数字なので商品コードの昇順で先頭）。商品の数・部門の next_seq・操作ログの数が変わらない | 3a が `find_by_product_code` だけを見る（M1）、2 つの検索の結果を連結の順のまま並べる（M8: `jan_code` の側を先に連結すると J が末尾になる）、印を付けない・組合せの印を誤る |
 | B2 | 同上、商品コードの側・群の外 | 商品コードが J で JAN の違う商品を見落とす / 3a2 で外す | unit | 新設（例 `test_create_product_req101_jan_in_use_by_product_code_only`）: 商品コード J・`jan_code` = 別の値・在庫連動の商品 X。J で create（flag false）→ `JanInUse`、X を名指す。続けて flag true → Ok、X の在庫連動は true のまま、warnings は空 | 3a が `jan_code` だけを見る、3a2 が商品コードでも外す |
 | B3 | TD-338 | JAN が空いていても独自コードにする | unit | 既存 `test_create_product_req101_jan`、`test_create_product_req101_accepts_valid_jan_8_and_jan_13`（`result.product_code == jan_code`） | 3a が常に `JanInUse` を返すか独自コードにする |
-| B4 | BIZ-01-D10 (2) 群を外す・ログ・warnings・求め直し | 外し忘れ / 群でない商品・連動でない商品へのログ / warnings の欠け | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_unlinks_group`）: 商品コード J・`jan_code` J・在庫連動の A と、`jan_code` J・在庫連動なしの C。まず flag false で create → `JanInUse` の message に J が 1 回だけ出る（2 つの検索の両方に当たる A を重ねない）。次に flag true・`pos_stock_sync` false・接頭辞のある部門で create → Ok。`product_code` は接頭辞つきで J でない、新しい商品の `jan_code` = J・在庫連動 false。A は false、C は false のまま。操作ログの `product_update` は A の 1 行だけで detail が `{"pos_stock_sync":{"old":true,"new":false}}`、summary `商品を更新しました: J`。warnings = [`同じ JAN の商品 J「A の名前」の在庫連動を外しました`]。A の `stock_quantity` が create の前と同じ | 3a2 が外さない（M2。D4 で Err）、在庫連動でない C にもログを書く（M3）、warnings を返さない |
+| B4 | BIZ-01-D11 (2) 群を外す・ログ・warnings・求め直し | 外し忘れ / 群でない商品・連動でない商品へのログ / warnings の欠け | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_unlinks_group`）: 商品コード J・`jan_code` J・在庫連動の A と、`jan_code` J・在庫連動なしの C。まず flag false で create → `JanInUse` の message に J が 1 回だけ出る（2 つの検索の両方に当たる A を重ねない）。次に flag true・`pos_stock_sync` false・接頭辞のある部門で create → Ok。`product_code` は接頭辞つきで J でない、新しい商品の `jan_code` = J・在庫連動 false。A は false、C は false のまま。操作ログの `product_update` は A の 1 行だけで detail が `{"pos_stock_sync":{"old":true,"new":false}}`、summary `商品を更新しました: J`。warnings = [`同じ JAN の商品 J「A の名前」の在庫連動を外しました`]。A の `stock_quantity` が create の前と同じ | 3a2 が外さない（M2。D4 で Err）、在庫連動でない C にもログを書く（M3）、warnings を返さない |
 | B5 | 手順 3b と失敗で戻す | 新しい商品を在庫連動で送っても通る / 外しが残る | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_rejects_linked_new_and_rolls_back`）: B4 と同じ A で、flag true・`pos_stock_sync` true → `ValidationFailedAt { field: "pos_stock_sync", message: "同じ JAN の商品（J）があるため、在庫連動にできません" }`。A は在庫連動 true のまま、部門の next_seq・商品の数・操作ログの数が変わらない | 3b を外す、3a2 の外しを別の TX にする（M9） |
 | B6 | 接頭辞の無い部門で止まり戻す | 発番の前に外しが残る | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_requires_code_prefix`）: B4 の A、接頭辞の無い部門で flag true → `ValidationFailed("この部門は独自コード発番に対応していません")`、A は true のまま | 3a2 が発番の前に外し、TX の外で書く |
 | B7 | 外す商品 0 | 群が無いと失敗にする / 空の warnings に行を足す | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_without_group`）: J をどの商品も使っていない DB で flag true → Ok、独自コード、`jan_code` = J、warnings = []、`product_update` のログ 0 | 群が無いと Err にする、warnings に空の行 |
 | B8 | 3a2 より後の失敗で全て戻す | INSERT の後の失敗で外しが残る | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_rolls_back_on_late_failure`）: 既存の failpoint `CREATE_PRODUCT_AFTER_INSERT` を立て、B4 の A で flag true → Err。A は true のまま、next_seq・商品の数・ログの数が変わらない | 3a2 の外しを先に commit する（M9） |
 | B9 | jan None で flag は意味を持たない | flag で振舞いが変わる | unit | 新設（例 `test_create_product_req101_shared_jan_custom_code_ignored_without_jan`）: jan None・flag true → 今どおり独自コード、warnings = [] | flag true で jan None を拒む・別の経路にする |
-| B-old1 | 旧い契約の置換え | — | unit | 直す `test_create_product_req101_duplicate_jan`（2 つ目の create の期待を `DuplicateProductCode` から `JanInUse` へ。理由: BIZ-01-D10） | — |
-| B-old2 | 旧い契約の置換え | — | unit | 直す `test_create_product_req101_rejects_shared_jan_with_stock_linked`（1 つ目・3 つ目の create は 3a で `JanInUse` になる。D4 の拒否の case は B5 へ移し、field `jan_code` の assert を外す。理由: BIZ-01-D10 で JAN の側から D4 に届く経路が無くなる） | — |
+| B-old1 | 旧い契約の置換え | — | unit | 直す `test_create_product_req101_duplicate_jan`（2 つ目の create の期待を `DuplicateProductCode` から `JanInUse` へ。理由: BIZ-01-D11） | — |
+| B-old2 | 旧い契約の置換え | — | unit | 直す `test_create_product_req101_rejects_shared_jan_with_stock_linked`（1 つ目・3 つ目の create は 3a で `JanInUse` になる。D4 の拒否の case は B5 へ移し、field `jan_code` の assert を外す。理由: BIZ-01-D11 で JAN の側から D4 に届く経路が無くなる） | — |
 | C1 | 40 の変換 | field が付かない / message を作り直す | unit | 新設（REQ-905。例 `test_cmd_error_req905_from_jan_in_use`）: `BizError::JanInUse("X")` → `kind == Duplicate`、`field == Some("jan_code")`、`message == "X"`。既存 `test_cmd_error_req905_from_duplicate` は field `None` のまま PASS | field を `None` にする（M4）、message に接頭辞を足す |
 | U1 | wire の既定 | 1 回目に flag を送らない・true を送る | unit（TS） | `product-form-request.test.ts` の `builds JAN product request` に `shared_jan_custom_code: false` を足す | `buildCreateProductRequest` が field を省く・true にする |
 | U2 | UI-01b-D26 開く | ダイアログが開かない / message を解析 | component | 新設（`ProductFormPage.test.tsx`、REQ-101 / UI-01b-D26）: `createProduct` が `{kind:"duplicate", field:"jan_code", message:"この JAN（…）はほかの商品が使っています: P-901「赤」（在庫連動）"}` を返す → `alertdialog` に title `この JAN はほかの商品が使っています`・その message・2 段目と 3 段目の文（51 の文字どおり）・button `独自コードで登録する`・`戻る`。`onNavigateToList` は呼ばれない、入力は残る | onError が field を見ない（M5 は U6 で）、ダイアログを作らない |

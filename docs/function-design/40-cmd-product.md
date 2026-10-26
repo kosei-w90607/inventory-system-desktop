@@ -63,7 +63,7 @@ BizError → CmdError の変換ルール:
 - BizError::ValidationFailed(msg) → CmdError { kind: CmdErrorKind::Validation, message: msg, field: None }
 - BizError::ValidationFailedAt { message, field } → CmdError { kind: CmdErrorKind::Validation, message, field: Some(field) }
 - BizError::DuplicateProductCode(code) → CmdError { kind: CmdErrorKind::Duplicate, message: "この商品コードは既に使用されています: {code}" }
-- BizError::JanInUse(message) → CmdError { kind: CmdErrorKind::Duplicate, message, field: Some("jan_code") }（[30](30-biz-product-service.md) BIZ-01-D10。商品フォームは kind と field で分け、message を解析しない。`DuplicateProductCode` は field を持たないので、UI は field `jan_code` の有無で 2 つを分ける）
+- BizError::JanInUse(message) → CmdError { kind: CmdErrorKind::Duplicate, message, field: Some("jan_code") }（[30](30-biz-product-service.md) BIZ-01-D11。商品フォームは kind と field で分け、message を解析しない。`DuplicateProductCode` は field を持たないので、UI は field `jan_code` の有無で 2 つを分ける）
 - BizError::NotFound(msg) → CmdError { kind: CmdErrorKind::NotFound, message: msg }
 - BizError::DatabaseError(_) → CmdError { kind: CmdErrorKind::Internal, message: "データベースエラーが発生しました。もう一度お試しください", error_id: Some(発行) }
 - BizError::StocktakeGuard { message, recovery } → CmdError { kind: CmdErrorKind::StocktakeGuard, message, stocktake_recovery: Some(recovery) }（冒頭の D-118 の節、b1）
