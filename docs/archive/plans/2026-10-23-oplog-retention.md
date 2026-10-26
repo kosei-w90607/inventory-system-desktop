@@ -1,12 +1,12 @@
 # Plan Packet: 操作ログの保持を 7 年程度に延ばす
 
-wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は初期投入の手順の lane `docs/plans/2026-10-23-initial-load-procedure.md`〈別の branch〉）。導入の前の関門の candidate「操作ログの保持を 7 年程度へ」（[Plans の導入の前の関門](../Plans.md#導入の前の関門)、`docs/backlog.md` の「操作ログの保持を 7 年程度に延ばす」、owner の決定 repo 外の回答台帳 TD-348）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
+wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は初期投入の手順の lane `docs/plans/2026-10-23-initial-load-procedure.md`〈別の branch〉）。導入の前の関門の candidate「操作ログの保持を 7 年程度へ」（[Plans の導入の前の関門](../../Plans.md#導入の前の関門)、`docs/backlog.md` の「操作ログの保持を 7 年程度に延ばす」、owner の決定 repo 外の回答台帳 TD-348）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
 
 規模と手法（起票の最初に数えた）: 実装で触る code は 3 file（`src-tauri/src/db/schema_v1.rs` の `app_settings` の初期データ 1 行、`src-tauri/src/mnt/log_manager.rs` の `cleanup_old_logs` と test、`src-tauri/src/db/system_repo.rs` の `delete_old_logs` と test）と生成物 1（`docs/function-design/90-traceability.md`）。正本は plan-first で 11 file を直した（72・74・tracking-system-tables・DB_DESIGN・ARCHITECTURE・REQ-700・decision-log〈D-136 と D-051 の Superseded in part の行〉・backlog、Plan Review round 1 の是正で SCREEN_DESIGN・requirements-coverage・20〈§2.8 の `delete_old_logs`〉）。command・DTO・bindings・画面・migration は 0。関数の形（`cleanup_old_logs(conn) -> Result<(), DbError>`、`delete_old_logs(conn, retention_days: u32) -> Result<usize, DbError>`）は変えない。手法: 1 lane のまま（既定の値と掃除の守りは同じ関数の同じ段で、分けると同じ test を 2 回直す）。
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 715148294e8b8d137496b788d2334ef5540c1af8
 - Amendments: none
@@ -141,7 +141,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0（ERROR なし）。baseline（2026-10-23、起点 `eed07d37`）: exit 0、`結果: WARN 12 件（ERROR なし）`。
-- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-23-oplog-retention.md` が exit 0。
+- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-10-23-oplog-retention.md` が exit 0（起票の時の path は `docs/plans/`、closeout で archive の path に直した）。
 - AC3（正本の旧い文）: `rg -n 'log_retention_days \| 365|デフォルト365日|365 ?日 cleanup|365日自動削除|365 ?日超|\| 保持期間 \| 365日|Duration::days\(retention_days\)' docs/ARCHITECTURE.md docs/DB_DESIGN.md docs/REQ-700_diagnostic_log.md docs/db-design/tracking-system-tables.md docs/function-design/72-mnt-log-manager.md docs/function-design/74-ui-operation-logs.md docs/SCREEN_DESIGN.md docs/spec/requirements-coverage.md docs/function-design/20-io-product-repo.md` が何も出さない（exit 1）。baseline（`git grep -n -P` で `eed07d37`）: 13 行（ARCHITECTURE 208、REQ-700 90、SCREEN_DESIGN 185、tracking 228、20 の 663、72 の 47、74 の 60・63・64・272・297・568、requirements-coverage 66）。是正の commit の後: exit 1。2 本目（旧い既定の日数 2557 の live な文。round 2 の是正）: `` rg -n '既定 ?2557|2557 日[（〈]7 年以上|7 年以上|\| 2557 \||保持日数（2557 日）|`2557`|2557 日で消す' `` を上の 9 file と `docs/decision-log.md`・`docs/backlog.md` に当てて何も出さない（exit 1）。baseline（`git grep -n -P` で `16d7dd00`）: 17 行。round 2 の是正の commit の後: exit 1（2026-10-24）。残る `2557` は棄てた案・測定の記録・改めた経緯だけ（decision-log の D-136 の Status・Alternatives・Guarantee range、72 の Rejected alternatives と大きさ、backlog の起票の行）。
 - AC4（初期データ）: `rg -n "'log_retention_days',\s+'3000'" src-tauri/src/db/schema_v1.rs` が 1 行。baseline（`eed07d37`）: exit 1（値は `'365'`）。
 - AC5（既定の定数）: `rg -c 'DEFAULT_RETENTION_DAYS: u32 = 3000' src-tauri/src/mnt/log_manager.rs` が `1`。baseline: exit 1（`= 365`）。
@@ -264,7 +264,7 @@ R3 の Contract Probe は外部の前提に頼る計画で Plan Gate の前に�
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #198](https://github.com/kosei-w90607/inventory-system-desktop/pull/198) で Scope の実装の段のとおりに入れ、2026-10-26 に helper 経由で main へ merge した（owner の承認の後）。新しく作る DB の `log_retention_days` の初期データと、設定の行が無いときの既定を 3000 日にし、保持日数が読めない値・0 のときは warn を残して削除も `log_last_cleanup_date` の更新もせず、日付の範囲の外の大きな値では panic せず 0 件にした（72 MNT-02-D1、D-136）。既存の test は期待を変えずに境の日数だけを直し、Scope の「足す」の test を REQ-902 付きで足し、`90-traceability.md` を再生成した。migration・command・DTO・bindings・画面・`lib.rs` の起動の順は変えていない。test の名前と件数・検証の出力は PR と GitHub が正本。L3 は無い（Risk の L3 の段）。
 
 ## Review Response
 
@@ -303,3 +303,5 @@ round 3（`a403f9fb`、Plan Review round 天井 3）: Claude 側 fresh Opus 5.5 
 - 是正で不要になった記述: 72 の Why の「（法人の場合との比べは D-136）」（数え方ごと D-136 を引く形に吸収）、D-136 の Why (1) の法人税法 74 条 1 項と通則法 10 条 2 項の句（保存の起算日の根拠でない）。
 - 旧語の sweep（`rg -n '2983|3014|通則法|10 条 2 項|Review Response の (round 2 の )?K1|ステップ8|// 6\. 操作ログ' docs -g '!docs/archive/**' -g '!docs/research/**'`）: 残る hit は本 packet の round 2 の Review Response の段（当時の記録）と本 round の段、71 の自動バックアップの追加箇所（上の Opus #5、範囲の外）、他の章の「ステップ8」（35・71 の別の手順の番号で無関係）だけ。
 - 境界の 4 観点（是正で新しく書いた契約文・数について）: 安全な整数の範囲・0 の表示・失敗の時点と順序は、本 round の是正が code の契約（`u32` の日数、0 で飛ばす、飛ばすとき日付を更新しない）に触れないので Contract Audit の表のまま。単位や種類の混在は、法人の起算日が月で決まり（規則 59 条 2 項）、runtime の保持は日のままで、月の数え方は既定値の根拠（D-136 の Why (1)）にだけ現れる。数は上の再計算の出力から写した。
+
+Final Review と merge（2026-10-26、closeout で追記）: broad の review と、#188 の merge の後の base 同期での相互作用の closure、base 同期の closure を経て、最後の base 同期だけを見る closure 2 本（Codex 579 = approve P1/P2/P3 0、PR review 5650786523。Claude 側 fresh Opus 5.5 = approve 0）が head `af2448dc` で揃い、helper の review の record は pass（`docs/AGENT_OPERATING_MANUAL.md` §3.3 の Codex の枠が揃った）。Ready の後の hosted CI run 40314529448 の `Merge gate` が success で、owner の承認の後に helper 経由で merge した（[PR #198](https://github.com/kosei-w90607/inventory-system-desktop/pull/198)）。closeout で packet と Matrix を `docs/archive/plans/` へ移し、`docs/Plans.md` と `docs/backlog.md` に完了を書いた。
