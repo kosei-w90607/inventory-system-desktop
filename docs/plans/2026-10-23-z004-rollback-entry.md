@@ -30,11 +30,11 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 - Phase: implementing
 - Risk: R3
 - Plan Commit: a87c5601dc6010e086a68dc7f3c38e60faaa95e0
-- Amendments: 34343a1e5bef75f7b2ebb0cb04f8225b11d6151f
+- Amendments: 34343a1e5bef75f7b2ebb0cb04f8225b11d6151f, 47b76883d028a6102ece60557958fd6b2eceebc2
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
-- Final Reviewer: Fable 5.1（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Reviewer: Fable 5（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
 - Branch: agent/z004-rollback-entry
@@ -51,6 +51,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 8. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。遷移 7 は closure を Claude 側 + Codex と書いたが、遷移 7 の版の closure（`ff911e61`）で Codex が挙げた P2（N1）は Claude 側も挙げた同じ点で、Coordinator はその後の closure を、直した点だけを見る fresh Opus 5.5 の狭い closure 1 本に絞った（2026-10-24）。closure 2（`432d48c4`）の是正を経て、closure 3（`af32f558`）が approve（P1 / P2 = 0、P3 1。下の Review Response）。closure 3 の P3 1 件は plan-gate のまま Coordinator が `a87c5601` で直した（Plan Commit はその版。前例: PR #201 の遷移 8 で closure の P3 を直した版を Plan Commit にした）。実装は b1（PR #188）の merge の後に `origin/main` を単段で取り込んでから始める（上の「b1 との関係」）。
 9. plan-approved → implementing（2026-10-25、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`8db97271`、#188 b1 の merge を含む）を単段で merge した（`6e622424`、衝突なし）。AC の baseline の command を同期の後に逐語で再測し、変わったのは b1 の merge で本 packet が見込んだ 4 つだけ（`parse.rs` の `既に取り込まれています（精算 {}）` が 1、`RecheckTargetList.tsx` が在り `renderAction?: ` は 0、`bash scripts/check-command-drift.sh` が `D=71 H=71 S=71 T=71`〈b1 の command 3 つ〉、55 §55.0 の `取消の画面入口は結果 step だけ` が 0〈b1 が節ごと外した〉）。どれも上の b1 の head の版の baseline と同じ値で、AC の完了時の期待は変わらない。
 10. implementing のまま Gated Amendment 1（2026-10-26、Coordinator、本 commit）: 実装の Writer の S1〜S4 の後の Draft の run（40124364647）が Rust の 1 件だけ red だった。b1 の `src-tauri/src/cmd/stocktake_cmd.rs` の `test_complete_stocktake_cmd_req205_completion_blocked_wire`（b1 Matrix W4）が `CmdError` の wire を JSON 全体の完全一致で照合し、本 lane が足した `related_csv_import_id`（W3 の契約で順 4 の拒否のほかは `null`。`src-tauri/src/cmd/mod.rs` の `CmdError` は `skip_serializing_if` を持たない）が期待に無い。file が予定 path に無かったので Writer は編集前に止まった。起票の Adjacent Pattern Audit の `CmdError` に field を足す行が、wire 全体を照合するこの test を拾っていなかった（`serde_json::to_value(&error)` の完全一致は repo でこの 1 本。相談役の反例探しで確かめた）。本 amendment で予定 path に `stocktake_cmd.rs` を足し（48 path、Rust 17）、所有表に行を足し、Matrix の Adjacent Pattern Audit の行と「既存の test の移し方」の T6 を足した。test の期待 JSON に 1 key を足すだけで、test の名前・REQ-205 の参照・完全一致の照合の強さは変えない（REQ-205 の振舞いは変えず、wire の契約〈41 §17.4〉への期待の追随）。`skip_serializing_if` で key を消す案は W3・U11 (3)・41 §17.4 と食い違い、tauri-specta の command ごとの検証（unified mode）も拒むので採らない。AC は変わらない（AC4 の `cargo test` が覆う。traceability は test の名前と REQ の参照が変わらないので変わらない）。登録は次の commit で本 commit の SHA を `Amendments` に足す。review は Final Review broad に含める（前例: PR #172 の Gated Amendment 1）。
+11. implementing のまま Gated Amendment 2（2026-10-27、Coordinator の裁定、文面は起草役〈Opus 5.5〉、`47b76883`）: Final Review broad（head `bf2eae8e`）の 2 本は Claude 側 Fable 5 = approve（P1/P2/P3 0）、Codex 589 = reject（P2 3 / P3 1）で、P2 が 1 件も重ならなかった。相談役（Fable 5）の反例探しで 4 件とも現物で成立し、Coordinator が 4 件とも受理した。P2-1（preview の途中の失敗で TX を明示に閉じない）は 32 §15.6b 手順 5 の今の契約に code を合わせる（`tx.finish()` の形。無条件の `tx.rollback()` は真因を覆う）。P2-2（取消の応答を待つ間に結果の画面・詳細の画面から離脱できる）は、Contract Ledger の除外「55 §55.7（取消と preview は block しない）」を覆した。理由は、PR #172 で日報取込みタブの同型の P2 を受理して止めたので同じ画面の 2 つのタブで振舞いを揃えることと、離脱の後に失敗すると別の画面の Toast だけになり再試行の導線を失うこと（D-127「問題は起きたその画面で名指し」）。タブの切替えは router の遷移でなく blocker が効かないので、取消中は TabsTrigger を disabled にする（相談役の反例）。P2-3（詳細の取消の結果が `importId` に紐づかない）は内側の component を `key={importId}` で作り直す。P3-1 は RB6 に等値境界の fixture を足す。起草役の観察のうち、取込みの応答を待つ間と日報取込みタブの取消の応答を待つ間のタブの切替え（同型の穴）と、param の route の state（`key`・`remountDeps` 0 件）は本 lane の範囲の外で、Matrix の Adjacent Pattern Audit の除外と PR の Follow-up に置く。止めたときに文を出さない点は #172 と同じ扱いにし、残りの危険に記録した。AC の数（5）と予定 path（48）は変わらない。Final Reviewer の Claude 側を座組表の当面 Fable 5（TD-410）に揃えた。broad の後の packet の変更なので、是正の後は新しい head の fresh broad（Minimum の 2 本）を取る。
 
 ## Owner Effort Budget
 
