@@ -1,6 +1,6 @@
 # Test Design Matrix: 操作ログの保持を 7 年程度に延ばす
 
-oracle の正本は [72](../../function-design/72-mnt-log-manager.md) MNT-02-D1 と §72.4 の手順 3・4・6、[20](../../function-design/20-io-product-repo.md) §2.8 の `delete_old_logs`、[decision-log](../../decision-log.md) D-136。期待の値（3000、0 と読めない値で飛ばして日付を変えない、範囲の外で 0 件として日付を今日にする）は正本から写し、実装の定数から写さない。test は全て `src-tauri/src/mnt/log_manager.rs` と `src-tauri/src/db/system_repo.rs` の `mod tests`（`setup_test_db` は `db::init_database` で v1 から最新の版までを当てた本物の DB を使い、mock は無い）。
+oracle の正本は [72](../../../function-design/72-mnt-log-manager.md) MNT-02-D1 と §72.4 の手順 3・4・6、[20](../../../function-design/20-io-product-repo.md) §2.8 の `delete_old_logs`、[decision-log](../../../decision-log.md) D-136。期待の値（3000、0 と読めない値で飛ばして日付を変えない、範囲の外で 0 件として日付を今日にする）は正本から写し、実装の定数から写さない。test は全て `src-tauri/src/mnt/log_manager.rs` と `src-tauri/src/db/system_repo.rs` の `mod tests`（`setup_test_db` は `db::init_database` で v1 から最新の版までを当てた本物の DB を使い、mock は無い）。
 
 ## Risk
 
