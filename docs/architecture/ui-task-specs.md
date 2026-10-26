@@ -26,6 +26,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
   - 毎日の業務: ホーム / 売上データ取込み / 日次売上 / 在庫照会 / 月次売上
   - 商品管理: 商品検索・一覧 / 商品登録 / 一括インポート / PLU書出し / 一括価格改定
   - 入出庫: 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 / 入出庫履歴 / 在庫少一覧 / 棚卸し
+  - D-138（proposed・未実装）の後: 毎日の業務の「在庫照会」を「商品と在庫」（`/products`）にし、商品管理から「商品検索・一覧」を外し、入出庫の「在庫少一覧」を「在庫切れ・在庫少」にする（[50](../function-design/50-ui-product-list.md) UI-01a-D14）
   - システム管理: バックアップ・復元 / 操作ログ / 在庫少の基準 / 整合性検証 / 取引先管理
 - 項目の実装上の正本は `src/config/navigation.ts`。表示数を別の固定値として管理しない。
 - エリア識別はアイコン + 区切り線で行う（色分けは廃止、[../design-system/00-foundations.md](../design-system/00-foundations.md)「4色エリアモデルの扱い」準拠）
@@ -81,7 +82,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 **【利用者操作フロー】**
 1. 起動/ホーム復帰時にサマリ表示
 2. PLU未反映件数が1以上なら黄色の通知バーを最上部に表示
-3. 大ボタンで毎日機能（CSV取込み/売上レポート/在庫照会/商品管理）へ遷移（モックアップ準拠、月次売上はサイドバー経由、商品管理は Phase 3 UI-01a まで pending disabled）
+3. 大ボタンで毎日機能（CSV取込み/売上レポート/在庫照会/商品管理）へ遷移（モックアップ準拠、月次売上はサイドバー経由、商品管理は Phase 3 UI-01a まで pending disabled）。D-138 の後は在庫照会・商品管理の 2 枚を「商品と在庫」「在庫切れ・在庫少」にする（[53](../function-design/53-ui-home.md) UI-00-D13）
 4. 中段に入出庫4機能、下段にたまに使う機能（棚卸し/バックアップ/設定）
 
 **【制御構造】**
@@ -90,7 +91,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 ### UI-01a: 商品検索・一覧
 
-**タスク要求**: 商品の検索・絞込み・並替え・一覧表示（PLU の移行状態の列・絞り込み・一括更新は D-117 で撤去）
+**タスク要求**: 商品の検索・絞込み・並替え・一覧表示（PLU の移行状態の列・絞り込み・一括更新は D-117 で撤去）。D-138 で UI-06a と 1 つの画面「商品と在庫」（`/products`）にする（[50](../function-design/50-ui-product-list.md) UI-01a-D14〜D19、proposed・未実装）
 
 **【状態管理】**
 - 検索条件（keyword, department_id, is_discontinued, sort_key, sort_order）
@@ -208,12 +209,13 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 ### UI-06a/06b/06c: 在庫照会系画面群
 
 **UI-06a 商品別在庫照会:**
+- D-138 で UI-01a と 1 つの画面「商品と在庫」（`/products`）にし、`/stock` は寄せる（proposed・未実装。在庫の状態・在庫切れ・在庫少の一覧・行の詳細の契約は [58](../function-design/58-ui-stock-inquiry.md)）
 - CMD-06 get_stock_detail で商品詳細取得
 - 商品検索→選択→在庫数・売価・原価・最終入庫日・最終販売日を表示
 
 **UI-06b 在庫少一覧:**
-- 独立画面ではなく、UI-06a `/stock` への `status=low_stock` deep-link（D-047、2026-07-16、詳細は [52-ui-shared-layout.md](../function-design/52-ui-shared-layout.md) UI-12-D1）
-- CMD-06 list_low_stock で閾値以下の商品を一覧取得（UI-06a 内の既存フィルタ contract を再利用、廃番除外は固定 false）
+- 独立画面ではなく、UI-06a `/stock` への `status=low_stock` deep-link（D-047、2026-07-16、詳細は [52-ui-shared-layout.md](../function-design/52-ui-shared-layout.md) UI-12-D1）。D-138 の後は「在庫切れ・在庫少」として `/products?status=low_stock` を開き、在庫切れと在庫少を 1 つの一覧に出す
+- CMD-06 list_low_stock で閾値以下の商品を一覧取得し、廃番を除いて出す（D-138 の後は「すべて」の状態の欄にも同じ集合を廃番を含めて使う、58 契約 H・廃番除外。今の build は UI-06a 内のフィルタ contract で `list_low_stock(false)` 固定）
 
 **UI-06c 在庫変動履歴:**
 - CMD-06 list_movements で商品別の変動一覧取得

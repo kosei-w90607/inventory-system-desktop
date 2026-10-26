@@ -1,5 +1,5 @@
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
-> **入力ドキュメント**: ARCHITECTURE.md（UI-06c / REQ-303）、SCREEN_DESIGN.md（在庫照会 / 入出庫履歴・在庫変動追跡）、44-cmd-inventory.md（CMD-06 list_movements）、58-ui-stock-inquiry.md（在庫照会からの導線）、65-inventory-record-traceability.md（完成形 traceability contract）
+> **入力ドキュメント**: ARCHITECTURE.md（UI-06c / REQ-303）、SCREEN_DESIGN.md（商品と在庫画面 / 入出庫履歴・在庫変動追跡）、44-cmd-inventory.md（CMD-06 list_movements）、58-ui-stock-inquiry.md（在庫照会からの導線）、65-inventory-record-traceability.md（完成形 traceability contract）
 
 ## 66. UI-06c: 商品別在庫変動履歴
 
@@ -13,10 +13,10 @@
   - `getStockDetail(productCode)` — 見出し、現在庫、商品名、部門表示
   - `listMovements(query: MovementQuery)` — 商品別 movement 一覧
 - **主動線**:
-  1. `/stock` の商品詳細カードから「在庫変動履歴」を開く
+  1. 商品と在庫の画面（`/products`、D-138。今の build は `/stock`）の行の詳細から「在庫変動履歴」を開く
   2. 商品別に日時降順の movement を確認する
   3. movement 行の元記録ラベルから業務記録詳細へ遷移する
-  4. 「在庫照会へ戻る」で `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落・不正時は `/stock?q=$code&selected=$code`（UI-06c-D9）
+  4. 「商品と在庫へ戻る」で `returnTo`（遷移元の URL）へ戻る。欠落・不正時は `/products?q=$code&selected=$code&discontinued=all`（UI-06c-D9。D-138 の後の値。今の build は label「在庫照会へ戻る」・先 `/stock`）
 - **初回実装の非対象**: CSV出力、印刷、取消/訂正、元 movement 関係表示、横断 `/inventory/records`、業務記録詳細画面そのもの。
 
 **関数要求**: 商品コードごとの在庫変動履歴を URL search state 付きで表示し、各 movement の日時、種別、増減、変動後在庫、元業務記録リンク、備考を operator-facing な日本語 UI として確認できるようにする。
@@ -68,7 +68,7 @@ export function useStockMovements(args: {
 | UI-06c-D6 | `MovementRecord.source` がある行だけ「元記録」リンクを出し、ない行は「元記録なし」と表示する。 | PR #112 の source-link contract を使う。初期在庫や legacy 行は movement 自体を表示し、リンク欠落だけを明示する。 |
 | UI-06c-D7 | 元記録 route がまだ未実装でも link URL は `source.route` をそのまま表示対象にする。 | UI-06c の責務は movement から元記録へ戻るための contract 表示。未実装詳細 route の完成は後続スライスで扱う。 |
 | UI-06c-D8 | Windows native L3 は必要。 | 新規 operator-facing 調査画面であり、表の密度、数量符号、元記録リンク、戻り導線の視認性を確認する必要がある。 |
-| UI-06c-D9 | 「在庫照会へ戻る」は `returnToLinkProps(search.returnTo, { pathname: "/stock" })`（`src/lib/return-to.ts`、DSR-18）で `/stock` へ pin する。pin が通れば `<Link {...backLinkProps}>`（`to` = pathname、`search` = router の search object）、欠落・不正・pin 不一致で helper が `null` を返したら `<Link to="/stock" search={{ q: code, selected: code }}>` で在庫照会へ遷移する（`null` の分岐は型で強制される）。文字列 URL では組まない（数字だけの商品コードが `parseSearch` の `JSON.parse` で number 化し、route の `z.string().catch(undefined)` で落ちるため、GA5）。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。元記録 link へ渡す `detailReturnTo` は `/stock/${encodeURIComponent(code)}/movements` に、正規化した search（`dateFrom` / `dateTo`、`all` 以外の `type`、2 以上の `page`）と `returnTo` をこの順の object にして `defaultStringifySearch`（router の既定の search 直列化）で付けて組み、`returnTo` を入れ子で載せる（2026-09-25）。`stockInquirySearchSchema.selected` の上限は `q` と同じ 100 文字（旧 20、returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17 C6）。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。 | 監査 NAV-1 起源。直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`src-tauri/src/db/product_repo.rs` の test `test_search_products_req103_keyword_product_code`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。棄却案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）/ 文字列 `/stock?q=…&selected=…` を `to` に渡す（`parseSearch` が JSON.parse するため数字だけの商品コードが number 化し `z.string()` で落ちる、GA5）/ 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）/ `detailReturnTo` を `URLSearchParams` で手組みする（2026-09-25 まで。JSON として読める string 値を引用符なしで出すため、受け側の `parseSearch` で number 等に変わる。日付・enum・page と `/` 始まりの `returnTo`〈または `returnTo` なし〉では出力が router の直列化と 1 byte も同じだが、route schema が受ける `/` 始まりでない不正な `returnTo`〈例 `123`〉は number 等に化ける〈新旧とも不正で「在庫照会へ戻る」は既定の戻り先に着地し、router の直列化へ寄せて変わるのは詳細 link の href だけ。例外は引用符ごとの `"/stock"` のような JSON の文字列 literal で、手組みは往復で引用符を外して `/stock` へ着地させていた〉。string の param を足すと GA5 と同じ機序になる）/ `detailReturnTo` に `useRouterState` の `location.href` を使う（URL にある未検証の値・既定値の `page=1`・元の key 順をそのまま運び、正規化した形が変わる。page は props で受けた検証済み search から組む）。`selected` の上限を 20 のまま据え置く（商品コードに長さ上限が無いのに `q` より狭い、GA5 系の未解消 gap）。 |
+| UI-06c-D9 | D-138 の後（proposed・未実装）は、pin する pathname と fallback の先を `/products` に、label を「商品と在庫へ戻る」にする（`/stock` は `/products` へ寄せる、[50](50-ui-product-list.md) UI-01a-D19。統合の前に作られた `/stock` の `returnTo` は pin 不一致で fallback に落ち、`q`・`selected` で同じ商品に着く）。fallback の search は `{ q: code, selected: code, discontinued: "all" }`（廃番の商品の履歴から戻っても、既定の廃番の表示〈表示中〉で行が消えない。見出しの query の成否に頼らず常に付ける）。限定: `q` は部分一致なので、その商品コードを含む商品が表示件数を超えて該当の商品が 1 ページ目に無いと `selected` は外れる（[58](58-ui-stock-inquiry.md) §58.4。一覧は `q` で絞られたまま残り、pager で届く）。限定: `returnTo` の 500 字の上限は受け口ごとに着地が違う（どちらも今の挙動のまま）。在庫変動履歴の `returnTo`（§66.3、`src/features/stock-movements/types.ts:41` の `.max(500)`）が長い検索語で超えると schema が `undefined` にし、既定の戻り先（上の fallback）に落ちる。来た一覧の条件は失うが同じ商品に着く。業務記録詳細の 6 つの route の `returnTo`（`src/routes/inventory/receiving.records.$recordId.tsx:11` ほか、同じ上限）に渡す入れ子の `detailReturnTo` が超えると、その詳細の「前の画面へ戻る」は詳細の既定 `/inventory/records`（`src/features/inventory-records/ReceivingRecordDetailPage.tsx:45` ほか 5 つの `*RecordDetailPage.tsx`）に着き、在庫変動履歴と商品は失う。上限は D-138 の前からあり、統合の画面の URL は key（[50](50-ui-product-list.md) §50.4）が増えるので少し早く届く。上限を上げる案は [backlog](../backlog.md) の「商品と在庫の画面の統合の runtime」の候補（入れ子の長さの設計が要る）。仕組み（`returnToLinkProps`・`null` の分岐・`Link` の `search` props・`detailReturnTo`）は変えない。以下の `/stock` と「在庫照会へ戻る」は今の build の値。「在庫照会へ戻る」は `returnToLinkProps(search.returnTo, { pathname: "/stock" })`（`src/lib/return-to.ts`、DSR-18）で `/stock` へ pin する。pin が通れば `<Link {...backLinkProps}>`（`to` = pathname、`search` = router の search object）、欠落・不正・pin 不一致で helper が `null` を返したら `<Link to="/stock" search={{ q: code, selected: code }}>` で在庫照会へ遷移する（`null` の分岐は型で強制される）。文字列 URL では組まない（数字だけの商品コードが `parseSearch` の `JSON.parse` で number 化し、route の `z.string().catch(undefined)` で落ちるため、GA5）。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。元記録 link へ渡す `detailReturnTo` は `/stock/${encodeURIComponent(code)}/movements` に、正規化した search（`dateFrom` / `dateTo`、`all` 以外の `type`、2 以上の `page`）と `returnTo` をこの順の object にして `defaultStringifySearch`（router の既定の search 直列化）で付けて組み、`returnTo` を入れ子で載せる（2026-09-25）。`stockInquirySearchSchema.selected` の上限は `q` と同じ 100 文字（旧 20、returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17 C6）。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。 | 監査 NAV-1 起源。直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`src-tauri/src/db/product_repo.rs` の test `test_search_products_req103_keyword_product_code`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。棄却案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）/ 文字列 `/stock?q=…&selected=…` を `to` に渡す（`parseSearch` が JSON.parse するため数字だけの商品コードが number 化し `z.string()` で落ちる、GA5）/ 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）/ `detailReturnTo` を `URLSearchParams` で手組みする（2026-09-25 まで。JSON として読める string 値を引用符なしで出すため、受け側の `parseSearch` で number 等に変わる。日付・enum・page と `/` 始まりの `returnTo`〈または `returnTo` なし〉では出力が router の直列化と 1 byte も同じだが、route schema が受ける `/` 始まりでない不正な `returnTo`〈例 `123`〉は number 等に化ける〈新旧とも不正で「在庫照会へ戻る」は既定の戻り先に着地し、router の直列化へ寄せて変わるのは詳細 link の href だけ。例外は引用符ごとの `"/stock"` のような JSON の文字列 literal で、手組みは往復で引用符を外して `/stock` へ着地させていた〉。string の param を足すと GA5 と同じ機序になる）/ `detailReturnTo` に `useRouterState` の `location.href` を使う（URL にある未検証の値・既定値の `page=1`・元の key 順をそのまま運び、正規化した形が変わる。page は props で受けた検証済み search から組む）。`selected` の上限を 20 のまま据え置く（商品コードに長さ上限が無いのに `q` より狭い、GA5 系の未解消 gap）。 |
 
 ### 66.3 URL Search State
 
@@ -78,11 +78,11 @@ type StockMovementsSearch = {
   dateTo?: string;   // YYYY-MM-DD
   type?: "all" | "receiving" | "return" | "sale_auto" | "sale_manual" | "disposal" | "stocktake";
   page?: number;     // 1 始まり。未指定は 1
-  returnTo?: string; // 在庫照会からの遷移元 URL（max 500）
+  returnTo?: string; // 商品と在庫（今の build は在庫照会）からの遷移元 URL（max 500）
 };
 ```
 
-- 欠落・不正な `returnTo`（`/` 始まりでない、解析不能、base origin 不一致、解決後の pathname が `//` 始まり、`/stock` と pathname 不一致、500 字超）は `search={{ q: code, selected: code }}` で `/stock` へ fallback する（着地先は `/stock?q=$code&selected=$code` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない）。非 string / 500 字超は schema で `undefined` とし、URL は `returnToLinkProps` で DSR-15 の origin / pathname 検証を通し、解決した pathname を `/stock` に exact pin する（UI-06c-D9）。
+- 欠落・不正な `returnTo`（`/` 始まりでない、解析不能、base origin 不一致、解決後の pathname が `//` 始まり、pin する pathname と不一致、500 字超）は fallback する。500 字超は正しい一覧の URL でも起こる（長い検索語）。そのときは来た一覧の条件を失い既定の戻り先で同じ商品に着く限定として扱い、上限は変えない（UI-06c-D9）。この `returnTo` を入れ子に持って業務記録詳細へ渡す `detailReturnTo` が 500 字を超えたときは別の受け口の話で、詳細の「前の画面へ戻る」は詳細の既定 `/inventory/records` に着き、在庫変動履歴と商品は失う（UI-06c-D9）。D-138 の後は `/products` へ `search={{ q: code, selected: code, discontinued: "all" }}`（UI-06c-D9。今の build は `/stock` へ `search={{ q: code, selected: code }}`）。着地先は `/products?q=$code&selected=$code&discontinued=all` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない。非 string / 500 字超は schema で `undefined` とし、URL は `returnToLinkProps` で DSR-15 の origin / pathname 検証を通し、解決した pathname を exact pin する（UI-06c-D9。D-138 の後は `/products`、今の build は `/stock`）。
 - filter 変更・page 送り・reset でも `returnTo` は保持する。
 - 不正な `dateFrom` / `dateTo` は `undefined` に fallback する。
 - 不正な `type` は `"all"` に fallback する。
@@ -118,7 +118,7 @@ MovementSummary + MovementTable + Pagination
 
 - `PageHeader` title: `在庫変動履歴`
 - actions:
-  - `在庫照会へ戻る` → `returnTo` が `/stock` へ pin されて解決すればその `to`/`search`、欠落・不正・pin 不一致（helper が `null`）なら `/stock` に `search={{ q: code, selected: code }}`（UI-06c-D9、`returnToLinkProps` で検証）
+  - `商品と在庫へ戻る` → `returnTo` が `/products` へ pin されて解決すればその `to`/`search`、欠落・不正・pin 不一致（helper が `null`）なら `/products` に `search={{ q: code, selected: code, discontinued: "all" }}`（UI-06c-D9、`returnToLinkProps` で検証。D-138、proposed・未実装。今の build は `在庫照会へ戻る` で `/stock` へ pin し、fallback は `/stock` に `search={{ q: code, selected: code }}`）
 
 #### 商品サマリ
 
@@ -175,13 +175,13 @@ MovementSummary + MovementTable + Pagination
 ### 66.7 Tests
 
 - REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子。
-- UI-06c-D9（GA5）: 数字だけの商品コードでも fallback の `q` / `selected` が string で往復する（T2-num、`stockInquirySearchSchema` まで通す）。
-- UI-06c-D9（returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17）: `/stock` 以外の pathname は pin 不一致として fallback へ（T4）。`selected` は 100 文字まで受理する（T7、`src/features/stock-inquiry/types.test.ts`）。
-- UI-06c-D9（SPEC-NAV-RETURN-TYPES-2026-09-25）: `detailReturnTo` を受け側の route schema で parse すると元の search に戻る（JSON として読める string の `returnTo` を含む）。`/` 始まりでない不正な `returnTo` では「在庫照会へ戻る」が新旧とも既定の戻り先に着地する。在庫照会（数字だけの商品コード）→ 在庫変動履歴 → 業務記録詳細 → 「前の画面へ戻る」→「在庫照会へ戻る」の実 router 往復で、各段の href が出発時と文字列一致する。
+- UI-06c-D9（GA5）: 数字だけの商品コードでも fallback の `q` / `selected` が string で往復する（T2-num、`/products` の route schema〈`src/features/products/search.ts`〉まで通す。D-138 の後。今の build の test は `stockInquirySearchSchema` まで通す）。
+- UI-06c-D9（returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17）: `/products` 以外の pathname（統合の前の `/stock` を含む）は pin 不一致として fallback へ（T4）。`selected` は 100 文字まで受理する（T7）。501 字の `returnTo` は fallback へ（§66.3）。D-138 の後。今の build の test は `/stock` 以外を pin 不一致とし、T7 は `src/features/stock-inquiry/types.test.ts`。
+- UI-06c-D9（SPEC-NAV-RETURN-TYPES-2026-09-25）: `detailReturnTo` を受け側の route schema で parse すると元の search に戻る（JSON として読める string の `returnTo` を含む）。`/` 始まりでない不正な `returnTo` では戻る導線が新旧とも既定の戻り先に着地する。商品と在庫（数字だけの商品コード）→ 在庫変動履歴 → 業務記録詳細 → 「前の画面へ戻る」→「商品と在庫へ戻る」の実 router 往復で、各段の href が出発時と文字列一致する（D-138 の後。今の build の test は在庫照会と「在庫照会へ戻る」で同じ往復を見る）。
 
 - REQ-303 / UI-06c-D1: route params の `code` を `listMovements.product_code` に渡す。
 - REQ-303 / UI-06c-D2: search params を `MovementQuery` に変換し、filter 変更時は page を 1 に戻す。
 - REQ-303 / UI-06c-D4/D5/D6: movement table が種別、増減、変動後在庫、元記録リンク、元記録なしを表示する。
 - REQ-303 / UI-06c-D3: product detail query の失敗時も movement list を表示する。
 - REQ-207 / UI-06c-D6/D7: `source.route` をリンク先に使う。
-- UI-06c-D8: Windows native L3 で、在庫照会からの導線、filter、pagination、元記録リンクの視認性を確認する。
+- UI-06c-D8: Windows native L3 で、商品と在庫の画面からの導線（D-138 の後。今の build は在庫照会）、filter、pagination、元記録リンクの視認性を確認する。
