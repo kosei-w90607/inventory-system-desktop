@@ -28,14 +28,14 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 33831dd3c01266b0b458c0d8c8d189ad9895672c
 - Amendments: none
 - Coordinator: Opus 5.5 main session
-- Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
+- Writer: Opus 5.5 subagent（起票と実装）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
-- Final Reviewer: Fable 5.1（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Reviewer: Fable 5（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
 - Branch: agent/stocktake-count-runtime-b2
@@ -50,6 +50,7 @@ wave に属さない単独の lane。D-118（[ADR](../adr/2026-10-16-stocktake-c
 6. plan-gate のまま是正（round 2、2026-10-24、Coordinator、本 commit）: round 2（Claude 側 fresh Opus 5.5 と Codex）の reject を起草役が `6d2e857a` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（天井、fresh Opus 5.5 + Codex）で再 review する。
 7. plan-gate（round 3、天井、2026-10-24、Coordinator、本 commit）: round 3 は Claude 側 approve・Codex reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした。起草役が `0256d19b` で直した（下の Review Response）。plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が P1 / P2 = 0 を報告した後。
 8. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）の closure は Claude 側 fresh Opus 5.5 = approve（P3 2）、Codex = approve（P1/P2/P3 0）で、P1/P2 = 0（下の Review Response）。closure の P3 2 件は plan-gate のまま Coordinator が `33831dd3` で直した（Plan Commit はその版）。実装は、b1（PR #188）の merge の後に main を同期し、b1 の merge の後の同期で当て直す節（本 packet の「b1 の merge の後に同期する節」）を確かめてから implementing へ進める。実装の commit はまだ無い。
+9. plan-approved → implementing（2026-10-27、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`50f97a76`、#188 b1 の merge を含む）を単段で merge した（`04401841`、衝突なし）。上の「b1 への依存」の 1〜13 を同期の後の版で照合し、名前・引数・形はどれも見込みのとおり（`StockCountKind`、`insert_stock_count` の `counted_at` の形と `stocktake_item_id`、初期在庫の印の式、`phase` と `settlement_no`、`stocktakeCountUpdate`、`formatStockOrRange`・`formatRecountReasons` の引数、`StocktakePage.tsx` の inline の `recheckQuery`〈key `queryKeys.stocktake.recheckList()`・`staleTime: 0`〉、`CountRecoveryTarget` の `recount_reasons`、`CmdError` の `stocktake_recovery`）で、Gated Amendment は要らない。AC の baseline の command を同期の後に逐語で再測し、変わったのは b1 の merge の版の数だけ: `proposed・未実装` が 13 → 17（b1 の S9 が節の見出しと本文に「b2 は proposed・未実装」と残した文）、`b1 の後・b2 の前の版` が exit 1 → 1、`MovementRecord` の並びの鍵の文が 2 → 4（ADR の 2 行、21 の D-118 の節、`docs/architecture/io-task-specs.md` の IO-01 の段落〈b1 が書いた「`MovementRecord` の並びの鍵は b2（proposed・未実装）」〉）。どれも b2 で直す文で、AC の完了時の期待は変わらない。`docs/architecture/io-task-specs.md` は予定 path の一覧に無いが AC5 の検索の範囲にあり、S5 の「b1 の merge の後に同期する節」と同じ扱いで b2 の分の文を現行に直す。節の所有表の取り直し（同期の後の head と open な lane の差分）: PR #172 とは `docs/architecture/io-task-specs.md`（#172 は IO-09 の節、b2 は IO-01 の段落の 1 文）、PR #202 とは `docs/function-design/50-ui-product-list.md`・`51-ui-product-form.md`・`58-ui-stock-inquiry.md`・`66-ui-stock-movements.md`（#202 は画面の要素の見直しの design の文。先に merge した方の版を起点に後の方が同期で当て直す）。ほかの open な lane（#190・#194・#196・#197・#201・#204）とは 0。Final Reviewer の Claude 側は座組表の当面 Fable 5（TD-410）に揃えた。
 
 ## Owner Effort Budget
 
