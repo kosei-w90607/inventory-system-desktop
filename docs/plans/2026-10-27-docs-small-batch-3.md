@@ -8,7 +8,7 @@ wave に属さない単独の lane。docs だけ（`docs/Plans.md`・`docs/backl
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R2
 - Plan Commit: pending
 - Amendments: none
@@ -26,6 +26,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 
 1. kickoff → spec-check（2026-10-27、起草役）: 範囲を発注 609 の G1〜G12（G9 を除く）と backlog の 4 群（下の S2〜S4）にし、Risk を R2 と記録した（下の Risk）。
 2. spec-check → plan-draft（2026-10-27、起草役、同じ commit）: 表の唯一の skip。本 lane は関門の表と backlog の項目を owner の決定と既存の正本に合わせて並べ直すだけで、新しい設計の選択をしない（下の Design Readiness）。
+3. plan-draft → plan-gate（2026-10-27、Coordinator）: packet は commit 済み（`2c0582a2`）。R2 なので Matrix は任意で、作らない理由は前文。Final Reviewer の Claude 側は座組表の R2 の行（fresh Opus 5.5）に従う起草役の判断を受ける。Plan Review へ出す（fresh Opus 5.5 + Codex）。
 
 ## Owner Effort Budget
 
