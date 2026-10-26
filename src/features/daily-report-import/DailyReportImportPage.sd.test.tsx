@@ -298,6 +298,18 @@ describe("DailyReportImportPage SD UI-07-D15 REQ-401", () => {
     expect(mockOpen).not.toHaveBeenCalled();
   });
 
+  it("REQ-401 / UI-07-D16 (a)(c): choosing an undeterminable file on the SD list keeps the scanned list", async () => {
+    const user = await scanWith(makeScan([candidate("A", "NotImported")]));
+    mockOpen.mockResolvedValueOnce(["C:\\a\\notes.CSV"]);
+    await user.click(screen.getByRole("button", { name: "ファイルを選んで取り込む" }));
+
+    expect(
+      await screen.findByText("Z001・Z002・Z005 のどれかの名前のファイルを選んでください。"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(READ_DONE)).toBeInTheDocument();
+    expect(within(row("Z001_A.CSV")).getByText("取り込めます")).toBeInTheDocument();
+  });
+
   it("REQ-401 / UI-07-D15 (6): after importing A, SD の一覧へ戻る shows A imported and B still importable without rescanning", async () => {
     mockCommit.mockResolvedValueOnce({
       status: "ok",

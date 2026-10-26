@@ -276,6 +276,8 @@ export function useDailyReportImportFlow() {
       const paths = Array.isArray(selected) ? selected : [selected];
       if (paths.length === 0) return;
       saveLastSelectedDir(paths[0]);
+      // (a) preview から 1 つ以上選んだら、足せる file が 0 本でも idle の空の一覧へ戻す（検査より前）
+      if (state.status === "preview") dispatch({ type: "reset" });
 
       const named = paths.map((path) => ({
         path,
@@ -302,8 +304,8 @@ export function useDailyReportImportFlow() {
       }
       if (files.length < named.length) setLastSelectionError(UNKNOWN_SERIES_MESSAGE);
       if (files.length === 0) return;
-      // preview・一覧から選んだときは idle の空の一覧に足す（一覧は idle の間だけ持つので、ここでは空）
-      if (state.status !== "idle") dispatch({ type: "reset" });
+      // SD の一覧から足せたときは idle の空の一覧に足す（一覧は idle の間だけ持つので、ここでは空。足せないときは一覧を残す）
+      if (state.status !== "idle" && state.status !== "preview") dispatch({ type: "reset" });
       addManualFiles(files, manualFiles);
     } catch {
       setLastSelectionError(READ_FAILED_MESSAGE);

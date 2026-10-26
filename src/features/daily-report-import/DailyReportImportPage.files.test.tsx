@@ -184,6 +184,23 @@ describe("DailyReportImportPage files UI-07-D16 REQ-401", () => {
     },
   );
 
+  it("REQ-401 / UI-07-D16 (a)(c): reselecting from a manual preview with no addable file returns to an empty list", async () => {
+    const user = renderPage();
+    await choose(user, ["C:\\a\\Z001_21 .CSV", "C:\\a\\Z002_21 .CSV", "C:\\a\\Z005_21 .CSV"]);
+    await user.click(await screen.findByRole("button", { name: "確認する" }));
+    await screen.findByText("取込み内容");
+
+    mockOpen.mockResolvedValueOnce(["D:\\b\\notes.CSV"]);
+    await user.click(screen.getByRole("button", { name: "ファイルを選び直す" }));
+
+    expect(
+      await screen.findByText("Z001・Z002・Z005 のどれかの名前のファイルを選んでください。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ファイルを選んで取り込む" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "取り込む" })).not.toBeInTheDocument();
+    expect(listedNames()).toEqual([]);
+  });
+
   it("REQ-401 / UI-07-D16 (a): reselecting from a manual preview starts a new list with only the chosen files", async () => {
     const user = renderPage();
     await choose(user, ["C:\\a\\Z001_21 .CSV", "C:\\a\\Z002_21 .CSV", "C:\\a\\Z005_21 .CSV"]);
