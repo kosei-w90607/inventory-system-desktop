@@ -30,7 +30,8 @@ wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本�
 8. plan-gate のまま一括是正（round 3、2026-10-24、起草役、`aa8c251a`）: round 3（天井）の指摘の一括是正（Review Response 参照）。手順書の方向は変えないので plan-gate に留め、closure の review へ出す。
 9. plan-gate のまま是正（closure の後、2026-10-25、起草役、`d9e9fcff`）: closure の指摘の是正（Review Response 参照）と base 同期（`origin/main` `8db97271` を merge。導入の前の関門の本 lane の項目は 6 から 8 になった）。手順書の方向は変えないので plan-gate に留める。
 10. plan-gate のまま是正（closure 2、2026-10-26、起草役、`7174f0ba`）: closure 2 の Claude 側の reject（P2 1 / P3 3）を Coordinator の裁定（相談役の反例探しを入れた）に沿って直した（下の Review Response の closure 2）。設計の方向は変えないので plan-gate に留め、closure 3（Claude 側 fresh Opus 5.5 + Codex）に出す。
-11. plan-gate のまま是正（closure 3、2026-10-26、起草役、本 commit）: closure 3 の 2 本の reject（B・G の未 closure、Claude 側の P3 5 件）を Coordinator の裁定（相談役の反例探しを入れた）に沿って直した（下の Review Response の closure 3）。同じ round の前に `origin/main`（`5506c7a4`）を単段で取り込んだ（`8ea82ab5`）。設計の方向は変えないので plan-gate に留め、closure 4（Claude 側 fresh Opus 5.5 + Codex）に出す。
+11. plan-gate のまま是正（closure 3、2026-10-26、起草役、`6f167bc1`）: closure 3 の 2 本の reject（B・G の未 closure、Claude 側の P3 5 件）を Coordinator の裁定（相談役の反例探しを入れた）に沿って直した（下の Review Response の closure 3）。同じ round の前に `origin/main`（`5506c7a4`）を単段で取り込んだ（`8ea82ab5`）。設計の方向は変えないので plan-gate に留め、closure 4（Claude 側 fresh Opus 5.5 + Codex）に出す。
+12. plan-gate のまま closure 4 を記録し、P3 を直す（2026-10-26、Coordinator、本 commit）: closure 4 の 2 本（Claude 側 fresh Opus 5.5 = approve P3 4、Codex = approve P1 / P2 / P3 0。Codex は是正の後の手順 5 の block を Windows PowerShell 5.1 で回した）が P1 / P2 = 0 を報告した（下の Review Response の closure 4）。Claude 側の P3 4 件と、Contract Probe P3・Matrix の Residual Test Gaps の「5.1 でまだ回していない」を、plan-gate のまま本 commit で直した（Plan Commit はこの版。前例: PR #197 の遷移 8・PR #201 の遷移 8）。
 
 ## Owner Effort Budget
 
@@ -92,7 +93,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 年末の棚卸しで埋めた在庫 Excel（J3 の既定）と、Excel を使える Windows がある（開発用の PC には Excel が無い。repo 外の回答台帳 TD-437） | 手順書の流れ 1（行の種類に分ける → 列を作る〈原価は店の決まりで丸める〉 → 表で確かめる → CSV で保存 → 保存した file を確かめる → SHA-256） | 商品 CSV と行の種類ごとの数 | 「どれにも当たらない」行と接頭辞の無い部門の独自コードの行が 0、`TEXT` の値が元の値と違う行（形式の選び違い、`m` の初期在庫の小数 3 桁以上、売価・個数の初期在庫の整数でない値、空のセルに値を書いた `TEXT`）が 0、丸めで原価が変わった行と 0 の行を一覧にし、5 つの数字の列（`商品コード`・`JANコード`・`売価`・`原価`・`初期在庫`）を全部の桁の文字列の値にし、数字だけの `商品コード` が `JANコード` と同じでない行と `JANコード` が 13 桁で `00000` から始まる行が 0（表の全部の行を数える）、CSV UTF-8 で保存し、保存した file の先頭が UTF-8 の BOM（`EF BB BF`。アプリの `decode_bytes` が UTF-8 として読む条件）で、5 つの列が手順 4 で決めた形でない行が 0 で、確かめた行の数が種類ごとの数の和と同じ | P1（Excel の CSV の保存がセルの文字のまま書くこと。安全を確かめに置かず〈repo 外の回答台帳 TD-437 の後の裁定〉、手順 5 が保存した file の中身を全部の行で確かめて外れた行を名指す。`TEXT` の丸めは置き換える前の元の値との比べが名指す。Contract Probe の P1） |
 | 初回の導入の版の MSI と CSV と、元の在庫 Excel を開ける PC（照合に使う。開発用の PC には Excel が無い、TD-437）がある | 流れ 2（開発用の Windows で、開発のデータの folder を退避した空の DB に、取り込む前の backup → 取込み → 照合 → 復元で 0 件に戻る。手順 3〜7 は同じ日） | 同じ CSV と版で店の PC と同じ結果になることが分かる | プレビューのエラー行と重複行が 0（指数の形の値、13 桁の数字で `JANコード` が空の行、`JANコード` の桁かチェックディジットが合わない行はエラー行として名指される。J5 = b・TD-426）、照合が全部合い、同じ日のうちに復元で 0 件に戻る | P2（code の上で確かめた。画面の上は手順 7） |
-| 店の PC に MSI が入り、商品が 0 件（MSI の手順書の流れ 2 の後） | 流れ 3（写して SHA-256 → 取り込む前の backup を 2 か所へ → 取込み → 開き直し → 照合 → 設定 → 最初の backup） | 店の PC で本物の商品と初期在庫が入り、業務の入力を始められる | 手順 2〜7 を同じ日に行い、照合が全部合う。合わないかその日に終えられなければ入力を始めずに取り込む前の backup へ復元し、合わなければ流れ 1 から | P2（code の上で確かめた） |
+| 店の PC に MSI が入り、商品が 0 件（MSI の手順書の流れ 2 の後）で、元の在庫 Excel を開ける PC（照合に使う）がある | 流れ 3（写して SHA-256 → 取り込む前の backup を 2 か所へ → 取込み → 開き直し → 照合 → 設定 → 最初の backup） | 店の PC で本物の商品と初期在庫が入り、業務の入力を始められる | 手順 2〜7 を同じ日に行い、照合が全部合う。合わないかその日に終えられなければ入力を始めずに取り込む前の backup へ復元し、合わなければ流れ 1 から | P2（code の上で確かめた） |
 | 業務の入力を始めた後に誤りが見つかった | 「入れた後に誤りを見つけたら」の表 | 画面か CSV の上書き（今の `JANコード` を全部の行に入れる。空・列なしは JAN を消すが、商品コードが 13 桁の数字の商品の JAN はプレビューが止めるので消せない）か計数で直す。直せない誤り（商品コード・単位の種類・13 桁の数字の商品コードの商品の JAN を消すこと）は止めて owner に諮る | — | なし |
 
 この lane で完了するのは「手順書が置かれ、owner が辿れる」まで。店の PC での投入は初回の導入の版と予行演習の後で、v1.0 の通常運用の達成はそれらを含む。
@@ -278,7 +279,7 @@ R4 の Contract Probe（`docs/DEV_WORKFLOW.md` Plan Packet Rules）は、外部�
   ```
 
   復元で商品と入出庫の記録が 0 件に戻り、部門と設定の行の数は取り込む前と同じ。同じ probe で、黙って入る 2 つの形（`JANコード` が空の 13 桁の行、指数の形の行）が preview で正常な行になることも確かめた（手順書の「今の事実」の「黙って入る形」の行）。Windows の画面の上の復元（「バックアップ・復元」の一覧から選ぶ）は予行演習の手順 7 で確かめる。
-- P3 流れ 1 の手順 5 の PowerShell の block が Windows PowerShell 5.1 で外れた行を名指して止め、正しい行を通す → 是正の前の block で観測した（2026-10-26、closure 3 の Codex〈発注 584〉の最終報告。Windows PowerShell 5.1.26100.9711、店のデータを含まない合成の CSV）。観測の要旨（数は同じ報告の値）: 合成の 65 行の末尾 5 行に列ごとの外れを入れると 62〜66 行目の各列を名指し、確かめた行の数は 65。正しい行（独自コード、先頭が 0 の 8 桁、`m` の `1.50`、空の JAN・初期在庫、売価 `0`・原価 `0.00`）は通った。原価 `12`、`m` の `1.5`、先頭の 0 の落ち、指数の形、桁区切り、全角の数字、小文字の接頭辞、空の原価は名指して止まった。CP932 の file は `Import-Csv` が列名の重複（「メンバーが既に存在」）の読取りの error を出し、確かめた行の数は 0。区切りだけの空の record は名指され、行の数が増えた（ただの空の行は読み飛ばされた）。値の中の改行は PowerShell が 1 つの record として通し、アプリの `parse_product_csv` は 2 件の行の error にした。BOM の無い UTF-8 の 1 行の file は「確かめた行の数: 1」だけを出して通り、同じ byte 列をアプリに渡すと「ファイルの文字コードが判別できません。Excelで保存し直してください」の file の error になった（UTF-16 も同じ差）。この最後の観測が closure 3 の B の反例で、是正で `Import-Csv` の前に先頭の BOM の確かめ（`[System.IO.File]::ReadAllBytes`。PowerShell 5.1 と 7 の両方にある .NET の呼び方）を足した。足した行は 5.1 でまだ回していないので、closure 4 の Codex の発注で、BOM 付きの正しい file・BOM の無い UTF-8・CP932・UTF-16 の 4 つの合成の file で回し直す。
+- P3 流れ 1 の手順 5 の PowerShell の block が Windows PowerShell 5.1 で外れた行を名指して止め、正しい行を通す → 是正の前の block で観測した（2026-10-26、closure 3 の Codex〈発注 584〉の最終報告。Windows PowerShell 5.1.26100.9711、店のデータを含まない合成の CSV）。観測の要旨（数は同じ報告の値）: 合成の 65 行の末尾 5 行に列ごとの外れを入れると 62〜66 行目の各列を名指し、確かめた行の数は 65。正しい行（独自コード、先頭が 0 の 8 桁、`m` の `1.50`、空の JAN・初期在庫、売価 `0`・原価 `0.00`）は通った。原価 `12`、`m` の `1.5`、先頭の 0 の落ち、指数の形、桁区切り、全角の数字、小文字の接頭辞、空の原価は名指して止まった。CP932 の file は `Import-Csv` が列名の重複（「メンバーが既に存在」）の読取りの error を出し、確かめた行の数は 0。区切りだけの空の record は名指され、行の数が増えた（ただの空の行は読み飛ばされた）。値の中の改行は PowerShell が 1 つの record として通し、アプリの `parse_product_csv` は 2 件の行の error にした。BOM の無い UTF-8 の 1 行の file は「確かめた行の数: 1」だけを出して通り、同じ byte 列をアプリに渡すと「ファイルの文字コードが判別できません。Excelで保存し直してください」の file の error になった（UTF-16 も同じ差）。この最後の観測が closure 3 の B の反例で、是正で `Import-Csv` の前に先頭の BOM の確かめ（`[System.IO.File]::ReadAllBytes`。PowerShell 5.1 と 7 の両方にある .NET の呼び方）を足した。是正の後の block は、closure 4 の Codex（発注 591 の最終報告）が 2026-10-26 に同じ Windows PowerShell 5.1.26100.9711 で、手順書から逐語で写して合成の 5 つの file で回した（数は同じ報告の値）: BOM 付きの UTF-8 は「確かめた行の数: 1」の 1 行だけ（`Import-Csv` の呼出し 1 回）、BOM の無い UTF-8・CP932・UTF-16 LE（BOM 付き）・空の file は保存し直しを名指す停止の 1 行だけ（呼出し 0 回）で、行ごとに入力する形（`-Command -`）でも同じだった。同じ byte 列をアプリの `parse_product_csv` に渡すと、BOM 付きは成功、BOM の無い UTF-8 と UTF-16 は文字コードの error、空の file は「ファイルが空です」、CP932 は成功（手順 5 がアプリより厳しく止めるのは C6 の意図どおり）。照合の `Out-GridView` は 5.1 で画面が出た（画面の上の操作はしていない）。PowerShell 7 では回していない。
 
 ## Data Safety
 
@@ -412,3 +413,16 @@ Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 0 / P3 5。G が固定なしで�
 - 手順書の流れ 1 の手順 5 の「その列を手順 4 の `TEXT` の列を作る段からやり直して保存し直す（空の原価は元の資料から入れる）」と、packet の P1・Contract Audit、Matrix の C6 の「sheet のセルが違えば手順 4 から」（N2）
 - 手順書の今の事実の `POS在庫連動` の行の「D-118 の (b) を含む版（初回の導入の版。…の 2）では」と、packet の Review Focus の「D-118 の (b) を含む版だけであること」（N5 (b)）
 - 遷移の記録の 10 と closure 2 の節の「本 commit」を、その commit `7174f0ba` にした
+
+
+### closure 4（head `6f167bc1`、2026-10-26）
+
+Claude 側（fresh Opus 5.5）= approve（P1 0 / P2 0 / P3 4）、Codex = approve（P1 0 / P2 0 / P3 0）。B・G・N2〜N5 は 2 本とも閉じたと判定した。Codex は是正の後の手順 5 の block を Windows PowerShell 5.1.26100.9711 で合成の 5 つの file に回し、現物の `parse_product_csv` と突き合わせた（上の Contract Probe P3）。Claude 側の P3 を全件受理し、Coordinator が本 commit で直した。
+
+| # | 出所 | 是正の場所 |
+|---|---|---|
+| C4-1 | Claude 側 1（P3） | 手順書の流れ 1 の手順 5 の直し方の最後の文を「直した段から順に手順 5 の保存と確かめまで進め直す」に（手順 3 から直した行が手順 4 の一覧と比べの列を飛ばす読みを消した） |
+| C4-2 | Claude 側 2（P3） | 流れ 2 の手順 4 の file の error の戻り先に、必須の列の不足（sheet の 1 行目の列名）を足した |
+| C4-3 | Claude 側 3（P3） | 流れ 2 の手順 6 の `Out-GridView` の前に `$f` に写した CSV の path を入れる、を足した |
+| C4-4 | Claude 側 4（P3） | Ordinary Operation の 3 行目の初期状態に、元の在庫 Excel を開ける PC を足した |
+| C4-5 | Coordinator | Contract Probe P3 と Matrix の Residual Test Gaps の「BOM の確かめの行は 5.1 でまだ回していない」を、closure 4 の Codex の実測で置き換えた |
