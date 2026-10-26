@@ -21,9 +21,9 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 | destructive の確認 dialog の今の置き場 | 11 file（`AlertDialogAction` を使う production の file） | `rg -l 'AlertDialogAction' src -g '!*.test.*'` → 11（下の Matrix の Adjacent Pattern Audit） |
 | 画面 | 3（CSV取込みの詳細〈65〉、Z004 タブの結果の画面と上の導線〈55〉、`/csv-import` の search） | 下の Scope の S3 |
 | migration・DB の列 | 0（取消の本体と列は b1。preview は書かない） | — |
-| 予定 path | 47（Rust 16・TS 17・docs 14〈packet と Matrix を含む〉。下の「予定 path の一覧」） | 下の一覧の行数（`grep -c` で拡張子ごとに数えた） |
+| 予定 path | 48（Rust 17・TS 17・docs 14〈packet と Matrix を含む〉。下の「予定 path の一覧」。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を足した） | 下の一覧の行数（`grep -c` で拡張子ごとに数えた） |
 
-手法: **1 lane・1 PR のまま S1〜S4 の段に積む。** 理由: 新しい書く経路は無く（取消の本体は b1）、足すのは読取り 1 つ（取消を TX の中で当てて戻す preview）と、順 4 の拒否の文と詳細への link（error に取込みID の任意の field）、入口・確認・導線の画面だけで、47 path は 1 回の L3（10 分の見込み）で確かめられる（Plan Review round 3 の是正で足した 8 path のうち 4 つ〈`daily_report_import_cmd.rs`・`plu_export_cmd.rs`・`product_cmd.rs`・`settings_cmd.rs`〉は、`CmdError` の literal ごとに None の 1 行を足すだけ）。段は検証の単位で切る（S1 BIZ・IO と S2 CMD・wire は 1 つの Rust の検証の単位、S3 画面は frontend の検証の単位、S4 は docs と生成物）。b1 の後に merge するので、実装は b1 の merge と同期の後に着手する（b1 の取消の本体と `RollbackResult.recheck_targets`・要再確認の一覧の部品に依る）。
+手法: **1 lane・1 PR のまま S1〜S4 の段に積む。** 理由: 新しい書く経路は無く（取消の本体は b1）、足すのは読取り 1 つ（取消を TX の中で当てて戻す preview）と、順 4 の拒否の文と詳細への link（error に取込みID の任意の field）、入口・確認・導線の画面だけで、48 path は 1 回の L3（10 分の見込み）で確かめられる（Plan Review round 3 の是正で足した 8 path のうち 4 つ〈`daily_report_import_cmd.rs`・`plu_export_cmd.rs`・`product_cmd.rs`・`settings_cmd.rs`〉は、`CmdError` の literal ごとに None の 1 行を足すだけ）。段は検証の単位で切る（S1 BIZ・IO と S2 CMD・wire は 1 つの Rust の検証の単位、S3 画面は frontend の検証の単位、S4 は docs と生成物）。b1 の後に merge するので、実装は b1 の merge と同期の後に着手する（b1 の取消の本体と `RollbackResult.recheck_targets`・要再確認の一覧の部品に依る）。
 
 ## Workflow State
 
@@ -50,6 +50,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 7. plan-gate（round 3、天井、2026-10-24、Coordinator の disposition、起草役、本 commit）: round 3 は Claude 側 approve・Codex reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、Coordinator が残った findings を「同型指摘の一括是正」とし、起草役がその disposition に沿って直した（下の Review Response）。是正は順 4 の拒否の error に取込みID の任意の field と Alert の link を足す（wire の契約が増え、予定 path が 47 になる）ので、plan-approved は、fresh の reviewer の closure（Claude 側 + Codex）が本 commit の版に P1 / P2 = 0 を報告した後（遷移表の plan-gate → plan-approved の条件。前例: PR #193 の遷移 7・8）。
 8. plan-gate → plan-approved（2026-10-24、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表（99 行）の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。遷移 7 は closure を Claude 側 + Codex と書いたが、遷移 7 の版の closure（`ff911e61`）で Codex が挙げた P2（N1）は Claude 側も挙げた同じ点で、Coordinator はその後の closure を、直した点だけを見る fresh Opus 5.5 の狭い closure 1 本に絞った（2026-10-24）。closure 2（`432d48c4`）の是正を経て、closure 3（`af32f558`）が approve（P1 / P2 = 0、P3 1。下の Review Response）。closure 3 の P3 1 件は plan-gate のまま Coordinator が `a87c5601` で直した（Plan Commit はその版。前例: PR #201 の遷移 8 で closure の P3 を直した版を Plan Commit にした）。実装は b1（PR #188）の merge の後に `origin/main` を単段で取り込んでから始める（上の「b1 との関係」）。
 9. plan-approved → implementing（2026-10-25、Coordinator、本 commit）: 遷移表の唯一の入口。直前に `origin/main`（`8db97271`、#188 b1 の merge を含む）を単段で merge した（`6e622424`、衝突なし）。AC の baseline の command を同期の後に逐語で再測し、変わったのは b1 の merge で本 packet が見込んだ 4 つだけ（`parse.rs` の `既に取り込まれています（精算 {}）` が 1、`RecheckTargetList.tsx` が在り `renderAction?: ` は 0、`bash scripts/check-command-drift.sh` が `D=71 H=71 S=71 T=71`〈b1 の command 3 つ〉、55 §55.0 の `取消の画面入口は結果 step だけ` が 0〈b1 が節ごと外した〉）。どれも上の b1 の head の版の baseline と同じ値で、AC の完了時の期待は変わらない。
+10. implementing のまま Gated Amendment 1（2026-10-26、Coordinator、本 commit）: 実装の Writer の S1〜S4 の後の Draft の run（40124364647）が Rust の 1 件だけ red だった。b1 の `src-tauri/src/cmd/stocktake_cmd.rs` の `test_complete_stocktake_cmd_req205_completion_blocked_wire`（b1 Matrix W4）が `CmdError` の wire を JSON 全体の完全一致で照合し、本 lane が足した `related_csv_import_id`（W3 の契約で順 4 の拒否のほかは `null`。`src-tauri/src/cmd/mod.rs` の `CmdError` は `skip_serializing_if` を持たない）が期待に無い。file が予定 path に無かったので Writer は編集前に止まった。起票の Adjacent Pattern Audit の `CmdError` に field を足す行が、wire 全体を照合するこの test を拾っていなかった（`serde_json::to_value(&error)` の完全一致は repo でこの 1 本。相談役の反例探しで確かめた）。本 amendment で予定 path に `stocktake_cmd.rs` を足し（48 path、Rust 17）、所有表に行を足し、Matrix の Adjacent Pattern Audit の行と「既存の test の移し方」の T6 を足した。test の期待 JSON に 1 key を足すだけで、test の名前・REQ-205 の参照・完全一致の照合の強さは変えない（REQ-205 の振舞いは変えず、wire の契約〈41 §17.4〉への期待の追随）。`skip_serializing_if` で key を消す案は W3・U11 (3)・41 §17.4 と食い違い、tauri-specta の command ごとの検証（unified mode）も拒むので採らない。AC は変わらない（AC4 の `cargo test` が覆う。traceability は test の名前と REQ の参照が変わらないので変わらない）。登録は次の commit で本 commit の SHA を `Amendments` に足す。review は Final Review broad に含める（前例: PR #172 の Gated Amendment 1）。
 
 ## Owner Effort Budget
 
@@ -294,6 +295,7 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 | `src-tauri/src/biz/csv_import_service/parse.rs`・`tests/parse_tests.rs`・`tests/commit_tests.rs`（b1 の file を本 lane で変える） | b1: 順 1〜5 の拒否（`check_settlement_rules`）と、その test | 順 4 の拒否の文に取込みID を入れ、既存の test の期待を当て直す（S1 の順 4 の行） | b1 の版を起点に順 4 の文と期待だけを直す（起票時に起草役が決めたことの 6） |
 | `src-tauri/src/cmd/csv_import_cmd.rs`・`src-tauri/src/lib.rs` | b1: Z004 の command の入出力と、その test（順 4 の文の期待を含む）。#172・#190・#194・#198・#201: 各 lane の packet が名指す `lib.rs` の変更 | preview の command と登録の 2 行、`csv_import_cmd.rs` の test の順 4 の文と `related_csv_import_id` の期待、`CmdError` の literal 4 か所の None | 一覧の行は両方を残す |
 | `src-tauri/src/biz/mod.rs`・`src-tauri/src/cmd/mod.rs`・`daily_report_import_cmd.rs`・`plu_export_cmd.rs`・`product_cmd.rs`・`settings_cmd.rs`（round 3 の是正で足した） | b1: `BizError::StocktakeGuard` と `CmdError.stocktake_recovery`（literal 23 か所）。#172: `BizError::SourceCopyFailed` とその変換、SD の command（`daily_report_import_cmd.rs` に literal 4 か所）、test の `AppState`。b2: `biz/mod.rs` の re-export。#190・#194・#198: 各 packet が名指す `settings_cmd.rs` の変更 | `BizError::SettlementConflict` と `Display`、`CmdError.related_csv_import_id` と変換の arm、literal ごとに None の 1 行 | b1 の版を起点に足す。#172 の後なら #172 の 4 か所の literal にも None（上の #172 の行） |
+| `src-tauri/src/cmd/stocktake_cmd.rs`（Gated Amendment 1 で足した） | b1: 棚卸しの command と、`completion_blocked` の wire を完全一致で照合する test（b1 Matrix W4）。#172: test の `AppState` の fixture の 1 行（`register_sd_scan_cache`。`git diff origin/main...origin/agent/sd-direct-read-runtime -- src-tauri/src/cmd/stocktake_cmd.rs` の 1 hunk、2026-10-26） | W4 の test の期待 JSON に `"related_csv_import_id": null` の 1 key（Matrix の T6） | 別の行。後に merge する側が両方を残す |
 | `src/features/csv-import/*`（`CsvImportPage`・`ResultStep`・`useCsvImportFlow`・`types.ts` と test） | b1: 停止の Alert を外す、取消の結果、`confirmImport` の引数、`rollbackResult`、`types.ts` の state と action の型（`additionalImportConfirmed` を外す） | 確認の部品・mutation の共有・Z004 タブの導線・`tab`（`types.ts` には `tab` の tuple・schema・型を足すだけ） | b1 の版を起点に直す（b1 への依存の 3・7） |
 | `src/features/stocktake/components/RecheckTargetList.tsx`（b1 の file を本 lane で変える） | b1: 要再確認の一覧の部品（棚卸しの画面と取込み・取消の結果が `renderAction` を渡して使う） | `renderAction` を任意にし、省略したときは「操作」列と入れ直しの文を出さない | b1 の版を起点に props の 1 つと省略の分岐だけを足す。今の 2 つの呼出し元は変えない（b1 への依存の 3） |
 | `src/lib/query-keys.ts` | b1: `stocktake.recheckList`。#194: backup の key | `inventoryRecords.csvImportRollbackPreview` | 別の key |
@@ -303,7 +305,7 @@ b1 の branch が書き換えた節か、その隣の節。本 lane の実装の
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-47 path（Rust 16・TS 17・docs 14）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+48 path（Rust 17・TS 17・docs 14。Gated Amendment 1 で `src-tauri/src/cmd/stocktake_cmd.rs` を足した）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
 docs/FUNCTION_DESIGN.md
@@ -334,6 +336,7 @@ src-tauri/src/cmd/mod.rs
 src-tauri/src/cmd/plu_export_cmd.rs
 src-tauri/src/cmd/product_cmd.rs
 src-tauri/src/cmd/settings_cmd.rs
+src-tauri/src/cmd/stocktake_cmd.rs
 src-tauri/src/db/stocktake_repo.rs
 src-tauri/src/lib.rs
 src/features/csv-import/CsvImportPage.test.tsx
