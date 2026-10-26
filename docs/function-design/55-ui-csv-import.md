@@ -406,11 +406,18 @@ useBlocker({
 - 解: 常時 block + 画面上に状態バナー「取込み完了まで他画面に移れません」を ImportingStep 内で表示。利用者は画面外操作（Sidebar クリック / ブラウザバック）が無視されるが、画面内の操作は IPC 完了を待つだけなので体感的な詰まり感はない（数秒〜10 秒程度）
 - `enableBeforeUnload`: アプリ全体 close / リロード時にもブラウザ標準の「変更を保存していない可能性…」確認を出す。Tauri webview は beforeunload を尊重する
 
+#### 取消の応答を待つ間の block（UI-07-D18）
+
+Z004 の取消（§55.11）の応答を待つ間も、importing と同じく route の移動と window の close を止める。止めは取消の mutation の共有の hook `useRollbackCsvImport` の中の 1 か所に置き（`useBlocker({ shouldBlockFn: () => mutation.isPending, enableBeforeUnload: () => mutation.isPending })`）、取込みの結果の画面と CSV取込みの詳細（[65](65-inventory-record-traceability.md) §65.5a）の両方に効く。理由: 離れた後に取消が失敗すると、知らせが別の画面の Toast だけになり、同じ画面で再試行できない（D-127「問題は起きたその画面で名指し」）。日報取込みタブの取消の止め（UI-07-D15 (6)）と揃える。
+
+タブの切替えは router の遷移でなく `useBlocker` が効かない（`TabsContent` は選ばれていないタブの中身を unmount するので、Z004 の flow ごと消える）。Z004 タブの取消の応答を待つ間は、2 つの `TabsTrigger` を disabled にする（flow の `isRollingBack` を panel から `CsvImportPage` へ上げる。flow の置き場は変えない）。止めたときに文は出さない（応答は短く、取消の button の「取り消し中…」と spinner で待っていることが分かる）。確認の読取り（preview）の間は止めない（読取りだけで何も書かない）。
+
 #### `useBlocker` の解除タイミング
 
 - `importing` → `result` 遷移時、自動解除
 - `importing` → `error` 遷移時、自動解除（error 後の navigation は許可）
-- `result` / `error` / `idle` / `parsing` / `preview` の各 state では block しない
+- 取消の応答の後（成功・失敗とも）に解く。成功は Toast と D-052 C9 の再取得の後、失敗は失敗の Toast の後（mutation の pending は `onSuccess` / `onError` の後に外れる）。失敗なら元の画面のまま同じ取込みID で再試行できる（§55.9）
+- 取消の応答を待っていない `result` と、`error` / `idle` / `parsing` / `preview` の各 state では block しない
 
 #### page unmount 後の state 喪失問題
 
@@ -540,7 +547,7 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
   - 完了した棚卸し: `affected_stocktakes` があれば、各棚卸しについて「完了した棚卸し（{完了の日付}）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差」が変わることがあります。」（ADR D6 の非遡及。記録の詳細の明細の差異とロス原価は完了の時点のカーソルで切った今 active な精算から〈b1 の版の [35](35-biz-stocktake-service.md) §20.6a の手順 3〉、参考の差は完了の後の比較の範囲の記録から求め直すので、取消でどちらも変わりうる。名指すのは記録の詳細の画面の列の見出し「差異」「ロス原価」と、参考の差の節の名「完了の後に入った記録による差」〈節の aria-label と同じ文字で、見出しはこれに「（参考。評価額は変わりません）」が続く。b1 の `c667d52c` の `src/features/inventory-records/StocktakeRecordDetailPage.tsx` の 189・192・265・267 行〉。`affected_stocktakes` は比較の範囲の判定による候補で、どの数が実際に変わるかは見ないので言い切らない）。無ければ出さない。
   - 読取りの間は「取り消した後のようすを確かめています…」と spinner を出し、「取り消す」を押せない。読取りに失敗したら dialog の中に「取り消した後のようすを読み込めませんでした。閉じてから、もう一度開いてください」を出し、「取り消す」を押せない（何が起きるかを示せないまま取り消させない）。取消済み（kind `validation`）なら、その文（BIZ の message）を出して「取り消す」を押せない。
   - 読取りは dialog を開くたびに行い、cache を使い回さない（query key は `queryKeys.inventoryRecords` の下。取消の再取得〈D-052 C9〉は `inventoryRecords.root()` を含むので、取消の後に残らない）。
-- 取消の実行と後: 今の取消の mutation（成功の Toast・D-052 C9 の再取得・失敗の Toast と同じ ID での再試行、§55.9）を 1 つの hook にし、取込みの画面と CSV取込みの詳細の両方がそれを使う。結果の画面は今の「取消の結果」（§55 冒頭の表）を出す。CSV取込みの詳細は 65 §65.5a。
+- 取消の実行と後: 今の取消の mutation（成功の Toast・D-052 C9 の再取得・失敗の Toast と同じ ID での再試行、§55.9）を 1 つの hook にし、取込みの画面と CSV取込みの詳細の両方がそれを使う。取消の応答を待つ間は、同じ hook が route の移動と window の close を止め、Z004 タブではタブの切替えも止める（§55.7 の「取消の応答を待つ間の block」）。取消が失敗すれば止めを解き、元の画面のまま同じ取込みID で再試行できる。結果の画面は今の「取消の結果」（§55 冒頭の表）を出す。CSV取込みの詳細は 65 §65.5a。
 - 取り込んだ記録への導線: Z004 タブの上に「取り込んだ記録を見る（取り消すときはここから）」を置き、入出庫履歴を種別「CSV取込み」で開く（`/inventory/records?recordType=csv_import`）。取込みの結果の画面を離れた後に誤った版に気づいたときの入口（AGENTS.md の「使い手に押しつけない」）。
 - 順 4 の拒否からの導線: [32](32-biz-csv-import-service.md) の冒頭の D-118 の節の表の順 4 の拒否（同じ精算と思われる別の資料が既に取り込まれている。preview と確定の取り直しの両方）は、文が名指す取込みID を error の構造でも持つ（`CmdError.related_csv_import_id`。kind は今の `import_error` のまま。ほかの拒否と error には無い）。取込みの画面の error の表示（§55.5 の `ErrorState` の Alert）は、それが数のときだけ「取込みID {id} の記録を見る（取り消すときはここから）」の link を置き、CSV取込みの詳細（`/csv-import/records/{id}`、`returnTo` は `/csv-import?tab=z004`）を開く。誤った版に気づくのはこの拒否のときが多く、その画面から取消の入口へ進める（AGENTS.md の「使い手に押しつけない」）。
 - Z004 タブを直接開く search: `/csv-import` は `tab`（`daily-report` | `z004`）を受け、`z004` なら Z004 タブを開く。欠落・ほかの値は今の既定（日報取込み）。取消の結果の「商品別CSV取込み（Z004）を開く」が使う。タブを切り替えても URL は書き換えない（`tab` は開く時の初期選択だけを決める。同じ画面を開いたまま戻る・進むで search が変わっても、選んでいるタブは変えない）。値の集合は `src/features/csv-import/types.ts` が readonly tuple と Zod schema で持ち、route はその schema を import し、タブの値と導線の search も同じ tuple から導く（[UI_TECH_STACK](../UI_TECH_STACK.md) UI-STATE-D2）。
@@ -560,3 +567,4 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 | 2026-10-17 | sd-bulk-import-design（design、D-121） | UI-07-D17（締めの一括取込みの画面）を proposed で足した。UI-07-D12〜D16 は変えていない。Plan Review round 2 の是正で、EJ の保留の文を出所に依らない文にし、conflict の文を保存済みの有無で分け（無ければリンクを出さない）、scan で読めなかった file も名指しする形にした。Plan Review round 3 の是正で、Z004 の部分成功の表示、保留・食い違い・読めない file だけでもボタンから結果へ進めること、保留の文と出し方を書いた。Final Review の是正で、Z004 の行を精算日（無ければ file 名）で名指しし、scan で読めなかった Z004 の文と、`DailyReportSdScan.ej` が None のときに EJ の行を出さないことを書いた。あわせて、読めなかった Z004 の数（`z004_unreadable_count`）をボタンの条件と一覧の文に入れた。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§55.0 の停止の節を外し、Z004 タブの同じ日の追加の確認・state・useMutation・手順を知らせと要再確認の一覧と取消の結果に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
 | 2026-10-25 | z004-rollback-entry（PR #197） | §55.11（UI-07-D18）を現行に。§55.1 の module の表に共通の確認と取消の mutation の hook、§55.3 の `rollbackMutation` を共有の hook に、§55.4 の手順 18 を共通の確認に、§55.5 の `import_error` の行に順 4 の拒否の link を足した（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
+| 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 2） | §55.7 に取消の応答を待つ間の block（共有の hook の `useBlocker` と、Z004 タブの `TabsTrigger` の disabled）を足し、解除の行を、取消の応答の後に解くことと、止めない state の書き分けに直した。§55.11 の「取消の実行と後」に同じ止めを足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
