@@ -30,7 +30,7 @@ wave に属さない単独の lane。導入の前の関門の項目（owner の�
 - Phase: implementing
 - Risk: R3
 - Plan Commit: a87c5601dc6010e086a68dc7f3c38e60faaa95e0
-- Amendments: 34343a1e5bef75f7b2ebb0cb04f8225b11d6151f, 47b76883d028a6102ece60557958fd6b2eceebc2
+- Amendments: 34343a1e5bef75f7b2ebb0cb04f8225b11d6151f, 47b76883d028a6102ece60557958fd6b2eceebc2, 60e82b42cb31476e74c77c639bd5ebae63ca47eb
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は plan-approved の後に Coordinator が発注で決める）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
