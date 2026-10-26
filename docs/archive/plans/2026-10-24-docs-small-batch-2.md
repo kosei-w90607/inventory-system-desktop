@@ -10,7 +10,7 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: f628c918027295b19c6572433ca30b7629996c5f
 - Amendments: 975090bff4d2b7220c2a38a5561e70e0a4fa6772, ffa57b09590a8d08193585d547afc9968e691c84
@@ -24,7 +24,7 @@ wave に属さない単独の lane。docs と、`.claude/agents/` の subagent �
 
 Final Review Minimum 2 は、classifier が `workflow=true` を出すため（`docs/DEV_WORKFLOW.md` Workflow State の `Final Review Minimum`）: S1 の `docs/AGENT_OPERATING_MANUAL.md` は `scripts/ci/classify-changes.sh` の policy docs の列、S6 の `.claude/agents/*` は同じ file の実行制御の列（full の areas、`workflow=true` を含む。`printf '%s\n' .claude/agents/reviewer-fable5.md | bash scripts/ci/classify-changes.sh --files-from-stdin` が `rust=true`・`workflow=true`・`unknown=false`）に当たる。manual なし: 製品の runtime・画面・配布物を変えず、Windows native で確かめる物が無い。r4 なし: data・DB・破壊的な git 操作を含まず、revert で戻せる。
 
-Final Reviewer の起動の注: 本 lane の Final Review の Claude 側は、座組表の Final Reviewer の行の「Fable が使えないときは §3.3 に従い理由を 1 行残して fresh Opus 5.5 で代えてよい」で、fresh Opus 5.5（`subagent_type: reviewer`）にする（Coordinator の裁定、2026-10-24）。残す理由: Fable 5 は model ID でしか選べず（公式 [model-config](https://code.claude.com/docs/en/model-config)「Work with Fable」）、その定義 `reviewer-fable5` は本 lane の merge まで本体の checkout に無く、本体の `.claude/agents` は sandbox から書けない（P-5）ので、本 lane の Final Review の時点では Fable 5 を起動できない（§3.3 の一時的な利用不能で、merge で解ける。Agent tool の呼出しの `model` は alias の enum だけを受け、full model ID を受けない。P-7）。
+Final Reviewer の起動の注: 本 lane の Final Review の Claude 側は、座組表の Final Reviewer の行の「Fable が使えないときは §3.3 に従い理由を 1 行残して fresh Opus 5.5 で代えてよい」で、fresh Opus 5.5（`subagent_type: reviewer`）にする（Coordinator の裁定、2026-10-24）。残す理由: Fable 5 は model ID でしか選べず（公式 [model-config](https://code.claude.com/docs/en/model-config)「Work with Fable」）、その定義 `reviewer-fable5` は本 lane の merge まで本体の checkout に無く、本体の `.claude/agents` は sandbox から書けない（P-5）ので、本 lane の Final Review の時点では review 用の定義（`reviewer-fable5`）で Fable 5 を起動できない（§3.3 の一時的な利用不能で、merge で解ける。Agent tool の呼出しの `model` は alias の enum だけを受け、full model ID を受けない。P-8）。
 
 遷移の記録:
 
@@ -69,11 +69,11 @@ Goal Invariant:
 
 - 座組表（`docs/AGENT_OPERATING_MANUAL.md` `## 座組`）を読んだ Coordinator が、Fable の枠（Final Reviewer の Claude 側の R3 以上・design lane・closure と、相談役）に Fable 5 を充て、tracked の定義（Final Reviewer は `reviewer-fable5`、相談役は `consult-fable5`。どちらも frontmatter が `model: claude-fable-5`・`effort: high`・編集の tool なし）で、呼出しで `model`・`effort` を渡さずに起動でき、その出所（TD-410）を読める。実効の model か effort が発注と違う run を Final Review の本数に数えない（S1・S6、round 2 の Codex F1）。
 - Final Review の Claude 側を Fable 5 で起動したとき、その run が相談役の prompt でなく review 用の定義（`reviewer` と同じ本文: review packet に従い `docs/code_review.md` の形で報告する）で走る（S6、round 1 の Opus F1）。
-- `docs/ARCHITECTURE.md` の `## 4. 未確定事項` に、決まった事項（IO-04 の PLU の形と反映の手順、宅急便部門）が残らず、その中身は今の正本（[67](../function-design/67-ui-plu-export.md) UI-08-D1〜D3・[25](../function-design/25-io-plu-formatter.md)・[master-tables](../db-design/master-tables.md) の初期データの部門 12 の行）で辿れる（S2）。
+- `docs/ARCHITECTURE.md` の `## 4. 未確定事項` に、決まった事項（IO-04 の PLU の形と反映の手順、宅急便部門）が残らず、その中身は今の正本（[67](../../function-design/67-ui-plu-export.md) UI-08-D1〜D3・[25](../../function-design/25-io-plu-formatter.md)・[master-tables](../../db-design/master-tables.md) の初期データの部門 12 の行）で辿れる（S2）。
 - backlog の「ECR+ のサービス終了後の精算」の項目が、`docs/project-memory.md` の店の事実（2026-10 にレジ本体だけで精算できた）と合う前提と、残る論点だけを書く（S3）。
-- 棚卸しの期間を「10月〜大晦日の長期作業」「数週間スパン」と書く 3 か所が、[73](../function-design/73-ui-stocktake.md) §73.1 の店の事実（10 月からの準備と大晦日に終える正式カウントに分かれる、一人で数千点を回る）と合う（S4）。
+- 棚卸しの期間を「10月〜大晦日の長期作業」「数週間スパン」と書く 3 か所が、[73](../../function-design/73-ui-stocktake.md) §73.1 の店の事実（10 月からの準備と大晦日に終える正式カウントに分かれる、一人で数千点を回る）と合う（S4）。
 - backlog の済んだ項目（ARCHITECTURE §4 の宅急便部門）と、owner が外すと決めた項目（squash merge の subject 明示、TD-429）が外れ、期間の旧表記の項目が残りだけを書く（S5、D-127）。
-- [71](../function-design/71-mnt-backup.md) §71.9 が、自動 backup の確認を起動のどこで呼ぶかを手順の番号でなく順序（DB の初期化と操作ログの自動削除の後、State 管理の前）と今の関数の名で書き、`src-tauri/src/lib.rs` の `run` の setup と合う（S7）。
+- [71](../../function-design/71-mnt-backup.md) §71.9 が、自動 backup の確認を起動のどこで呼ぶかを手順の番号でなく順序（DB の初期化と操作ログの自動削除の後、State 管理の前）と今の関数の名で書き、`src-tauri/src/lib.rs` の `run` の setup と合う（S7）。
 
 ### 失敗定義
 
@@ -119,7 +119,7 @@ workflow の変更（S1・S6 は review と相談役の起動の仕方を変え�
 
 公式の資料（2026-10-24 に WebFetch で読んだ）:
 
-- [sub-agents](https://code.claude.com/docs/en/sub-agents)「Choose a model」: frontmatter の `model` は alias か full model ID を受ける。順は「The per-invocation `model` parameter → The subagent definition's `model` frontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → The main conversation's model」で、呼出しごとの `model` は定義の frontmatter より優先される。呼出しの `model` が受ける値（alias か full model ID か）は書かれていない（Agent tool の schema は P-7）。この順は版で変わった: 「Before v2.1.251, `CLAUDE_CODE_SUBAGENT_MODEL` came first in this order and overrode both the per-invocation parameter and the frontmatter」。同じ page の「Run every subagent on one model」: `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` を立てると「Claude Code ignores the `model` field in subagent definitions」。
+- [sub-agents](https://code.claude.com/docs/en/sub-agents)「Choose a model」: frontmatter の `model` は alias か full model ID を受ける。順は「The per-invocation `model` parameter → The subagent definition's `model` frontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → The main conversation's model」で、呼出しごとの `model` は定義の frontmatter より優先される。呼出しの `model` が受ける値（alias か full model ID か）は書かれていない（Agent tool の schema は P-8）。この順は版で変わった: 「Before v2.1.251, `CLAUDE_CODE_SUBAGENT_MODEL` came first in this order and overrode both the per-invocation parameter and the frontmatter」。同じ page の「Run every subagent on one model」: `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` を立てると「Claude Code ignores the `model` field in subagent definitions」。
 - 同じ page の「Choose an effort level」: 「The parameter overrides the `effort` field … The `CLAUDE_CODE_EFFORT_LEVEL` environment variable takes precedence over both.」（呼出しの `effort` は定義の `effort` より、環境変数は両方より優先される）。
 - 同じ page の「Write subagent files」: 「When you add or edit a subagent file on disk, … Claude Code detects the change within a few seconds and the next delegation uses the updated definition, with no restart needed.」。続けて「Three cases still need a restart」として、session の開始時に無かった `agents` の dir に最初の定義を置いたとき（「The watcher covers only directories that existed when the session started」）、`--add-dir`・`/add-dir` で足した dir の中の `.claude/agents/` の定義を足すか直したとき、session を `--disable-slash-commands` で始めたとき（「don't watch these directories at all」）の 3 つを挙げる。
 - [env-vars](https://code.claude.com/docs/en/env-vars)「Set variables in settings files」: 「A running session applies new and changed values to its environment when you save the file, but a feature that reads its variables once at startup … keeps its startup values until you relaunch.」「Removing a variable from the file doesn't unset it in a running session」。`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` がどちらに当たるかは同じ page の変数の行に書かれていない（S1-6）。
@@ -147,8 +147,8 @@ sweep（`843c4938` で `rg -n --hidden 'Fable 5\.1' --glob '!docs/archive/**' --
 
 | # | 場所（`843c4938` の行） | 今の句 | 直す向き | 中身の置き場（確かめた所） | 結果 |
 |---|---|---|---|---|---|
-| S2-1 | `## 4. 未確定事項` の IO-04 の項（299） | 「IO-04（PLUフォーマッター）: 2026-07-03 field gate により…`.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と…一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。」 | 項を外す | profile と手順は [67](../function-design/67-ui-plu-export.md) UI-08-D3（11 列・217 始まり・13 桁 JAN 必須・field gate の手順）と [25](../function-design/25-io-plu-formatter.md)。保存後の確認を利用者の明示操作に分けることは 67 の関数要求（「利用者が保存済み扱いを明示した後にだけ `confirm_plu_export_saved` を呼ぶ」）と UI-08-D1・UI-08-D2。同じ file の §2 のタスク一覧の IO-04 の行も profile を書く |  直した |
-| S2-2 | 同じ節の宅急便部門の項（300） | 「宅急便部門: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL」 | 項を外す | [master-tables](../db-design/master-tables.md) の「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」の部門 12 の行（`NULL`、「在庫管理対象外。サービス取次（ヤマト/佐川）。Z005に載るがシステムでは追跡しない」）。code の初期データも PR #195 で `NULL` |  直した |
+| S2-1 | `## 4. 未確定事項` の IO-04 の項（299） | 「IO-04（PLUフォーマッター）: 2026-07-03 field gate により…`.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と…一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。」 | 項を外す | profile と手順は [67](../../function-design/67-ui-plu-export.md) UI-08-D3（11 列・217 始まり・13 桁 JAN 必須・field gate の手順）と [25](../../function-design/25-io-plu-formatter.md)。保存後の確認を利用者の明示操作に分けることは 67 の関数要求（「利用者が保存済み扱いを明示した後にだけ `confirm_plu_export_saved` を呼ぶ」）と UI-08-D1・UI-08-D2。同じ file の §2 のタスク一覧の IO-04 の行も profile を書く |  直した |
+| S2-2 | 同じ節の宅急便部門の項（300） | 「宅急便部門: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL」 | 項を外す | [master-tables](../../db-design/master-tables.md) の「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」の部門 12 の行（`NULL`、「在庫管理対象外。サービス取次（ヤマト/佐川）。Z005に載るがシステムでは追跡しない」）。code の初期データも PR #195 で `NULL` |  直した |
 
 節の見出しと Q40 の項は残す（Q40 は backlog の項目を引く、まだ開いた事項）。§4 を引く文は、`843c4938` で `rg -n 'ARCHITECTURE[^ ]*( |` )?§ ?4|ARCHITECTURE.md#4' docs --glob '!docs/archive/**'` が本 packet の外に出す `docs/backlog.md` の 109 と 324 の 2 行。109 は S5-1 で外す。324（「包括的な障害時対応方針としての残余は `docs/ARCHITECTURE.md` §4と…を参照」）は残る Q40 の項を引くので、S2 の後も切れず、直さない。
 
@@ -165,19 +165,19 @@ sweep（`843c4938` で `rg -n --hidden 'Fable 5\.1' --glob '!docs/archive/**' --
 
 ### S4 棚卸しの期間の旧表記を 73 §73.1 に合わせる（backlog 193 行の項目）
 
-出所: backlog の「期間・動線の旧表記の残り 7 か所を店の事実に合わせる」（PR #93 の Non-scope と Final Review broad の申し送り）。店の事実の正本は [73](../function-design/73-ui-stocktake.md) §73.1（「一人で商品マスタ全件（数千点規模）を回り、10月からの準備（…）と、年末の正式カウント（大晦日に完了）に分かれる」）と `docs/SCREEN_DESIGN.md` の `### 利用者の1日の動線`。
+出所: backlog の「期間・動線の旧表記の残り 7 か所を店の事実に合わせる」（PR #93 の Non-scope と Final Review broad の申し送り）。店の事実の正本は [73](../../function-design/73-ui-stocktake.md) §73.1（「一人で商品マスタ全件（数千点規模）を回り、10月からの準備（…）と、年末の正式カウント（大晦日に完了）に分かれる」）と `docs/SCREEN_DESIGN.md` の `### 利用者の1日の動線`。
 
 | # | 場所（`843c4938` の行） | 今の句 | 直す向き | 結果 |
 |---|---|---|---|---|
-| S4-1 | `docs/architecture/biz-task-specs.md` BIZ-06 の「理由」（453） | 「年末棚卸し（10月〜大晦日の長期作業）で、」 | 「年末棚卸し（10 月からの準備と、大晦日に終える正式カウントに分かれる。[73](../function-design/73-ui-stocktake.md) §73.1）で、」の向き |  直した |
-| S4-2 | `docs/db-design/tracking-system-tables.md` の stocktakes + stocktake_items の「役割」（133） | 「年末棚卸しの記録。10月〜大晦日の長期作業に対応する中断・再開機能付き。」 | 「年末棚卸しの記録。一人で数千点の商品を回る作業（10 月からの準備と、大晦日に終える正式カウント。[73](../function-design/73-ui-stocktake.md) §73.1）に対応する中断・再開機能付き。」の向き |  直した |
+| S4-1 | `docs/architecture/biz-task-specs.md` BIZ-06 の「理由」（453） | 「年末棚卸し（10月〜大晦日の長期作業）で、」 | 「年末棚卸し（10 月からの準備と、大晦日に終える正式カウントに分かれる。[73](../../function-design/73-ui-stocktake.md) §73.1）で、」の向き |  直した |
+| S4-2 | `docs/db-design/tracking-system-tables.md` の stocktakes + stocktake_items の「役割」（133） | 「年末棚卸しの記録。10月〜大晦日の長期作業に対応する中断・再開機能付き。」 | 「年末棚卸しの記録。一人で数千点の商品を回る作業（10 月からの準備と、大晦日に終える正式カウント。[73](../../function-design/73-ui-stocktake.md) §73.1）に対応する中断・再開機能付き。」の向き |  直した |
 | S4-3 | `docs/SCREEN_DESIGN.md` 棚卸しの画面の「利用者配慮」（218） | 「一人運用・数週間スパンの反復作業を前提に、」 | 「一人で数千点の商品を回る反復作業（73 への link〈`function-design/73-ui-stocktake.md`〉 §73.1）を前提に、」の向き（link は SCREEN_DESIGN からの相対 path） |  直した |
 
 旧表記の全数（`843c4938` で `rg -n -e '10月〜大晦日' -e '数週間スパン' -e '長期作業' docs src-tauri src --glob '!docs/archive/**' --glob '!docs/plans/**'`）は、上の 3 か所と backlog の項目そのもの（193）のほかに、下の 4 行を出す。backlog の項目の 7 か所のうち本 lane で直さないもの:
 
 - `docs/function-design/35-biz-stocktake-service.md` の force_fill の設計判断の「年末棚卸しは10月〜大晦日の長期作業。…」（377）と、評価原価の「理由: 棚卸しは数ヶ月に及ぶ長期作業であり、…」（382）: PR #188 が 2 行とも外した（`22823ba5` で merge 済み。本 branch は遷移 7 で取り込んだ）。本 lane は 35 を触らず、backlog の残りに数えない（Gated Amendment 1）。
 - `src-tauri/src/biz/stocktake_service.rs` の module doc の「年末の長期作業（10月〜大晦日）で、…」（4）: code の file で、本 lane の外。PR #188 は同じ module doc の隣の行（3 行目と 6 行目以降）を書き換えて merge され、この句は残った。code の file を触る後の lane で直す（S5 で backlog の項目に残す）。
-- `docs/screen_mockups.html` の図の「10月〜大晦日」（208）とボタン説明「閉店後にレジのCSVを読み込む」（259）: 初期提案の歴史資料で、今の画面の図でない（`docs/SCREEN_DESIGN.md` の頭の「このファイルの目的」、`docs/architecture/ui-task-specs.md` の頭、[52](../function-design/52-ui-shared-layout.md) の「モックアップアーカイブ扱い」「触らない」の行）。当時の提案の記録として残す。
+- `docs/screen_mockups.html` の図の「10月〜大晦日」（208）とボタン説明「閉店後にレジのCSVを読み込む」（259）: 初期提案の歴史資料で、今の画面の図でない（`docs/SCREEN_DESIGN.md` の頭の「このファイルの目的」、`docs/architecture/ui-task-specs.md` の頭、[52](../../function-design/52-ui-shared-layout.md) の「モックアップアーカイブ扱い」「触らない」の行）。当時の提案の記録として残す。
 
 ### S5 backlog の項目を直す
 
@@ -209,7 +209,7 @@ S6 の後、hook test の監査（`scripts/tests/claude-hooks.test.sh` の `vali
 | S7-1 | §71.9 の「追加箇所」（450） | 「MNT-02 操作ログ自動削除（ステップ6）の後、State管理（ステップ8）の前」 | 手順の番号を書かず、順序と関数の名で書く: 「`src-tauri/src/lib.rs` の `run` の setup で、DB の初期化（`prepare_database`）と操作ログの自動削除（`mnt::log_manager::cleanup_old_logs`）の後、State 管理（`app.manage`）の前に `run_startup_auto_backup` を呼ぶ」の向き |  直した |
 | S7-2 | §71.9 の code block の 1 行目（453） | `// 7. 自動バックアップチェック（起動時）` | 手順の番号を外し、続く match が `run_startup_auto_backup` の本体であることを書く向き（例: `// 自動バックアップチェック（起動時。lib.rs の run_startup_auto_backup の本体）`）。match の中身（`resolve_backup_dir` → `check_auto_backup`、設定読取の DB error でスキップ）は今の関数と同じなので変えない |  直した |
 
-番号を外す理由: setup の手順の番号は手順の足し引きで動き（§71.9 は「ステップ6」「ステップ8」、今の `lib.rs` は 5・7）、順序と関数の名は動きにくい。同じ型の [72](../function-design/72-mnt-log-manager.md) §72.5 の「追加箇所」（「DB初期化（ステップ5）の後、State管理（ステップ8）の前」）は並走の PR #198 が直す（`origin/agent/oplog-retention` の 72 §72.5 は今の手順 5 と `prepare_database`・`run_startup_auto_backup` で書く）ので、本 lane は触らない。兄弟の 72 §72.5 は #198 で番号つき（「手順 5」「手順 3-4」「手順 6」）に書き直されていて、本 lane の 71 §71.9 と書き方が分かれる。両方の merge の後に揃えるかは closeout で見る。`843c4938` で `rg -n 'State管理（ステップ|（ステップ[0-9]+）の(後|前)' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` は 71 の 450 と 72 の 66 の 2 行だけを出す。
+番号を外す理由: setup の手順の番号は手順の足し引きで動き（§71.9 は「ステップ6」「ステップ8」、今の `lib.rs` は 5・7）、順序と関数の名は動きにくい。同じ型の [72](../../function-design/72-mnt-log-manager.md) §72.5 の「追加箇所」（「DB初期化（ステップ5）の後、State管理（ステップ8）の前」）は並走の PR #198 が直す（`origin/agent/oplog-retention` の 72 §72.5 は今の手順 5 と `prepare_database`・`run_startup_auto_backup` で書く）ので、本 lane は触らない。兄弟の 72 §72.5 は #198 で番号つき（「手順 5」「手順 3-4」「手順 6」）に書き直されていて、本 lane の 71 §71.9 と書き方が分かれる。両方の merge の後に揃えるかは closeout で見る。`843c4938` で `rg -n 'State管理（ステップ|（ステップ[0-9]+）の(後|前)' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` は 71 の 450 と 72 の 66 の 2 行だけを出す。
 
 ### 他の lane との所有
 
@@ -243,8 +243,8 @@ S6 の後、hook test の監査（`scripts/tests/claude-hooks.test.sh` の `vali
 baseline は起点 `843c4938` で下の command を逐語で実行した出力。git の差分の範囲は `origin/main...HEAD`（merge-base から HEAD まで。並走の lane が main に足した変更を数えない）。
 
 - AC1: `bash scripts/doc-consistency-check.sh` が exit 0、末尾の WARN の件数が 12 以下（baseline: exit 0、「結果: WARN 12 件（ERROR なし）」）。
-- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-24-docs-small-batch-2.md` が exit 0。
-- AC-S0-1: Scope の各段の表の「結果」列が全行埋まっている（読んで確かめる。`docs/plans/2026-10-24-docs-small-batch-2.md` の S1〜S7 の表）。
+- AC2: `bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-10-24-docs-small-batch-2.md` が exit 0。
+- AC-S0-1: Scope の各段の表の「結果」列が全行埋まっている（読んで確かめる。`docs/archive/plans/2026-10-24-docs-small-batch-2.md` の S1〜S7 の表）。
 - AC-S1-1: `rg -o 'Fable 5\.1' docs/AGENT_OPERATING_MANUAL.md | wc -l` が `2` で、`rg -o 'Fable 5\.1 になる' docs/AGENT_OPERATING_MANUAL.md | wc -l` も `2`（残る「Fable 5.1」は S1-3 の逐語の 2 つの句の alias の注だけ。baseline: 前者 `6`、後者 `0`）。
 - AC-S1-2: ``rg -c '`claude-fable-5`' docs/AGENT_OPERATING_MANUAL.md``・`rg -c 'TD-410' docs/AGENT_OPERATING_MANUAL.md`・`rg -c 'reviewer-fable5' docs/AGENT_OPERATING_MANUAL.md`・`rg -c 'consult-fable5' docs/AGENT_OPERATING_MANUAL.md` がどれも 1 以上、`rg -c 'prompting-claude-fable-5\)' docs/AGENT_OPERATING_MANUAL.md` と `rg -c 'model-config\)「Model aliases」' docs/AGENT_OPERATING_MANUAL.md` がどちらも `1`（baseline: 6 つとも何も出さない、exit 1。backtick 付きで探すのは、今の根拠の link の `prompting-claude-fable-5-1` に当たらないようにするため）。
 - AC-S1-3（`## 座組` の外を変えていない）: `git diff -U0 origin/main...HEAD -- docs/AGENT_OPERATING_MANUAL.md` の hunk の行の範囲（`@@` の行の `+` 側）が、全部 `rg -n '^## 座組$|^## 4\. 既存資産 router 表$' docs/AGENT_OPERATING_MANUAL.md` が出す 2 行の間に収まる（baseline: 65 行と 82 行。読んで確かめる）。
@@ -270,7 +270,7 @@ baseline は起点 `843c4938` で下の command を逐語で実行した出力�
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: `docs/AGENT_OPERATING_MANUAL.md` `## 座組`（表と直後の箇条）と §3.3（S1）、`docs/decision-log.md` の D-099 の (D1)・(D3)（S6）、[67](../function-design/67-ui-plu-export.md) の関数要求・UI-08-D1〜D3、[25](../function-design/25-io-plu-formatter.md)、[master-tables](../db-design/master-tables.md) の「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」（S2）、`docs/project-memory.md` の Store Premises の ECR+ の 2 行（S3）、[73](../function-design/73-ui-stocktake.md) §73.1 と `docs/SCREEN_DESIGN.md` の `### 利用者の1日の動線`（S4）、[71](../function-design/71-mnt-backup.md) §71.9 と `src-tauri/src/lib.rs` の `run` の setup・`run_startup_auto_backup`（S7）。
+- 引用する設計正本（節まで）: `docs/AGENT_OPERATING_MANUAL.md` `## 座組`（表と直後の箇条）と §3.3（S1）、`docs/decision-log.md` の D-099 の (D1)・(D3)（S6）、[67](../../function-design/67-ui-plu-export.md) の関数要求・UI-08-D1〜D3、[25](../../function-design/25-io-plu-formatter.md)、[master-tables](../../db-design/master-tables.md) の「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」（S2）、`docs/project-memory.md` の Store Premises の ECR+ の 2 行（S3）、[73](../../function-design/73-ui-stocktake.md) §73.1 と `docs/SCREEN_DESIGN.md` の `### 利用者の1日の動線`（S4）、[71](../../function-design/71-mnt-backup.md) §71.9 と `src-tauri/src/lib.rs` の `run` の setup・`run_startup_auto_backup`（S7）。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。状態は existing sufficient。
 - plan にしかない durable な判断の昇格先: 本 packet が決める判断は 3 つ。(1) S2 で IO-04 の項も一緒に外す（backlog の項目が「着手のときに決める」とした事項。昇格先は ARCHITECTURE §4 そのもの）。(2) S4 で code comment・mockup を直さない（35 は PR #188 が外した。code comment の理由は本 packet と、S5-2 で直す backlog の項目に残り、mockup は歴史資料の扱いの正本に従う）。(3) S6 で Fable の枠を tracked の定義で起動する（Coordinator の裁定。昇格先は座組表〈S1〉と定義の file そのもの。D-099 の (D3) の適用で、decision-log には足さない）。どれも規則の新設でなく既存の規則（D-127、歴史資料の扱い、D-099）の適用。S1 の owner の決定は座組表そのものが置き場（表の注記の経路）で、decision-log には足さない。
 - 前提・制約と延期した gap: `stocktake_service.rs` の module doc の句は code の file を触る後の lane で直す（S5-2。PR #188 は merge 済みで、この句を変えなかった）。送っても安全な理由: comment で振舞いに効かない。定義は本体の checkout の同期で効く（Ordinary Operation の 1 行目、owner の介入 1）。
@@ -348,11 +348,11 @@ State Lifecycle Matrix: not applicable（UI・data・cache の状態を持たな
 | D-099 (D3) tracked の subagent 定義 | `docs/decision-log.md` D-099 | S6-1・S6-2 | AC-S6-1〜AC-S6-3 | 非対象 |
 | SPEC-WF-HARNESS5-D3 定義の frontmatter の監査 | D-099 (D3)、`scripts/tests/claude-hooks.test.sh` の `validate_inventory` | S6（変えない契約に定義を足す） | AC-S6-4（`bash scripts/tests/claude-hooks.test.sh`） | 非対象 |
 | SPEC-WF-HARNESS5-D1 `.claude/agents/*` は full | D-099 (D1)、`scripts/ci/classify-changes.sh` | 変えない（本 lane の Risk と Minimum の根拠） | 既存の `scripts/tests/classify-changes.test.sh` | 非対象 |
-| UI-08-D1〜D3・IO-04 の profile | [67](../function-design/67-ui-plu-export.md)・[25](../function-design/25-io-plu-formatter.md) | S2-1（ARCHITECTURE §4 の重複を外す） | AC-S2-1 | 非対象（AC-S2-2） |
-| 部門 12 の `code_prefix=NULL` | [master-tables](../db-design/master-tables.md) の初期データ | S2-2 | AC-S2-1 | 非対象（AC-S2-2） |
+| UI-08-D1〜D3・IO-04 の profile | [67](../../function-design/67-ui-plu-export.md)・[25](../../function-design/25-io-plu-formatter.md) | S2-1（ARCHITECTURE §4 の重複を外す） | AC-S2-1 | 非対象（AC-S2-2） |
+| 部門 12 の `code_prefix=NULL` | [master-tables](../../db-design/master-tables.md) の初期データ | S2-2 | AC-S2-1 | 非対象（AC-S2-2） |
 | ECR+ の店の事実 | `docs/project-memory.md` Store Premises | S3 | AC-S3-1 | 非対象（AC-S3-2） |
-| 棚卸しの期間の店の事実 | [73](../function-design/73-ui-stocktake.md) §73.1 | S4・S5-2 | AC-S4-1・AC-S4-2・AC-S5-2 | 非対象 |
-| MNT-01 起動時の自動 backup の位置 | [71](../function-design/71-mnt-backup.md) §71.9 | S7 | AC-S7-1 | 非対象 |
+| 棚卸しの期間の店の事実 | [73](../../function-design/73-ui-stocktake.md) §73.1 | S4・S5-2 | AC-S4-1・AC-S4-2・AC-S5-2 | 非対象 |
+| MNT-01 起動時の自動 backup の位置 | [71](../../function-design/71-mnt-backup.md) §71.9 | S7 | AC-S7-1 | 非対象 |
 
 adjacent-contract sweep: 座組表の Writer の行は再起動の句だけを S1-6 で設定と定義に分け、Plan Reviewer の行（「起動と実効の注意は Writer 行と同じ」）は Writer の行を引くので触らない。72 §72.5（同じ型の手順の番号）は PR #198 が持つ（S7）。classifier・helper・hook test は変えない。
 
@@ -365,13 +365,17 @@ adjacent-contract sweep: 座組表の Writer の行は再起動の句だけを S
 - P-3 既存の `.claude/agents/` に足した定義は、公式の 3 つの例外に当たらなければ再起動なしで次の委譲から効く: 公式 sub-agents「Write subagent files」（「the next delegation uses the updated definition, with no restart needed」。「Three cases still need a restart」: session の開始時に無かった `agents` の dir、`--add-dir`・`/add-dir` で足した dir の中の定義、`--disable-slash-commands` で始めた session。2026-10-24 に WebFetch）、本体の checkout の `.claude/agents/` は `reviewer.md`・`writer.md`・`consult-fable5.md` を持って在る（`ls -la /home/kosei/projects/inventory-system-public/.claude/agents`、2026-10-24） -> 1 つめの例外に当たらない。本体の checkout は session の起点の dir で `--add-dir` の側でないとみなすが、main session を `--disable-slash-commands` で始めていないことは sandbox の中から確かめられない（`ps` は sandbox の外の process を出さない。未確認）。当たっていれば定義が見つからないか古いままで、Ordinary Operation の 1・2 行目の起動の失敗か実効の記録で見える。
 - P-4 git は同じ名の untracked の file を上書きせず merge を止める: scratch の repo で、同じ中身の untracked の `a/f.md` を置いた clone に `a/f.md` を足した commit を `git pull --ff-only` した（git 2.56.0、2026-10-24） -> 「Please move or remove them before you merge.」「Aborting」で止まった。中身が同じでも止まる。
 - P-5 本体の `.claude/agents` は sandbox から書けず、worktree の側は書ける: `test -w /home/kosei/projects/inventory-system-public/.claude/agents` が偽、本 lane の worktree の `test -w .claude/agents` が真（2026-10-24） -> 本体の同期は owner、定義の追加は Writer が worktree で行う。
-- P-7 Agent tool の呼出しの `model` が受ける値: Coordinator が自分の Agent tool の schema を読み、`model` は enum `sonnet`・`opus`・`haiku`・`fable` だけで full model ID を受けないことを記録した（Coordinator の記録、2026-10-24） -> 呼出しで Fable 5 を選べず、Fable 5 は定義の frontmatter（`model: claude-fable-5`）で選ぶ。本 lane の Final Review を §3.3 で fresh Opus 5.5 にする理由の 1 つ（Workflow State の注）。
+- P-8 Agent tool の呼出しの `model` が受ける値: Coordinator が自分の Agent tool の schema を読み、`model` は enum `sonnet`・`opus`・`haiku`・`fable` だけで full model ID を受けないことを記録した（Coordinator の記録、2026-10-24） -> 呼出しで Fable 5 を選べず、Fable 5 は定義の frontmatter（`model: claude-fable-5`）で選ぶ。本 lane の Final Review を §3.3 で fresh Opus 5.5 にする理由の 1 つ（Workflow State の注）。
 
 ## Data Safety
 
 - commit しないもの: 店の運用の細部・実値・発言の原文（S3・S4）、回答台帳の本文（TD-410 は ID で引く）、`.local/` の相談の記録の中身。
 - local-only: `/home/kosei/projects/inventory-system-public/.claude/agents/consult-fable5.md`（untracked の原本。S6-2 は中身を写すだけで、hash を AC に置く）、`.local/reports/**`。
 - synthetic-only: なし（data・fixture を足さない）。
+
+## Implementation Results
+
+[PR #203](https://github.com/kosei-w90607/inventory-system-desktop/pull/203) で Scope の S1〜S7 を入れ、2026-10-26 に helper 経由で main へ merge した（owner の承認の後）。座組表の Fable の枠を当面 Fable 5 にし（TD-410）、Final Review の Claude 側の `reviewer-fable5` と相談役の `consult-fable5` の定義を tracked にして、呼出しで `model`・`effort` を渡さない起動の形と、実効の model か effort が発注と違う run を数えず取り直す規則を座組表に書いた。ARCHITECTURE §4 の決まった 2 項（IO-04・宅急便部門）を外し、backlog の ECR+ の精算の項目の前提を `docs/project-memory.md` の店の事実に合わせ、棚卸しの期間の旧表記 3 か所を 73 §73.1 に合わせ、71 §71.9 の起動の位置を手順の番号でなく順序と関数の名で書いた。backlog は済んだ項目と owner が外すと決めた項目（TD-429）を外し、期間の旧表記の項目を残りの code comment 1 行だけにした。S5-2 は実装の run が前提の食い違い（PR #188 が merge 済み）で止まり、Gated Amendment 1 で前提を合わせて直した。Final Review broad の P3 は Gated Amendment 2 で直し、新しい head で fresh broad を取り直した。
 
 ## Review Response
 
@@ -422,7 +426,7 @@ reviewer は Codex（発注 564）と fresh Opus 5.5（fork でない）。Codex
 | Opus #3: 座組表の Writer の行の「定義と設定は…再起動してから効く」が S1-3 と 2 つの規則になる | P3 | 受理 | S1-6 を足し、Writer の行を設定と定義に分ける逐語の句にした。修正案の「設定は再起動の後に効く」は、公式 [env-vars](https://code.claude.com/docs/en/env-vars)「Set variables in settings files」（2026-10-24 に WebFetch）が保存で走行中の session に効く値と起動時にだけ読む機能・外した変数を分け、`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` がどちらかを書いていないので、そのまま写さず「再起動してから頼る」と出所を書く形にした。定義の側は相談役の行の起動の句と同じ条件を引く。非目的・adjacent-contract sweep・Contract Ledger・Matrix・AC-S1-4・AC-S1-6・Review Focus を合わせた |
 | Opus #4: backlog の項目の見出しの「残り 7 か所」をどう直すかが無い | P3 | 受理 | S5-2 に「見出しから数を外す」を足し、AC-S5-2 に `rg -n '旧表記の残り 7 か所' docs/backlog.md` が exit 1 を足した（baseline は 193 の 1 行）。Matrix の S5 の行も合わせた |
 | Opus #5: 定義を tracked にした後、定義が在るのは本体の checkout が merge を含む branch にある間だけ | P3 | 受理 | Ordinary Operation の 1 行目の初期状態に、main か本 lane の merge を含む branch にある間だけ定義が在り、前に分かれた branch の間は見つからず §3.3 の代え方へ落ちることを書いた |
-| Opus #6: 呼出しの `model` が full model ID を受けるかを確かめていない | P3 | 受理 | Contract Probe に P-7 を足した（Coordinator が自分の Agent tool の schema を読み、`model` は enum `sonnet`・`opus`・`haiku`・`fable` だけで full model ID を受けない、2026-10-24）。Workflow State の注の理由を P-7 で書き直した |
+| Opus #6: 呼出しの `model` が full model ID を受けるかを確かめていない | P3 | 受理 | Contract Probe に P-8 を足した（Coordinator が自分の Agent tool の schema を読み、`model` は enum `sonnet`・`opus`・`haiku`・`fable` だけで full model ID を受けない、2026-10-24）。Workflow State の注の理由を P-8 で書き直した |
 | Opus #7: S5-3 の理由の「PR title を Conventional にする今の運用」は正本に規則として無い | P3 | 受理 | S5-3 の理由を「正本に PR title の規則は無い。squash の subject は PR title で、直近 30 commit の外れは 0」の形にした（`rg -n -i 'title' docs/DEV_WORKFLOW.md .github/pull_request_template.md docs/agent-guidance/merge-evidence.md docs/ci.md` は closeout の `Plans.md` の行の title だけを出す） |
 | Opus #8: 71 §71.9 を番号なしで書き、兄弟の 72 §72.5 は #198 で番号つきになる | P3 | 受理 | S7 の注に、#198 の 72 §72.5 は番号つき（`origin/agent/oplog-retention` の `9a9dbe09` の 72:76）で書き方が分かれ、両方の merge の後に揃えるかは closeout で見る、を足した。#198 へは Coordinator が別に伝える |
 
@@ -437,3 +441,5 @@ reviewer は Codex（発注 568）と fresh Opus 5.5（fork でない）。Codex
 | Opus #1: 定義が見つからないとき、`consult-fable5` も Final Reviewer の行の §3.3 の代え方へ落ちると読める | P3 | 受理 | Ordinary Operation の 1 行目の初期状態の括弧を、`reviewer-fable5` は Final Reviewer の行の §3.3、`consult-fable5` は相談役の行の代え方（省くか fresh Opus 5.5 で代え、遷移を止めない）に分けた |
 | Opus #2: effort の導出が `maxEffortLevel` の上限を見ない | P3 | 受理 | P-6 に前提として、公式 env-vars の `CLAUDE_CODE_EFFORT_LEVEL` の行の「A `maxEffortLevel` cap still applies」（2026-10-24 に WebFetch）と、今の user・project の settings に `maxEffortLevel` が無いこと（`rg -n 'maxEffortLevel'` が exit 1、`/etc/claude-code` も無い）を書いた |
 | Opus #3: S5-3 の「squash の subject は PR title」が repo の設定と合わない | P3 | 受理 | S5-3 の理由を「PR title〈commit が 1 つの PR では commit の subject〉」にし、`gh api repos/kosei-w90607/inventory-system-desktop --jq .squash_merge_commit_title` → `COMMIT_OR_PR_TITLE` を併記した。結論（項目を外す）は変わらない |
+
+Final Review と merge（2026-10-26、closeout で追記）: Gated Amendment 2 の後の fresh broad（Codex 583 = approve、Claude 側 fresh Opus 5.5 = approve）と、base 同期だけを見る closure（Codex 587 = approve P1/P2/P3 0、head `8fe2336f`）で helper の review の record は pass。Ready の後の hosted CI run 40328725627 の `Merge gate` が success で、owner の承認の後に helper 経由で merge した（[PR #203](https://github.com/kosei-w90607/inventory-system-desktop/pull/203)）。fresh broad で受けた P3 のうち packet の文の 2 件は、merge の前に直すと Gated Amendment で fresh broad の取り直しになるので、本 closeout で直した: (1) Contract Probe の `P-7` が 2 つあったので、後の方（Agent tool の呼出しの `model` が受ける値）を `P-8` にし、それを指す参照（Workflow State の注、S1 の公式の資料の sub-agents の行、round 3 の Opus #6 の行）を `P-8` に直した（`CLAUDE_EFFORT` の文脈の `P-7` は変えない）。(2) Workflow State の注の「本 lane の Final Review の時点では Fable 5 を起動できない」を「review 用の定義（`reviewer-fable5`）で Fable 5 を起動できない」に直した。closeout で packet を `docs/archive/plans/` へ移し、`docs/Plans.md` に完了を書いた。並走の lane の packet の `Final Reviewer: Fable 5.1` を当面 Fable 5 に揃えることは、各 lane の closeout か次の packet の編集で行う（PR #203 の Follow-up）。
