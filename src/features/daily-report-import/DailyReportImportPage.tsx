@@ -311,8 +311,16 @@ function DailyReportSourceStep({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={onCancelReplacement}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirmReplacement}>置き換える</AlertDialogAction>
+            {/* 1 回の操作で queue を 1 つだけ進める: キャンセル・Esc は onOpenChange だけ、置き換えるは close の要求を止める */}
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                onConfirmReplacement();
+              }}
+            >
+              置き換える
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

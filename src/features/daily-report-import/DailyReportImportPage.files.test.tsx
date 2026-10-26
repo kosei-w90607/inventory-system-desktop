@@ -157,6 +157,33 @@ describe("DailyReportImportPage files UI-07-D16 REQ-401", () => {
     });
   });
 
+  it.each(["置き換える", "キャンセル"])(
+    "REQ-401 / UI-07-D16 (d): two replacements from one dialog are asked one by one (%s advances only one)",
+    async (answer) => {
+      const user = renderPage();
+      await choose(user, ["C:\\a\\Z001_old.CSV", "C:\\a\\Z002_old.CSV"]);
+      await waitFor(() => {
+        expect(listedNames()).toEqual(["Z001Z001_old.CSV", "Z002Z002_old.CSV"]);
+      });
+
+      await choose(user, ["D:\\b\\Z001_new.CSV", "D:\\b\\Z002_new.CSV"]);
+      const first = await screen.findByRole("alertdialog");
+      expect(within(first).getByText("Z001 のファイルを置き換えますか？")).toBeInTheDocument();
+      await user.click(within(first).getByRole("button", { name: answer }));
+
+      const second = await screen.findByRole("alertdialog");
+      expect(within(second).getByText("Z002 のファイルを置き換えますか？")).toBeInTheDocument();
+      await user.click(within(second).getByRole("button", { name: "キャンセル" }));
+      await waitFor(() => {
+        expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      });
+      expect(listedNames()).toEqual([
+        answer === "置き換える" ? "Z001Z001_new.CSV" : "Z001Z001_old.CSV",
+        "Z002Z002_old.CSV",
+      ]);
+    },
+  );
+
   it("REQ-401 / UI-07-D16 (a): reselecting from a manual preview starts a new list with only the chosen files", async () => {
     const user = renderPage();
     await choose(user, ["C:\\a\\Z001_21 .CSV", "C:\\a\\Z002_21 .CSV", "C:\\a\\Z005_21 .CSV"]);
