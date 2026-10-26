@@ -408,7 +408,7 @@ useBlocker({
 
 #### 取消の応答を待つ間の block（UI-07-D18）
 
-Z004 の取消（§55.11）の応答を待つ間も、importing と同じく route の移動と window の close を止める。止めは取消の mutation の共有の hook `useRollbackCsvImport` の中の 1 か所に置き（`useBlocker({ shouldBlockFn: () => mutation.isPending, enableBeforeUnload: () => mutation.isPending })`）、取込みの結果の画面と CSV取込みの詳細（[65](65-inventory-record-traceability.md) §65.5a）の両方に効く。理由: 離れた後に取消が失敗すると、知らせが別の画面の Toast だけになり、同じ画面で再試行できない（D-127「問題は起きたその画面で名指し」）。日報取込みタブの取消の止め（UI-07-D15 (6)）と揃える。
+Z004 の取消（§55.11）の応答を待つ間も、importing と同じく route の移動と window の close を止める。止めは取消の mutation の共有の hook `useRollbackCsvImport` の中の 1 か所に置き（`useBlocker({ shouldBlockFn: () => mutation.isPending, enableBeforeUnload: () => mutation.isPending })`）、取込みの結果の画面と CSV取込みの詳細（[65](65-inventory-record-traceability.md) §65.5a）の両方に効く。理由: 離れた後に取消が失敗すると、知らせが別の画面の Toast だけになり、同じ画面で再試行できない（D-127「問題は起きたその画面で名指し」）。
 
 タブの切替えは router の遷移でなく `useBlocker` が効かない（`TabsContent` は選ばれていないタブの中身を unmount するので、Z004 の flow ごと消える）。Z004 タブの取消の応答を待つ間は、2 つの `TabsTrigger` を disabled にする（flow の `isRollingBack` を panel から `CsvImportPage` へ上げる。flow の置き場は変えない）。止めたときに文は出さない（応答は短く、取消の button の「取り消し中…」と spinner で待っていることが分かる）。確認の読取り（preview）の間は止めない（読取りだけで何も書かない）。
 
