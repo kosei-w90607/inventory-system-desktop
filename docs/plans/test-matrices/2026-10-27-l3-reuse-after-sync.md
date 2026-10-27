@@ -1,0 +1,146 @@
+# Test Design Matrix: 同期の後の L3 と closure の使い回し
+
+Plan Packet: `docs/plans/2026-10-27-l3-reuse-after-sync.md`。契約の正本は `docs/agent-guidance/merge-evidence.md` の MG-D13 と `## base同期だけでheadが変わる場合`、決定は D-144。
+
+## Risk
+
+Risk: R3
+
+## Contracts Under Test
+
+- MG-D13 同期だけの条件（packet の H2）
+- MG-D13 code に触れない条件（H3）
+- manual の A・B・止める形（H4・H6）
+- 同期の closure（H5）
+- RecordV1 の Closure と manual の形（H1）と確かめ直し（H7）
+- R4 を使い回さない（H4）
+
+## Failure Modes
+
+- lane の手（同期の後の commit、merge の中の編集、衝突の手での解消、main の外の branch の取込み）が入った版で使い回す。
+- 生成物の例外が生成物の外へ広がる、または生成物の衝突を受けられず #197 の型で外れる。
+- code に触れる main 側の変更（`src-tauri/**`・`src/lib/bindings.ts`・依存・CI の実行 code・未知の path）を A で通す。
+- 使い回せないときに manual の pass を黙って失う。
+- `sync_from` の closure が broad の必要数・Plan 契約の変更の検査を飛ばす。
+- 今の形の record を拒む（互換の破れ）。
+- R4 を引き継ぐ。
+
+## Test Matrix
+
+合成の git repo は `GitReuse` の今の作り方（tmpdir、`git init -b main`、`g.git` を tmpdir へ向ける patch）を使う。生成物の衝突は `docs/function-design/90-traceability.md` の同じ行を両側で変え、merge の commit で別の内容に書き直して作る。classifier は repo の `scripts/ci/classify-changes.sh` を tmpdir に写して current main 側の版として読ませる（`Gate.contents` を patch）。oracle は merge-evidence の MG-D13 の文から取り、helper の出力から取らない。
+
+| ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
+|---|---|---|---|---|---|
+| G1 | 同期だけの条件 | 1 回の自動の merge を拒む | unit（合成 repo） | `test_sync_only_single_auto_merge` | tree の比較を byte の差分の比較のままにする、または 1 回の merge を拒む |
+| G2 | 同上 | 2 回の同期を拒む（#209 の型） | unit | `test_sync_only_two_merges` | first parent を 1 段しか辿らない（今の `head^1 == source`） |
+| G3 | 同上 | 共有の file の周りの行がずれた同期を拒む | unit | `test_sync_only_shared_file_context_shift` | 差分の byte・patch の比較に戻す（main 側が lane の hunk の隣の行を変える） |
+| G4 | 同上 | 生成物だけの衝突を再生成した merge を拒む（#197 の型） | unit | `test_sync_only_generated_conflict_regenerated` | 衝突を全部拒む、または生成物の集合を読まない |
+| G5 | 同上 | 同期の後の生成物だけの再生成の 1 親の commit を拒む | unit | `test_sync_only_generated_regen_commit` | 1 親の commit を全部拒む |
+| G6 | 同上 | 同期の後の lane の commit を受ける | unit | `test_sync_only_rejects_lane_commit` | 1 親の commit を path を見ずに受ける。理由に commit の SHA が無い |
+| G7 | 同上 | 生成物の外の衝突を手で解いた merge を受ける | unit | `test_sync_only_rejects_manual_conflict_resolution` | 衝突の path を生成物で絞らない |
+| G8 | 同上 | 衝突の無い merge の中の lane の編集（evil merge）を受ける | unit | `test_sync_only_rejects_edit_inside_merge` | tree を `merge-tree` と比べず、2 親であることだけを見る。理由に path が無い |
+| G9 | 同上 | main の外の branch を second parent に持つ merge を受ける | unit | `test_sync_only_rejects_non_main_second_parent` | second parent が base の祖先かを見ない（lane の編集を別 branch から取り込める） |
+| G10 | 同上 | head の second parent が base でない版を受ける | unit | `test_sync_only_rejects_stale_last_parent` | 最後の merge の second parent と base を照らさない |
+| G11 | 同上 | merge-base が一意でない merge を受ける | unit | `test_sync_only_rejects_ambiguous_merge_base` | `merge-base --all` の行数を見ない |
+| G12 | 同上 | 生成物の例外で生成物の外の path の違いを受ける | unit | `test_sync_only_generated_exception_is_exact` | 生成物の集合を prefix・basename で当てる（`docs/function-design/90-traceability.md.bak`・`src/lib/bindings.tsx` を生成物と誤る） |
+| C1 | code に触れない条件 | docs だけの main 側を code と誤る | unit | `test_code_free_docs_only` | `docs` か `traceability` の flag で code と判定する |
+| C2 | 同上 | `src-tauri/**` を通す | unit | `test_code_free_rejects_rust` | `rust` を見ない。理由に path が無い |
+| C3 | 同上 | `src/lib/bindings.ts`・`package.json` を通す | unit | `test_code_free_rejects_frontend_and_generated_binding` | `frontend` を見ない、または `generated` の flag で生成物を docs 扱いにする |
+| C4 | 同上 | 未知の path・`scripts/pr-gate.py` を通す | unit | `test_code_free_rejects_unknown_and_control` | `unknown` を見ない、full に送る path を code から外す |
+| C5 | 同上 | rename の旧 path（`src/x.ts` → `docs/x.md`）を見落とす | unit | `test_code_free_rename_both_sides` | `--no-renames` を使わず新しい path だけを渡す |
+| R1 | manual の A | docs だけの同期で manual を引き継がない | integration（`RecordLifecycle`） | `test_auto_carry_on_sync_record` | 版が変わった分岐で manual を常に pending に戻す |
+| R2 | 同上 | 引き継いだ manual の `source_head` と evidence が元と違う | integration | `test_auto_carry_keeps_source_and_evidence` | `source_head` に旧 head（使い回しの版）を書く、evidence を差し替える |
+| R3 | 止める形 | code に触れる同期で closure の record が manual を黙って失う | integration | `test_code_sync_stops_non_manual_record` | 止めずに pending へ戻す。出力に code の path と `--reuse-approval`・`--outcome pending` の command が無い |
+| R4 | 同上 | lane の commit のある版で止まらない・理由が無い | integration | `test_lane_commit_stops_with_reason` | 理由に commit の SHA が無い。何かを書いてから止まる（PATCH が呼ばれる） |
+| R5 | manual の B | code に触れる同期で B を受けない、または承認なしで受ける | integration | `test_b_reuse_with_approval` | `--reuse-approval` を見ずに H3 を当てる、または承認の無い B を受ける |
+| R6 | A の後の A | 2 回の docs だけの同期で 2 回目を拒む | integration | `test_auto_carry_chain` | 旧 manual が使い回しなら拒む（今の `'source_head' not in old['manual']`） |
+| R7 | B の後の A | B の後の docs だけの同期で承認を失う、または拒む | integration | `test_b_then_docs_sync_keeps_approval` | `reuse_approval` を落とす、起点を `source_head` にして H3 で拒む |
+| R8 | B の source | `--reuse-from` が旧の `source_head` と違っても受ける | integration | `test_b_source_must_match_original` | `--reuse-from` を旧 head とだけ照らす |
+| R9 | A の明示 | `--reuse-from` だけ（承認なし）で code に触れる同期を受ける | integration | `test_explicit_a_requires_code_free` | 承認が無いときに H3 を当てない |
+| R10 | R4 | 同期の後に R4 の pass を引き継ぐ | integration | `test_r4_never_carried` | 版が変わった分岐で r4 も引き継ぐ |
+| S1 | 同期の closure | `--review-stage sync` が `sync_from` の closure を書かない | integration（fake gh の process） | `test_sync_stage_records_machine_closure` | argparse の choices に `sync` が無い。PATCH の body に `sync_from` が無い |
+| S2 | 同上 | code に触れる同期で記録する | integration | `test_sync_stage_rejects_code_sync` | H3 を当てない。理由と「監査の closure を要る」が出ない |
+| S3 | 同上 | 旧 review が pass でないのに記録する | integration | `test_sync_stage_needs_passed_review` | 旧 review の outcome を見ない |
+| S4 | 同上 | 版が変わらない record で記録する | integration | `test_sync_stage_needs_changed_head` | `current` の分岐を見ない |
+| S5 | 同上 | 余計な引数（`--pass-model` ほか）を黙って受ける | CLI | `test_sync_stage_rejects_audit_arguments` | 入力の誤り（exit 2）にしない |
+| S6 | 同上 | Plan 契約の変わった版で broad を引き継ぐ | integration | `test_sync_stage_requires_same_plan_contract` | broad の plan_commit・amendments を照らさない |
+| S7 | 同上 | 起点を誤る（`sync_from` の連鎖で最後の監査の版を失う） | integration | `test_sync_stage_chain_keeps_audited_origin` | 2 回目の `sync_from` に 1 回目の head を書く |
+| V1 | 互換 | 今の B の record（`source_head` と `reuse_approval`）を拒む | unit | `test_validate_legacy_reuse_record` | `validate_record` の manual の形を A の形だけにする |
+| V2 | 互換 | 今の監査の closure を拒む | unit | 既存の `Records` の closure の case（`rg -n "closure=dict\(head=H" scripts/tests/pr-gate.test.py` で確かめた所） | closure の形の分岐で `audit` を落とす |
+| V3 | 形 | `reuse_approval` だけの manual を受ける | unit | `Records` の mutant（`manual.source_head` だけの mutant を置き換える） | `reuse_approval` を `source_head` と組で求めない |
+| V4 | 形 | closure の 2 つの形の混在（`audit` と `sync_from`）・どちらでもない形を受ける | unit | `test_validate_closure_shape_exclusive` | `keys` の optional に両方を入れる |
+| V5 | 確かめ直し | status が `source_head` の後の lane の commit を見逃す | integration（`nonci`） | `test_nonci_rechecks_manual_chain` | `nonci` が `head^1` だけを見る、または検査を外す |
+| V6 | 確かめ直し | status が `sync_from` の closure の code の取込みを見逃す | integration（`nonci`） | `test_nonci_rechecks_sync_closure` | `sync_from` の closure に H3 を当て直さない |
+
+## State Lifecycle Matrix
+
+| State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
+|---|---|---|---|---|---|---|---|---|---|---|
+| manual（record） | 旧 head で pass | 新しい head の capture | A で引き継ぐ（R1）/ B で使い回す（R5） | lane の commit・code の取込みで外れる（R3・R4） | capture の後の server の変化で fresh capture（既存） | B の後の docs の同期（R7） | helper の再実行は record を読み直す（既存） | 何も書かずに止まる（R3・R4） | `--outcome pending` で外して L3 をやり直す（R3 の出力） | R1〜R10 |
+| review の closure | 旧 head で pass | 新しい head の capture | `sync_from` の closure（S1） | code の取込みで外れる（S2） | 同上 | 2 回目の同期（S7） | 同上 | 止まる（S2〜S6） | 監査の closure を記録する（既存） | S1〜S7 |
+| status の確かめ直し | record が現在の head | — | 通る（V5・V6 の正の組） | 起点の後の lane の commit で blocker（V5） | status は毎回 git を読む | — | — | blocker を出す | — | V5・V6 |
+
+capture / server の race、stale head/base、broad / closure、R4 の扱いは既存の test（`test_source_record_missing_changed_or_not_pass` の `mutate_capture`、`test_changed_plan_requires_new_broad` ほか）を変えずに保つ。
+
+## Adjacent Pattern Audit
+
+| Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
+|---|---|---|---|---|
+| current main 側の classifier を `--files-from-stdin` で呼ぶ（`Gate.requirements`） | `rg -n "classify-changes" scripts/pr-gate.py`（1 か所） | H3 が同じ関数を使う | — | C1〜C5 |
+| `merge.directoryRenames=false` の同期（DEV_WORKFLOW Wave Operation・Stacked train、merge-evidence の同節） | `rg -n "directoryRenames" docs scripts --glob '!docs/archive/**'` | H2 の `merge-tree` | — | G1〜G4 |
+| 生成物の path の集合（classifier の `generated` の case） | `scripts/ci/classify-changes.sh` の `generated=true` の case | H2 | `src/routeTree.gen.ts` は tracked でないが集合に含めてよい | G4・G5・G12 |
+
+## Negative Paths
+
+- missing input: `--review-stage sync` で旧 record が無い（S3 の旧 record 無しの組）。
+- invalid input: `--review-stage sync` と監査の引数（S5）。`--reuse-approval` だけ（入力の誤り、R5 の負の組）。
+- duplicate/ambiguous input: merge-base が一意でない（G11）。closure の 2 つの形の混在（V4）。
+- unknown reference: `--reuse-from` が旧の source と違う（R8）。first parent を辿って起点に着かない（G6 の変形）。
+- dependency missing: `git merge-tree` が失敗（exit 2 で止まり満たした扱いにしない。G の各 test の `command failed` の組を 1 つ置く）。
+- permission/write failure: 止める形は PATCH の前（R4 で PATCH が呼ばれないこと）。
+- dry-run side effect: status（`nonci`）は書かない（V5・V6 で comment の API が呼ばれない）。
+
+## Boundary Checks
+
+- threshold: 同期の回数に上限なし（G2 は 2 回）。
+- null/default: closure が null の旧 record の起点は broad の head（S7 の初回）。
+- empty/non-empty: main 側の path が空（起点と base が同じ）は head の second parent が base でも head が起点と違うときだけ。
+- min/max: —
+- status/policy enum: outcome は pass だけを引き継ぐ（R1 の負の組で pending・fail を拒む）。
+- wire type: closure の 2 つの形（V4）。
+- internal type: —
+- producer/consumer: `record` が書き `nonci` が読む（V5・V6）。
+- round-trip token: `record read-back mismatch`（既存）。
+- precision/range: SHA は 40 桁（既存の `sha`）。
+- cross-language parse: —
+
+## Compatibility Checks
+
+- old schema/input: V1・V2。
+- new schema/input: S1・R1・R5。
+- output order: —
+- optional field behavior: `reuse_approval` は B の後の A で残る（R7）。
+
+## Data Safety Checks
+
+- source-derived data: 無い（合成の repo）。
+- generated outputs: 合成の生成物の file は tmpdir の中だけ。
+- secrets: 無い。
+- local-only files: capture は tmpdir の `.local/pr-gate`（既存の `exercise`）。
+- synthetic sample boundaries: 実の PR の SHA は Contract Probe の証跡だけで、test の fixture に使わない。
+
+## Main Wiring / Integration Checks
+
+- helper connected to main path: `record` の版が変わった分岐（R1）と `nonci`（V5）。
+- output reaches manifest/report: PATCH の body（S1）。
+- effective config reaches runtime: `merge.directoryRenames=false` が `merge-tree` に渡る（G の合成で directory rename を起こす組を 1 つ置く）。
+- CLI arg reaches implementation: `--review-stage sync`（S1・S5）、`--reuse-from` だけ（R9）。
+
+## Mutation-style Adequacy Questions
+
+実装の run は次の mutant を production 側に注入し、該当の test が red になることを確かめて PR に書く: (1) H2 の tree の比較を外す → G8、(2) second parent の祖先の検査を外す → G9、(3) H3 の `unknown` を外す → C4、(4) H4 の止めを pending へ戻すに変える → R3、(5) H5 の H3 を外す → S2、(6) H7 の manual の確かめ直しを外す → V5、(7) 生成物の集合の照合を prefix にする → G12。
+
+## Residual Test Gaps
+
+- GitHub の Update branch の merge の実物は試さない（合成の repo は `git merge` だけ。違えば外れる側なので安全）。
+- 実の PR の record での end-to-end（Ready・merge まで）は本 lane の PR 自身では起きない（本 lane は manual を持たない）。最初の manual の lane の同期で Coordinator が確かめる。
