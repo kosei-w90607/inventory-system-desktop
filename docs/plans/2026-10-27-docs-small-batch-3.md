@@ -4,7 +4,7 @@ wave に属さない単独の lane。docs だけ（`docs/Plans.md`・`docs/backl
 
 出所: owner の決定（2026-10-27、repo 外の回答台帳 TD-460）: 取りこぼしの洗い出し（repo の外）で見つけた「導入に効くのに予定の無いもの」G1〜G12 を `docs/Plans.md` の「導入の前の関門」に candidate / precondition-dependent で載せ、古い記述も直す。owner が決める G1・G2・G7・G8 は同じ日に答えが出た（TD-461〜TD-464。下の Scope の S1）。G9（訪店そのもの）は repo の外の段取りなので載せない。
 
-規模と手法: docs だけの lane なので、Coordinator の発注どおり変更そのものも plan-first の commit に入れた（packet と変更が同じ commit。Plan Review は packet と変更の両方を読む）。Phase は plan-draft で止め、Plan Review に出すのは Coordinator。
+規模と手法: docs だけの lane なので、Coordinator の発注どおり変更そのものも plan-first の commit に入れた（packet と変更が同じ commit。Plan Review は packet と変更の両方を読む）。
 
 ## Workflow State
 
