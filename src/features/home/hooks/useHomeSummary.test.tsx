@@ -71,6 +71,9 @@ function makeProduct(productCode: string, stockQuantity: number): ProductWithRel
     department_name: "synthetic-department",
     supplier_name: null,
     plu_memory_no: null,
+    stock_recheck: false,
+    stock_range_low: null,
+    stock_range_high: null,
   };
 }
 
