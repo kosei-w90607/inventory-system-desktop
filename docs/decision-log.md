@@ -961,6 +961,7 @@ Use concise ADR-style entries.
 - Compatibility: D-023（レジ依存を adapter に閉じる）の範囲内。2026-08-01 の owner 判断（UI-07-D12 の旧版、`project-memory.md` の決めた運用）を置き換える。既存の CMD-12 の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（45 §45.3）を足すほかは変えない（command と DTO を足す）。`daily_report_imports` に nullable の列を足す migration は runtime の lane。Z004 の取込み（一時停止中）と EJ の取込み（未実装）の規則は変えず、入力の経路だけを引き継ぐ。
 - Revisit: 取込み前の原本と取込み後の file の bytes の実機の比較（R-50）が前提と違ったとき。店の CV17 の取込みが、原本の中身を書き換えると分かったとき（店の PC の CV17 の版を揃える方針は別の lane）。取込み画面のデザインを刷新するとき（ファイルを選ぶ補助のリンクの置き場所、決定 4）。店が CV17 の毎日の取込みをやめるとき、または (b) の lane を起こすとき（`XZ` の file が数千本になったときのレジの振舞い〈精算のときに既存の file を見て名前を決めるとみられることによる処理時間、FAT32 の 1 directory の entry 数の上限〉を確かめる。名前の衝突は起きない見立て〈owner、要旨〉。やめた後は `XZ_BKUP` を読む範囲を狭められる）。runtime の lane の L3 の後の運用で、`XZ` 直下の EJ の size が 1 か月分を超えて伸びたとき。写しの容量が目に見えて増えたとき（未決 A）。レジの機種が変わるとき（IO-09 を取り替える）。SD-04 の系列・SD-24 の形が変わったとき。
 - Superseded in part by: D-114（未決 B: 写しを backup・PC の外の控えに含めない。owner 決定 2026-10-08、repo 外の回答台帳 TD-197）
+- 未決 A の答え（owner、repo 外の回答台帳 TD-296）: 写しは消さない（既定のまま）。容量が目に見えて増えたら上の Revisit の未決 A の項で見直す。
 
 ## D-113: 単位を 12 種へ広げ、数量・原価の精度と金額の丸めを横断で決める（2026-10-07）
 
