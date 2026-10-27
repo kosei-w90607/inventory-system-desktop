@@ -22,9 +22,9 @@ wave に属さない単独の lane。出所は owner の決定（2026-10-24、re
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 9c21bb91cb321f19a99c61476550e586a5380871
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と実装）
@@ -41,6 +41,8 @@ wave に属さない単独の lane。出所は owner の決定（2026-10-24、re
 3. design → plan-draft（2026-10-27、起草役、本 commit）: 上の 3 点を 73・51 に本 packet と同じ commit で置いた（proposed・未実装と今の build を併記）。製品の振舞いで owner の判断が要る問いは 1 つ（下の「owner の判断事項」）で、推奨を既定にして進める（owner の方針、repo 外の回答台帳 TD-401）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-27、Coordinator）: packet と Test Design Matrix は commit 済み。owner の判断事項 (i) は A に決まった（repo 外の回答台帳 TD-452、前の commit `d79289a0` で反映）。b1 の packet との食い違いは Coordinator の裁定で (1) a・(2) a（済みとして閉じる）・(3) a（51 の正本どおり欄の直下へ移し、関門 6 の (i) の語の直しと 1 つにする、S3）。Plan Review へ出す（fresh Opus 5.5 + Codex）。
 5. plan-gate（round 3、天井、2026-10-27、Coordinator の disposition、起草役、本 commit）: round 3 の一括是正（Review Response 参照）
+6. plan-gate → plan-approved（2026-10-27、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。round 3 の一括是正の版（`25ff60b6`）の plan closure は fresh Opus 5.5 が approve（P3 1）、Codex（発注 628）が approve（P3 0）。P3 1 件を plan-gate のまま直した版を Plan Commit にした（`9c21bb91`。下の Review Response）。
+7. plan-approved → implementing（2026-10-27、Coordinator、本 commit）: 遷移表の唯一の入口。前文の順のとおり #193 が先に merge し（`a2365759`）、`origin/main` を単段で同期した（`0625abe4`。`docs/function-design/51-ui-product-form.md` の D-118 の契約の見出しの衝突は、b2 の「実装済み」と本 lane の「画面の小口の lane で proposed」の両方を残して解いた）。同期の後の版で AC と「規模と手法」の baseline の command を逐語で再測し、packet の値と一致した。変わったのは 2 つだけ: `formatCountedAt` の行が 91・125・708・1470・1743 に移った（b2 の変更で行がずれた。数は 5 のまま）、traceability の `StocktakePage.test.tsx|ProductFormPage.test.tsx` の行の数が 2 から 5 になった（b2 が test を足した）。実装の Writer は Coordinator が発注する。
 
 ## Owner Effort Budget
 
@@ -381,3 +383,9 @@ Coordinator の disposition（2026-10-27）: round 3 は `docs/DEV_WORKFLOW.md` 
 - Opus F4（P3）、受理: `standalonePendingCloseRef` と `settleStandaloneLoadFailure` のコメントが S2 の後に誤りになる。→ S2 の route の effect の行に 2 つのコメントと後始末の関数の説明を直す指示を、「この変更で不要になるもの」に旧いコメントの句を足した（code は実装の run で直す）
 - Opus F5（P3）、受理: 「失効」と「閉じる時点で外れていれば」の 2 つの読み。→ 73 の冒頭の D-118 の節、Matrix の Contracts Under Test、S2、Contract Ledger、Matrix の SF5・U9 の行・State Lifecycle・M14・state token を「保存の成功で閉じる時点で route の `product` が外れていれば戻らない」の 1 つの読みにし、「失効」の語を外した。F1 の unmount の条件も同じ文の形にした
 - Codex #1（P2）、受理: 51 の文「売上が在庫の数に入っていません」は、`recount_required` が計数の衝突・決まらない売上でも返る（ADR D8、`unlinked_sales_counted`）ことと合わない。→ 51 の D-118 の節の 2 の文の冒頭を「「減らさない」の間の売上が在庫の数に入っているか確認できません」に替え、断定しない理由を足した（回復の手順の文は変えない）。「規模と手法」の衝突の matcher の baseline を新しい文言で数え直した（`rg -F -c '在庫の数に入っているか確認できません' src` → exit 1）。Contract Ledger の 51 の行に文の要点を足した。Matrix の SF2、packet の S3・AC3 は文を「51 の文」で引いて literal を持たないので変えない
+
+### plan closure（`25ff60b6`。fresh Opus 5.5 は approve〈P3 1〉、Codex 628 は approve〈P3 0〉）
+
+round 3 の 6 件はどちらも閉じたと判定した。裁定は Coordinator（2026-10-27、受理）。
+
+- Opus N1（P3、受理）: unmount を判定する時点が「保存の成功が届く時点」（73・Matrix・packet）と「`finish` を実行する時点」（S2）の 2 通りに書かれ、間に一覧の再取得の await がある。73 の D-118 の節・Matrix の Contracts Under Test と State Lifecycle・packet の絶対保証・Review Focus・Contract Ledger の句を「保存の成功の後始末（閉じる・戻る）を行う時点で」に揃えた（S2 と同じ時点。test は足さない）。
