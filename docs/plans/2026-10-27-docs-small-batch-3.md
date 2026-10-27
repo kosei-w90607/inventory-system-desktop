@@ -1,6 +1,6 @@
 # Plan Packet: docs の小口 3（導入の前の関門の表に取りこぼしを載せ、古い記述を直す）
 
-wave に属さない単独の lane。docs だけ（`docs/Plans.md`・`docs/backlog.md`・`docs/decision-log.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/10-common-rules.md` と本 packet）。code・migration・bindings・画面の振舞い・helper・classifier・CI の設定は変えない。
+wave に属さない単独の lane。docs だけ（`docs/Plans.md`・`docs/backlog.md`・`docs/decision-log.md`・`docs/UI_TECH_STACK.md`・`docs/function-design/10-common-rules.md`・`docs/project-memory.md` と本 packet）。code・migration・bindings・画面の振舞い・helper・classifier・CI の設定は変えない。
 
 出所: owner の決定（2026-10-27、repo 外の回答台帳 TD-460）: 取りこぼしの洗い出し（repo の外）で見つけた「導入に効くのに予定の無いもの」G1〜G12 を `docs/Plans.md` の「導入の前の関門」に candidate / precondition-dependent で載せ、古い記述も直す。owner が決める G1・G2・G7・G8 は同じ日に答えが出た（TD-461〜TD-464。下の Scope の S1）。G9（訪店そのもの）は repo の外の段取りなので載せない。
 
@@ -27,6 +27,7 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 1. kickoff → spec-check（2026-10-27、起草役）: 範囲を発注 609 の G1〜G12（G9 を除く）と backlog の 4 群（下の S2〜S4）にし、Risk を R2 と記録した（下の Risk）。
 2. spec-check → plan-draft（2026-10-27、起草役、同じ commit）: 表の唯一の skip。本 lane は関門の表と backlog の項目を owner の決定と既存の正本に合わせて並べ直すだけで、新しい設計の選択をしない（下の Design Readiness）。
 3. plan-draft → plan-gate（2026-10-27、Coordinator）: packet は commit 済み（`2c0582a2`）。R2 なので Matrix は任意で、作らない理由は前文。Final Reviewer の Claude 側は座組表の R2 の行（fresh Opus 5.5）に従う起草役の判断を受ける。Plan Review へ出す（fresh Opus 5.5 + Codex）。
+4. plan-gate（round 2 の是正、2026-10-27、Coordinator、本 commit）: round 2 の是正（Review Response 参照）。是正で `docs/project-memory.md` の 1 行を Scope に足した（S4）。
 
 ## Owner Effort Budget
 
@@ -122,6 +123,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 - `docs/Plans.md` の `## 次の行動` の D-070 の段落の「v1.0 の自動在庫連動に残る条件は … b2」: 「アプリの側の条件は b2」とし、関門への指しを 1 文書き加えた（PLU を書く前の導入では Z004 の自動在庫連動はほとんど動かないので、PLU をレジへ書く時期は関門の candidate で owner が決める。事実の段落は backlog の G2 の項目）。D-070 の本文は owner の決定の前なので変えない。
 - `docs/Plans.md` の `## 製品の未決判断` の D-111 の未決 A の「owner の判断待ち」: 消さないと決めた（TD-296）に置き換えた。`docs/decision-log.md` の D-111 の末尾に「未決 A の答え」の行を 1 行足した（D-114 の未決 B の行と同じ並び。新しい決定の番号は使わない）。`docs/backlog.md` の「日報取込み標準手順の残設計」の「ここに残るのは写しの保持期間（D-111 の未決 A）」から保持期間を外し、決めたことを括弧に書いた。
 - `docs/backlog.md` の「棚卸しの数の置き場と在庫数の求め直しの runtime」の子の日次の EJ 取込みへの申し送りの「同じ申し送りの (4) は下の子」: (4) を移した新しい項目の名に直した。
+- `docs/project-memory.md` の値下げ品の売り方の行（round 2 の是正、Review Response 参照）: 問いが「PLU をレジに書いた後」の売り方だった（店主の答え、2026-09-29）ことを行の頭に書き、今は全部の商品を部門キーで売ることを添えた。G2 の「店は全部の商品を部門キーで売る」と食い違って読めないようにする。
 
 ### この変更で不要になる記述・条件（D-127）
 
@@ -141,6 +143,7 @@ not applicable: operator の操作・data / command の契約・業務の状態�
 | `docs/backlog.md` | #172・#190・#201・#211・#212（closeout で #209・#210 も） | #172 は「日報取込み標準手順の残設計」の同じ行の末尾に句を足す（本 lane はその行の写しの保持期間〈D-111 の A〉の句を直す）ので行の衝突になる見込み。#212 は「新規登録で、入れた JAN が既に他の商品にあるとき独自コードで登録できる道」の子を足し、その項目の直前の「JAN の無い商品の店内コードと色ごとのバーコードの表」の行を本 lane が直すので、隣の行の衝突になる。ほかは別の項目（#190 は backup の項目と PC の外の控えの runtime、#201 は開発用の bin、#211 は日報の紙の runtime と i64 の項目）。#209・#210 の closeout は各自の項目（商品 CSV のプレビュー、棚卸しの runtime b1 の L3 の所感）を触る見込みで、本 lane の新しい項目は「商品 CSV のプレビューで黙って入る形の行を止める」の直後に置いたので、#209 の closeout とは隣になりうる |
 | `docs/decision-log.md` | #194・#201・#209・#211・#212 | どの PR も末尾に新しい D を足す。本 lane は D-111 の中に 1 行足すだけで、離れている |
 | `docs/UI_TECH_STACK.md` | #197・#212 | #197 は UI-USW-D1 の行と変更履歴の表、#212 は頭の方の表。本 lane は UI-USW-D4 の 1 行で、#197 の UI-USW-D1 の行とは 2 行離れる。変更履歴の表に行を足さない（#197 が同じ表に足すので） |
+| `docs/project-memory.md` | #172 | #172 の hunk は 37・97・194 行の周り。本 lane は値下げ品の売り方の 1 行（157 行の周り）で、離れている |
 | `docs/function-design/10-common-rules.md` | #193・#211 | #193・#211 の hunk は SPEC-UNIT-D2 の段落より後の節と変更履歴の表。本 lane は SPEC-UNIT-D2 の段落の 1 句で、変更履歴の表に行を足さない |
 
 衝突の確かめ: 各 PR の head を起点 `3573dc67` と本 lane の head に `git merge-tree --write-tree --name-only` で当てて比べた。本 lane で新しく衝突になるのは #172（`docs/backlog.md`）・#193（`docs/Plans.md`）・#212（`docs/backlog.md`）。#190（`docs/Plans.md`・`docs/backlog.md`）・#194・#211（`docs/decision-log.md`）は起点に当てても衝突し、本 lane で増えない。ほかの PR は本 lane で衝突しない。
@@ -172,7 +175,7 @@ baseline は起点 `3573dc67` で下の command を実行した出力（起票�
 - AC-S2-3: `rg -n -F '別 backlog' docs/UI_TECH_STACK.md` が何も出さない（exit 1）で、`rg -n -F 'native の window の close で取込み・取消・未保存の 3 つの止めを横断して扱う' docs/backlog.md docs/UI_TECH_STACK.md` が 2 行（両 file に 1 行ずつ）。
 - AC-S3-1: `rg -n '未回答の問い Q-09[3468]' docs/backlog.md docs/function-design/10-common-rules.md` が何も出さない（exit 1）。
 - AC-S9-1（新しい文言）: `git diff 3573dc67...HEAD -- docs | rg '^\+' | rg -n 'T[O]DO|T[B]D|F[I]XME|H[A]CK|未確[定]|要確[認]|要検[討]'` が何も出さない（exit 1）。文字の組の形は、本 packet の文が doc check の印の検査に当たらないようにするためで、探す語は 7 語のまま。
-- data safety: `git diff --name-only 3573dc67...HEAD` が上の 5 file と本 packet だけ。`git diff --name-only 3573dc67...HEAD -- src-tauri src scripts .github .claude` が何も出さない。`git diff 3573dc67...HEAD | rg '^\+' | rg -n '[.]l[o]cal/'` が何も出さない（repo 外の報告の path を書かない。文字の組の形は本 AC の文が自分に当たらないようにするため）。店の運用の細部・実値・発言の原文を書いていない（読んで確かめる）。
+- data safety: `git diff --name-only 3573dc67...HEAD` が上の 6 file と本 packet だけ。`git diff --name-only 3573dc67...HEAD -- src-tauri src scripts .github .claude` が何も出さない。`git diff 3573dc67...HEAD | rg '^\+' | rg -n '[.]l[o]cal/'` が何も出さない（repo 外の報告の path を書かない。文字の組の形は本 AC の文が自分に当たらないようにするため）。店の運用の細部・実値・発言の原文を書いていない（読んで確かめる）。
 
 ## Design Readiness
 
@@ -241,3 +244,16 @@ reviewer は fresh Opus 5.5（fork でない）。reject（P1 0 / P2 1 / P3 7）
 | Opus #8: 「導入に効くかもしれないもの」の (3) Q-103 に主題が無い | P3 | 受理 | `docs/backlog.md` の (3) に主題「商品ごとの最低限の在庫数」。(2) Q-099 は主題「評価方法の届出」が既にあるので変えない |
 
 起草役が是正の中で見つけたもの: round 1 の版の本 packet の末尾に、起票の run の tool の呼出しの閉じ tag の 2 行が残っていた。外した。
+
+### Plan Review round 2（対象 `be5a72ff`）
+
+reviewer は fresh Opus 5.5（fork でない）と Codex（発注 625、GPT-6.1 Sol）。Opus は approve（P1 0 / P2 0 / P3 4）、Codex は reject（P1 0 / P2 1 / P3 1）。裁定は Coordinator（2026-10-27）。Codex #1 は前提の事実を repo 外の回答台帳で確かめ、直す所を変えて受理した。ほかは全件受理。
+
+| finding | 重大度 | 裁定 | 是正（直した所） |
+|---|---|---|---|
+| Opus #1: G2 の子の「C3」が Plans の中で定義されておらず、D-070 の Impact の「C3（MSI 配布判定）」と別の意味で読める | P3 | 受理 | `docs/Plans.md` の candidate の G2 の子に「C3（店の PC の CV17 の画面で部門リンクの値を確かめる、TD-459）」 |
+| Opus #2: 関門の冒頭の G8 の 2 文目が 56 UI-09a-D19 を一部だけ写している | P3 | 受理 | `docs/Plans.md` の `## 導入の前の関門` の冒頭の文を「日報の紙の切替えの日は導入の日と別で、56 UI-09a-D19 が決める。」に置き換えた（写しを外した） |
+| Opus #3: backlog の振替の項目の「TD-378 は問い Q-092 の答えの前の判断」が番号の順と合わない | P3 | 受理 | `docs/backlog.md` の「在庫の振替（詰め替え・切り分け）」を「b1 の packet が Q-092 を未回答と扱った時点の判断で」に直した |
+| Opus #4: SD 直読みの子に backlog の名が無い | P3 | 受理 | `docs/Plans.md` の precondition-dependent の SD 直読みの子の末尾に「backlog の「SD 直読みの runtime」。」 |
+| Codex #1: backlog の G2 の項目の「店は全部の商品を部門キーで売っている」が、project-memory の値下げ品の売り方（バーコードを読んでから値引きキー、2026-09-29）と食い違う | P2 | 直す所を変えて受理 | 前提を確かめた: project-memory の行の元の問いは「PLU 登録後に値下げ品を売る方法」（repo 外の回答台帳 TD-052、2026-09-29）で、今の売り方ではない。今の売り方は全部の商品を部門キー（同じ台帳の L-001、2026-09-17 の再確認）。backlog の断定は正しく、食い違いは project-memory の行が前提を落としていたことから来る。`docs/project-memory.md` の行の頭を「PLU をレジに書いた後の値下げ品の売り方」にし、今は全部の商品を部門キーで売ることを添えた（Scope に 1 file 足した。S4・data safety の AC・他の lane との所有の表）。`docs/backlog.md` の G2 の項目の出所に 2026-09-17 の確かめと project-memory の行の位置づけを添えた |
+| Codex #2: G2 の子が 3 文と backlog の名の 1 文で、AC-S1-4 の「1〜2 文」を超える | P3 | 受理 | `docs/Plans.md` の G2 の子を、選び方と B・C の新しい D を 1 文にし、backlog の名を含む 2 文にした（Opus #1 の C3 の定義と同じ文） |

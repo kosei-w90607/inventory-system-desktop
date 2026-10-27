@@ -154,7 +154,7 @@ Keep it factual and stable.
 - 締めで印刷している Excel は 1 シート（売上日報）で、A4 縦・1 ページに縮小して収める。上に年月日、その下に 4 つの枠（売上明細 Z001・取引キー Z002・部門 Z005・PLU Z004）を横に並べ、各枠の列は CSV と同じ（レコード / キャラクター / 個数(件数) / 金額）。行数は Z001 が 28、Z002 が 38、Z005 が 21。PLU の枠は見出しだけで中身は空。1 日 1 枚 — owner確認 2026-09-29
 - 締めで印刷する紙は A4 縦。見返すのは日付と印刷のずれの確認だけ。導入後も紙で要るもの = 日報・月の売上・棚卸しの一覧・入荷や廃棄の記録。申告の前に紙で作る集計の用紙の項目 = ページ番号、メーカー、JAN コード（メーカー型番と兼用）、売価、仕入れ価格、数量、金額 — 店主回答（owner 経由の質問票）2026-09-29
 - 毎日の締めで EJ も取り込める（取込みの頻度は今は月 1 回ほど）— 店主回答（owner 経由の質問票）2026-09-29
-- 値下げ品の売り方: バーコードのある商品は読んでから値引きキー、バーコードの無い商品は部門キー — 店主回答（owner 経由の質問票）2026-09-29
+- PLU をレジに書いた後の値下げ品の売り方: バーコードのある商品は読んでから値引きキー、バーコードの無い商品は部門キー（今は PLU を書いていないので、全部の商品を部門キーで売る） — 店主回答（owner 経由の質問票）2026-09-29
 - Daily register closing happens same-day, with the store kept open; during closing the SD card is imported through CV17, the reports are pasted into Excel and printed, and only then is the store closed — owner回答2026-09-22
 - Sales made between the day's register closing and the store's actual close are therefore folded into the next day's closing — Coordinator の推論（上の行の owner回答2026-09-22 からの帰結で、owner の発言ではない）
 - PC work such as product edits can also happen after the day's register closing — owner回答2026-09-22
