@@ -153,6 +153,19 @@ fn test_response_only_enum_wire_serialize_req303_req501() {
     ] {
         assert_serialize(value, wire);
     }
+    // D-118 b2（Matrix W1）: 在庫変動の履歴の行の種類
+    for (value, wire) in [
+        (
+            crate::biz::inventory_service::StockHistoryKind::Movement,
+            "movement",
+        ),
+        (
+            crate::biz::inventory_service::StockHistoryKind::Count,
+            "count",
+        ),
+    ] {
+        assert_serialize(value, wire);
+    }
     for (value, wire) in [
         (DailySaleSource::Auto, "auto"),
         (DailySaleSource::Manual, "manual"),

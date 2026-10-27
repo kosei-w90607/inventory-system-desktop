@@ -139,11 +139,11 @@ export const commands = {
 	 */
 	listLowStock: (includeDiscontinued: boolean) => typedError<ProductWithRelations[], CmdError>(__TAURI_INVOKE("list_low_stock", { includeDiscontinued })),
 	/**
-	 *  商品別の在庫変動履歴をフィルタ付きでページング取得する
+	 *  商品別の在庫変動の履歴（movement と計数）をフィルタ付きでページング取得する
 	 *
 	 *  44-cmd-inventory.md §23.8 list_movements
 	 */
-	listMovements: (query: MovementQuery) => typedError<PaginatedResult<MovementRecord>, CmdError>(__TAURI_INVOKE("list_movements", { query })),
+	listMovements: (query: MovementQuery) => typedError<PaginatedResult<StockHistoryItem>, CmdError>(__TAURI_INVOKE("list_movements", { query })),
 	/**
 	 *  Z004ファイルを受け取り、プレビューデータを返す
 	 *
@@ -1403,6 +1403,10 @@ export type ProductWithRelations = {
 	department_name: string,
 	supplier_name: string | null,
 	plu_memory_no: number | null,
+	// 写しの要再確認と範囲（ADR SPEC-STK-CNT-D2・D9。範囲は要再確認のときだけ両端が値。40）
+	stock_recheck: boolean,
+	stock_range_low: number | null,
+	stock_range_high: number | null,
 } & (Product);
 
 // 入庫記録リクエスト（31-biz-inventory-service.md §12.3）
@@ -1669,6 +1673,18 @@ export type StockCopy = {
 	stock_range_high: number | null,
 };
 
+// 在庫変動の履歴の計数（44 の D-118 の節）
+export type StockCountHistory = {
+	id: number,
+	count_value: number,
+	// 計数の商品の今の単位（画面は計数の値をこの単位で描く。66 の UI-06c-D3 の部分障害）
+	stock_unit: ProductStockUnit,
+	count_kind: StockCountKind,
+	stocktake_id: number | null,
+	// `stocktake_id` があるときだけ棚卸しの記録への link
+	source: MovementSourceLink | null,
+};
+
 // 計数の種類（「数を保存」「0 にする」= default、「入れ直す」= fresh）
 export type StockCountKind = "default" | "fresh";
 
@@ -1693,6 +1709,22 @@ export type StockDetail = {
 	last_receiving_date: string | null,
 	last_sale_date: string | null,
 };
+
+// 在庫変動の履歴の 1 行（44 の D-118 の節）。`kind` が `movement` なら `movement` だけ、`count` なら `count` だけが値
+export type StockHistoryItem = {
+	kind: StockHistoryKind,
+	// movement の業務日（Z004 は精算日）か計数の日付
+	business_date: string,
+	// Z004 の movement の精算回数と、fresh な計数の保存の時点の精算回数（並びの鍵）。ほかは None
+	settlement_no: number | null,
+	// movement の `created_at` か計数の `counted_at`
+	saved_at: string,
+	movement: MovementRecord | null,
+	count: StockCountHistory | null,
+};
+
+// 在庫変動の履歴の行の種類（44 の D-118 の節。D-061 の生成の literal union）
+export type StockHistoryKind = "movement" | "count";
 
 /**
  *  棚卸しヘッダの行マッピング
