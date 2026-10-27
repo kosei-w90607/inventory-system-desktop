@@ -156,7 +156,7 @@ merge の順: 本 lane（docs だけ、R2）を先に merge する想定。後�
 - 訪店の段取り（G9）と、C1・C3 の中身（repo の外）。
 - `docs/decision-log.md` の D-070・D-118・D-122・D-128・D-138 の本文（決定の記録で、本 lane は書き換えない。D-128 (3) の「未回答の問い Q-098」は決定の時点の記録として残す）。
 - [37](../function-design/37-biz-daily-report-import-service.md) の Non-scope の「写しの保持期間・削除と、PC の外への backup（D-111 の未決 A・B）」（BIZ-08 の範囲外の列挙で、消さない決定の後も削除の機能は範囲外のまま正しい）。
-- 56 UI-09a-D19 の紙の切替えの順（D13 の受入 → 運用開始 → (2) の確かめ → 切替え）。D19 は変えない。G8 は導入の日だけを決め（関門が全部済んだ後の月の初め、TD-464）、紙の切替えは D19 の順のとおり導入の後の別の日と Plans に書いた（Plan Review round 1 の #1）。
+- 56 UI-09a-D19 の紙の切替えの順（D13 の受入 → 運用開始 → (2) の確かめ → 切替え）。D19 は変えない。G8 は導入の日だけを決め（関門が全部済んだ後の月の初め、TD-464）、紙の切替えの日は導入の日と別で D19 が決めると Plans に書いた（Plan Review round 1 の #1、round 2 の Opus #2）。
 - code・migration・bindings・route・画面の文言。
 
 ## Acceptance Criteria
@@ -218,7 +218,7 @@ Test Design Matrix は作らない: R2 で、確かめは `rg` の件数と読�
 - S1 の区分の決め方（candidate と precondition-dependent の分け方）が owner の決定と合うか。特に G3（D-070 の入口条件なので confirmed に近い）を precondition-dependent に、G4（正本が go-live の前と書く）を candidate に置いたこと。
 - 関門の文が「中身は backlog の〈名〉」の形を守り、関門の文に中身を継ぎ足していないか（D-127）。
 - G2 の事実の写しが出所（`src-tauri/src/biz/csv_import_service/parse.rs` の `find_by_jan_code` の引き当て、`docs/plu-export-and-real-csv-verification.md` の PLU-24）と合い、件数の実値を書いていないか。G6 の b1 の起票の関係の写しが b1 の packet と合うか。
-- G8 の節の冒頭の文（導入は関門が全部済んだ後の月の初め、紙の切替えは D19 の順のとおり導入の後の別の日）が、56 UI-09a-D19 の順（D13 の受入 → 運用開始 → 紙の照合 → 切替え）と食い違わずに読めるか。
+- G8 の節の冒頭の文（導入は関門が全部済んだ後の月の初め、紙の切替えの日は導入の日と別で D19 が決める）が、56 UI-09a-D19 の順（D13 の受入 → 運用開始 → 紙の照合 → 切替え）と食い違わずに読めるか。
 - この変更で不要になる記述・条件が他に無いか（D-127）。
 - 並走の lane との衝突の見込み（上の所有の表）が正しいか。
 
