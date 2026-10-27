@@ -9,7 +9,7 @@ Risk: R3
 ## Contracts Under Test
 
 - 73 UI-10-D10 の段落・§73.6: 一覧の「最終カウント」は効く計数の業務日 `count_business_date`。`actual_count` が null か業務日が null なら「—」。保存の時刻へ戻さない。
-- 73 冒頭の D-118 の節「今の数を入れる」: route の `product` が外れても欄は残り、その商品の保存の成功で閉じる。途中の読込みの応答は捨てる。保存の成功で閉じる時点で route の `product` が外れていれば、保存を始めた時に捕らえた `returnTo` へ戻らずに `/stocktake/` に留まる。外れていなければ（別の商品の読込みの失敗を含む）保存の時の `returnTo` へ戻る（b1 のまま）。保存の成功が届く時点で棚卸しの画面を離れていれば（unmount）、戻らず、閉じる操作の route の更新もしない。別の商品へ変わった欄は閉じない（b1 のまま）。
+- 73 冒頭の D-118 の節「今の数を入れる」: route の `product` が外れても欄は残り、その商品の保存の成功で閉じる。途中の読込みの応答は捨てる。保存の成功で閉じる時点で route の `product` が外れていれば、保存を始めた時に捕らえた `returnTo` へ戻らずに `/stocktake/` に留まる。外れていなければ（別の商品の読込みの失敗を含む）保存の時の `returnTo` へ戻る（b1 のまま）。保存の成功の後始末（閉じる・戻る）を行う時点で棚卸しの画面を離れていれば（unmount）、戻らず、閉じる操作の route の更新もしない。別の商品へ変わった欄は閉じない（b1 のまま）。
 - 51 の D-118 の節の 2: `recount_required` の案内は在庫の節の「数量単位」「POS販売で在庫を減らす」の行のすぐ下（全幅。`StockUnitField` の直後）、見出し「「POS販売で在庫を減らす」にできません」と 51 の文、BIZ の message を出さない（型で分岐）、案内の領域へ focus、「今の数を入れる」の導線の search は b1 のまま。
 
 ## Failure Modes
@@ -47,7 +47,7 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 「今の数を入れる」の欄（route の `product`） | route A で A の欄 | B の読込み中・A の保存の応答の保留 | A の保存の成功で閉じる（戻り先が無いか、閉じる時点で route の `product` が外れていれば留まる） | route の `product` が外れる（サイドバーの link。閉じる時点で外れていれば保存の時の `returnTo` へ戻らない）。棚卸しの画面を離れる（unmount。届いた保存の成功では戻らず、閉じる操作の route の更新もしない） | 計数の保存の `stocktakeCountUpdate`（変えない） | もう一度 route A で開く（既存の effect） | 画面を開き直すと欄は無い（state だけ） | A の保存の失敗で欄に留まる（既存の U9 の失敗） | もう一度保存 | SF4〜SF6、U9 |
+| 「今の数を入れる」の欄（route の `product`） | route A で A の欄 | B の読込み中・A の保存の応答の保留 | A の保存の成功で閉じる（戻り先が無いか、閉じる時点で route の `product` が外れていれば留まる） | route の `product` が外れる（サイドバーの link。閉じる時点で外れていれば保存の時の `returnTo` へ戻らない）。棚卸しの画面を離れる（unmount。後始末を行う時点で離れていれば戻らず、閉じる操作の route の更新もしない） | 計数の保存の `stocktakeCountUpdate`（変えない） | もう一度 route A で開く（既存の effect） | 画面を開き直すと欄は無い（state だけ） | A の保存の失敗で欄に留まる（既存の U9 の失敗） | もう一度保存 | SF4〜SF6、U9 |
 | 一覧の最終カウント | 未入力「—」 | — | 保存の後の再取得で業務日 | `stocktakeCountUpdate`（変えない） | 再取得の値をそのまま出す | — | — | 一覧の取得の失敗は今の Alert | 今の再試行 | SF1、T15 |
 | 商品フォームの案内 | 出ない | 保存中 | 拒否で欄の行のすぐ下に出て focus | 次の保存で一度消える（今の `recountRequired` の扱いを変えない） | — | 棚卸しから戻ると DB の値で開き、案内は出ない | — | 別の失敗は今の上部の error の Alert | もう一度保存 | SF2・SF3 |
 
