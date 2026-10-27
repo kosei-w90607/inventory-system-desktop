@@ -12,9 +12,9 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 0f609649869a82a6737e9e8af19da46f349387b0
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は fresh context の Writer。実装の Writer は plan-approved の後に Coordinator が発注する）
@@ -30,6 +30,8 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 2. spec-check → design（2026-10-27、起草役）: 対象の正本は [30](../function-design/30-biz-product-service.md) §4.8 の手順 4・§4.9 の手順 0・BIZ-01-D1・BIZ-01-D5・BIZ-01-D8、[master-tables](../db-design/master-tables.md) の `jan_code` の列と「jan_code の形式 validation を DB に置かない理由」、[60](../function-design/60-ui-product-import.md) UI-01c-D5・D8・D16・§60.5・§60.6、ADR SPEC-STK-CNT-D4（共有 JAN）。BIZ-01-D1 が CSV の取込みを JAN の形の検証の対象外と明記しているので、正本の置き換えが要る（下の Design Readiness）。
 3. design → plan-draft（2026-10-27、起草役、本 commit）: BIZ-01-D10・UI-01c-D18・D-140 を正本に置き、BIZ-01-D1 と master-tables の「対象外」の句を置き換えた（下の「本 commit で変えた正本」）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」は 5 件とも推奨を既定にした）。plan-gate へは、#196 の merge の後に `origin/main` を同期してから Coordinator が進める（前文）。
 4. plan-draft → plan-gate（2026-10-27、Coordinator）: packet と Test Design Matrix は commit 済み。前文の順のとおり #196 が先に merge し（`f9a10762`）、`origin/main`（`ab009c1d`）を単段で同期した（`baab4ae0`）。手順書 `docs/initial-load-runbook.md` が base に入り、S3 の手順書の行が指す所（「今の事実」の「黙って入る形」の行、J5 の「変わる所」、流れ 1 の手順 4 の「初回の導入の版のプレビューが名指しで止める」の 3 か所、流れ 2 の手順 4）が今の版にあることを確かめた。owner の判断事項 5 件は推奨を既定のまま（出所は AI の調べで Human Gate の必須にしない）。Plan Review へ出す（fresh Opus 5.5 + Codex）。
+5. plan-gate → plan-approved（2026-10-27、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。round 2 は fresh Opus 5.5 が approve（P3 だけ）、Codex 616 も approve だが独立性の外れで参考扱い（Codex の枠は repo 外の回答台帳 TD-465 で当時 pending。下の Review Response）。round 2 の是正の版（`f6bc6e7a`）の fresh Opus 5.5 の plan closure が approve（P1 / P2 = 0、P3 2）。closure の後の P3 の直し: P3 2 件を plan-gate のまま直した（`0f609649`。F1 の文は契約の literal なので、その版を Plan Commit にした）。直す前に `origin/main`（`3573dc67`）を単段で同期した（`7a1623eb`、衝突なし）。
+6. plan-approved → implementing（2026-10-27、Coordinator、本 commit）: 遷移表の唯一の入口。同期の後の版で AC の baseline の command を逐語で再測し、packet の値と一致した（AC-5 の 2 つの `rg` が各 1 行〈3978・5145〉、AC-6 の `rg -n` が 1 行〈174〉と `rg -c` が `3`、AC-7 の旧句が出力なし・`BIZ-01-D10` が `7`・`UI-01c-D18` が `6`、AC-12 の旧句が 6 行〈41・73・89・94・134・165〉）。実装の Writer は Coordinator が発注する。
 
 本 commit で変えた正本（plan-first）:
 
@@ -376,3 +378,10 @@ Coordinator の裁定は全件受理。是正は packet・Matrix・正本 2 file
 - Opus #3（P3、受理）: 30 BIZ-01-D10 の「通るもの」の 12 桁の文を「当面は手順書の流れ 1 の手順 4 の不一致の確かめが拾う（Revisit で決める）」に置き換え、S3 の「止めない形」と「この変更で不要になるもの」の手作業の残りに 12 桁の数字の商品コードで JAN が空の行を足した。
 - Opus #4（P3、受理）: owner の判断事項 (1) の推奨の理由と 30 BIZ-01-D10 の Revisit に、手入力の create が 8 桁の JAN を商品コードにする事実（`test_create_product_req101_accepts_valid_jan_8_and_jan_13`）と、導入の後の上書きで JAN が黙って消える筋を足した（既定は変えない）。
 - Opus #5（P3、受理）: 30 BIZ-01-D10 の F1 の文の直し方を「元の Excel でその列を文字列の値にして（TEXT の列）保存し直す。セルが既に E+ の文字なら元の資料から入れ直す」にし（手順書の流れ 1 の手順 4 と同じ。D-127）、Matrix の T1 の oracle の literal を同じ文に直した。
+
+### plan closure（監査の SHA `f6bc6e7a`、fresh Opus 5.5。approve、P3 2）
+
+Coordinator の裁定は全件受理。是正は正本 2 file（30・decision-log）と Matrix の文だけ（`0f609649`）。
+
+- N1（P3、受理）: F1 の直し方の分岐「セルが既に E+ の文字なら」は Excel の「標準」の表示でも E+ に見えて見分けられないので、「セルを選んだときの上の欄（数式バー）に E+ が出るなら」に直した（30 BIZ-01-D10 の F1 の文と Matrix の T1 の oracle。手順書の同じ句は実装の run の S3 で合わせる）。
+- N2（P3、受理）: D-140 の Guarantee range の止めない形に 12 桁の数字の商品コードで `JANコード` が空の行（当面は手順書の流れ 1 の手順 4 の確かめが拾う）を足し、Revisit に 30 BIZ-01-D10 と同じ見直しの条件を 1 句足した。
