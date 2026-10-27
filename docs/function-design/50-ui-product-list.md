@@ -4,7 +4,7 @@
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01a、`docs/SCREEN_DESIGN.md` 商品と在庫画面、`docs/function-design/20-io-product-repo.md` `search_products`、`docs/function-design/30-biz-product-service.md` `search_products`、`docs/function-design/40-cmd-product.md` `search_products`
 
-> **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: 一覧の在庫の列は写し（`stock_quantity`）のまま。要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（例「4〜5」）と「要再確認」を文字で出す（[40](40-cmd-product.md) の商品の結果の列。owner の決定 TD-296 の「範囲で見せる」）。並べ替えと絞り込みは写しの値で行う（今のまま）。ホーム（[53](53-ui-home.md)）の在庫切れ・在庫少の件数も写しの値で数える（今のまま。要再確認は棚卸しの画面の一覧で扱う）。
+> **計数の置き場と在庫の求め直し（D-118、b2 で実装済み）**: 一覧の在庫の列は写し（`stock_quantity`）のまま。要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（棚卸しの画面の要再確認の一覧と同じ `formatStockOrRange` の形「{low}〜{high} {単位}」。例「8〜9 個」）と「要再確認」の①状態の badge（文字と icon）を出す（[40](40-cmd-product.md) の商品の結果の列。owner の決定 TD-296 の「範囲で見せる」。部品は [66](66-ui-stock-movements.md) の見出しと同じ `StockWithRecheck`）。並べ替えと絞り込みは写しの値で行う（今のまま）。ホーム（[53](53-ui-home.md)）の在庫切れ・在庫少の件数も写しの値で数える（今のまま。要再確認は棚卸しの画面の一覧で扱う）。
 
 > **商品と在庫の画面への統合（D-138。proposed・未実装）**: 本画面と在庫照会（[58](58-ui-stock-inquiry.md) UI-06a）を 1 つの画面「商品と在庫」（route `/products`）にする（owner の決定、repo 外の回答台帳 TD-424・TD-425）。画面・一覧・URL・道具・列・行の動き・0 件と失敗の契約は本書の UI-01a-D1・UI-01a-D14〜D19 と §50.4・§50.6・§50.7、在庫の状態（在庫切れ・在庫少・在庫あり）・在庫切れ・在庫少の一覧・行の詳細の中身は 58。今の build は 2 画面のままで、§50.3 の file と今の一覧の操作列（行の「修正」）・PLU の列は統合の前の形（後続の runtime の lane〈[backlog](../backlog.md) の「商品と在庫の画面の統合の runtime」〉が置き換える）。
 
