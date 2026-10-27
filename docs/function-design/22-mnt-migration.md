@@ -17,7 +17,7 @@ src-tauri/src/
     schema_v9.rs  -- 在庫の並びの鍵・計数の表・写しの列（§19 の vL）
     schema_v10.rs -- 原価を1/100円の列へ（§16 の vB）
     schema_v11.rs -- Z004の精算の鍵・売上の連動・棚卸しの完了の列（§20 の vZ）
-    schema_v13.rs -- 振替の種類と振替の記録の表（§21 の vT。proposed・未実装、版の番号は §21 の規則で merge の時点に決める）
+    schema_v13.rs -- 振替の種類と振替の記録の表（§21 の vT。proposed・未実装。先に merge する側が小さい番号を取る、§21）
 ```
 
 ### 3.2 migrate
@@ -481,7 +481,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 ## 21. MNT-03 追加: 振替（詰め替え・切り分け）の種類と振替の記録の表の migration（D-143、proposed・未実装）
 
-**MNT-03-D22 / D-143**: 在庫の振替の lane（Plan Packet `docs/plans/2026-10-27-stock-transfer.md`）の migration（以下 vT）。列と表の意味の正本は [tracking](../db-design/tracking-system-tables.md) の §14 と [transaction](../db-design/transaction-tables.md) の §11a-11b。版の番号は 13 を予約した（起票の 2026-10-27 の main の最大は v11。v12 は SD 直読みの runtime〈PR #172〉の migration〈以下 vS、その branch の 22 §17〉が使う予定）。`migrate` は版が連続していることを確かめず、今の版より大きい migration だけを順に当てる（`db/migration.rs` の `migrate`）ので、main の版に欠けを作らない: merge の時点で main の最大の版の次を取る（vS が先に merge していれば 13、vT が先なら 12 を取り、vS が 13 に取り直す。§16・§20 と同じ連番の registry の規則、`docs/DEV_WORKFLOW.md` Review Rules）。版を飛ばした main（12 が無いまま 13 がある）に後から 12 を足すと、13 まで当たった DB には 12 が当たらない。description は `振替の種類と振替の記録の表（D-143）`、kind は `MigrationKind::Custom`、file は `src-tauri/src/db/schema_v13.rs`（取り直したら版の番号に合わせる）。
+**MNT-03-D22 / D-143**: 在庫の振替の lane（Plan Packet `docs/plans/2026-10-27-stock-transfer.md`）の migration（以下 vT）。列と表の意味の正本は [tracking](../db-design/tracking-system-tables.md) の §14 と [transaction](../db-design/transaction-tables.md) の §11a-11b。版の番号は v13（起票の 2026-10-27 の main の最大は v11、v12 は SD 直読みの runtime〈PR #172〉の migration〈その branch の 22 §17 の vS〉）。先に merge する側が小さい番号を取り、後から merge する側が file 名・`mod` の行・`migrations()` の登録を取り直す（§20 と #172 の §17 と同じ規則、`docs/DEV_WORKFLOW.md` Review Rules の連番の registry の項。`migrate` は版の欠けを確かめず今の版より大きい migration だけを当てる〈`db/migration.rs` の `migrate`〉ので、main に欠けを残すと後から足した小さい版が当たらない）。description は `振替の種類と振替の記録の表（D-143）`、kind は `MigrationKind::Custom`、file は `src-tauri/src/db/schema_v13.rs`（取り直したら版の番号に合わせる）。
 
 **手順**（1 つの transaction。`inventory_movements` を作り直すが、どの表も `inventory_movements` を外部キーで参照しないので `foreign_keys` は変えない。§20 の vZ の手順 2〜4・6・7 と同じ形）:
 

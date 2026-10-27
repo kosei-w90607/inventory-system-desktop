@@ -25,15 +25,15 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 ## Workflow State
 
 - Phase: plan-draft
-- Risk: R3
+- Risk: R4
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票。実装の Writer は Coordinator が発注時に決める）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表どおり
-- Final Reviewer: Fable 5（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
-- Final Review Minimum: 1
-- Human Gate: ready,merge,manual
+- Plan Reviewer: fresh Opus 5.5 + Codex。座組表どおり（Codex の model は Coordinator が発注時に決める）
+- Final Reviewer: Fable 5（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）の独立 2 本の Contract Audit（R4 の Double Audit）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Review Minimum: 2
+- Human Gate: ready,merge,manual,r4
 - Branch: agent/stock-transfer
 
 遷移の記録:
@@ -41,32 +41,33 @@ wave に属さない単独の lane。owner の決定（repo 外の回答台帳 T
 1. kickoff → spec-check（2026-10-27、起草役）: Coordinator の発注（導入の前の関門 9、owner の決定 TD-463）を範囲にし、規模を数えて 1 lane にした（上の「規模と手法」）。Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D3・D9 と横断の約束の表、[tracking](../db-design/tracking-system-tables.md) §14、[transaction](../db-design/transaction-tables.md)、[10](../function-design/10-common-rules.md) SPEC-UNIT-D2・D3・D11 と「入力の上限と安全な整数の範囲」、[21](../function-design/21-io-inventory-repo.md)、[22](../function-design/22-mnt-migration.md) §16・§20、[31](../function-design/31-biz-inventory-service.md) §12、[44](../function-design/44-cmd-inventory.md) §23、[52](../function-design/52-ui-shared-layout.md)、[64](../function-design/64-ui-disposal.md)、[65](../function-design/65-inventory-record-traceability.md)、[66](../function-design/66-ui-stock-movements.md)、[74](../function-design/74-ui-operation-logs.md)。振替の種類・記録・画面・migration はどの正本にも無く、設計の更新が要る。
 3. design → plan-draft（2026-10-27、起草役、本 commit）: 振替の設計を D-143 と各正本に置いた（下の「本 commit で変えた正本」）。製品の振舞いで owner の判断が要る問いは 3 つ（下の「owner の判断事項」）で、推奨を既定にして書き進めた（TD-401）。plan-gate へは本 commit の後に Coordinator が進める。
+4. plan-draft のまま是正（2026-10-27、Coordinator の裁定、本 commit）: Risk を R3 から R4 に改めた（vT の `inventory_movements` の全行を写す作り直しは Risk Tiers の「Destructive data lifecycle」。下の Risk）。Final Review Minimum を 2、Human Gate に `r4` を足し、Owner Effort Budget・Test Plan・Review Focus を合わせ、Rollback / Recovery の節を置いた。あわせて版の番号の文を「v13 で書き、先に merge する側が小さい番号を取る」に揃えた（22 §21・#172 の packet と同じ規則）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 6（既定）。見込みが 7 で既定を 1 越えるので、改定案 7 を最初の owner への問い合わせ（L3 の依頼）と同じ 1 回で諮る（下の表の後の段落）
 - 実働時間上限: 30 分（既定。L3 は見込み 10 分）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（2026-10-27。入れる決定 TD-463 は kickoff の依頼で数えない） | 6（owner の判断事項 (i)〜(iii) を既定のままでよいか見せる 3、L3 と画面の確かめ 1、Ready 1、merge 1） | 0 | 6 = 0 + 6 + 0 |
+| 介入 | 6（改定案 7） | 0（2026-10-27。入れる決定 TD-463 は kickoff の依頼で数えない） | 7（owner の判断事項 (i)〜(iii) を既定のままでよいか見せる 3、L3 と画面の確かめ 1、R4 の承認〈Human Gate `r4`〉1、Ready 1、merge 1） | 0 | 7 = 0 + 7 + 0（既定の 6 を 1 越える） |
 
-予備が 0 なので、L3 の 2 round 目が要れば、その問い合わせで上限の改定を一緒に諮る（`docs/DEV_WORKFLOW.md` Owner Effort Budget の「同じ 1 回で諮る」）。
+上限を越える理由は R4 の承認（`r4`）の 1 つ。`docs/DEV_WORKFLOW.md` Owner Effort Budget のとおり、先に最小完了の経路へ戻って減らせるかを見た: owner の判断事項 (i)〜(iii) は推奨を既定にして書き進めており（TD-401）、見せないと owner の確認の前に製品の振舞いを決めたままになるので外さない。L3・`r4`・Ready・merge は省けない。よって上限の改定（6 → 7）を、L3 の依頼と判断事項 (i)〜(iii) と同じ 1 回の問い合わせで諮る（止まって別の承認を足さない）。予備が 0 なので、L3 の 2 round 目が要れば、その問い合わせでもう一度上限の改定を一緒に諮る。
 
-owner の操作の回数を減らす工夫: (1) owner の判断事項は推奨つきで、返事が「既定のまま」か記号 1 つの形にし、L3 の依頼と同じ問い合わせに束ねる（decision point は 3 で数える）。(2) L3 の起点の DB は owner が作らない: Coordinator が L3 の前に、商品（個数の商品 2・長さの商品 1）と同じ日付の既定の計数を持つ商品 1 つを合成の値で入れた開発用の DB を用意する手順を Ready の依頼と同時に渡す（下の Test Plan の「L3 の起点の DB」）。vT は値のある開発・試験 DB でも止まらないので、owner の PC の今の DB をそのまま使ってもよく、作り直しは要らない。(3) L3 は 1 本の台本（作成画面 → 保存結果 → 記録の詳細 → 入出庫履歴 → 在庫変動履歴 → 操作ログ）で、各段の PASS / FAIL だけを返してもらう。画面の確かめ（Human Visual Confirmation）を同じ 1 回に含める。(4) Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は 2 で数える）。
+owner の操作の回数を減らす工夫: (1) owner の判断事項は推奨つきで、返事が「既定のまま」か記号 1 つの形にし、L3 の依頼と同じ問い合わせに束ねる（decision point は 3 で数える）。(2) L3 の起点の DB は owner が作らない: Coordinator が L3 の前に、商品（個数の商品 2・長さの商品 1）と同じ日付の既定の計数を持つ商品 1 つを合成の値で入れた開発用の DB を用意する手順を Ready の依頼と同時に渡す（下の Test Plan の「L3 の起点の DB」）。vT は値のある開発・試験 DB でも止まらないので、owner の PC の今の DB をそのまま使ってもよく、作り直しは要らない。(3) L3 は 1 本の台本（作成画面 → 保存結果 → 記録の詳細 → 入出庫履歴 → 在庫変動履歴 → 操作ログ）で、各段の PASS / FAIL だけを返してもらう。画面の確かめ（Human Visual Confirmation）を同じ 1 回に含める。(4) R4 の承認（`r4`）は L3 の結果を返す時か Ready の依頼と同じ問い合わせに束ね、Ready と merge は owner が 1 回の返事で「Ready にして hosted が緑なら merge」と委ねられる（decision point は `r4`・Ready・merge の 3 で数える）。
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
 ## Risk
 
-Risk: R3
+Risk: R4
 
 Reason:
-`docs/DEV_WORKFLOW.md` Risk Tiers の R3 の行の「DB」（`inventory_movements` の作り直しの migration と 2 つの表）、「Tauri command DTO」（2 つの command、6 つの型、2 つの enum の値）、「operator workflow」（新しい作成画面と記録の詳細、2 つの一覧の種別）に当たる。R4 の行の「Destructive data lifecycle」は次の理由で当たらないと判断した: vT は行の値を変えずに全行を写し（作り直しの前後で行数と id の集合を同じ TX で確かめる）、止める条件を持たない。本番の DB は無く（`docs/project-memory.md`）、vT は初回の導入の版に入るので、店の DB は空の状態で vT を通る（D-123 (4)）。値のある DB に当たるのは開発・試験 DB だけで、作り直してよい（D-123 (1)）。D-118 の (a) の migration（v9）が R4 だったのは、既存の行の値を埋め、写しを求め直して書き換えたからで、vT はどちらもしない。Coordinator が R4 に上げる場合は Human Gate に `r4`、Final Review Minimum を 2 にする。workflow の file（`.github/`・`scripts/`）に触れないので classifier の `workflow=true` にならず、Final Review Minimum は 1。operator に見える在庫の状態を書き換える経路なので、Contract Audit の 2 本目は任意の推奨（`docs/DEV_WORKFLOW.md` Contract Audit の Double audit）として Coordinator が決める。
+migration vT（[22 §21](../function-design/22-mnt-migration.md)）が行のある `inventory_movements`（在庫の記録の原本。D-051・D-118）を作り直す: 新しい表へ全行を写して `DROP TABLE` し、名前を変え、`sqlite_sequence` を戻す。`docs/DEV_WORKFLOW.md` Risk Tiers の R4 の「Destructive data lifecycle」に当たる（Coordinator の裁定、2026-10-27）。先例: 同じ形で `inventory_movements` を作り直した D-118 の (a) の v9（Plan Packet `docs/archive/plans/2026-10-18-stocktake-count-runtime-a.md` の Risk: R4、「migration vL が行のある `inventory_movements` を作り直し（新しい表へ全行を写して `DROP TABLE` し、名前を変える）」）と b1 の vZ（`docs/archive/plans/2026-10-22-stocktake-count-runtime-b1.md` の Risk: R4、「行のある `inventory_movements` を 2 回目に作り直し（新しい表へ全行を写して `DROP TABLE` し、名前を変え、`sqlite_sequence` を戻す）…「Destructive data lifecycle」に当たる（先例: (a) の v9 を R4 とした）」）。vT が行の値を変えないこと、止める条件を持たないこと、店の DB が空の状態で vT を通ることは R4 を下げる理由にしない（写し方の誤り〈列の取り違え・id の振り直し〉は在庫の記録を黙って壊し、行数と id の集合の確かめだけでは列の取り違えを見つけられない。下の Data Safety と Rollback / Recovery）。あわせて R3 の行の「Tauri command DTO」（2 つの command、6 つの型、2 つの enum の値）と「operator workflow」（新しい作成画面と記録の詳細、2 つの一覧の種別）に当たる。R4 なので Final Review Minimum は 2（独立 2 本の Contract Audit、Double Audit）、Human Gate に `r4`（owner の明示の承認）。workflow の file（`.github/`・`scripts/`）には触れない（classifier の `workflow=true` にならない）。
 
-Rollback / recovery notes: vT を COMMIT した DB は vT を知らない旧版のアプリで開けない（[22](../function-design/22-mnt-migration.md) §21 の「回復」。旧版へ戻すのは更新の前の backup）。merge の後に機能を戻すときは revert の PR で code を戻し、開発・試験 DB は作り直すか更新の前の backup に戻す。
+Rollback / recovery の手順は下の「Rollback / Recovery（R4）」の節。
 
 required gate の green / red: 本 commit（docs だけ）はどの required gate の green / red も変えない（新設の 79 は `> 対応仕様:` の行に REQ の ID を持たず、FUNCTION_DESIGN の索引の UI-16 はどの REQ の対応タスクにも無いので、`generate_traceability -- --check` の出力は変わらない。`design_compliance_test` は未登録の設計書を assert で止めるが、classifier は docs だけの変更で Rust の job を走らせず、S1 が 79 を `SKIP_DOCS` に足すまでの間だけ、手元の `cargo test --test design_compliance_test` が 79 を名指して落ちる。先例: 取引先管理の 78 の設計書の commit〈`e28bdb8a`〉と登録の commit〈`8cdd1c38`〉が分かれていた）。実装では bindings・routes・traceability の再生成と `design_compliance_test` の登録を落とすと既存の required gate（bindings・frontend・traceability・rust）が red になる（下の Registration / Generation Obligations）。
 
@@ -155,7 +156,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 4. 検証の順は廃棄と同じ（冪等キー → 明細の形 → 日付 → fingerprint → 冪等の再送 → 明細ごとの DB の検証 → TX）。振替だけの検査は「減らす・増やすを 1 つ以上ずつ」（明細の形の段、DB を見ない）と「同じ商品の 2 回目」（明細ごとの段）。理由: 再送の判定より前に DB を見ない検証を置く今の形（31 §12.6）を崩さない。
 5. 画面の語は全て「詰め替え・切り分け」、「振替」は設計の中の名前（DB・Rust の識別子と設計書）。元記録の label は「詰め替え・切り分け #{id}」、操作ログの label は「詰め替え・切り分け記録」。
 6. D-052 の C23（`stockTransfer`）の集合は廃棄の C7 から `disposals.root()` を除いたもの（79 UI-16-D10）。理由: 振替が書く表を読む consumer は廃棄と同じで、廃棄の一覧だけを読まない。
-7. migration の版は 13 を予約し、merge の時点の main の最大の次を取る（[22](../function-design/22-mnt-migration.md) §21）。理由: `migrate` は版の欠けを確かめず今の版より大きいものだけを当てる（`src-tauri/src/db/migration.rs` の `migrate`）ので、13 が 12 より先に main に入ると、13 まで当たった DB に後の 12 が当たらない。
+7. migration の版は v13 で書き、先に merge する側が小さい番号を取る（[22](../function-design/22-mnt-migration.md) §21。#172 の packet と 22 §17 の「先に merge した側が若い番号」と同じ規則で、#172 は v12 と書く）。理由: `migrate` は版の欠けを確かめず今の版より大きいものだけを当てる（`src-tauri/src/db/migration.rs` の `migrate`）ので、main に欠けを残すと後から足した小さい版が当たらない。
 8. 新しい要求の ID（REQ-210「仕入れた品を別の商品に詰め替え・切り分けた在庫の動きを記録できること」、coverage `required`）は本 commit で `docs/spec/requirements.md` に足さず、S5 で足して `generate_traceability` を再生成する。理由: 本 commit は cargo を回さない（並走の build のメモリ）。要求の一覧か `> 対応仕様:` の行を変えると 90 の再生成が要り、再生成しないと traceability の required gate が red になる。79 の `> 対応仕様:` の行は REQ の ID を持たず、S5 で REQ-210 を書く。
 
 ## この変更で不要になるもの
@@ -193,7 +194,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 ### S1 migration と IO
 
 - `src-tauri/src/db/schema_v13.rs`（新設）: `apply_v13_stock_transfer`（22 §21 の手順。版の定数 `VT_VERSION`。vZ の `schema_v11.rs` と同じ helper〈`commit_transaction`・`rollback_after_error`〉）。
-- `src-tauri/src/db/migration.rs`: `migrations()` に登録（description `振替の種類と振替の記録の表（D-143）`）。版の番号は 22 §21 の規則で merge の時点に決める。
+- `src-tauri/src/db/migration.rs`: `migrations()` に登録（description `振替の種類と振替の記録の表（D-143）`）。版は v13 で書き、先に merge する側が小さい番号を取る（22 §21）。
 - `src-tauri/src/db/mod.rs`: `pub mod schema_v13; pub mod transfer_repo;`。
 - `src-tauri/src/db/transfer_repo.rs`（新設）: 21 §10.5a の 4 関数と `TransferDirection`・`NewTransferRecord`・`NewTransferItem`・`TransferRecordDetail`・`TransferRecordDetailItem`。
 - `src-tauri/src/db/inventory_repo.rs`: `MovementType::Transfer`・`ReferenceType::TransferRecord` と `as_str`・`parse_*` の各 1 arm、as_str の test。
@@ -353,6 +354,7 @@ AC の baseline は 2026-10-27 に本 worktree で測った（command は逐語�
 - AC9（正本の現行化）: 完了時に `rg -n 'proposed・未実装' docs --glob '!docs/archive/**' --glob '!docs/plans/**' \| rg -c 'D-143\|振替\|transfer\|詰め替え'` が 0。baseline（本 commit の後）: 38。`docs/spec/requirements.md` に REQ-210 の行があり、`cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
 - AC10（gate）: `bash scripts/doc-consistency-check.sh` と `--target plan docs/plans/2026-10-27-stock-transfer.md` の本 lane が足した ERROR が 0、`bash scripts/check-workflow-git.sh` が exit 0、Rust（`cargo fmt --check`・`cargo clippy --all-targets --all-features -- -D warnings`・`cargo test`）と frontend（`npm run typecheck && npm run lint && npm run format:check && npm test && npm run build`）が PASS。L3 の前に Writer が `cargo check --release` を通す。
 - AC11（L3）: owner が下の Test Plan の L3-1〜L3-7 を PASS とし、helper の manual の record（`python3 scripts/pr-gate.py status --pr <番号>` の manual）が L3 を頼んだ head で PASS になる。
+- AC12（R4）: 独立 2 本の Final Review（Double Audit）が同じ head で helper の broad の record に載り（`python3 scripts/pr-gate.py status --pr <番号>` の Final Review が 2 本）、finding の裁定の後に owner の `r4` の承認が同じ helper の record に載る。L3 の前に Coordinator が開発・試験 DB の写しで vT の予行（Test Plan）を済ませ、行数・id の最大・`sqlite_sequence` が vT の前と同じ。
 
 ## Design Readiness
 
@@ -413,6 +415,8 @@ Test Design Matrix は下の節の link。
 
 - If the Human Gate includes L3, Writer completion includes `cargo check --release` before the owner native build; this is not a CI gate.
 - L3 は merge の列の先頭に来て、最新の `origin/main` を取り込んだ head で頼む（`docs/DEV_WORKFLOW.md` Wave Operation。頼む前に `git merge-base --is-ancestor origin/main <head>` の終了値が 0 を確かめる）。L3 の後に本 lane を列の後ろへ回さない。
+- R4: Final Review は独立 2 本の Contract Audit（Double Audit。Claude 側 Fable 5 と Codex の fresh context。`docs/DEV_WORKFLOW.md` Contract Audit (R3/R4)）を同じ head で行い、どちらも vT の写し方（M1〜M6）と片方だけが動かない TX（B9）を設計正本から直接読んで確かめる。`r4` の承認は、2 本の Final Review の finding を裁定し、L3 が PASS した後に、下の Rollback / Recovery の手順を添えて owner に頼む。
+- vT の予行（L3 の前、Coordinator）: owner の PC の今の開発・試験 DB の写し（アプリを止めて file を repo の外へ写すだけ。元の file は消さない）に vT を含む build を当て、`inventory_movements` の行数と id の最大・`sqlite_sequence` が vT の前と同じことを読取りだけの query で確かめてから、owner に L3 を頼む（M1・M2 の自動 test の、実の開発・試験 DB での裏づけ）。
 
 L3 の起点の DB: owner の PC の今の開発・試験 DB をそのまま使う（vT は値のある DB でも止まらない）。台本に要る商品が無ければ、Coordinator が Ready の依頼と同時に、合成の商品 CSV（CP932。個数の商品 2〈`L3-TR-01`・`L3-TR-02`〉と長さの商品 1〈`L3-TR-M1`、初期在庫 10 m〉）を渡し、owner は商品の一括インポートで入れる（`docs/DEV_WORKFLOW.md` Human Visual Confirmation の fixture の規則）。L3-5 の計数は owner が棚卸しの画面で `L3-TR-02` に今日の日付で「数を保存」する（1 操作）。
 
@@ -433,7 +437,8 @@ L3 の起点の DB: owner の PC の今の開発・試験 DB をそのまま使�
 ## Review Focus
 
 - 振替の movement が D-118 の求め直しで入出庫と同じに扱われるか（初期在庫の印、窓の判定、要再確認の理由 2）。`biz::stock_ledger` を変えずに済むという主張の根拠（movement の種類で分けない）。
-- vT が値のある DB で止まらず、行の値・id・`sqlite_sequence` を変えないこと。版の番号の規則（main に欠けを作らない）。
+- vT が値のある DB で止まらず、行の値・id・`sqlite_sequence` を変えないこと（R4 の中心。列の取り違えは手順 5 の行数と id の確かめでは見つからないので、M1 の全列の比べが要る）。版の番号の規則（v13 で書き、先に merge する側が小さい番号を取る。main に欠けを作らない）。
+- R4 の Double Audit の 2 本は、互いの結果を見ずに、Rollback / Recovery の節の手順が 22 §16・§21 の「回復」と食い違わないかを確かめる。
 - 片方だけが動いた状態が残らないこと（全ての失敗の経路が TX の前か TX の中か）。
 - 同じ商品を減らして増やす記録を、画面と BIZ と DB の 3 か所で止める形が過不足ないか。
 - 原価を動かさない既定（owner の判断事項 (ii)）が、棚卸しの評価・ロス原価・入庫の原価の合計と矛盾しないか。
@@ -487,6 +492,16 @@ N/A。振替は外部のライブラリ・OS・ハードの振舞いに依らな
 - 実の店の DB・POS の資料・商品の実値を commit しない。test と L3 の fixture は合成の商品コード（`L3-TR-*` ほか）と値だけ。
 - L3 の DB は owner の PC の開発・試験 DB（repo の外）。L3 の商品 CSV は Coordinator が repo の外で渡す。
 - 店の運用の細部と発言の原文は書かず、owner の決定は repo 外の回答台帳の ID で引く。
+- 開発・試験 DB: vT は値のある開発・試験 DB（owner の PC の L3 用の DB を含む）にもそのまま当たり、`inventory_movements` を作り直す。vT を含む build を owner の PC で初めて起動する前に、Coordinator がその DB の file を repo の外へ写す（アプリを止めて写すだけ。消さない）。写し方の誤りが見つかったときに戻す元になる（下の Rollback / Recovery）。D-123 の作り直しは要らないが、作り直す場合も古い file は消さずに移す（22 §16 の作り直しの手順）。
+- 導入の後に main へ入る場合: 本 lane は導入の前の関門で、初回の導入の版に入る見込み（店の DB は空から作られ、vT は行の無い `inventory_movements` を作り直す）。本 lane が導入の後に main へ入ることになったら、店の DB は値のある本番の DB になるので、その版の配布の前に、(1) 店の PC の DB の backup が確かめ済みであること（[71](../function-design/71-mnt-backup.md) の起動の時の backup と確かめ）、(2) 店の DB の写しでの vT の予行（上の Test Plan の予行と同じ手順を店の DB の写しで）、(3) 下の Rollback / Recovery の手順を店の PC で管理者が行えること、を Ready の前の条件に足す Gated Amendment を出す（`r4` の承認の範囲を本番の DB に広げるので、owner に改めて諮る）。
+
+## Rollback / Recovery（R4）
+
+前例の b1 の packet（`docs/archive/plans/2026-10-22-stocktake-count-runtime-b1.md` の Risk の Rollback / recovery notes）と [22](../function-design/22-mnt-migration.md) §16 の「回復」・§21 の「止まった後の進め方」と「回復」に合わせる。
+
+- vT が途中で止まったとき: vT は 1 つの TX で、手順 5 の確かめの失敗と TX の中のどの失敗も、表・値・版を全部戻し、版を記録しない（22 §21 の手順 5・6、MNT-03-D1 の共有の helper）。DB は vT の前のまま。vT がその起動の最初の migration なら、版が変わらないので vT の前の版のアプリでそのまま開ける。起動の画面は今の `DatabaseInit` の文に `MigrationFailed` の message を添えて出す（§20 と同じ）。直し方は code の修正で、DB は作り直さなくてよい。
+- vT の後に戻したいとき（写し方の誤りが分かった、または機能を戻す）: vT を COMMIT した DB は vT を知らない旧版のアプリで開けない（`SchemaNewerThanApp`、22 §16 の「回復」）。アプリの中の復元（71 §71.7）では旧版へ戻せないので、管理者がアプリの外で、vT を含む build を初めて起動する前に写した DB の file（上の Data Safety）か更新の前の backup に置き換え（[migration-recovery-runbook](../migration-recovery-runbook.md) の手順。22 §16 が正本）、旧版のアプリで開く。vT の後に入れた記録（振替を含む）は戻らない。開発・試験 DB は作り直してもよい（D-123 (1)）。
+- merge の後に機能を戻すとき: revert の PR で code を戻す。vT は版を記録しているので、revert した版のアプリは vT の後の DB を開けない（上の項と同じく DB を戻すか作り直す）。そのため戻すより修正の PR で直すのを既定にする（b1 の packet と同じ判断）。
 
 ## 残りの危険（起票の時点）
 

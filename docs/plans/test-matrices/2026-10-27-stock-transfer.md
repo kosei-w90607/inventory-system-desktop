@@ -4,7 +4,7 @@ Plan Packet: [2026-10-27-stock-transfer](../2026-10-27-stock-transfer.md)。期�
 
 ## Risk
 
-Risk: R3
+Risk: R4
 
 ## Contracts Under Test
 
