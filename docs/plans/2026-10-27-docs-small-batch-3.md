@@ -8,9 +8,9 @@ wave に属さない単独の lane。docs だけ（`docs/Plans.md`・`docs/backl
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
-- Plan Commit: pending
+- Plan Commit: 7895aca82b11016d6a22c69ef30257e65d640db3
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票と docs の変更を同じ commit に入れる。発注 609）
@@ -28,6 +28,8 @@ manual なし: 製品の runtime・画面・配布物を変えない docs の変
 2. spec-check → plan-draft（2026-10-27、起草役、同じ commit）: 表の唯一の skip。本 lane は関門の表と backlog の項目を owner の決定と既存の正本に合わせて並べ直すだけで、新しい設計の選択をしない（下の Design Readiness）。
 3. plan-draft → plan-gate（2026-10-27、Coordinator）: packet は commit 済み（`2c0582a2`）。R2 なので Matrix は任意で、作らない理由は前文。Final Reviewer の Claude 側は座組表の R2 の行（fresh Opus 5.5）に従う起草役の判断を受ける。Plan Review へ出す（fresh Opus 5.5 + Codex）。
 4. plan-gate（round 2 の是正、2026-10-27、Coordinator、本 commit）: round 2 の是正（Review Response 参照）。是正で `docs/project-memory.md` の 1 行を Scope に足した（S4）。
+5. plan-gate → plan-approved（2026-10-27、Coordinator、本 commit）: 条件は `docs/DEV_WORKFLOW.md` の遷移表の「Writer でない独立の Plan Reviewer が P1 / P2 = 0」。round 2 の是正の版（`d3afd7a7`）の plan closure は fresh Opus 5.5 が approve（P3 2）、Codex（発注 629）が approve（P3 0）。closure の後に `origin/main`（`a2365759`、#193 の merge を含む）を単段で同期し（`1e3225ee`。`docs/Plans.md` の関門 2・3 の行の衝突は両方の変更を残して解いた）、P3 2 件を plan-gate のまま直した版を Plan Commit にした（`7895aca8`。下の Review Response）。
+6. plan-approved → implementing（2026-10-27、Coordinator、本 commit）: docs だけの lane で、変更は plan-first の commit に入っている。Final Review に出す前に同じ commit で implementing にした（helper は implementing の head でしか broad の record を受けない）。
 
 ## Owner Effort Budget
 
@@ -257,3 +259,12 @@ reviewer は fresh Opus 5.5（fork でない）と Codex（発注 625、GPT-6.1 
 | Opus #4: SD 直読みの子に backlog の名が無い | P3 | 受理 | `docs/Plans.md` の precondition-dependent の SD 直読みの子の末尾に「backlog の「SD 直読みの runtime」。」 |
 | Codex #1: backlog の G2 の項目の「店は全部の商品を部門キーで売っている」が、project-memory の値下げ品の売り方（バーコードを読んでから値引きキー、2026-09-29）と食い違う | P2 | 直す所を変えて受理 | 前提を確かめた: project-memory の行の元の問いは「PLU 登録後に値下げ品を売る方法」（repo 外の回答台帳 TD-052、2026-09-29）で、今の売り方ではない。今の売り方は全部の商品を部門キー（同じ台帳の L-001、2026-09-17 の再確認）。backlog の断定は正しく、食い違いは project-memory の行が前提を落としていたことから来る。`docs/project-memory.md` の行の頭を「PLU をレジに書いた後の値下げ品の売り方」にし、今は全部の商品を部門キーで売ることを添えた（Scope に 1 file 足した。S4・data safety の AC・他の lane との所有の表）。`docs/backlog.md` の G2 の項目の出所に 2026-09-17 の確かめと project-memory の行の位置づけを添えた |
 | Codex #2: G2 の子が 3 文と backlog の名の 1 文で、AC-S1-4 の「1〜2 文」を超える | P3 | 受理 | `docs/Plans.md` の G2 の子を、選び方と B・C の新しい D を 1 文にし、backlog の名を含む 2 文にした（Opus #1 の C3 の定義と同じ文） |
+
+### plan closure（対象 `d3afd7a7`）
+
+reviewer は fresh Opus 5.5（fork でない）と Codex（発注 629、GPT-6.1 Sol）。Opus は approve（P1 0 / P2 0 / P3 2）、Codex は approve（P1 0 / P2 0 / P3 0）。round 2 の 6 件はどちらも閉じたと判定した。裁定は Coordinator（2026-10-27、全件受理）。
+
+| finding | 重大度 | 裁定 | 是正（直した所） |
+|---|---|---|---|
+| Opus N1: project-memory の値下げ品の行の括弧「今は PLU を書いていないので」は、レジに死蔵の PLU が残る事実（同じ file の他の行）と字義どおりには合わず、出典も 2026-09-29 だけ | P3 | 受理 | `docs/project-memory.md` の括弧を「今は PLU を使っておらず、全部の商品を部門キーで売る。PLU-24、2026-07-23。2026-09-17 の確かめも同じ」にした |
+| Opus N2: packet の Non-scope と Review Focus が G8 の文を是正の前の言い方（導入の後の別の日）で引く | P3 | 受理 | packet の 2 か所を Plans の今の文（紙の切替えの日は導入の日と別で D19 が決める）に合わせた |
