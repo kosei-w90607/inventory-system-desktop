@@ -291,6 +291,7 @@ export function ProductFormPage({
         productCodeLabel={currentProduct?.product_code}
         productName={currentProduct?.name}
         isDiscontinued={currentProduct?.is_discontinued ?? false}
+        stockRecheck={currentProduct?.stock_recheck ?? false}
         isSaving={createMutation.isPending || updateMutation.isPending}
         isTogglePending={toggleMutation.isPending}
         saveDisabled={saveDisabled}

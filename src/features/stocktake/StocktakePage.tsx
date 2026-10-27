@@ -97,6 +97,7 @@ import {
 } from "./lib/stocktake-formatters";
 import { useFindStocktakeItem } from "./hooks/useFindStocktakeItem";
 import { useLastCompletedStocktake } from "./hooks/useLastCompletedStocktake";
+import { useRecheckProducts } from "./hooks/useRecheckProducts";
 import { useSaveStockCount } from "./hooks/useSaveStockCount";
 import { useStocktakeItems } from "./hooks/useStocktakeItems";
 import { useStocktakeStatus } from "./hooks/useStocktakeStatus";
@@ -271,15 +272,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     queryFn: () =>
       unwrapResult(commands.listDepartments(), { source: "commands", cmd: "list_departments" }),
   });
-  const recheckQuery = useQuery({
-    queryKey: queryKeys.stocktake.recheckList(),
-    queryFn: () =>
-      unwrapResult(commands.listRecheckProducts(), {
-        source: "commands",
-        cmd: "list_recheck_products",
-      }),
-    staleTime: 0,
-  });
+  const recheckQuery = useRecheckProducts();
   const lastCompletedQuery = useLastCompletedStocktake();
   const itemsQuery = useStocktakeItems(activeStocktakeId, effectiveSearch, perPage);
   const findMutation = useFindStocktakeItem();
