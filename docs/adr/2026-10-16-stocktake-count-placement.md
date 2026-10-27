@@ -4,7 +4,7 @@
 
 accepted — 2026-10-16、design lane「棚卸しの数の置き場と在庫数の求め直し」（Plan Packet `docs/archive/plans/2026-10-16-stocktake-count-placement-design.md`、[decision-log](../decision-log.md) D-118）。設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせ、owner が採否を決める。repo 外の回答台帳 TD-258）の 4 段目として、owner の決定（TD-261・TD-263〜TD-268、TD-279・TD-280、TD-296、TD-298）を正本へ置き換えた。2026-10-17 に Plan Review round 1 の是正で、計数が記録を含むかの決め方を 1 つの原理（窓の重なり、SPEC-STK-CNT-D3）から導き直した。
 
-本 ADR は [棚卸しと後着売上の時点証拠 ADR](2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D10）と D-116 を置き換える（superseded）。[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) は解除の段の名前を本 ADR の runtime に合わせて改め、b1 で superseded にした（下の SPEC-STK-CNT-D12）。対象は REQ-205 / REQ-401。実装の状態: 配布の単位 (a)（SPEC-STK-CNT-D12）は runtime の (a) の lane（PR #176）で実装した。(b) は b1・b2 の 2 つの lane に分けた（D12）。b1（停止を外す単位。[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）は実装した。b2（要再確認の範囲と計数の履歴を商品の画面で見せる単位。[Plan Packet](../plans/2026-10-23-stocktake-count-runtime-b2.md)）も実装した。
+本 ADR は [棚卸しと後着売上の時点証拠 ADR](2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D10）と D-116 を置き換える（superseded）。[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) は解除の段の名前を本 ADR の runtime に合わせて改め、b1 で superseded にした（下の SPEC-STK-CNT-D12）。対象は REQ-205 / REQ-401。実装の状態: 配布の単位 (a)（SPEC-STK-CNT-D12）は runtime の (a) の lane（PR #176）で実装した。(b) は b1・b2 の 2 つの lane に分けた（D12）。b1（停止を外す単位。[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）は実装した。b2（要再確認の範囲と計数の履歴を商品の画面で見せる単位。[Plan Packet](../archive/plans/2026-10-23-stocktake-count-runtime-b2.md)）も実装した。
 
 ## Context
 

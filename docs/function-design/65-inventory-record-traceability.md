@@ -2,7 +2,7 @@
 
 ## 計数の置き場と在庫の求め直しの契約（D-118。b1・b2 は実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D6）の追跡の側。旧 ADR（時点証拠）の補正区分（completion / rollback_compensation / recount）・独立再実測の記録・移行の版の表示は持たない（置き換えた）。一般の業務記録の取消機能は同時に実装しない。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは下の 2〜4 つ目の項（棚卸しの記録の詳細と入出庫の記録の一覧の棚卸しの件数）。1 つ目の項の在庫変動の履歴の計数の行は b2（[Plan Packet](../plans/2026-10-23-stocktake-count-runtime-b2.md)）で入った。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D6）の追跡の側。旧 ADR（時点証拠）の補正区分（completion / rollback_compensation / recount）・独立再実測の記録・移行の版の表示は持たない（置き換えた）。一般の業務記録の取消機能は同時に実装しない。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは下の 2〜4 つ目の項（棚卸しの記録の詳細と入出庫の記録の一覧の棚卸しの件数）。1 つ目の項の在庫変動の履歴の計数の行は b2（[Plan Packet](../archive/plans/2026-10-23-stocktake-count-runtime-b2.md)）で入った。
 
 - 計数は movement を作らない（D-118 の runtime から、棚卸しの確定の補正の movement〈`movement_type='stocktake'`〉は新しく作らない）。商品別の在庫変動の履歴には、計数を「数を確認（{数}、{日付}）」・「数を入れ直し（{数}、{日付}）」の行として movement と並びの鍵の順（新しい順）に混ぜて出す（読取りの合成。計数は `stock_counts` から読む。結果の型・並び・絞り込みは [44](44-cmd-inventory.md) の `list_movements`、表は [66](66-ui-stock-movements.md)）。
 - `stock_after` は記録を保存した時点の写しの値で、後入力で前に記録が入っても書き換えない（[tracking](../db-design/tracking-system-tables.md) の同名の契約）。鍵の順に並べ直した推移を求めて見せる機能は持たない（在庫変動の表は `stock_after` を保存した時点の値のまま出し、計数の行の「変動後在庫」は「—」。[66](66-ui-stock-movements.md)）。
