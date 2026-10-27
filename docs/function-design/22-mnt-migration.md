@@ -17,6 +17,7 @@ src-tauri/src/
     schema_v9.rs  -- 在庫の並びの鍵・計数の表・写しの列（§19 の vL）
     schema_v10.rs -- 原価を1/100円の列へ（§16 の vB）
     schema_v11.rs -- Z004の精算の鍵・売上の連動・棚卸しの完了の列（§20 の vZ）
+    schema_v13.rs -- 振替の種類と振替の記録の表（§21 の vT。proposed・未実装、版の番号は §21 の規則で merge の時点に決める）
 ```
 
 ### 3.2 migrate
@@ -477,3 +478,23 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 **回復**: §16 の「回復」と同じ（vZ が COMMIT した DB は vZ を知らない旧版のアプリでは開けない。旧版へ戻すのは更新の前の backup。vZ の後に入れた記録は戻らない）。
 
 **テスト**（b1 の lane の完了条件。test の名前と期待は b1 の packet の Test Design Matrix の M の行）: 空の DB と、入庫・返品交換・手動販売・廃棄・初期在庫の movement と demo の seed の形の売上の movement（`sale_auto`、`reference_type` が NULL）を持つ直前の版の DB の両方で vZ が成功し、各 movement の全列と id が同じで、`sqlite_sequence` が作り直しの前の値のまま。手順 1 の条件（`stocktakes`・`csv_imports`・`reference_type` が `csv_import`・`phase = 1`、1 つずつ）で schema・値・版が何も変わらず `MigrationFailed`（message に `作り直し` と表名）。vZ の後に `reference_type` が `csv_import` で `phase = 0` の行と、`phase = 1` で `reference_type` が `csv_import` でない行の INSERT が CHECK で拒まれ、`csv_import`・`phase = 1`・`settlement_no` ありの行は入る。`csv_imports` の `machine_no` が NULL・空、`settlement_no` が NULL・負の INSERT が CHECK で拒まれる。`sale_records` の `stock_linked` の既定が 0 で 2 を拒む。`stock_counts` の `seen_import_id` は fresh の NULL と 1 以上を受け、default の行の値と 0 を拒み、行のある `stock_counts` にも足せる。最新の版まで当てた後に §18 の 3 つの trigger があればそれも残る。最新の版を期待する既存の test の書き換えは packet の Test Matrix の「既存の test の移し方」の T1。
+
+## 21. MNT-03 追加: 振替（詰め替え・切り分け）の種類と振替の記録の表の migration（D-143、proposed・未実装）
+
+**MNT-03-D22 / D-143**: 在庫の振替の lane（Plan Packet `docs/plans/2026-10-27-stock-transfer.md`）の migration（以下 vT）。列と表の意味の正本は [tracking](../db-design/tracking-system-tables.md) の §14 と [transaction](../db-design/transaction-tables.md) の §11a-11b。版の番号は 13 を予約した（起票の 2026-10-27 の main の最大は v11。v12 は SD 直読みの runtime〈PR #172〉の migration〈以下 vS、その branch の 22 §17〉が使う予定）。`migrate` は版が連続していることを確かめず、今の版より大きい migration だけを順に当てる（`db/migration.rs` の `migrate`）ので、main の版に欠けを作らない: merge の時点で main の最大の版の次を取る（vS が先に merge していれば 13、vT が先なら 12 を取り、vS が 13 に取り直す。§16・§20 と同じ連番の registry の規則、`docs/DEV_WORKFLOW.md` Review Rules）。版を飛ばした main（12 が無いまま 13 がある）に後から 12 を足すと、13 まで当たった DB には 12 が当たらない。description は `振替の種類と振替の記録の表（D-143）`、kind は `MigrationKind::Custom`、file は `src-tauri/src/db/schema_v13.rs`（取り直したら版の番号に合わせる）。
+
+**手順**（1 つの transaction。`inventory_movements` を作り直すが、どの表も `inventory_movements` を外部キーで参照しないので `foreign_keys` は変えない。§20 の vZ の手順 2〜4・6・7 と同じ形）:
+
+1. BEGIN。止まる検査は置かない: CHECK に値を足すだけなので、作り直しの前の全ての行は新しい CHECK を通る（作り直しの前の CHECK の値の集合が、新しい集合に含まれる）
+2. `sqlite_sequence` の `inventory_movements` の値（無ければ 0）と、手順 5 で比べる行数と id の集合を読む
+3. `inventory_movements_new` を今の 13 列（同じ名前・順・制約と、§19・§20 が足した CHECK）で作り、`movement_type` の CHECK に `'transfer'`、`reference_type` の CHECK に `'transfer_record'` を足す（ほかの値・順・制約は変えない）。全行を id ごと `INSERT INTO inventory_movements_new (…) SELECT …` で写す（値は変えない）
+4. `DROP TABLE inventory_movements`、`ALTER TABLE inventory_movements_new RENAME TO inventory_movements`。`sqlite_sequence` の値を手順 2 の値に戻す（§19 の手順 5 と同じ理由）。index `idx_inventory_movements_product_date`・`idx_inventory_movements_reference`・`idx_inventory_movements_ledger` を作り直す。続けて `transfer_records`・`transfer_items` の表と index（[transaction](../db-design/transaction-tables.md) §11a-11b、`DB_DESIGN.md` のインデックス方針）を作る
+5. 同じ TX の中で確かめる: `inventory_movements` の行数と id の集合が作り直しの前と同じ、`PRAGMA foreign_key_check` が 0 行。違えば ROLLBACK し、何も変えず版も記録せず `DbError::MigrationFailed`（§20 の手順 6 と同じ文）
+6. schema_versions に記録して COMMIT する（MNT-03-D1 の共有の helper〈`commit_transaction`・`rollback_after_error`〉だけを使う）
+
+- 写しは変えない: 行の値を変えないので、vT の後の求め直しの値は vT の前と同じ。`products` を作り直さないので §18 の trigger の規則は当たらない。
+- DB の作り直しとの関係: vT はどの DB でも止まらず、値のある開発・試験 DB（owner の PC の L3 用の DB を含む）にもそのまま当たる。作り直しの起点ではない（§16 の「DB の作り直しと順」の 2 つに足さない。D-123 の作り直しは要らない）。店の PC へ初めて入れる版は vT を含む（D-123 (4)）。導入の後に足しても同じ手順で当たる（値のある DB の作り直しは、この全行を写す形で足りる）。
+
+**回復**: §16 の「回復」と同じ（vT が COMMIT した DB は vT を知らない旧版のアプリでは開けない。旧版へ戻すのは更新の前の backup。vT の後に入れた記録は戻らない）。
+
+**テスト**（振替の lane の完了条件。test の名前と期待は packet の Test Design Matrix の M の行）: 空の DB と、入庫・返品交換・手動販売・廃棄・初期在庫・Z004（`phase = 1`）の movement と計数・棚卸しの行を持つ直前の版の DB の両方で vT が成功し、各 movement の全列と id が同じで、`sqlite_sequence` が作り直しの前の値のまま（末尾の行を消した fixture で、次の INSERT の id が前の最大 + 1 にならない）。vT の後に `movement_type='transfer'`・`reference_type='transfer_record'` の行が入り、一覧に無い値（`movement_type='convert'`）が CHECK で拒まれる。`transfer_items` の `direction` の一覧に無い値・`quantity` の 0・同じ記録の同じ商品の 2 行目が拒まれる。手順 5 の確かめが失敗したとき（test の中で行を足す）に schema・値・版が何も変わらない。最新の版を期待する既存の test は版の数値・定数でなく `app_max_version()` と比べる（SD 直読みの runtime の packet が決めた形。その lane が先に入っていれば、その lane が直した test に従い、後なら本 lane が直す）。
