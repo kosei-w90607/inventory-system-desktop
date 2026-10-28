@@ -30,6 +30,7 @@ manual なし: helper と test と docs の変更で、Windows native で確か�
 4. plan-draft → plan-gate（2026-10-28、Coordinator）: packet と Matrix は起票の commit `4d057c65` で commit 済み。`doc-consistency-check.sh --target plan` は全チェック通過。
 5. plan-gate のまま是正（2026-10-28、round 1 の reject を受けて）: round 1 の是正（Review Response 参照）。
 6. plan-gate のまま是正（2026-10-28、round 2 の reject を受けて）: round 2 の是正（Review Response 参照）。
+7. plan-gate のまま是正（2026-10-28、round 3〈上限〉の reject を受けて）: round 3 の是正（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -86,7 +87,7 @@ workflow の変更なので、L3 の後の base 同期の通常列を置く。
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | Draft、broad と manual（L3）が pass の record。先行 PR が docs だけを変えて merge | Coordinator が `git -c merge.directoryRenames=false merge origin/main` で同期 → push → `capture` → `record --kind review --review-stage sync --outcome pass` | 1 回の record で closure（`sync_from`）と manual（`source_head`）が新しい head に付く。owner の操作は無い | status の blocker が CI だけ | P1・P4（docs だけの同期は A） |
-| 同上。先行 PR が code を変えて merge | 同期 → push → closure 2 本（座組表の Claude 側と Codex）に L3 の項目への影響も問う → owner に 1 行の承認を諮る → `capture` → `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from SOURCE --reuse-approval POINTER` → `capture` → `record --kind review --review-stage closure`（2 本の証跡を evidence に並べる） | owner は L3 をやり直さず、承認の 1 行だけ | closure が P1/P2 0 で、L3 の項目に影響なし | P2・P3（#197・#209 の型は B） |
+| 同上。先行 PR が code を変えて merge | 同期 → push → closure 2 本（座組表の Claude 側と Codex）に L3 の項目への影響も問う → owner に 1 行の承認を諮る → `capture` → `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from SOURCE --reuse-approval POINTER` → `capture` → `record --kind review --review-stage closure`（2 本の証跡を evidence に並べる） | owner は L3 をやり直さず、承認の 1 行だけ | closure が P1/P2 0 で、L3 の項目に影響なし | P2・P3（#197・#209 の型は B。ただし #197・#209 の今の record は旧 helper で closure を先に記録したため manual が pending に戻っていて、A も B も「旧 record の manual が pass」を要るので当たらない。下の `## 後続` の移行の扱い） |
 | 同上。B の後にさらに docs だけの同期 | 同期 → push → `capture` → `record --kind review --review-stage sync --outcome pass` | 起点は旧 record の head（B で承認した版）なので A で引き継ぐ | 同上 | — |
 | 同期の後に lane の commit がある、または衝突を手で解いた（生成物と `docs/decision-log.md` の union の結果を除く） | `capture` → manual 以外の record | helper が何も書かずに止まり、外れた commit・path と次の一手を出す。同期だけの条件（H2）で外れたので B は案内せず、`record --kind manual --outcome pending --evidence POINTER` だけを出す | L3 をやり直す | — |
 
@@ -113,8 +114,8 @@ workflow の変更なので、L3 の後の base 同期の通常列を置く。
 
 - H1 `validate_record`: closure は `{head, base, audit}` か `{head, base, sync_from}` のどちらか 1 つの形（両方・どちらも無しは `invalid record fields`）。`sync_from` の形には「独立の run」の検査を当てない。`sync_from` の形でも broad が null なら拒む（今の監査の closure と同じく broad を要る）。manual は `source_head` だけ（A）か `source_head` と `reuse_approval` の組（B）を受け、`reuse_approval` だけは拒む。`source_head` があれば outcome は pass（今のまま）。
 - H2 同期だけの条件の関数（`reuse_geometry` を置き換える。名は実装で決める）: 引数は起点の SHA・head・base。head から first parent を辿って起点に着くまでの各 commit が (a) 2 親の merge で、second parent が base の祖先（`git merge-base --is-ancestor`）、2 親の `merge-base --all` が 1 行、tree が `git -c merge.directoryRenames=false merge-tree --write-tree FIRST SECOND` の tree と同じか、違う path（`git diff --name-only --no-renames`）と衝突の path が全部生成物、または (b) 1 親で、親との差分の path（`git diff --name-only --no-renames`）が全部生成物。列の中で最後の merge の second parent が base で、その後ろ（head まで）は (b) だけ（head 自身が 1 親の再生成の commit でもよい。列に merge が無い、つまり head が起点と同じか (b) だけなら満たさない）。path の列挙は全部 `--no-renames` に固定し、通常の path から生成物への rename は通常の path の削除として拒む。`merge-tree --write-tree` と `merge-base --is-ancestor` の終了値 0/1 は判定の結果（衝突の有無・祖先か否か）として扱い、それ以外の終了値は判定不能（`command failed`）とする。今の `git()` は 0 以外を全部 `command failed` にするので、この 2 つは終了値を受け取る呼び方にする（G4 の衝突と G9 の理由に SHA が出るのはこれに依る）。終了値を受け取る呼び方も `git()` と同じ 1 つの入口（`command`）を通し、test はその入口を patch する（合成の repo へ向ける patch が新しい呼び方にも効く）。`docs/decision-log.md` の衝突と違いは、merge の結果のその blob が `git merge-file -p --union --object-id FIRST:docs/decision-log.md MERGE_BASE:docs/decision-log.md SECOND:docs/decision-log.md` の出力と byte で一致するときだけ、生成物と同じく受ける（並走する lane の末尾への D の追記どうしの衝突。手で解いた結果・片側を落とした結果は一致しないので外れる。`.gitattributes` の `merge=union` は同期の `git merge` が lane の作業 tree の属性を読むので、属性を足した最初の同期で効かない。下の Contract Probe）。生成物の集合は helper の定数で、hosted の drift 検査が当たる 2 path（`src/lib/bindings.ts`・`docs/function-design/90-traceability.md`）に固定する（comment で `scripts/ci/classify-changes.sh` の `generated` の case と `.github/workflows/ci.yml` の `rust_drift` の job を引く）。classifier の case を解析して得ない。`src/routeTree.gen.ts` は tracked でなく drift 検査の外なので入れない。満たさないときは理由（commit の SHA と path）を持つ `GateError`。
-- H3 code に触れない条件の関数: 起点と base の `merge-base`（一意でなければ満たさない）から base までの `git diff --name-only --no-renames` の path を、`requirements` が使うのと同じ current main 側の classifier の呼び方（`--files-from-stdin`）に渡し、`rust`・`frontend`・`env`・`unknown` が全部 false。満たさないときは、classifier が code に分ける path を名指す（path ごとに classifier に渡して決める）。`requirements` の classifier の呼出しは 1 つの関数にまとめて両方から使う。
-- H4 `record` の版が変わった分岐（`current` が偽）: 旧 record の manual が pass で manual が必須なら、起点を旧 record の head として H2 と H3 を当てる。満たせば manual を `{outcome: pass, evidence: 旧 evidence, source_head: 旧 manual の source_head か旧 head, reuse_approval: 旧にあればそのまま}` で引き継ぐ。H3 は H2 を満たしたときだけ評価する。`--kind manual` で `--reuse-from` が無いとき（L3 をやり直す `--outcome pending` や新しい L3 の記録）は H4 の判定を省く（旧 head の object が無い checkout でも L3 をやり直す出口を塞がない）。満たさず、今回の `--kind` が manual でなければ、何も書かずに exit 1 で止まり、理由と次の一手を出す。次の一手は理由で分ける: H2 で外れたら `record --kind manual --outcome pending --evidence POINTER` だけ（B も H2 を要るので案内しない）。H2 を満たし H3 だけで外れたら、B の完全な command `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from <旧 manual の source_head か旧 head> --reuse-approval POINTER` と要るもの（同期の closure 2 本と owner の 1 行の承認）、または `--outcome pending` の command の両方。R4 は今のまま pending。head が旧 record の head と同じで base だけが変わったときも同じに止める（H2 は満たさない）。理由は「base が進んだ。先に同期する」で、次の一手は同期（`git -c merge.directoryRenames=false merge origin/main`）の後の record。
+- H3 code に触れない条件の関数: H2 が辿った同期の列の各 merge（(a) の 2 親の merge。merge-base は H2 で一意を確かめ済み）について `git diff --name-only --no-renames <merge-base(FIRST, SECOND)> SECOND` の path を集め、その和集合を、`requirements` が使うのと同じ current main 側の classifier の呼び方（`--files-from-stdin`）に渡し、`rust`・`frontend`・`env`・`unknown` が全部 false。満たさないときは、classifier が code に分ける path を名指す（path ごとに classifier に渡して決める）。`requirements` の classifier の呼出しは 1 つの関数にまとめて両方から使う。起点と最後の base の差分だけを分類しない（列の途中で main が code を変えて後で戻すと、最後の差分に code が残らず、L3 の版と違う code を A で通す。round 3）。H4・H5・H6・H7 は H2 の列を受け取るこの 1 つの関数を使う。
+- H4 `record` の版が変わった分岐（`current` が偽）: 旧 record の manual が pass で manual が必須なら、起点を旧 record の head として H2 と H3 を当てる。満たせば manual を `{outcome: pass, evidence: 旧 evidence, source_head: 旧 manual の source_head か旧 head, reuse_approval: 旧にあればそのまま}` で引き継ぐ。H3 は H2 を満たしたときだけ評価する。`--kind manual` で `--reuse-from` が無いとき（L3 をやり直す `--outcome pending` や新しい L3 の記録）は H4 の判定を省く（旧 head の object が無い checkout でも L3 をやり直す出口を塞がない）。満たさず、今回の `--kind` が manual でなければ、何も書かずに exit 1 で止まり、理由と次の一手を出す。判定不能（git の失敗の exit 2。local に base や旧 head の object が無いとき等）では次の一手に `git fetch origin` を添える。次の一手は理由で分ける: H2 で外れたら `record --kind manual --outcome pending --evidence POINTER` だけ（B も H2 を要るので案内しない）。H2 を満たし H3 だけで外れたら、B の完全な command `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from <旧 manual の source_head か旧 head> --reuse-approval POINTER` と要るもの（同期の closure 2 本と owner の 1 行の承認）、または `--outcome pending` の command の両方。R4 は今のまま pending。head が旧 record の head と同じで base だけが変わったときも同じに止める（H2 は満たさない）。理由は「base が進んだ。先に同期する」で、次の一手は同期（`git -c merge.directoryRenames=false merge origin/main`）の後の record。
 - H5 `--review-stage sync`（argparse の choices に足す）: `--kind review --outcome pass` だけを受け、`--pass-model`・`--run-ref`・`--evidence`・`--reviewed-head`・`--pr-reviews` を受けたら入力の誤り（exit 2）。版が変わったときだけ（`current` が真なら止める）。旧 record の review が pass で、broad の plan_commit と amendments が今の packet と同じ。起点は旧 record の closure が監査の形ならその head、`sync_from` の形ならその `sync_from`、closure が無ければ broad の head。H2 と H3 を満たせば `review = {outcome: pass, broad: 旧 broad, closure: {head, base, sync_from: 起点}}`。満たさなければ何も書かずに止まり、理由と「監査の closure を要る」を出す。今の head に本文のある PR review が投稿済みなら（GitHub の PR review を全 page 数える。`--pr-reviews` の検査と同じ数え方）、各 review の id と投稿時刻と通常の closure の記録手順（`--review-stage closure` と `--pr-reviews N`）を示して書込みの前に止まる（D-107 の取りこぼしの防止を sync の経路でも保つ）。`--review-stage sync` は新しい head での最初の record でだけ使える（先に他の kind を記録すると `current` が真になる）。`current` が真で止めるときの理由の文にこの順序を書く（自動化はしない）。
 - H6 manual の明示の使い回し（`--reuse-from`。`--reuse-approval` があれば B、無ければ A を明示で求める形で、review の要らない R0/R1 の manual の lane の同期で使う）: `--reuse-from` は旧 record の manual の `source_head`（あれば）か旧 head と一致、evidence は旧 manual と一致、旧 manual は pass。起点を旧 record の head として H2 を当て、H3 は `--reuse-approval` が無いときだけ当てる。書く manual は `source_head` と `reuse_approval`（B なら `--reuse-approval` の値、`--reuse-approval` が無ければ旧 manual の `reuse_approval` を H4 と同じく引き継ぐ。旧に無ければ置かない）。引き継いだ `reuse_approval` があれば H7 は H3 を当て直さないので、B → docs だけの同期 → 明示の A の版も status を通る。R0/R1 の lane は review の closure を持たないので、B の closure 2 本の証跡は `reuse_approval` の pointer の先（owner の承認と同じ場所）に置く。今の「`--reuse-from` と `--reuse-approval` は両方か両方無し」の入力の検査は「`--reuse-approval` は `--reuse-from` と組でだけ」に変える。旧 manual が使い回しでも受ける（今の「使い回しの使い回しは拒む」を外す）。
 - H7 `nonci`（status・ready・merge）: manual に `source_head` があれば H2 を `source_head` から現在の head へ当て直し、`reuse_approval` が無ければ H3 も当てる。closure が `sync_from` の形なら H2 と H3 を `sync_from` から当て直す。`validate_review` は `sync_from` の形の closure を現在の head/base の closure として受ける（broad の必要数と Plan 契約の検査は今のまま）。
@@ -158,7 +159,7 @@ workflow の変更なので、L3 の後の base 同期の通常列を置く。
 ## Acceptance Criteria
 
 - AC1（同期だけの条件）: `PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/pr-gate.test.py` が exit 0 で、Matrix の G1〜G13 の test が合成の git repo で、(a) 2 回の同期の自動の merge・生成物だけが衝突し再生成した merge・生成物だけの再生成の commit・`docs/decision-log.md` の末尾の追記の衝突を union の結果で解いた merge を受け、(b) 同期の後の lane の commit・生成物の外の衝突を手で解いた merge・自動の merge と違う tree（merge の中の編集）・main の外の branch を second parent に持つ merge・列の最後の merge の second parent が base でない版・merge-base が一意でない merge・通常の path から生成物への rename・`docs/decision-log.md` を union と違う形で解いた merge を拒み、拒む理由に commit の SHA と path を含む。baseline（起点 `bbea3314`）: 同じ command が exit 0、末尾 `OK`（今の test は byte 同一の 1 回の merge だけを受ける）。
-- AC2（code に触れない条件）: 同じ command で Matrix の C1〜C5 が、main 側が docs・packet・`docs/function-design/90-traceability.md` だけなら満たし、`src-tauri/**`・`src/lib/bindings.ts`・`package.json`・`scripts/pr-gate.py`・未知の path のどれかがあれば満たさず、その path を名指す。
+- AC2（code に触れない条件）: 同じ command で Matrix の C1〜C6 が、main 側が docs・packet・`docs/function-design/90-traceability.md` だけなら満たし、`src-tauri/**`・`src/lib/bindings.ts`・`package.json`・`scripts/pr-gate.py`・未知の path のどれかがあれば満たさず、その path を名指す。
 - AC3（A と B と止める形）: 同じ command で Matrix の R1〜R13 が、docs だけの同期で manual を引き継ぎ（どの kind の record でも）、code に触れる同期と head が同じで base だけが変わった版で manual 以外の record を何も書かずに止めて理由と次の一手（code に触れるだけなら `--outcome pass --evidence` を含む B の完全な command と `--outcome pending` の 2 つの command、同期だけの条件で外れたら `--outcome pending` だけ）を出し、`--reuse-from` の無い manual の record では判定を省き、B を受け、B の後の docs だけの同期で自動と明示の A を受け（明示の A も `reuse_approval` を引き継ぎ status が通る）、R4 を引き継がないことを確かめる。
 - AC4（同期の closure）: 同じ command で Matrix の S1〜S8 が、`--review-stage sync` で `sync_from` の closure を書き、code に触れる同期・旧 review が pass でない・版が変わらない・余計な引数・Plan 契約の変更・今の head に投稿済みの本文のある review を拒むことを確かめる。
 - AC5（記録の形と確かめ直し）: 同じ command で Matrix の V1〜V6 が、今の形の record（`source_head` と `reuse_approval` の組・監査の closure）を新しい `validate_record` が受け、`reuse_approval` だけ・closure の 2 つの形の混在を拒み、`nonci` が `source_head`・`sync_from` から確かめ直すことを確かめる。
@@ -198,7 +199,7 @@ not applicable: 実機・外部の tool・POS・CSV・operator の発見から�
 Test Design Matrix: [test-matrices/2026-10-27-l3-reuse-after-sync.md](test-matrices/2026-10-27-l3-reuse-after-sync.md)
 
 - targeted tests: `PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/pr-gate.test.py`（Matrix の全行）。
-- negative tests: Matrix の G6〜G13・C2〜C5・R3〜R5・R12・S2〜S8・V3〜V4。
+- negative tests: Matrix の G6〜G13・C2〜C6・R3〜R5・R12・S2〜S8・V3〜V4。
 - compatibility checks: V1・V2（今の形の record）。
 - data safety checks: 合成の git repo を tmpdir に作り、実の PR・store のデータを使わない。fake gh は今の process の fake を使う。
 - main wiring/integration checks: fake gh の process の class で `record --review-stage sync` が argv から実装に届き、comment の PATCH の body に `sync_from` が載ること（S1 の integration の行）。
@@ -217,7 +218,7 @@ Test Design Matrix: [test-matrices/2026-10-27-l3-reuse-after-sync.md](test-matri
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
 | MG-D13 同期だけの条件 | merge-evidence `## base同期だけでheadが変わる場合` | H2 | G1〜G13 | 非対象 |
-| MG-D13 code に触れない条件 | 同上 | H3 | C1〜C5 | 非対象 |
+| MG-D13 code に触れない条件 | 同上 | H3 | C1〜C6 | 非対象 |
 | MG-D13 manual の A | 同上、`## Helperの境界` | H4 | R1・R2・R6・R7 | 非対象 |
 | MG-D13 manual の B | 同上 | H6 | R5・R8・R9・R11 | 非対象 |
 | MG-D13 止める形（D-127） | 同上 | H4・H5 | R3・R4・R12・R13・S2 | 非対象 |
@@ -263,6 +264,8 @@ Test Design Matrix: [test-matrices/2026-10-27-l3-reuse-after-sync.md](test-matri
 ## 後続
 
 - Coordinator の運用の checklist（repo の外）の base 同期と Ready・merge の手順を MG-D13 に合わせる（Coordinator）。
+- 移行の扱い（round 3）: 旧 helper で manual が pending に戻った PR（#197・#209。`gh api` の record で manual が `pending`・evidence 0 件）は、本 lane の merge の後、同期の前に、owner の判断で今の head に `record --kind manual --outcome pass --evidence <元の L3 の evidence>` を記録する（owner の判断 1 回）か、L3 をやり直すかを owner が決める。helper は変えない。記録すれば、その後の同期で A か B が当たる。
+
 ## Implementation Results
 
 Fill after implementation.
@@ -300,4 +303,16 @@ Codex と fresh Opus 5.5 の findings を Coordinator が裁定し、下の表�
 | D6 | Opus F4 | P3 | `--kind manual` で `--reuse-from` が無いときは H4 の判定を省き、H3 は H2 を満たしたときだけ評価する | packet H4・AC3、merge-evidence「manualの使い回し」、Matrix R13 |
 | D7 | Opus F5 | P3 | H1 に「`sync_from` の closure で broad が null なら拒む」 | packet H1、Matrix V4 |
 | D8 | Opus F6 | P3 | 終了値を受け取る git の呼び方も `git()` と同じ入口を通し、test の patch が効く形にする | packet H2、Matrix の前文 |
+
+### Plan Review round 3（起点 `d277f2b73625964edafd7e568f4690d8976590ec`、判定 reject。round の天井）
+
+上限の到達: Coordinator の disposition = まとめて是正（`docs/DEV_WORKFLOW.md` Review Rules）。是正の確かめは owner の判断を待つ。Codex と fresh Opus 5.5 の findings を Coordinator が裁定し、下の表の全件を受理した（受理しなかったもの: なし）。
+
+| ID | 出所 | 重大度 | 処置 | 直した節 |
+|---|---|---|---|---|
+| E1 | Codex #1 | P1 | H3 を、起点と最後の base の差分から、同期の列の各 merge の `merge-base(FIRST, SECOND)` → SECOND の変更の path の和集合へ置き換え（途中で main が code を変えて戻す列を A で通さない）。H4〜H7 は同じ関数を使う | packet H3・AC2、merge-evidence「codeに触れない条件」、D-144 Decision (2)、Matrix C6・mutant (12) |
+| E2 | Opus #1 | P2 | 旧 helper で manual が pending に戻った PR（#197・#209）の移行の扱い（owner の判断で今の head に manual の pass を記録するか L3 をやり直す。helper は変えない） | packet Ordinary Operation の行 2・`## 後続`、Matrix Residual Test Gaps |
+| E3 | Opus #2 | P3 | decision-log の衝突の解き方の command を正本に 1 句 | merge-evidence「同期だけの条件」、DEV_WORKFLOW Wave Operation の L3 の箇条 |
+| E4 | Opus #3 | P3 | 明示の A（`--reuse-from` だけ）は R0/R1 の lane で使うと正本に 1 文 | merge-evidence `## Helperの境界` |
+| E5 | Opus #4 | P3 | 判定不能の次の一手に `git fetch origin`。status は ref と作業 tree を変えない（`merge-tree --write-tree` は object だけを書く） | packet H4、merge-evidence「同期だけの条件」・`## Helperの境界` |
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。

@@ -49,6 +49,7 @@ Risk: R3
 | C3 | 同上 | `src/lib/bindings.ts`・`package.json` を通す | unit | `test_code_free_rejects_frontend_and_generated_binding` | `frontend` を見ない、または `generated` の flag で生成物を docs 扱いにする |
 | C4 | 同上 | 未知の path・`scripts/pr-gate.py` を通す | unit | `test_code_free_rejects_unknown_and_control` | `unknown` を見ない、full に送る path を code から外す |
 | C5 | 同上 | rename の旧 path（`src/x.ts` → `docs/x.md`）を見落とす | unit | `test_code_free_rename_both_sides` | `--no-renames` を使わず新しい path だけを渡す |
+| C6 | 同上 | 同期の列の途中で main が code を変え、次の同期の前に戻した列（main が `src/app.ts` を変える → 同期 → main が戻し docs も変える → 同期）を A で通す | integration（合成 repo と `RecordLifecycle`） | `test_code_free_union_over_sync_merges` | 起点と最後の base の差分だけを classifier に渡す（`src/app.ts` が和集合に入らず、manual の A と `--review-stage sync` が通る） |
 | R1 | manual の A | docs だけの同期で manual を引き継がない | integration（`RecordLifecycle`） | `test_auto_carry_on_sync_record` | 版が変わった分岐で manual を常に pending に戻す |
 | R2 | 同上 | 引き継いだ manual の `source_head` と evidence が元と違う | integration | `test_auto_carry_keeps_source_and_evidence` | `source_head` に旧 head（使い回しの版）を書く、evidence を差し替える |
 | R3 | 止める形 | code に触れる同期（同期だけの条件は満たす）で closure の record が manual を黙って失う | integration | `test_code_sync_stops_non_manual_record` | 止めずに pending へ戻す。出力に code の path と、`--outcome pass --evidence` を含む B の command と `--outcome pending` の command の両方が無い |
@@ -143,9 +144,9 @@ capture / server の race、stale head/base、broad / closure、R4 の扱いは�
 
 ## Mutation-style Adequacy Questions
 
-実装の run は次の mutant を production 側に注入し、該当の test が red になることを確かめて PR に書く: (1) H2 の tree の比較を外す → G8、(2) second parent の祖先の検査を外す → G9（途中の main の外の merge と最後の正常な同期を分けた列にし、列の最後の merge の second parent と base の照合が mutant を覆わないようにする）、(3) H3 の判定で `unknown=true` の分類結果を code-free と誤って受理する（`unknown` が真なら他の flag を見ずに満たす）→ C4 の未知の path 単独の組（実の classifier は未知の path で `rust`・`frontend`・`env`・`unknown` を全部 true にするので、`unknown` の検査を外すだけの mutant は他の 3 flag に覆われて red にならない）、(4) H4 の止めを pending へ戻すに変える → R3、(5) H5 の H3 を外す → S2（manual 不要の fixture を使い、H4 の manual の止めが mutant を覆わないようにする）、(6) H7 の manual の確かめ直しを外す → V5、(7) 生成物の集合の照合を prefix にする → G12、(8) H2 の `--no-renames` を外す → G12、(9) H6 の `reuse_approval` の引継ぎを外す → R11、(10) H2 の `docs/decision-log.md` の union の照合を外して衝突を全部受ける → G13、(11) H5 の投稿済みの review の検査を外す → S8。
+実装の run は次の mutant を production 側に注入し、該当の test が red になることを確かめて PR に書く: (1) H2 の tree の比較を外す → G8、(2) second parent の祖先の検査を外す → G9（途中の main の外の merge と最後の正常な同期を分けた列にし、列の最後の merge の second parent と base の照合が mutant を覆わないようにする）、(3) H3 の判定で `unknown=true` の分類結果を code-free と誤って受理する（`unknown` が真なら他の flag を見ずに満たす）→ C4 の未知の path 単独の組（実の classifier は未知の path で `rust`・`frontend`・`env`・`unknown` を全部 true にするので、`unknown` の検査を外すだけの mutant は他の 3 flag に覆われて red にならない）、(4) H4 の止めを pending へ戻すに変える → R3、(5) H5 の H3 を外す → S2（manual 不要の fixture を使い、H4 の manual の止めが mutant を覆わないようにする）、(6) H7 の manual の確かめ直しを外す → V5、(7) 生成物の集合の照合を prefix にする → G12、(8) H2 の `--no-renames` を外す → G12、(9) H6 の `reuse_approval` の引継ぎを外す → R11、(10) H2 の `docs/decision-log.md` の union の照合を外して衝突を全部受ける → G13、(11) H5 の投稿済みの review の検査を外す → S8、(12) H3 の各 merge の path の和集合を起点と最後の base の差分に戻す → C6。
 
 ## Residual Test Gaps
 
 - GitHub の Update branch の merge の実物は試さない（合成の repo は `git merge` だけ。違えば外れる側なので安全）。
-- 実の PR の record での end-to-end（Ready・merge まで）は本 lane の PR 自身では起きない（本 lane は manual を持たない）。最初の manual の lane の同期で Coordinator が確かめる。
+- 実の PR の record での end-to-end（Ready・merge まで）は本 lane の PR 自身では起きない（本 lane は manual を持たない）。最初の manual の lane の同期で Coordinator が確かめる。ただし #197・#209 の今の record は旧 helper で manual が pending に戻っていて、A も B も当たらない。本 lane の merge の後、同期の前に、owner の判断で今の head に `record --kind manual --outcome pass --evidence <元の L3 の evidence>` を記録するか L3 をやり直すかを owner が決める（packet の `## 後続` の移行の扱い。helper は変えない）。
