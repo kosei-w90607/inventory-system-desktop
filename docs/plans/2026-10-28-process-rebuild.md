@@ -401,7 +401,41 @@ Test Design Matrix: [test-matrices/2026-10-28-process-rebuild.md](test-matrices/
 
 ## Implementation Results
 
-Fill after implementation.
+実装は 3 つの commit（機械と test → 正本の文 → drift の sweep と Superseded の行）。SHA と test の本数は写さない（Evidence Ownership）。PR と CI の出力が正本。
+
+### H ごとの実装
+
+- H1: `scripts/plan-approve.sh`（新設）。SHA の形と祖先、`pending`（`--amend` では Plan Commit の子孫かつ重複なし）、(a) SHA の後の lane の commit が packet だけで間の merge が #217 の `Gate.sync_merge` を満たす、(b) 記録の行を除いて packet の本文が同じ、(c) packet に未 stage・stage 済みの変更が無い、を確かめて packet だけの commit を作る。test は `scripts/tests/plan-approve.test.sh`（PA1〜PA5）。
+- H2: `parse_packet` から Phase の enum と必須を外し、`snapshot`・`nonci`・`status` は `plan_commit` で計画の前後を決める。`check-workflow-git.sh` は Phase の検査を外し、先走りの検査と、merge 済みの packet の Workflow State の書換えの ERROR を足した。active な packet の定義は `pr-gate.py` の `plan_origin`・`active_packets` の 1 か所。
+- H3: `parse_packet(text, form)` と `packet_form`（形式）・`gate_conditions`（承認の後の照合）。
+- H4: helper の active を差分の added・renamed・copied の dated packet にし、`Phase archive` の検査を外した。PK1・PK4 の対象を active にし、Plans の pointer の検査を消した。merge 済みの packet の link 切れは WARN。
+- H5・H6・H7: `sync_merges(docs=True)`・`l3_basis`・`l3_change`・`plan_sections`・`plan_change`・`plan_same`、`--review-stage docs`。機械の closure（sync・docs）は Gated Amendment の後を受けない（GA は監査の closure）。
+- H8: `--risk R2`、`body_risk`（PR body の Risk の行）、migration・依存・`unknown`・workflow かつ rust の拒否、R2 の `workflow=true` の拒否。
+- H9: `ci.yml` の aggregate の名を `Merge gate` に固定し `ready_for_review` を外した。docs job の doc check に `WORKFLOW_BASE_SHA`。helper の `ci` は変えない（Draft の run を既に受ける作り）。
+- H11: `record --report`（`report_head`）。H13: doc check の FL。H14: PK1 の新形式の必須の節。
+
+### mutant
+
+clean な tree に 1 つずつ注入して戻した 12 個が全部、対応する test を red にした: PH4 の pending の判定の反転、MN2 の max を min に、C2 の L3 の比較を外す、RC2 で workflow の docs を通す、GA2 で読めない節を通す、AR1 の削除の拒否を外す、RP1 で報告の head を落とす、PA3 の Amendments を前に足す、PA4 の本文の比較を外す、R2N5 の body の照合を外す、MN3 の L3 節の検出を外す、PH7 の形式の照合を外す。
+
+### 実装で決めた点（計画の文から離れた所と段取り）
+
+- shallow の判定: packet の文の「`git rev-parse --is-shallow-repository` が true なら ERROR」は採らず、packet を最初に足した commit が shallow の境か（graph の親と raw の parent 行を比べる。MG-D4 と同じ考え方）で判定する。owner の作業 repo は無関係な ref の shallow の印を持ち、文のとおりでは local の検査が全部 ERROR になるため。親の無い commit と shallow の境は ERROR のまま（test で固定）。
+- `ci.yml` の workflow job の checkout に `fetch-depth: 0` を足した（計画の ci.yml の変更の外）。suite の実 repo の self-pass が active な packet の起点を要り、深さ 1 の checkout では起点が取れないため。ci-workflow.test で固定した。
+- `--target plan` で名指しした active でない packet（merge 済み・archive）は、Phase の行の有無で形式を決め、git の履歴との照合をしない。
+- `--review-stage docs` の `--evidence` は 1 本を必須にし、RecordV1 を変えないため record には載せない。
+- 計画の節と L3 の比較対象の byte の比較は、節の末尾の空行を除く（後ろに節を足すだけで前の節が変わったと出さないため）。
+- D-145 の文の closure の P3 2 件は直した。本 packet の「安全の境界ごとの扱い」の表に同じ「migration・依存・unknown を強める」の語が残るが、Scope を変えないため直していない。
+- 段取り: pre-push は変えない（起点は `origin/main` に落ちる）。引数なしの `--target plan` で active な packet が 0 件なら今の exit 2 のまま。計画の固定の commit の件名は「docs(plans): Plan Commit を <SHA の先頭 12 桁> に固定する」。
+
+### AC8 の結果
+
+- (a) 新形式: 本 branch の一時の worktree で、R3・manual なし、R3・`## L3` あり、R4 の合成の packet が PK1・PK4（`--target plan`）で ERROR なし、`check-workflow-git.sh` で exit 0、helper の `parse_packet` と合成の PR の `requirements` で Minimum 2 と manual・r4 が H3 の期待どおり。負の例（R3 で Contract Ledger の欠け、新形式で Phase の行、file 名の日付を古くした Phase の行、新形式の R2）は PK1・PK4 と helper が拒んだ。
+- (b) 旧形式: 最終 head の時点の open の PR のうち packet を持つ #216・#212・#211・#210・#209・#204・#201・#197・#194・#190・#172 の全部で、各 branch の head の一時の worktree に本 branch の `scripts/` を重ね、`check-workflow-git.sh` が exit 0、`--target plan` が ERROR なし、helper が旧形式と判定し、Minimum・manual・r4 が packet に書いた値と一致した（#215 は active な packet を持たない）。一時の worktree は消した。
+
+### 既知の制限
+
+- 旧形式の R4 で復旧の見出し（`Recovery` か `Rollback` を含む節）を持たない #194・#190 は、計画の節が Scope・Acceptance Criteria・Contract Ledger・Data Safety だけになる（#216 は `Rollback / Recovery（R4）` の節を含む）。見出しの無い復旧の文がこれらの節の外にあれば、H7 はそれが変わっても fresh broad でなく closure を求める（closure も独立 review なので review を飛ばす経路にはならない。H6 は R4 を受けない）。規則は packet の文のとおりで変えない（Coordinator の裁定）。
 
 ## Review Response
 
