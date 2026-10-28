@@ -22,7 +22,7 @@ Risk: R3
 - generator の repo の root が 1 つずれ、`90-traceability.md` を src-tauri の下に書く・`--check` が全 REQ を見失う。
 - workspace の形で `tauri build` が通らない、または main の検出を誤って MSI のショートカットが起動しない。
 - `default-run` が外れ、`npm run tauri dev` の `cargo run` が 2 つの package の bin を候補にして止まる。
-- dev-tools の bin が tauri-build の Windows の resource（icon・版の情報・Common Controls v6 の manifest）を受けず、Windows で起動しない（手順書の予行演習の準備の `seed_demo_data` が止まる）。
+- dev-tools の bin が tauri-build の Windows の resource（icon・版の情報・Common Controls v6 の manifest）を受けず、Windows で起動しない（L3 の 1 回目〈2026-10-29〉で `generate_bindings` が `STATUS_ENTRYPOINT_NOT_FOUND`〈`TaskDialogIndirect`〉で当たった）。是正（packet の Gated Amendment 1 の `src-tauri/dev-tools/build.rs`）の崩れ: 条件を外して Windows の MSVC の外にも link の引数を出す（Linux の build が落ちる）、manifest の引数を消す（Linux は通り、Windows で同じ loader のエラーに戻る）。
 - `Cargo.lock` に外部の crate が増える（新しい依存を名指しなしで入れる）。
 
 ## Test Matrix
@@ -40,9 +40,10 @@ Risk: R3
 | T9 | 依存を増やさない | 差分の確かめ | packet の AC8 | `Cargo.lock` に dev-tools の外の `[[package]]` の増減 → 不合格 |
 | T10 | D-137 (2) の隣（I-G1 の sweep の範囲） | gate の感度 | `cd src-tauri && cargo test --test import_internal_contract_test test_active_sales_import_vocabulary_sweep_i_g1` | `src-tauri/dev-tools/src/bin/seed_demo_data.rs` の comment に旧い取込みの契約の語（`existing` と `_import_id` を連結した語）を書く → red（戻す） |
 | T11 | D-137 (2)（doc-consistency の R0・R1 の走査の範囲） | drift test（合成の repo） | `bash scripts/tests/doc-consistency-plan-packet.test.sh` の R0・R1 の case: 親文書を直接引く行（`FUNCTION_DESIGN.md`）と無い設計書を引く行（`function-design/99-missing.md`）を持つ合成の `.rs` を `src-tauri/src/bin/`（移動の前）と `src-tauri/dev-tools/src/bin/`（後）に置き、両方の file を名指す R0・R1 の ERROR と exit 非 0。`src-tauri/dev-tools/src/bin/generate_traceability.rs` の名の合成の file の `FUNCTION_DESIGN.md` には R0 の ERROR が出ない | S2 の `scripts/doc-consistency-check.sh` の走査の変更を外す（`src-tauri/src` だけに戻す）→ 後の場所の ERROR が出ず red。R0 の除外から `generate_traceability\.rs` を消す → 除外の確かめが red（各 1 回、戻す） |
+| T12 | D-137 の Compatibility（Gated Amendment 1 の build script） | build（Linux） | packet の AC14（`touch src-tauri/dev-tools/build.rs` の後の `cargo build -vv -p inventory-system-dev-tools` が exit 0、dev-tools の `build-script-build` が走り、`rustc-link-arg`・`/MANIFEST` の hit なし）と `cd src-tauri && cargo test -p inventory-system-dev-tools` | `build.rs` の条件（`windows` かつ `msvc`）を外す → Linux の link が `rust-lld: error: cannot open /MANIFEST:EMBED` で exit 非 0（red、戻す。2026-10-29 に `$TMPDIR` の写しで実測）。manifest の 2 行を消す → Linux では red にならない（期待どおり何も出ないのと区別できない）。この崩れは L3-3 の 2 回目でだけ見える（Residual Test Gaps） |
 | L3-1 | D-137 (1)、22 §12 の入口 | L3 | packet の Test Plan の L3-1 | 入った folder の `.exe` が 2 つ以上、または 3 つの名のどれかがある |
 | L3-2 | main の起動 | L3 | packet の Test Plan の L3-2 | スタートメニューから起動しない・ホームの画面が出ない |
-| L3-3 | D-137 の Compatibility（dev-tools の bin の Windows の resource） | L3（merge の条件） | packet の Test Plan の L3-3（手順書と同じ debug の `cargo run --manifest-path src-tauri\Cargo.toml` の形で `seed_demo_data -- --help`・`generate_bindings`・`generate_traceability -- --check` の 3 つと、その後の `git status --porcelain`） | 3 つのどれかが `exit=0` でない、または `git status --porcelain` に行がある → 不合格。loader のエラー（`STATUS_ENTRYPOINT_NOT_FOUND` ほか、bin が自分の出力を出す前に止まる）なら manifest の是正（手段は Gated Amendment で記録）を本 lane に足して確かめ直す。出力の後の非 0・差分は Coordinator が切り分ける（packet の AC12 と L3 の順の段落） |
+| L3-3 | D-137 の Compatibility（dev-tools の bin の Windows の resource） | L3（merge の条件） | packet の Test Plan の L3-3（手順書と同じ debug の `cargo run --manifest-path src-tauri\Cargo.toml` の形で `seed_demo_data -- --help`・`generate_bindings`・`generate_traceability -- --check` の 3 つと、その後の `git status --porcelain`） | 3 つのどれかが `exit=0` でない、または `git status --porcelain` に行がある → 不合格。loader のエラー（`STATUS_ENTRYPOINT_NOT_FOUND` ほか、bin が自分の出力を出す前に止まる）なら manifest の是正（手段は Gated Amendment で記録）を本 lane に足して確かめ直す。出力の後の非 0・差分は Coordinator が切り分ける（packet の AC12 と L3 の順の段落）。1 回目（2026-10-29）は `generate_bindings` の loader のエラーで FAIL。2 回目は Gated Amendment 1 の是正の head で 3 つの全部を回し直す（packet の L3 の 2 回目の段落） |
 
 ## State Lifecycle Matrix
 
@@ -95,9 +96,9 @@ not applicable: 画面・DB・cache・route の状態を変えない（build の
 
 ## Mutation-style Adequacy Questions
 
-T1〜T4・T10・T11 は Writer が実装の後に 1 つずつ注入して red を確かめて戻す（Final Reviewer が独立に 1 つ以上を再実測する）。T1 と T2 の期待は D-137 の文から直接書く（「`src/bin` が無い」「`[[bin]]` が無い」「`default-members` に `dev-tools`」「`default-members` に `"."`」「`default-run` が `inventory-system-tauri-scaffold`」）。
+T1〜T4・T10・T11・T12 は Writer が実装の後に 1 つずつ注入して red を確かめて戻す（Final Reviewer が独立に 1 つ以上を再実測する）。T1 と T2 の期待は D-137 の文から直接書く（「`src/bin` が無い」「`[[bin]]` が無い」「`default-members` に `dev-tools`」「`default-members` に `"."`」「`default-run` が `inventory-system-tauri-scaffold`」）。
 
-- If a guard is removed, which test fails?: tauri の crate に bin を戻す → T1。`default-members` から `dev-tools` か `"."` を外す・`default-run` を外す → T2（`"."` は dev-tools の側の test）。I-G1 の sweep の target から dev-tools を外す → T10。R0・R1 の走査から dev-tools を外す・R0 の generator の除外を消す → T11。
+- If a guard is removed, which test fails?: tauri の crate に bin を戻す → T1。`default-members` から `dev-tools` か `"."` を外す・`default-run` を外す → T2（`"."` は dev-tools の側の test）。I-G1 の sweep の target から dev-tools を外す → T10。R0・R1 の走査から dev-tools を外す・R0 の generator の除外を消す → T11。dev-tools の `build.rs` の target の条件を外す → T12（Linux の build）。manifest の引数を消す → L3-3 の 2 回目だけ（Residual Test Gaps）。
 - If a key branch is inverted, which test fails?: generator の root の式 → T6。
 - If an output field is omitted, which test fails?: 移した bin の test が回らない → T5。
 - 他の問い（mock の値・invalidate/refetch・閾値・順序・dry-run・JS の安全な整数・状態の往復）: 該当なし（manifest と build の構成だけで、値の計算・状態・wire が無い）。
@@ -106,5 +107,5 @@ T1〜T4・T10・T11 は Writer が実装の後に 1 つずつ注入して red �
 
 - tauri-cli を上げて `get_binaries` が workspace の member を読むように変わったとき、T1・T2 は止めない（crate の形だけを見る）。D-137 の Revisit で tauri-cli の更新のたびに P1 を確かめ直す。T8（deb）を CI に足すのは非目的。
 - 前の MSI（PR #191 の版）の上への更新で開発用の exe が消えるかは見ない（非目的。店の PC は初回から新しい版）。
-- dev-tools の bin が Windows の resource 無しで起動するかは、L3-3 で 3 つの bin を debug の `cargo run` で 1 回ずつ見るだけ（release の build と、開発用の Windows 以外の PC は見ない）。自動の test は無い（CI に Windows の build が無い）。
+- dev-tools の bin が Windows で起動するか（Gated Amendment 1 の manifest が効くか）は、L3-3 で 3 つの bin を debug の `cargo run` で 1 回ずつ見るだけ（release の build と、開発用の Windows 以外の PC は見ない）。自動の test は無い（CI に Windows の build が無い）。`build.rs` から manifest の引数を消す崩れは Linux の T12 では止まらず、次に Windows で dev-tools の bin を回すまで見えない。Windows の GNU の target（`x86_64-pc-windows-gnu`）では manifest を入れず、確かめもしない（`ponytail:`。開発用の Windows は MSVC だけ）。dev-tools の Windows の `cargo test` は回さない（`rustc-link-arg` は integration test にも manifest を渡すが、確かめていない）。
 - L3-3 の `generate_traceability -- --check` は、Windows の clone の改行の設定（`core.autocrlf`）で D-137 と無関係に T1 が ERROR になり得る（repo に `.gitattributes` が無い）。packet の L3 の用意 1 で値を見て、`true` なら L3-3 だけを `git clone -c core.autocrlf=false` の使い捨ての clone で回して前もって避ける。それでも出力の後の非 0・差分が出たら loader の問題と分けて Coordinator が切り分ける（packet の L3 の順の段落）。
