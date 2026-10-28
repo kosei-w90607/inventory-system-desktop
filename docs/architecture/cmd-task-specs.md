@@ -69,6 +69,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 | parse_and_validate_csv | FileBytes, filename | BIZ-03 Stage1+2 | ParseValidateResult（preview_data, preview_token） |
 | commit_csv_import | CommitRequest（preview_token, additional_import_confirmed） | BIZ-03 Stage4 | ImportResult（csv_import_id, status, total_items, skipped_count） |
 | rollback_csv_import | csv_import_id | BIZ-03 ロールバック | RollbackResult（success, voided_sale_count, stock_corrections） |
+| preview_rollback_csv_import | csv_import_id | BIZ-03 取消の前の読取り（取消を TX で当てて戻す。何も書かない） | RollbackPreview（csv_import_id, settlement_no, recheck_targets, affected_stocktakes） |
 | list_csv_imports | ListQuery（page, per_page） | BIZ-03経由 | PaginatedResult\<CsvImport\> |
 
 ### CMD-12: 日報取込みコマンド群

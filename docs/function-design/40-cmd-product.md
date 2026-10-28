@@ -47,6 +47,7 @@ struct CmdError {
     field: Option<String>,  // バリデーションエラー時のフィールド名
     error_id: Option<String>,  // 診断ログ相関ID（CMD-ERR-D1）。internal / restore_*系でのみSome
     stocktake_recovery: Option<StocktakeRecovery>,  // 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。冒頭の D-118 の節、b1）
+    related_csv_import_id: Option<i64>,  // 拒否の文が名指す取込みID（Z004 の順 4 の拒否〈kind import_error〉だけ Some、ほかは null。TS では任意の field。41-cmd-pos.md 17.4）
 }
 ```
 
@@ -66,7 +67,7 @@ BizError → CmdError の変換ルール:
 - BizError::NotFound(msg) → CmdError { kind: CmdErrorKind::NotFound, message: msg }
 - BizError::DatabaseError(_) → CmdError { kind: CmdErrorKind::Internal, message: "データベースエラーが発生しました。もう一度お試しください", error_id: Some(発行) }
 - BizError::StocktakeGuard { message, recovery } → CmdError { kind: CmdErrorKind::StocktakeGuard, message, stocktake_recovery: Some(recovery) }（冒頭の D-118 の節、b1）
-- POS連携追加分（ImportError / IdempotencyConflict / ExportError）は 41-cmd-pos.md 17.4 を参照
+- POS連携追加分（ImportError / SettlementConflict / IdempotencyConflict / ExportError）は 41-cmd-pos.md 17.4 を参照
 
 ### 5.4 各コマンドの関数仕様
 
