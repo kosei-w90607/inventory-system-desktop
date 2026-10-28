@@ -270,7 +270,26 @@ Test Design Matrix: [test-matrices/2026-10-27-l3-reuse-after-sync.md](test-matri
 
 ## Implementation Results
 
-Fill after implementation.
+実装の commit: `b3e53359`（`scripts/pr-gate.py`・`scripts/tests/pr-gate.test.py`）。起点 `3ac6fc22`。
+
+| H | 実装（`scripts/pr-gate.py`） | 変えた呼び出し側 |
+|---|---|---|
+| H1 | `validate_record`: closure は `{head, base, audit}` か `{head, base, sync_from}` の一方（`keys` で形を 1 つに固定。両方・どちらも無しは `invalid record fields`）。どちらの形も broad を要る（`closure needs the broad it continues`）。manual は `source_head` だけ（A）か `source_head` と `reuse_approval`（B）、`reuse_approval` だけは `incomplete manual reuse` | — |
+| H2 | `Gate.sync_merges(origin, head, base)`（first parent を起点まで辿る）と `Gate.sync_merge`（2 親の merge の検査。`merge-base --is-ancestor`・`merge-base --all`・`git -c merge.directoryRenames=false merge-tree --write-tree --name-only -z`・`docs/decision-log.md` の `merge-file -p --union --object-id` の byte 照合）。生成物の集合は定数 `GENERATED`（2 path）、union の path は `UNION`。path の列挙は `changed()`（`git diff --name-only --no-renames -z`）。終了値 0/1 を受ける呼び方は `command(..., status=True)` / `git(..., status=True)` の 1 つの入口 | `reuse_geometry` を削除 |
+| H3 | `Gate.code_paths(merges, base)`（各 merge の `merge-base..second` の path の和集合を current main の classifier に渡し、`CODE_FLAGS` の 4 flag で判定、code の path を 1 つずつ名指す）。classifier の呼出しは module の `classify(classifier, paths)` にまとめ、`Gate.requirements` も使う。H2 と H3 の入口は `Gate.reusable(origin, head, base, code=True)`（判定不能の exit 2 に `git fetch origin` を添える） | `Gate.requirements` |
+| H4 | `Gate.carry_manual(old, snap)`。`Gate.record` の版が変わった分岐で、旧 manual が pass・manual が必須・`--kind` が manual でないときに呼ぶ。head が同じで base だけが変わった版は「base が進んだ。先に同期する」で止める。H2 で外れたら `--outcome pending` の command だけ、H3 だけで外れたら B の完全な command（`Gate.cli`）と `--outcome pending` の command を出す。どちらも書込みの前 | `Gate.record` |
+| H5 | `Gate.sync_closure(...)`、argparse の `--review-stage` に `sync`。監査の引数と pass 以外の outcome は exit 2。`current` が真なら順序の文で止める。起点は監査の closure の head・`sync_from`・broad の head。投稿済みの本文のある PR review は `Gate.posted_reviews`（全 page、`--pr-reviews` の検査と共有）で数えて止める | `Gate.record` の review の分岐、`main` |
+| H6 | `Gate.record` の manual の分岐。`--reuse-approval` は `--reuse-from` と組でだけ（exit 2）。`--reuse-from` は旧 manual の `source_head` か旧 head と一致、evidence 一致、旧 manual が使い回しでも受ける。H3 は `--reuse-approval` が無いときだけ。`reuse_approval` は無ければ旧 manual から引き継ぐ | `Gate.record` |
+| H7 | `Gate.nonci`: manual の `source_head` から H2（`reuse_approval` が無ければ H3 も）、closure の `sync_from` から H2 と H3 を当て直す。`validate_review` は変えない（`sync_from` の形も head/base で照合される） | `Gate.nonci` |
+
+test（`scripts/tests/pr-gate.test.py`）: 78 → 123（`PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/pr-gate.test.py` → `Ran 123 tests` `OK`）。合成の repo は `Synth`（tmpdir、`git init -b main`、helper の `git` を `-C tmpdir` へ向ける patch、classifier は repo の `scripts/ci/classify-changes.sh` を `Gate.contents` の patch で渡す）。
+
+- 足した test: `SyncOnly` 14（G1〜G4・G6〜G13 と G5 の unit、`merge.directoryRenames=false` の組 `test_sync_only_uses_directory_renames_false`）、`CodeFree` 5（C1〜C5）、`SyncRecords` 22（R1〜R13、S2〜S4・S6・S7、V5・V6、G5 の record と status、C6）、`Records` 2（V1 `test_validate_legacy_reuse_record`、V4 `test_validate_closure_shape_exclusive`）、`ReviewedHead` 3（fake gh の process で S1・S5・S8）。V2 は既存の `Records.test_closure_required_for_head_or_base_change`。
+- 書き換えた既存の test: `Records.test_wire_fail_closed` の `manual.source_head` だけの mutant を `reuse_approval` だけの mutant に置換（V3。`source_head` だけは H1 で A の形）。`RecordLifecycle.exercise` は `reuse_geometry` の patch を `sync_merges`・`code_paths` の stub に替え、head/base/req・承認・stage・PR review・合成の repo を受けるようにした。`test_closure_first_loses_old_manual_and_cannot_restore_cache` を `test_closure_first_carries_or_stops_and_keeps_b` に置換（H4 で closure を先に記録しても A は引き継ぎ、code の同期は書かずに止まって B が残る）。`GitReuse.test_exact_merge_and_changed_patch` は `SyncOnly` に置換。`test_reuse_then_closure_order`・`test_source_record_missing_changed_or_not_pass` は変えずに通る。comment の `# MG-D6 / GA1` は MG-D13 の文に書き換えた。
+
+mutant（clean な tree に 1 つずつ注入、対応の test が red、`git checkout` の後に `git diff --exit-code` で復元を確認）: Mutation-style Adequacy Questions の (1)〜(12) は全部 red。追加の 7 つ（G2 の 1 段だけ辿る・G4 の merge-tree の exit 1 を失敗扱い・R6 の使い回しの使い回しを拒む・R12 の base だけの変化を pending に戻す・R13 の `--reuse-from` の無い manual に H4 を当てる・S7 の `sync_from` に旧 head を書く・V4 の closure の両形を optional）も全部 red。
+
+検査: `PYTHONDONTWRITEBYTECODE=1 bash scripts/tests/run-workflow-tests.sh` exit 0。`bash scripts/doc-consistency-check.sh` exit 0（WARN 13、ERROR なし）。`--target plan docs/plans/2026-10-27-l3-reuse-after-sync.md` 全チェック通過。`bash scripts/check-workflow-git.sh` exit 0。AC6 の `rg` 0 件（exit 1）。
 
 ## Review Response
 
