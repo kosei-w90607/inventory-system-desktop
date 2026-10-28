@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""SPEC-MERGE-EVIDENCE / MG-D1a, MG-D5..D8: synthetic fixtures, no GitHub mutation."""
+"""SPEC-MERGE-EVIDENCE / MG-D1a, MG-D5..D8, MG-D13: synthetic fixtures, no GitHub mutation."""
 import argparse
+import contextlib
 import copy
 import importlib.util
 import json
@@ -20,6 +21,7 @@ spec=importlib.util.spec_from_file_location('pr_gate', ROOT/'scripts/pr-gate.py'
 g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
 H='a'*40; B='b'*40; P='c'*40; OLD='d'*40
 REQ=dict(risk='R3',plan_commit=P,amendments=[],minimum=2,manual=True,r4=True)
+APPROVAL='https://example.invalid/owner'
 # D-107 (3): literals from the packet's Boundary / Wire Contract, not from the helper.
 FRESH_BROAD='broad Plan contract changed; fresh broad required: record --review-stage broad at the current head (a closure cannot carry this broad)'
 BROAD_REQUIRED='broad required: record --review-stage broad at the current head until it has Final Review Minimum audits (no usable broad on the server; a closure cannot replace it)'
@@ -78,9 +80,28 @@ class Records(unittest.TestCase):
         for kind in ('manual','r4'):
             data=copy.deepcopy(self.record);data[kind]['evidence']=[];mutants.append(data)
         data=copy.deepcopy(self.record);data['review']['broad']['audits'][1]['run_ref']='sonnet';mutants.append(data)
-        data=copy.deepcopy(self.record);data['manual']['source_head']=OLD;mutants.append(data)
+        # MG-D13 (V3): source_head alone is the A shape; reuse_approval without source_head is incomplete.
+        data=copy.deepcopy(self.record);data['manual']['reuse_approval']=APPROVAL;mutants.append(data)
         for data in mutants:
             with self.assertRaises(g.GateError):g.validate_record(data,7)
+    def test_validate_legacy_reuse_record(self):
+        # V1 / MG-D13: today's B record (source_head + reuse_approval) and the A shape (source_head) stay valid.
+        for extra in (dict(source_head=OLD,reuse_approval=APPROVAL),dict(source_head=OLD)):
+            data=copy.deepcopy(self.record);data['manual'].update(extra)
+            with self.subTest(extra=sorted(extra)):self.assertEqual(g.validate_record(data,7),data)
+        data['manual']['outcome']='pending'
+        with self.assertRaises(g.GateError):g.validate_record(data,7)
+    def test_validate_closure_shape_exclusive(self):
+        # V4 / MG-D13: exactly one closure shape; the sync shape still needs its broad.
+        audit=dict(model='opus',run_ref='closure',evidence=['https://example.invalid/closure'])
+        for closure in (dict(head=H,base=B,audit=audit),dict(head=H,base=B,sync_from=OLD)):
+            data=copy.deepcopy(self.record);data['review']['closure']=closure
+            with self.subTest(ok=sorted(closure)):g.validate_record(data,7)
+        for closure,broad in ((dict(head=H,base=B,audit=audit,sync_from=OLD),True),(dict(head=H,base=B),True),
+                              (dict(head=H,base=B,sync_from='abc'),True),(dict(head=H,base=B,sync_from=OLD),False)):
+            data=copy.deepcopy(self.record);data['review']['closure']=closure
+            if not broad:data['review']['broad']=None
+            with self.subTest(bad=sorted(closure),broad=broad),self.assertRaises(g.GateError):g.validate_record(data,7)
     def test_comment_author_duplicate_malformed(self):
         body=g.MARKER+'\n```json\n'+json.dumps(self.record)+'\n```'
         item=dict(id=1,user=dict(login=g.OWNER),body=body,updated_at='today')
@@ -120,30 +141,39 @@ class Records(unittest.TestCase):
 
 class RecordLifecycle(unittest.TestCase):
     setUp = Records.setUp
-    # MG-D6 / GA1: server pass -> reused manual -> fresh capture -> current closure.
-    def exercise(self, old, kind='manual', outcome='pass', source=OLD, values=None, mutate_capture=False, captured_requirements=REQ):
+    # MG-D13: a server pass is carried (A) or reused with approval (B) at a synced head; closures follow.
+    # real=False stubs the sync checks (H2/H3); real=True leaves them to the synthetic repo patched in by the caller.
+    def exercise(self, old, kind='manual', outcome='pass', source=OLD, values=None, mutate_capture=False, captured_requirements=None,
+                 head=H, base=B, req=REQ, approval=APPROVAL, stage='closure', reviews=(), real=False, **extra):
+        self.writes=[]
         with tempfile.TemporaryDirectory() as tmp:
             self.gate.root=Path(tmp)
             folder=Path(tmp)/'.local/pr-gate';folder.mkdir(parents=True)
             server=None if old is None else dict(id=1,body='previous',updated_at='before',record=copy.deepcopy(old))
-            snap=dict(version=1,repo=g.REPO,pr=7,head=H,base=B,packet=None,requirements=REQ,server=server)
-            capture=folder/'capture.json';capture.write_text(json.dumps(snap|dict(requirements=captured_requirements)))
+            snap=dict(version=1,repo=g.REPO,pr=7,head=head,base=base,packet=None,requirements=req,server=server)
+            capture=folder/'capture.json';capture.write_text(json.dumps(snap|dict(requirements=captured_requirements or req)))
             if mutate_capture and server:server['updated_at']='changed'
-            self.gate.args=args(capture=str(capture),kind=kind,outcome=outcome,review_stage='closure',
-                reuse_from=source if kind=='manual' else None,reuse_approval='https://example.invalid/owner' if source and kind=='manual' else None,
-                evidence=values if values is not None else ['https://example.invalid/manual'])
-            pr=dict(head=dict(sha=H),base=dict(sha=B))
+            self.gate.args=args(**dict(capture=str(capture),kind=kind,outcome=outcome,review_stage=stage,reviewed_head=head,
+                reuse_from=source if kind=='manual' else None,reuse_approval=approval if source and kind=='manual' else None,
+                evidence=values if values is not None else ['https://example.invalid/manual'])|extra)
+            pr=dict(head=dict(sha=head),base=dict(sha=base))
             state={'server':server}
             def transport(path,method='GET',payload=None,**kwargs):
                 if path=='user':return dict(login=g.OWNER)
-                if '/pulls/7/reviews' in path and method=='GET':return [[]]
+                if '/pulls/7/reviews' in path and method=='GET':return [list(reviews)]
                 self.assertIn('/comments',path)
+                self.writes.append(path)
                 match=payload['body'].split('```json\n')[1].split('\n```')[0]
                 state['server']=dict(id=1,body=payload['body'],updated_at='after',record=json.loads(match))
                 return state['server']
-            with patch.object(self.gate,'snapshot',return_value=(snap,pr)),patch.object(self.gate,'pr',return_value=pr),\
-                 patch.object(self.gate,'server_record',side_effect=lambda:state['server']),\
-                 patch.object(self.gate,'reuse_geometry'),patch.object(g,'api',side_effect=transport):
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.object(self.gate,'snapshot',return_value=(snap,pr)))
+                stack.enter_context(patch.object(self.gate,'pr',return_value=pr))
+                stack.enter_context(patch.object(self.gate,'server_record',side_effect=lambda:state['server']))
+                stack.enter_context(patch.object(g,'api',side_effect=transport))
+                if not real:
+                    stack.enter_context(patch.object(self.gate,'sync_merges',return_value=[]))
+                    stack.enter_context(patch.object(self.gate,'code_paths',return_value=[]))
                 self.gate.record()
             return state['server']['record']
     def previous(self):
@@ -166,10 +196,15 @@ class RecordLifecycle(unittest.TestCase):
         with self.assertRaises(g.GateError):self.exercise(self.previous(),source=P)
         with self.assertRaises(g.GateError):self.exercise(self.previous(),values=['replaced'])
         with self.assertRaises(g.GateError):self.exercise(self.previous(),mutate_capture=True)
-    def test_closure_first_loses_old_manual_and_cannot_restore_cache(self):
+    def test_closure_first_carries_or_stops_and_keeps_b(self):
+        # MG-D13 (replaces the closure-first loss): a code-free sync carries the manual pass (A); a code sync
+        # stops the closure before any write, so B stays available on the untouched server record.
         current=self.exercise(self.previous(),kind='review',source=None)
-        self.assertEqual(current['manual']['outcome'],'pending')
-        with self.assertRaises(g.GateError):self.exercise(current)
+        self.assertEqual(current['manual'],dict(outcome='pass',evidence=['https://example.invalid/manual'],source_head=OLD))
+        with patch.object(self.gate,'sync_merges',return_value=[]),patch.object(self.gate,'code_paths',return_value=['src/app.ts']):
+            with self.assertRaisesRegex(g.GateError,'src/app.ts'):self.exercise(self.previous(),kind='review',source=None,real=True)
+        self.assertEqual(self.writes,[])
+        self.assertEqual(self.exercise(self.previous())['manual']['reuse_approval'],APPROVAL)
     def test_old_shape_capture_requires_fresh_capture(self):
         # T-H7b: a capture made before the requirements lost 'mode' is rejected, not silently accepted.
         with self.assertRaisesRegex(g.GateError,'fresh capture required'):
@@ -187,23 +222,336 @@ class RecordLifecycle(unittest.TestCase):
         with self.assertRaises(g.GateError):self.exercise(old,kind='review',source=None)
 
 
-class GitReuse(unittest.TestCase):
-    def test_exact_merge_and_changed_patch(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            def git(*args): return subprocess.check_output(['git','-C',tmp,*args],text=True).strip()
-            git('init','-q','-b','main');git('config','user.name','test');git('config','user.email','test@example.invalid')
-            Path(tmp,'base').write_text('base');git('add','.');git('commit','-qm','base');base=git('rev-parse','HEAD')
-            git('switch','-qc','feature');Path(tmp,'feature').write_text('feature');git('add','.');git('commit','-qm','feature');old=git('rev-parse','HEAD')
-            git('switch','-q','main');Path(tmp,'main').write_text('main');git('add','.');git('commit','-qm','main');newbase=git('rev-parse','HEAD')
-            git('switch','-q','feature');git('merge','-qm','sync','main');head=git('rev-parse','HEAD')
-            gate=object.__new__(g.Gate)
-            def bridge(*args,binary=False):return g.command(['git','-C',tmp,*args],binary=binary)
-            with patch.object(g,'git',side_effect=bridge):
-                gate.reuse_geometry(old,base,head,newbase)
-                for wrong in ((base,base,head,newbase),(old,base,head,base),(old,base,old,newbase)):
-                    with self.assertRaises(g.GateError):gate.reuse_geometry(*wrong)
-                Path(tmp,'feature').write_text('changed');git('add','.');git('commit','-qm','edit')
-                with self.assertRaises(g.GateError):gate.reuse_geometry(old,base,git('rev-parse','HEAD'),newbase)
+# MG-D13: synthetic git histories in a tmpdir; the helper's git() is pointed there, never at this clone.
+GEN_TRACE='docs/function-design/90-traceability.md';GEN_BIND='src/lib/bindings.ts';DLOG='docs/decision-log.md'
+CLASSIFIER=(ROOT/'scripts/ci/classify-changes.sh').read_text()
+SEED={'docs/a.md':'a\n','src/app.ts':'app\n',DLOG:'# log\n\nD-1\n',GEN_TRACE:'t1\nt2\nt3\n',GEN_BIND:'b1\n',
+      'docs/shared.md':''.join(f'{i}\n' for i in range(1,13)),'public/help.html':'<p>help page body for rename</p>\n',
+      'docs/dir/x.md':'x\n','docs/dir/y.md':'y\n','src/x.ts':'export const x = 1\n'}
+LANE_EVIDENCE=['https://example.invalid/manual']
+
+class Synth:
+    """main and a lane branch; `source` is the lane head that passed L3. Syncs merge like the lane does."""
+    def __init__(self,tmp):
+        self.dir=tmp;self.git('init','-q','-b','main');self.git('config','user.name','test');self.git('config','user.email','test@example.invalid')
+        self.base0=self.base=self.commit(SEED,'base');self.git('switch','-qc','lane')
+        self.source=self.commit({'docs/lane.md':'lane\n'},'lane work')
+    def git(self,*args,check=True):
+        return subprocess.run(['git','-C',self.dir,*args],check=check,capture_output=True,text=True).stdout.strip()
+    def write(self,files):
+        for path,text in files.items():
+            target=Path(self.dir,path)
+            if text is None:target.unlink()
+            else:target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
+    def commit(self,files,msg='change'):
+        self.write(files);self.git('add','-A');self.git('commit','-q','--allow-empty','-m',msg);return self.git('rev-parse','HEAD')
+    def main(self,files):
+        self.git('switch','-q','main');self.base=self.commit(files,'main');self.git('switch','-q','lane');return self.base
+    def sync(self,ref='main',files=None,union=False):
+        """Merge ref into the lane; `files` resolves conflicts or edits inside the merge; `union` resolves the decision log."""
+        self.git('-c','merge.directoryRenames=false','merge','--no-ff','--no-commit','-q',ref,check=False)
+        if union:
+            merged=subprocess.run(['git','-C',self.dir,'merge-file','-p','--union','--object-id',f'HEAD:{DLOG}',
+                                   self.git('merge-base','HEAD','MERGE_HEAD')+f':{DLOG}',f'MERGE_HEAD:{DLOG}'],
+                                  check=True,capture_output=True,text=True).stdout
+            self.write({DLOG:merged})
+        self.write(files or {});self.git('add','-A');self.git('commit','-q','--no-edit');return self.git('rev-parse','HEAD')
+    def move(self,source,target):
+        Path(self.dir,target).parent.mkdir(parents=True,exist_ok=True);self.git('mv',source,target)
+    def bridge(self,*args,**kw):return g.command(['git','-C',self.dir,*args],**kw)
+
+class SyncCase(unittest.TestCase):
+    def setUp(self):
+        tmp=tempfile.TemporaryDirectory();self.addCleanup(tmp.cleanup)
+        self.repo=Synth(tmp.name)
+        self.gate=object.__new__(g.Gate);self.gate.args=args();self.gate.endpoint='repos/'+g.REPO
+        for target,name,kw in ((g,'git',dict(side_effect=self.repo.bridge)),(self.gate,'contents',dict(return_value=CLASSIFIER))):
+            patcher=patch.object(target,name,**kw);patcher.start();self.addCleanup(patcher.stop)
+    def head(self):return self.repo.git('rev-parse','HEAD')
+    def merges(self,origin=None,head=None,base=None):
+        return self.gate.sync_merges(origin or self.repo.source,head or self.head(),base or self.repo.base)
+    def refuse(self,*texts,code=1,**kw):
+        with self.assertRaises(g.GateError) as caught:self.merges(**kw)
+        self.assertEqual(caught.exception.code,code,str(caught.exception))
+        for text in texts:self.assertIn(text,str(caught.exception))
+        return str(caught.exception)
+
+class SyncOnly(SyncCase):
+    """G1..G13: the sync-only condition (packet H2)."""
+    def test_sync_only_single_auto_merge(self):
+        self.repo.main({'docs/b.md':'b\n'});head=self.repo.sync()
+        self.assertEqual([m[0] for m in self.merges()],[head])
+    def test_sync_only_uses_directory_renames_false(self):
+        # The sync runs with merge.directoryRenames=false; merge-tree must too, or the lane's new file conflicts.
+        self.repo.commit({'docs/dir/z.md':'lane file\n'});source=self.head()
+        self.repo.main({'docs/dir/x.md':None,'docs/dir/y.md':None,'docs/moved/x.md':'x\n','docs/moved/y.md':'y\n'})
+        head=self.repo.sync()
+        self.assertEqual([m[0] for m in self.merges(origin=source)],[head])
+    def test_sync_only_two_merges(self):
+        self.repo.main({'docs/b.md':'b\n'});first=self.repo.sync()
+        self.repo.main({'docs/c.md':'c\n'});second=self.repo.sync()
+        self.assertEqual([m[0] for m in self.merges()],[first,second])
+    def test_sync_only_shared_file_context_shift(self):
+        lines=SEED['docs/shared.md'].splitlines(keepends=True)
+        self.repo.commit({'docs/shared.md':''.join(lines[:8]+['lane\n']+lines[9:])});source=self.head()
+        self.repo.main({'docs/shared.md':'new top\n'+''.join(lines[:3]+['main\n']+lines[4:])})
+        head=self.repo.sync()
+        self.assertEqual([m[0] for m in self.merges(origin=source)],[head])
+    def test_sync_only_generated_conflict_regenerated(self):
+        self.repo.commit({GEN_TRACE:'t1\nlane\nt3\n'});source=self.head()
+        self.repo.main({GEN_TRACE:'t1\nmain\nt3\n'})
+        head=self.repo.sync(files={GEN_TRACE:'t1\nregenerated\nt3\n'})
+        self.assertEqual([m[0] for m in self.merges(origin=source)],[head])
+    def test_sync_only_generated_regen_commit(self):
+        self.repo.main({'docs/b.md':'b\n'});merge=self.repo.sync()
+        head=self.repo.commit({GEN_BIND:'b2\n'},'regenerate')
+        self.assertEqual([m[0] for m in self.merges()],[merge])
+        self.assertNotEqual(head,merge)
+    def test_sync_only_rejects_lane_commit(self):
+        self.repo.main({'docs/b.md':'b\n'});self.repo.sync()
+        lane=self.repo.commit({'docs/lane.md':'more\n',GEN_BIND:'b2\n'})
+        self.refuse('lane commit '+lane,'docs/lane.md')
+    def test_sync_only_rejects_manual_conflict_resolution(self):
+        self.repo.commit({'docs/a.md':'lane\n'});source=self.head()
+        self.repo.main({'docs/a.md':'main\n'})
+        head=self.repo.sync(files={'docs/a.md':'by hand\n'})
+        self.refuse('merge '+head,'docs/a.md',origin=source)
+    def test_sync_only_rejects_edit_inside_merge(self):
+        self.repo.main({'docs/b.md':'b\n'})
+        head=self.repo.sync(files={'docs/lane.md':'edited inside the merge\n'})
+        self.refuse('merge '+head,'docs/lane.md')
+    def test_sync_only_rejects_non_main_second_parent(self):
+        # A side branch merged mid-list, then a normal last sync: only the ancestor check catches the side merge.
+        self.repo.git('branch','side',self.repo.base0);self.repo.git('switch','-q','side')
+        side=self.repo.commit({'docs/side.md':'side\n'});self.repo.git('switch','-q','lane')
+        bad=self.repo.sync('side')
+        self.repo.main({'docs/b.md':'b\n'});self.repo.sync()
+        self.refuse('merge '+bad,side,'not in main')
+        # Judgment impossible (unknown base object) is exit 2, never satisfied, and names git fetch origin.
+        with self.assertRaises(g.GateError) as caught:self.gate.reusable(self.repo.source,self.head(),'f'*40)
+        self.assertEqual(caught.exception.code,2);self.assertIn('git fetch origin',str(caught.exception))
+    def test_sync_only_rejects_stale_last_parent(self):
+        self.repo.main({'docs/b.md':'b\n'});merge=self.repo.sync()
+        stale=self.repo.base;self.repo.main({'docs/c.md':'c\n'})
+        self.refuse('last sync merge '+merge,stale)
+        self.repo.commit({GEN_BIND:'b2\n'},'regenerate')
+        self.refuse('last sync merge '+merge,stale)
+    def test_sync_only_rejects_ambiguous_merge_base(self):
+        # Criss-cross: the lane merges main's M1 while main merges the lane's L1.
+        l1=self.repo.source;self.repo.main({'docs/m1.md':'m1\n'});origin=self.repo.sync()
+        self.repo.git('switch','-q','main');self.repo.git('merge','--no-ff','-q','-m','main takes lane',l1);self.repo.base=self.head()
+        self.repo.git('switch','-q','lane');self.repo.main({'docs/m2.md':'m2\n'});head=self.repo.sync()
+        self.refuse('merge '+head,'ambiguous merge-base',origin=origin)
+    def test_sync_only_generated_exception_is_exact(self):
+        self.repo.main({'docs/b.md':'b\n'});self.repo.sync()
+        for path in (GEN_TRACE+'.bak','src/lib/bindings.tsx'):
+            with self.subTest(path=path):
+                lane=self.repo.commit({path:'near miss\n'})
+                self.refuse('lane commit '+lane,path)
+                self.repo.git('reset','-q','--hard','HEAD~1')
+        # A normal path renamed into a generated path is a deletion of the normal path (1-parent and in-merge).
+        self.repo.git('reset','-q','--hard',self.repo.source);source=self.repo.commit({GEN_TRACE:None})
+        self.repo.main({'docs/c.md':'c\n'});self.repo.sync()
+        self.repo.move('public/help.html',GEN_TRACE);self.repo.git('commit','-qm','rename');lane=self.head()
+        self.refuse('lane commit '+lane,'public/help.html',origin=source)
+        self.repo.git('reset','-q','--hard','HEAD~1');self.repo.main({'docs/d.md':'d\n'})
+        self.repo.git('-c','merge.directoryRenames=false','merge','--no-ff','--no-commit','-q','main')
+        self.repo.move('public/help.html',GEN_TRACE);self.repo.git('commit','-q','--no-edit');head=self.head()
+        self.refuse('merge '+head,'public/help.html',origin=source)
+    def test_sync_only_decision_log_union_conflict(self):
+        self.repo.commit({DLOG:SEED[DLOG]+'\nD-2 lane\n'});source=self.head()
+        self.repo.main({DLOG:SEED[DLOG]+'\nD-3 main\n'})
+        head=self.repo.sync(union=True)
+        self.assertEqual([m[0] for m in self.merges(origin=source)],[head])
+        self.assertIn('D-2 lane',self.repo.git('show',f'{head}:{DLOG}'))
+        for text in (SEED[DLOG]+'\nD-3 main\n',SEED[DLOG]+'\nD-3 main\n\nD-2 lane\n'):
+            with self.subTest(text=text):
+                self.repo.git('reset','-q','--hard',source)
+                bad=self.repo.sync(files={DLOG:text})
+                self.refuse('merge '+bad,DLOG,origin=source)
+
+class CodeFree(SyncCase):
+    """C1..C5: the code-free condition (packet H3) over the main side of each sync merge."""
+    def code(self,files):
+        self.repo.main(files);self.repo.sync();return self.gate.code_paths(self.merges(),self.repo.base)
+    def test_code_free_docs_only(self):
+        self.assertEqual(self.code({'docs/b.md':'b\n','docs/plans/2026-01-01-x.md':'p\n',GEN_TRACE:'t1\nt2\nt3\nt4\n'}),[])
+    def test_code_free_rejects_rust(self):
+        self.assertEqual(self.code({'docs/b.md':'b\n','src-tauri/src/x.rs':'fn x() {}\n'}),['src-tauri/src/x.rs'])
+    def test_code_free_rejects_frontend_and_generated_binding(self):
+        self.assertEqual(self.code({'docs/b.md':'b\n',GEN_BIND:'b2\n','package.json':'{}\n'}),['package.json',GEN_BIND])
+    def test_code_free_rejects_unknown_and_control(self):
+        self.assertEqual(self.code({'weird/x.bin':'?\n'}),['weird/x.bin'])
+        # The second sync adds a control path; the union over both merges names both.
+        self.assertEqual(self.code({'scripts/pr-gate.py':'#\n','docs/c.md':'c\n'}),['scripts/pr-gate.py','weird/x.bin'])
+    def test_code_free_rename_both_sides(self):
+        self.repo.git('switch','-q','main');self.repo.move('src/x.ts','docs/x.md');self.repo.git('commit','-qm','move')
+        self.repo.base=self.head();self.repo.git('switch','-q','lane');self.repo.sync()
+        self.assertIn('src/x.ts',self.gate.code_paths(self.merges(),self.repo.base))
+
+NO_MANUAL=REQ|dict(manual=False,r4=False)
+LOW=dict(risk='R0',plan_commit=None,amendments=[],minimum=0,manual=True,r4=False)
+SYNC=dict(pass_model=None,run_ref=None,values=[],reviewed_head=None,pr_reviews=None)
+
+class SyncRecords(SyncCase):
+    """R1..R13, S2..S7, V5..V6, G5, C6: record and status against a synthetic repo."""
+    exercise=RecordLifecycle.exercise
+    carried=dict(outcome='pass',evidence=LANE_EVIDENCE)
+    def old(self,head=None,base=None,req=REQ,manual='pass',**manual_extra):
+        record=good_record();record['head']=head or self.repo.source;record['base']=base or self.repo.base0
+        if req['minimum']:record['review']['broad'].update(head=record['head'],base=record['base'])
+        else:record['review']=dict(outcome='not-required',broad=None,closure=None)
+        record['manual']=dict(outcome=manual,evidence=list(LANE_EVIDENCE))|manual_extra
+        if not req['r4']:record['r4']=dict(outcome='not-required',evidence=[])
+        return record
+    def rec(self,old,kind='r4',req=REQ,source=None,**kw):
+        return self.exercise(old,kind=kind,source=source,head=self.head(),base=self.repo.base,req=req,real=True,**kw)
+    def stop(self,old,*texts,**kw):
+        with self.assertRaises(g.GateError) as caught:self.rec(old,**kw)
+        self.assertEqual(self.writes,[])
+        for text in texts:self.assertIn(text,str(caught.exception))
+        return str(caught.exception)
+    def sync_review(self,old,**kw):return self.rec(old,kind='review',req=NO_MANUAL,stage='sync',**SYNC|kw)
+    def sync_stop(self,old,*texts):return self.stop(old,*texts,kind='review',req=NO_MANUAL,stage='sync',**SYNC)
+    def docs_sync(self,name='b'):self.repo.main({f'docs/{name}.md':name+'\n'});return self.repo.sync()
+    def code_sync(self):self.repo.main({'src/app.ts':'app2\n'});return self.repo.sync()
+    def status(self,record,req):
+        # Status reads git and the classifier only: a GitHub call here would be a write path.
+        with patch.object(g,'api',side_effect=AssertionError('status must not call GitHub here')):
+            self.gate.nonci(dict(head=self.head(),base=self.repo.base,requirements=req,server=dict(record=record)))
+
+    def test_auto_carry_on_sync_record(self):
+        self.docs_sync()
+        for kind in ('r4','review'):
+            with self.subTest(kind=kind):
+                record=self.rec(self.old(),kind=kind)
+                self.assertEqual(record['manual'],self.carried|dict(source_head=self.repo.source))
+        for outcome in ('pending','fail'):
+            with self.subTest(outcome=outcome):
+                self.assertEqual(self.rec(self.old(manual=outcome))['manual'],dict(outcome='pending',evidence=[]))
+    def test_auto_carry_keeps_source_and_evidence(self):
+        self.docs_sync()
+        old=self.old(source_head=self.repo.base0,reuse_approval=APPROVAL)
+        old['manual']['evidence']=['https://example.invalid/l3-a','https://example.invalid/l3-b']
+        self.assertEqual(self.rec(old)['manual'],old['manual'])
+        old=self.old()
+        self.assertEqual(self.rec(old)['manual']['source_head'],old['head'])
+    def test_code_sync_stops_non_manual_record(self):
+        self.code_sync()
+        message=self.stop(self.old(),'src/app.ts','--outcome pass --evidence '+LANE_EVIDENCE[0],
+                          '--reuse-from '+self.repo.source+' --reuse-approval POINTER','--outcome pending',kind='review')
+        self.assertIn('owner',message)
+        # Nothing was written, so B still works on the same server record.
+        self.assertEqual(self.rec(self.old(),kind='manual',source=self.repo.source,approval=APPROVAL)['manual']['reuse_approval'],APPROVAL)
+    def test_lane_commit_stops_with_reason(self):
+        self.docs_sync();lane=self.repo.commit({'docs/lane.md':'more\n'})
+        with patch.object(self.gate,'code_paths',wraps=self.gate.code_paths) as spy:
+            message=self.stop(self.old(),'lane commit '+lane,'--outcome pending')
+        spy.assert_not_called()
+        self.assertNotIn('--reuse-approval',message)
+    def test_b_reuse_with_approval(self):
+        self.code_sync()
+        record=self.rec(self.old(),kind='manual',source=self.repo.source,approval=APPROVAL)
+        self.assertEqual(record['manual'],self.carried|dict(source_head=self.repo.source,reuse_approval=APPROVAL))
+        with self.assertRaises(g.GateError) as caught:self.rec(self.old(),kind='manual',reuse_approval=APPROVAL)
+        self.assertEqual(caught.exception.code,2)
+    def test_auto_carry_chain(self):
+        self.docs_sync();first=self.rec(self.old())
+        self.docs_sync('c');second=self.rec(first)
+        self.assertEqual(second['manual'],self.carried|dict(source_head=self.repo.source))
+    def test_b_then_docs_sync_keeps_approval(self):
+        self.code_sync();b=self.rec(self.old(),kind='manual',source=self.repo.source,approval=APPROVAL)
+        self.docs_sync()
+        self.assertEqual(self.rec(b)['manual'],self.carried|dict(source_head=self.repo.source,reuse_approval=APPROVAL))
+    def test_b_source_must_match_original(self):
+        first_head=self.docs_sync();first=self.rec(self.old())
+        self.code_sync()
+        with self.assertRaisesRegex(g.GateError,'manual source/evidence mismatch'):
+            self.rec(first,kind='manual',source=first_head,approval=APPROVAL)
+        self.assertEqual(self.writes,[])
+        self.assertEqual(self.rec(first,kind='manual',source=self.repo.source,approval=APPROVAL)['manual']['source_head'],self.repo.source)
+    def test_explicit_a_requires_code_free(self):
+        coded=self.code_sync()
+        with self.assertRaisesRegex(g.GateError,'src/app.ts'):self.rec(self.old(),kind='manual',source=self.repo.source,approval=None)
+        self.assertEqual(self.writes,[])
+        self.docs_sync()
+        record=self.rec(self.old(head=coded,base=self.repo.base0),kind='manual',source=coded,approval=None)
+        self.assertEqual(record['manual'],self.carried|dict(source_head=coded))
+    def test_r4_never_carried(self):
+        self.docs_sync()
+        self.assertEqual(self.rec(self.old(),kind='review')['r4'],dict(outcome='pending',evidence=[]))
+    def test_b_then_explicit_a_keeps_approval(self):
+        self.code_sync();b=self.rec(self.old(req=LOW),kind='manual',req=LOW,source=self.repo.source,approval=APPROVAL)
+        self.docs_sync()
+        a=self.rec(b,kind='manual',req=LOW,source=self.repo.source,approval=None)
+        self.assertEqual(a['manual'],self.carried|dict(source_head=self.repo.source,reuse_approval=APPROVAL))
+        self.status(a,LOW)
+    def test_base_only_change_stops_non_manual_record(self):
+        self.repo.main({'docs/b.md':'b\n'})
+        for kind in ('r4','review'):
+            with self.subTest(kind=kind):self.stop(self.old(),'base が進んだ。先に同期する','merge origin/main',kind=kind)
+    def test_manual_without_reuse_skips_reuse_check(self):
+        self.docs_sync()
+        for outcome,values in (('pending',['https://example.invalid/redo']),('pass',['https://example.invalid/new-l3'])):
+            with self.subTest(outcome=outcome):
+                record=self.rec(self.old(head=OLD),kind='manual',outcome=outcome,values=values)
+                self.assertEqual(record['manual'],dict(outcome=outcome,evidence=values))
+    def test_sync_only_generated_regen_commit(self):
+        # G5: the head is a 1-parent regeneration after the merge; record carries the manual and status passes.
+        self.docs_sync();self.repo.commit({GEN_BIND:'b2\n'},'regenerate')
+        record=self.rec(self.old(),kind='r4')
+        self.assertEqual(record['manual'],self.carried|dict(source_head=self.repo.source))
+        low=self.rec(self.old(req=LOW),req=LOW,kind='manual',source=self.repo.source,approval=None)
+        self.status(low,LOW)
+    def test_code_free_union_over_sync_merges(self):
+        # C6: main changes code, the lane syncs, main reverts it; the union over every merge still names the code.
+        self.code_sync();self.repo.main({'src/app.ts':'app\n','docs/b.md':'b\n'});self.repo.sync()
+        self.stop(self.old(),'src/app.ts')
+        self.sync_stop(self.old(req=NO_MANUAL),'src/app.ts')
+    def test_sync_stage_rejects_code_sync(self):
+        self.code_sync()
+        self.sync_stop(self.old(req=NO_MANUAL),'src/app.ts','監査の closure を要る')
+    def test_sync_stage_needs_passed_review(self):
+        self.docs_sync()
+        for outcome in ('pending','fail'):
+            old=self.old(req=NO_MANUAL);old['review']['outcome']=outcome
+            with self.subTest(outcome=outcome):self.sync_stop(old,'監査の closure を要る')
+        self.sync_stop(None,'監査の closure を要る')
+    def test_sync_stage_needs_changed_head(self):
+        old=self.old(req=NO_MANUAL)
+        self.sync_stop(old,'新しい head での最初の record')
+        self.docs_sync();first=self.rec(old,req=NO_MANUAL,kind='r4',outcome='not-required',values=[])
+        self.assertEqual(first['review']['outcome'],'pending')
+        self.sync_stop(first,'新しい head での最初の record')
+    def test_sync_stage_requires_same_plan_contract(self):
+        self.docs_sync();old=self.old(req=NO_MANUAL);old['review']['broad']['amendments']=[OLD]
+        self.sync_stop(old,FRESH_BROAD)
+    def test_sync_stage_chain_keeps_audited_origin(self):
+        self.docs_sync();first=self.sync_review(self.old(req=NO_MANUAL))
+        self.assertEqual(first['review']['closure'],dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source))
+        self.docs_sync('c');second=self.sync_review(first)
+        self.assertEqual(second['review']['closure'],dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source))
+        self.assertEqual(second['review']['broad'],first['review']['broad'])
+        audited=self.head();old=copy.deepcopy(second)
+        old['review']['closure']=dict(head=audited,base=self.repo.base,audit=dict(model='opus',run_ref='closure',evidence=['https://example.invalid/c']))
+        self.docs_sync('d')
+        self.assertEqual(self.sync_review(old)['review']['closure']['sync_from'],audited)
+    def test_nonci_rechecks_manual_chain(self):
+        self.docs_sync()
+        record=self.old(head=self.head(),base=self.repo.base,req=LOW,source_head=self.repo.source)
+        self.status(record,LOW)
+        lane=self.repo.commit({'docs/lane.md':'after\n'});record['head']=lane
+        with self.assertRaisesRegex(g.GateError,lane):self.status(record,LOW)
+    def test_nonci_rechecks_sync_closure(self):
+        def closure_record():
+            record=self.old(head=self.head(),base=self.repo.base,req=NO_MANUAL)
+            record['manual']=dict(outcome='not-required',evidence=[])
+            record['review']['broad'].update(head=self.repo.source,base=self.repo.base0)
+            record['review']['closure']=dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source)
+            return record
+        self.docs_sync();self.status(closure_record(),NO_MANUAL)
+        self.code_sync()
+        with self.assertRaisesRegex(g.GateError,'src/app.ts'):self.status(closure_record(),NO_MANUAL)
 
 # The fake gh executes as a process and validates HTTP endpoint/argv wiring, not just a mocked verdict.
 FAKE_GH=r'''#!/usr/bin/env python3
@@ -758,6 +1106,45 @@ class ReviewedHead(unittest.TestCase):
         for value in (None,'abc'):
             with self.subTest(value=value):self.review('broad','sonnet',value,expected=2)
         self.assertEqual(self.load()['comments'],[])
+    # MG-D13: after the broad, main gains a docs commit and the lane merges it like a sync.
+    def broad_then_sync(self):
+        self.review('broad','sonnet',self.head,outcome='pending');self.review('broad','opus',self.head)
+        self.audited=self.head;base=self.load()['pr']['base']['sha']
+        self.git('switch','-qc','upstream',base);(self.repo/'docs').mkdir();(self.repo/'docs/b.md').write_text('b\n')
+        self.git('add','docs/b.md');self.git('commit','-qm','main docs');base=self.git('rev-parse','HEAD')
+        self.git('switch','-q','feature');self.git('-c','merge.directoryRenames=false','merge','--no-ff','-q','-m','sync','upstream')
+        self.head=self.git('rev-parse','HEAD')
+        self.load();self.state['pr']['head']['sha']=self.head;self.state['pr']['base']['sha']=base
+        self.state['runs'][0]['head_sha']=self.head;self.save()
+        return copy.deepcopy(self.state['comments'])
+    def sync_record(self,*extra,expected=0):
+        capture=self.run_cli('capture','--packet',self.packet)['capture']
+        return self.run_cli('record','--packet',self.packet,'--capture',capture,'--kind','review','--review-stage','sync',*extra,expected=expected)
+    def test_sync_stage_records_machine_closure(self):
+        # S1: argv reaches the helper and the PATCH body carries the sync closure; Ready then passes.
+        self.broad_then_sync();before=len(self.writes())
+        self.sync_record('--outcome','pass')
+        self.assertEqual([c for c in self.writes()[before:] if 'PATCH' in c],self.writes()[before:])
+        self.assertEqual(len(self.writes())-before,1)
+        record=json.loads(self.state['comments'][0]['body'].split('```json\n')[1].split('\n```')[0])
+        self.assertEqual(record['review']['closure'],dict(head=self.head,base=self.state['pr']['base']['sha'],sync_from=self.audited))
+        self.assertEqual(self.blockers(),[])
+        self.run_cli('ready','--packet',self.packet)
+    def test_sync_stage_rejects_audit_arguments(self):
+        # S5: audit arguments and a non-pass outcome are input errors, written nowhere.
+        before=self.broad_then_sync()
+        for extra in (('--pass-model','opus'),('--run-ref','r'),('--evidence','https://example.invalid/x'),
+                      ('--reviewed-head',self.head),('--pr-reviews','0')):
+            with self.subTest(extra=extra[0]):self.sync_record('--outcome','pass',*extra,expected=2)
+        self.sync_record('--outcome','pending',expected=2)
+        self.assertEqual(self.load()['comments'],before)
+    def test_sync_stage_stops_on_posted_review(self):
+        # S8 / D-107: a posted review with a body on the current head (counted on every page) stops the sync closure.
+        before=self.broad_then_sync();writes=self.writes()
+        self.load();self.state['review_pages']=[[self.item(601,body='')]*99+[self.item(602,body='')],[self.item(603)]];self.save()
+        error=self.sync_record('--outcome','pass',expected=1)
+        for text in ('id=603','submitted_at=2026-10-05T01:03:00Z','--review-stage closure','--pr-reviews 1'):self.assertIn(text,error)
+        self.assertEqual(self.load()['comments'],before);self.assertEqual(self.writes(),writes)
     def test_matching_head_records(self):
         self.broad_then_push()
         self.review('closure','closure',self.head)
