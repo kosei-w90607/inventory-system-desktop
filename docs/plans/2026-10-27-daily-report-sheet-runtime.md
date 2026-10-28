@@ -10,7 +10,7 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-approved
 - Risk: R3
 - Plan Commit: 2fca3b1836ffce0a4f120d2123d86dabe893ff5b
 - Amendments: none
@@ -28,6 +28,7 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 2. spec-check → design（2026-10-27、起草役）: 対象の正本は 34 §19.3・§19.3a、24 §14.21・§14.21a・§14.21b、42 §22.4・§22.8、29 IO-07-D4・D4a・§29.4.1・§29.5、56 UI-09a-D13・D15〜D19、UI_TECH_STACK §6.5.5、pos-tables §12d、10 の「入力の上限と安全な整数の範囲」。backlog の「日次売上と日報の紙の wire の i64 を安全な整数の範囲で扱う横断の規則を決める」（本 lane の起票の前に決めると書かれていた）が未決で、正本は紙と画面の支払集計の足し方を別々の層（IO と BIZ）に置いていた。D-142 を決め、同じ commit で正本を直した（下の「本 commit で変えた正本」）。
 3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の出力は D-120・D-142 と上の正本にあり、未解決の設計の問いは無い。owner の判断事項（下の Open Questions の O1〜O4）は推奨の既定で書き進め、答えで変わる所を名指した。残る外部前提（Contract Probe の P1・P2・P5・P8）は実装の前・L3・D19 で確かめるもので、設計の問いではない。plan-gate へは Coordinator が #172 の merge と main の同期の後に進める。
 4. plan-draft のまま是正（round 1、2026-10-29、Coordinator の裁定）: Plan Review round 1（fresh Opus 5.5 と Codex、`REVIEWED_HEAD=ee8065b1`）の findings を Coordinator が全件受理し、発注 669 で起草役が packet・Matrix・設計正本を直した（下の Review Response）。Phase と Plan Commit は変えない。
+5. plan-draft → plan-approved（2026-10-29、Coordinator）: 計画の review の closure（round 2、`2fca3b18`）は fresh Opus 5.5・Codex とも approve（P1/P2 0、P3 だけ。PR #211 の comment「計画の review の closure（round 2）」）。`scripts/plan-approve.sh` で Plan Commit を `2fca3b18` に固定した（`f007d635`）。旧形式の packet は Phase が承認の前の値の間は承認の前と扱われる（`docs/DEV_WORKFLOW.md` の「承認の後の計画の変更」）ので、Phase の行を本 commit で進めた。implementing へは #172 の merge と同期の後に Coordinator が進める（packet の順）。
 
 ## 本 commit で変えた正本
 
