@@ -265,16 +265,19 @@ pub(crate) fn list_stock_counts_for_product(
     Ok(rows)
 }
 
+/// 初期在庫の印の SQL の式（`reference_type` が NULL で `movement_type` が `receiving`。ADR D9）。
+/// 求め直しの読取りと在庫変動の履歴の読取りが共有する（44 の `list_movements`）
+const INITIAL_STOCK_SQL: &str = "reference_type IS NULL AND movement_type = 'receiving'";
+
 /// 商品の `is_voided = 0` の movement を id の順で返す（求め直しの読取り。21）
 pub(crate) fn list_ledger_movements_for_product(
     conn: &DbConnection,
     product_code: &str,
 ) -> Result<Vec<LedgerMovementRow>, DbError> {
-    let mut stmt = conn.prepare(
-        "SELECT id, quantity, business_date, phase, settlement_no,
-                reference_type IS NULL AND movement_type = 'receiving'
-         FROM inventory_movements WHERE product_code = ?1 AND is_voided = 0 ORDER BY id",
-    )?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT id, quantity, business_date, phase, settlement_no, {INITIAL_STOCK_SQL}
+         FROM inventory_movements WHERE product_code = ?1 AND is_voided = 0 ORDER BY id"
+    ))?;
     let rows = stmt
         .query_map([product_code], |row| {
             Ok(LedgerMovementRow {
@@ -382,103 +385,109 @@ pub struct MovementRecord {
     pub created_at: String,
 }
 
-/// 商品別の在庫変動履歴をフィルタ付きでページング取得する
-///
-/// 44-cmd-inventory.md §23.9 list_movements
-/// is_voided=0 を常時付与（ロールバック済み変動は非表示）
-pub fn list_movements(
+/// 在庫変動の履歴の movement の 1 行（44 の `list_movements`。並びは BIZ）
+#[derive(Debug)]
+pub(crate) struct HistoryMovementRow {
+    /// `source` は BIZ が補う
+    pub movement: MovementRecord,
+    pub business_date: String,
+    pub settlement_no: Option<i64>,
+    pub initial_stock: bool,
+}
+
+/// 在庫変動の履歴の計数の 1 行（44 の `list_movements`。並びは BIZ）
+#[derive(Debug)]
+pub(crate) struct HistoryCountRow {
+    pub id: i64,
+    pub count_value: i64,
+    /// `true` なら fresh（「入れ直す」）
+    pub fresh: bool,
+    pub business_date: String,
+    pub settlement_no: Option<i64>,
+    pub counted_at: String,
+    /// 計数の商品の今の単位
+    pub stock_unit: super::product_repo::ProductStockUnit,
+    /// 計数が参照する棚卸しの明細の棚卸し
+    pub stocktake_id: Option<i64>,
+}
+
+/// 商品の `is_voided = 0` の movement を、業務日の範囲（両端を含む）と種別で絞って返す（並べない。44）
+pub(crate) fn list_history_movements(
     conn: &DbConnection,
     query: &MovementQuery,
-) -> Result<super::PaginatedResult<MovementRecord>, DbError> {
-    use super::inventory_common::validate_and_offset;
-    use super::inventory_common::ListQuery;
+) -> Result<Vec<HistoryMovementRow>, DbError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT id, product_code, movement_type, quantity, stock_after, reference_type,
+                reference_id, note, created_at, business_date, settlement_no, {INITIAL_STOCK_SQL}
+         FROM inventory_movements
+         WHERE product_code = ?1 AND is_voided = 0
+           AND (?2 IS NULL OR business_date >= ?2) AND (?3 IS NULL OR business_date <= ?3)
+           AND (?4 IS NULL OR movement_type = ?4)"
+    ))?;
+    let rows = stmt
+        .query_map(
+            rusqlite::params![
+                query.product_code,
+                query.date_from,
+                query.date_to,
+                query.movement_type.map(MovementType::as_str),
+            ],
+            |row| {
+                Ok(HistoryMovementRow {
+                    movement: MovementRecord {
+                        id: row.get(0)?,
+                        product_code: row.get(1)?,
+                        movement_type: parse_movement_type(row.get(2)?)?,
+                        quantity: row.get(3)?,
+                        stock_after: row.get(4)?,
+                        reference_type: parse_reference_type(row.get(5)?),
+                        reference_id: row.get(6)?,
+                        source: None,
+                        note: row.get(7)?,
+                        created_at: row.get(8)?,
+                    },
+                    business_date: row.get(9)?,
+                    settlement_no: row.get(10)?,
+                    initial_stock: row.get(11)?,
+                })
+            },
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
 
-    // validate_and_offset を再利用するために ListQuery を組み立てる
-    let list_query = ListQuery {
-        page: query.page,
-        per_page: query.per_page,
-        date_from: None,
-        date_to: None,
-    };
-    let (limit, offset) = validate_and_offset(&list_query)?;
-
-    let mut where_clauses = vec!["product_code = ?1".to_string(), "is_voided = 0".to_string()];
-    let mut params: Vec<Box<dyn rusqlite::types::ToSql>> =
-        vec![Box::new(query.product_code.clone())];
-
-    if let Some(ref from) = query.date_from {
-        where_clauses.push(format!("created_at >= ?{}", params.len() + 1));
-        params.push(Box::new(from.clone()));
-    }
-    if let Some(ref to) = query.date_to {
-        // 日付指定の場合は末尾に T23:59:59 を付与して当日末までを含める
-        let to_with_time = if to.len() == 10 {
-            format!("{}T23:59:59", to)
-        } else {
-            to.clone()
-        };
-        where_clauses.push(format!("created_at <= ?{}", params.len() + 1));
-        params.push(Box::new(to_with_time));
-    }
-    if let Some(ref mt) = query.movement_type {
-        where_clauses.push(format!("movement_type = ?{}", params.len() + 1));
-        params.push(Box::new(mt.as_str()));
-    }
-
-    let where_sql = format!("WHERE {}", where_clauses.join(" AND "));
-
-    // total_count
-    let count_sql = format!("SELECT COUNT(*) FROM inventory_movements {}", where_sql);
-    let total_count: u32 = conn.query_row(
-        &count_sql,
-        rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
-        |row| row.get(0),
+/// 商品の計数を、業務日の範囲（両端を含む）で絞って返す（並べない。44）
+pub(crate) fn list_history_counts(
+    conn: &DbConnection,
+    query: &MovementQuery,
+) -> Result<Vec<HistoryCountRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT sc.id, sc.count_value, sc.count_kind, sc.business_date, sc.settlement_no,
+                sc.counted_at, p.stock_unit, si.stocktake_id
+         FROM stock_counts sc
+         JOIN products p ON p.product_code = sc.product_code
+         LEFT JOIN stocktake_items si ON si.id = sc.stocktake_item_id
+         WHERE sc.product_code = ?1
+           AND (?2 IS NULL OR sc.business_date >= ?2) AND (?3 IS NULL OR sc.business_date <= ?3)",
     )?;
-
-    // data
-    let data_sql = format!(
-        "SELECT id, product_code, movement_type, quantity, stock_after, \
-         reference_type, reference_id, note, created_at \
-         FROM inventory_movements {} \
-         ORDER BY created_at DESC, id DESC \
-         LIMIT ?{} OFFSET ?{}",
-        where_sql,
-        params.len() + 1,
-        params.len() + 2,
-    );
-    params.push(Box::new(limit));
-    params.push(Box::new(offset));
-
-    let mut stmt = conn.prepare(&data_sql)?;
-    let rows = stmt.query_map(
-        rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
-        |row| {
-            Ok(MovementRecord {
-                id: row.get(0)?,
-                product_code: row.get(1)?,
-                movement_type: parse_movement_type(row.get(2)?)?,
-                quantity: row.get(3)?,
-                stock_after: row.get(4)?,
-                reference_type: parse_reference_type(row.get(5)?),
-                reference_id: row.get(6)?,
-                source: None,
-                note: row.get(7)?,
-                created_at: row.get(8)?,
-            })
-        },
-    )?;
-
-    let mut items = Vec::new();
-    for row in rows {
-        items.push(row?);
-    }
-
-    Ok(super::PaginatedResult {
-        items,
-        total_count,
-        page: query.page,
-        per_page: query.per_page,
-    })
+    let rows = stmt
+        .query_map(
+            rusqlite::params![query.product_code, query.date_from, query.date_to],
+            |row| {
+                Ok(HistoryCountRow {
+                    id: row.get(0)?,
+                    count_value: row.get(1)?,
+                    fresh: row.get::<_, String>(2)? == "fresh",
+                    business_date: row.get(3)?,
+                    settlement_no: row.get(4)?,
+                    counted_at: row.get(5)?,
+                    stock_unit: super::product_repo::parse_stock_unit(row.get(6)?)?,
+                    stocktake_id: row.get(7)?,
+                })
+            },
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
 }
 
 // ---------------------------------------------------------------------------

@@ -1446,6 +1446,56 @@ fn product_code_exceeds_max_len(code: &str) -> bool {
     code.encode_utf16().count() > crate::constants::PRODUCT_CODE_MAX_LEN
 }
 
+/// Excel の指数の形（`4.90123E+12`・`5E+12`）か。BIZ-01-D10 F1
+fn is_exponent_form(value: &str) -> bool {
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|byte| byte.is_ascii_digit());
+    let Some((mantissa, exponent)) = value.split_once(['E', 'e']) else {
+        return false;
+    };
+    exponent.strip_prefix('+').is_some_and(digits)
+        && mantissa
+            .split_once('.')
+            .map_or(digits(mantissa), |(int, frac)| digits(int) && digits(frac))
+}
+
+/// 商品 CSV の商品コードと JANコードの形の行の error（BIZ-01-D10）。行の値だけを見る。
+/// preview（§4.8 手順 4）と commit（§4.9 手順 0）が同じ関数を呼ぶ。文の順は表の順（F1〜F4）
+fn import_code_shape_errors(product_code: &str, jan_code: Option<&str>) -> Vec<String> {
+    let exponent = |column: &str, value: &str| {
+        format!(
+            "{column}が指数の形です: '{value}'。Excel が桁を落として書いた値です。元の Excel でその列を文字列の値にして（TEXT の列）保存し直してください。セルを選んだときの上の欄（数式バー）に E+ が出るなら、元の資料から全部の桁を入れ直してください"
+        )
+    };
+    let mut errors = Vec::new();
+    if is_exponent_form(product_code) {
+        errors.push(exponent("商品コード", product_code));
+    }
+    match jan_code.filter(|jan| !jan.is_empty()) {
+        None => {
+            if product_code.len() == 13 && product_code.bytes().all(|byte| byte.is_ascii_digit()) {
+                errors.push(format!(
+                    "商品コードが13桁の数字でJANコードが空です: '{product_code}'。JANを商品コードにした商品は、JANコードにも同じ値を入れてください"
+                ));
+            }
+        }
+        Some(jan) if is_exponent_form(jan) => errors.push(exponent("JANコード", jan)),
+        Some(jan) => match jan_code::validate(jan) {
+            Ok(()) => {}
+            Err(jan_code::JanCodeValidationError::InvalidLengthOrCharacters) => {
+                errors.push(format!(
+                    "JANコードが8桁か13桁の数字ではありません: '{jan}'。先頭の0が落ちていないかを見て、商品のバーコードの数字を元の資料から文字列で入れ直してください"
+                ));
+            }
+            Err(jan_code::JanCodeValidationError::InvalidCheckDigit) => {
+                errors.push(format!(
+                    "JANコードのチェックディジットが合いません: '{jan}'。商品のバーコードの数字を元の資料から入れ直してください"
+                ));
+            }
+        },
+    }
+    errors
+}
+
 /// 商品マスタCSVファイルをプレビューする（読み取り専用、DB書込みなし）
 ///
 /// 30-biz-product-service.md §4.7 / BIZ-01-VAL-D1
@@ -1600,6 +1650,8 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
             row.fields
                 .get("JANコード")
                 .and_then(|v| if v.is_empty() { None } else { Some(v.clone()) });
+        // BIZ-01-D10: 重複の分類より前なので上書きの候補の行にも当たる
+        errors.extend(import_code_shape_errors(&product_code, jan_code.as_deref()));
         let maker_code = row.fields.get("メーカー品番").and_then(|v| {
             if v.is_empty() {
                 None
@@ -1786,6 +1838,14 @@ pub fn commit_import(
         return Err(BizError::ValidationFailed(
             PRODUCT_CODE_TOO_LONG_MESSAGE.to_string(),
         ));
+    }
+    // BIZ-01-D10: 商品コードと JANコードの形も TX の前に。最初に当たった行の最初の文
+    if let Some(message) = valid_rows.iter().find_map(|row| {
+        import_code_shape_errors(&row.product_code, row.jan_code.as_deref())
+            .into_iter()
+            .next()
+    }) {
+        return Err(BizError::ValidationFailed(message));
     }
 
     let overwrite_set: std::collections::HashSet<String> = overwrite_codes.into_iter().collect();
@@ -3975,27 +4035,302 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_preview_import_req907_warns_and_disables_invalid_jan_plu_target() {
+    fn test_preview_import_req907_warns_and_disables_plu_target_without_13_digit_jan() {
+        // REQ-907 / 30 §4.8 手順 4: `PLU対象=1` の warning は空か 8 桁の JAN。形の誤った JAN は BIZ-01-D10 の行の error
         let (_dir, conn) = setup_test_db();
         let csv = make_csv(
             "商品コード,商品名,部門ID,売価,原価,税率,JANコード,PLU対象",
             &[
                 "PLU-C2-NONE,JANなし,1,500,300,10,,1",
-                "PLU-C2-SHORT,8桁JAN,1,500,300,10,12345678,1",
+                "PLU-C2-SHORT,8桁JAN,1,500,300,10,49123456,1",
                 "PLU-C2-CHECK,不正CD,1,500,300,10,2000000000038,1",
             ],
         );
 
         let result = preview_import(&conn, &csv).unwrap();
-        assert_eq!(result.valid_rows.len(), 3);
-        assert!(result.error_rows.is_empty());
-        for row in result.valid_rows {
+        assert_eq!(result.valid_rows.len(), 2);
+        for row in &result.valid_rows {
             assert_eq!(row.plu_target, Some(false), "{}", row.product_code);
             assert_eq!(
                 row.warnings,
                 vec!["JAN が13桁でないため対象外として取り込みます"]
             );
         }
+        assert_eq!(
+            shape_error_rows(&result),
+            vec![(4, vec![shape_f4("2000000000038")])]
+        );
+    }
+
+    // ===== BIZ-01-D10: 商品コードと JANコードの形（oracle は 30 BIZ-01-D10 の表の文から写す） =====
+
+    fn shape_f1(column: &str, value: &str) -> String {
+        format!(
+            "{column}が指数の形です: '{value}'。Excel が桁を落として書いた値です。元の Excel でその列を文字列の値にして（TEXT の列）保存し直してください。セルを選んだときの上の欄（数式バー）に E+ が出るなら、元の資料から全部の桁を入れ直してください"
+        )
+    }
+
+    fn shape_f2(value: &str) -> String {
+        format!(
+            "商品コードが13桁の数字でJANコードが空です: '{value}'。JANを商品コードにした商品は、JANコードにも同じ値を入れてください"
+        )
+    }
+
+    fn shape_f3(value: &str) -> String {
+        format!(
+            "JANコードが8桁か13桁の数字ではありません: '{value}'。先頭の0が落ちていないかを見て、商品のバーコードの数字を元の資料から文字列で入れ直してください"
+        )
+    }
+
+    fn shape_f4(value: &str) -> String {
+        format!(
+            "JANコードのチェックディジットが合いません: '{value}'。商品のバーコードの数字を元の資料から入れ直してください"
+        )
+    }
+
+    fn shape_error_rows(preview: &ImportPreview) -> Vec<(usize, Vec<String>)> {
+        let mut rows: Vec<(usize, Vec<String>)> = preview
+            .error_rows
+            .iter()
+            .map(|row| (row.line_no, row.errors.clone()))
+            .collect();
+        rows.sort();
+        rows
+    }
+
+    fn valid_codes(preview: &ImportPreview) -> Vec<&str> {
+        preview
+            .valid_rows
+            .iter()
+            .map(|row| row.product_code.as_str())
+            .collect()
+    }
+
+    const SHAPE_HEADER: &str = "商品コード,商品名,部門ID,売価,原価,税率,JANコード";
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_rejects_exponent_form_codes() {
+        // REQ-104 / BIZ-01-D10 F1: 2 列、`E`/`e`、小数点の有無。両方なら 商品コード → JANコード の順
+        let (_dir, conn) = setup_test_db();
+        let csv = make_csv(
+            SHAPE_HEADER,
+            &[
+                "4.90123E+12,指数の商品コード,1,500,300,10,4901234567887",
+                "5E+12,小数点なし,1,500,300,10,4901234567887",
+                "EXP-OWN,指数のJAN,1,500,300,10,4.90123e+12",
+                "4.9E+12,両方,1,500,300,10,4.9E+12",
+                "EXP-OK,正しい行,1,500,300,10,",
+            ],
+        );
+
+        let preview = preview_import(&conn, &csv).unwrap();
+
+        assert_eq!(
+            shape_error_rows(&preview),
+            vec![
+                (2, vec![shape_f1("商品コード", "4.90123E+12")]),
+                (3, vec![shape_f1("商品コード", "5E+12")]),
+                (4, vec![shape_f1("JANコード", "4.90123e+12")]),
+                (
+                    5,
+                    vec![
+                        shape_f1("商品コード", "4.9E+12"),
+                        shape_f1("JANコード", "4.9E+12")
+                    ]
+                ),
+            ]
+        );
+        assert_eq!(valid_codes(&preview), vec!["EXP-OK"]);
+        assert!(preview.duplicate_rows.is_empty());
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_rejects_13_digit_code_without_jan() {
+        // REQ-104 / BIZ-01-D10 F2: 13 桁ちょうどの数字の商品コードで JANコード が空。列が無いときも
+        let (_dir, conn) = setup_test_db();
+        for (header, rows) in [
+            (
+                SHAPE_HEADER,
+                [
+                    "4901234567887,JANが空,1,500,300,10,",
+                    "F2-OK,正しい行,1,500,300,10,",
+                ],
+            ),
+            (
+                "商品コード,商品名,部門ID,売価,原価,税率",
+                [
+                    "4901234567887,JANの列なし,1,500,300,10",
+                    "F2-OK,正しい行,1,500,300,10",
+                ],
+            ),
+        ] {
+            let preview = preview_import(&conn, &make_csv(header, &rows)).unwrap();
+            assert_eq!(
+                shape_error_rows(&preview),
+                vec![(2, vec![shape_f2("4901234567887")])],
+                "{header}"
+            );
+            assert_eq!(valid_codes(&preview), vec!["F2-OK"], "{header}");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_validates_jan_shape_and_check_digit() {
+        // REQ-104 / BIZ-01-D10 F3・F4: BIZ-01-D1 の validator を共有し、文は CSV の文
+        let (_dir, conn) = setup_test_db();
+        let csv = make_csv(
+            SHAPE_HEADER,
+            &[
+                "JAN-7,7桁,1,500,300,10,4912345",
+                "JAN-12,12桁,1,500,300,10,490123456788",
+                "JAN-WIDE,全角,1,500,300,10,４９０１２３４５６７８８７",
+                "JAN-CD13,CD誤り13桁,1,500,300,10,4901234567890",
+                "JAN-CD8,CD誤り8桁,1,500,300,10,49123457",
+                "JAN-OK13,正しい13桁,1,500,300,10,4901234567887",
+                "JAN-OK8,正しい8桁,1,500,300,10,49123456",
+            ],
+        );
+
+        let preview = preview_import(&conn, &csv).unwrap();
+
+        assert_eq!(
+            shape_error_rows(&preview),
+            vec![
+                (2, vec![shape_f3("4912345")]),
+                (3, vec![shape_f3("490123456788")]),
+                (4, vec![shape_f3("４９０１２３４５６７８８７")]),
+                (5, vec![shape_f4("4901234567890")]),
+                (6, vec![shape_f4("49123457")]),
+            ]
+        );
+        assert_eq!(valid_codes(&preview), vec!["JAN-OK13", "JAN-OK8"]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_shape_check_applies_to_overwrite_candidates() {
+        // REQ-104 / 30 §4.8 手順 4: 形の検査は重複の分類より前なので上書きの候補の行にも当たる。
+        // 13 桁の数字でない商品の JAN を消す上書きは意図した契約（BIZ-01-D8 の上書きの段）
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("4901234567887".to_string());
+        assert_eq!(
+            create_product(&mut conn, req).unwrap().product_code,
+            "4901234567887"
+        );
+        seed_jan_product(&conn, "OWN-NOJAN", None, true);
+        seed_jan_product(&conn, "OWN-JAN", Some("49123456"), true);
+
+        let preview = preview_import(
+            &conn,
+            &make_csv(
+                SHAPE_HEADER,
+                &[
+                    "4901234567887,上書きでJANが空,1,500,300,10,",
+                    "OWN-NOJAN,上書きでCD誤り,1,500,300,10,4901234567890",
+                    "OWN-JAN,上書きでJANを消す,1,500,300,10,",
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            shape_error_rows(&preview),
+            vec![
+                (2, vec![shape_f2("4901234567887")]),
+                (3, vec![shape_f4("4901234567890")]),
+            ]
+        );
+        assert!(preview.valid_rows.is_empty());
+        let duplicates: Vec<&str> = preview
+            .duplicate_rows
+            .iter()
+            .map(|row| row.existing_product_code.as_str())
+            .collect();
+        assert_eq!(duplicates, vec!["OWN-JAN"]);
+
+        // (c) 同じ JAN の上書きは重複行（同じ商品コードなので別の CSV）
+        let same_jan = preview_import(
+            &conn,
+            &make_csv(
+                SHAPE_HEADER,
+                &["4901234567887,上書きで同じJAN,1,500,300,10,4901234567887"],
+            ),
+        )
+        .unwrap();
+        assert!(same_jan.error_rows.is_empty());
+        assert_eq!(same_jan.duplicate_rows.len(), 1);
+        assert_eq!(
+            same_jan.duplicate_rows[0].existing_product_code,
+            "4901234567887"
+        );
+
+        // (d) を上書きすると JAN が空になる
+        let clear_row = preview.duplicate_rows[0].import_row.clone();
+        commit_import(&mut conn, vec![clear_row], vec!["OWN-JAN".to_string()]).unwrap();
+        let cleared = product_repo::find_by_product_code(&conn, "OWN-JAN")
+            .unwrap()
+            .unwrap();
+        assert_eq!(cleared.product.jan_code, None);
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_keeps_accepted_code_forms() {
+        // REQ-104 / BIZ-01-D10 の「通るもの」
+        let (_dir, conn) = setup_test_db();
+        let header = "商品コード,商品名,部門ID,売価,原価,税率,JANコード,POS在庫連動";
+        let preview = preview_import(
+            &conn,
+            &make_csv(
+                header,
+                &[
+                    "KEEP-OWN,独自コードでJANが空,1,500,300,10,,",
+                    "4901234567887,同じJAN,1,500,300,10,4901234567887,",
+                    "KEEP-E8A,8桁JAN,1,500,300,10,49123456,",
+                    "KEEP-E8B,8桁JAN,1,500,300,10,96385074,",
+                    "KEEP-STORE,店内コード,1,500,300,10,2000000000039,",
+                    "KEEP-SHARE-1,共有JAN,1,500,300,10,2000000000046,0",
+                    "KEEP-SHARE-2,共有JAN,1,500,300,10,2000000000046,0",
+                    "490123456788,12桁の商品コード,1,500,300,10,,",
+                    "49012345678870,14桁の商品コード,1,500,300,10,,",
+                ],
+            ),
+        )
+        .unwrap();
+        assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+        assert_eq!(
+            valid_codes(&preview),
+            vec![
+                "KEEP-OWN",
+                "4901234567887",
+                "KEEP-E8A",
+                "KEEP-E8B",
+                "KEEP-STORE",
+                "KEEP-SHARE-1",
+                "KEEP-SHARE-2",
+                "490123456788",
+                "49012345678870",
+            ]
+        );
+
+        // 13 桁の数字の商品コードに違う正しい JAN（同じ商品コードなので別の CSV）
+        let other_jan = preview_import(
+            &conn,
+            &make_csv(
+                header,
+                &["4901234567887,違う正しいJAN,1,500,300,10,4901234567894,"],
+            ),
+        )
+        .unwrap();
+        assert!(
+            other_jan.error_rows.is_empty(),
+            "{:?}",
+            other_jan.error_rows
+        );
+        assert_eq!(valid_codes(&other_jan), vec!["4901234567887"]);
     }
 
     #[test]
@@ -5149,18 +5484,27 @@ mod tests {
         valid.jan_code = Some("4901234567894".to_string());
         let mut no_jan = make_import_row("IMP-NO-JAN", "JANなし");
         no_jan.jan_code = None;
-        let mut short = make_import_row("IMP-SHORT", "12桁");
-        short.jan_code = Some("123456789012".to_string());
-        let mut alpha = make_import_row("IMP-ALPHA", "英字混在");
-        alpha.jan_code = Some("49012345678A4".to_string());
+        // 12 桁と英字の JAN は §4.9 手順 0（BIZ-01-D10 F3）で TX の前に止まる（DB を変えない）
+        for jan in ["123456789012", "49012345678A4"] {
+            let mut bad = make_import_row("IMP-BAD-JAN", "形の誤ったJAN");
+            bad.jan_code = Some(jan.to_string());
+            let before = product_count(&conn);
+            let result = commit_import(&mut conn, vec![bad], vec![]);
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref msg)) if *msg == shape_f3(jan)),
+                "{result:?}"
+            );
+            assert_eq!(product_count(&conn), before, "{jan}");
+        }
+        let mut short = make_import_row("IMP-SHORT", "8桁");
+        short.jan_code = Some("96385074".to_string());
 
-        commit_import(&mut conn, vec![valid, no_jan, short, alpha], vec![]).unwrap();
+        commit_import(&mut conn, vec![valid, no_jan, short], vec![]).unwrap();
 
         for (code, expected) in [
             ("IMP-VALID", true),
             ("IMP-NO-JAN", false),
             ("IMP-SHORT", false),
-            ("IMP-ALPHA", false),
         ] {
             let product = product_repo::find_by_product_code(&conn, code)
                 .unwrap()
@@ -5169,8 +5513,8 @@ mod tests {
         }
 
         let mut overwrite = make_import_row("IMP-VALID", "有効JAN更新");
-        // IMP-SHORT と別の 12 桁（在庫連動の商品どうしで JAN を共有しない。30 の D-118 の節）
-        overwrite.jan_code = Some("123456789013".to_string());
+        // IMP-SHORT と別の正しい 8 桁（在庫連動の商品どうしで JAN を共有しない。30 の D-118 の節）
+        overwrite.jan_code = Some("49123456".to_string());
         commit_import(&mut conn, vec![overwrite], vec!["IMP-VALID".to_string()]).unwrap();
 
         let overwritten = product_repo::find_by_product_code(&conn, "IMP-VALID")
@@ -5193,27 +5537,19 @@ mod tests {
 
         let mut new_default = make_import_row("PLU-C4-NEW", "既定対象");
         new_default.jan_code = Some("2000000000039".to_string());
-        let mut invalid_check_digit =
-            make_import_row("PLU-C4-INVALID-CHECK", "チェックディジット不一致");
-        invalid_check_digit.jan_code = Some("2000000000038".to_string());
+        // チェックディジットの合わない JAN の行は §4.9 手順 0（BIZ-01-D10）で止まる。
+        // should_default_plu_target の互換は test_should_default_plu_target_req907_preserves_invalid_check_digit_compatibility
         let mut overwrite_blank = make_import_row("PLU-C4-KEEP", "空欄上書き");
         overwrite_blank.jan_code = Some("2000000000015".to_string());
         commit_import(
             &mut conn,
-            vec![new_default, invalid_check_digit, overwrite_blank],
+            vec![new_default, overwrite_blank],
             vec!["PLU-C4-KEEP".to_string()],
         )
         .unwrap();
 
         assert!(
             product_repo::find_by_product_code(&conn, "PLU-C4-NEW")
-                .unwrap()
-                .unwrap()
-                .product
-                .plu_target
-        );
-        assert!(
-            product_repo::find_by_product_code(&conn, "PLU-C4-INVALID-CHECK")
                 .unwrap()
                 .unwrap()
                 .product
@@ -5436,6 +5772,68 @@ mod tests {
                 if msg == "商品コードは100文字以内で入力してください"
         ));
         assert_eq!(counts(&conn), before);
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_revalidates_code_shape_before_tx() {
+        // REQ-104 / 30 §4.9 手順 0 / BIZ-01-D10: preview を通らない wire の行は TX の前に、
+        // 最初に当たった行の最初の文で止め、DB を変えない（正しい行も入らない）
+        let (_dir, mut conn) = setup_test_db();
+        seed_jan_product(&conn, "SHAPE-OWN", None, true);
+        let counts = |conn: &DbConnection| -> (i64, i64) {
+            let count = |table: &str| -> i64 {
+                conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap()
+            };
+            (count("products"), count("inventory_movements"))
+        };
+        let shaped = |code: &str, jan: Option<&str>| {
+            let mut row = make_import_row(code, "形の誤った行");
+            row.jan_code = jan.map(str::to_string);
+            row
+        };
+        let cases = [
+            (
+                shaped("4.9E+12", Some("4.9E+12")),
+                shape_f1("商品コード", "4.9E+12"),
+            ),
+            (shaped("4901234567887", None), shape_f2("4901234567887")),
+            (shaped("SHAPE-F3", Some("4912345")), shape_f3("4912345")),
+            (
+                shaped("SHAPE-F4", Some("4901234567890")),
+                shape_f4("4901234567890"),
+            ),
+        ];
+        let before = counts(&conn);
+        for (bad_row, expected) in cases {
+            let mut good_row = make_import_row("SHAPE-OK", "正しい行");
+            good_row.initial_stock = Some(5);
+            let result = commit_import(&mut conn, vec![good_row, bad_row], vec![]);
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref msg)) if *msg == expected),
+                "{result:?}"
+            );
+            assert_eq!(counts(&conn), before, "{expected}");
+        }
+
+        // 上書きの行でも同じ
+        let result = commit_import(
+            &mut conn,
+            vec![shaped("SHAPE-OWN", Some("4901234567890"))],
+            vec!["SHAPE-OWN".to_string()],
+        );
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref msg)) if *msg == shape_f4("4901234567890")),
+            "{result:?}"
+        );
+        assert_eq!(counts(&conn), before);
+        let existing = product_repo::find_by_product_code(&conn, "SHAPE-OWN")
+            .unwrap()
+            .unwrap();
+        assert_eq!(existing.product.jan_code, None);
     }
 
     #[test]

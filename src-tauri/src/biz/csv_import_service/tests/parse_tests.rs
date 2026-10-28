@@ -581,6 +581,26 @@ fn import_error(result: Result<ParseValidateResult, BizError>) -> String {
     }
 }
 
+/// 順 2〜5 の比べる先にならない取込み（取消済み、レジ 0001）を直に入れ、取込み ID を返す。
+/// 順 4 が名指す取込みの ID を 1 以外にするための fixture（Matrix RB7。commit_tests も使う）
+pub(super) fn insert_rolled_back_import(conn: &crate::db::DbConnection, settlement_no: i64) -> i64 {
+    sales_repo::insert_csv_import(
+        conn,
+        &NewCsvImport {
+            filename: format!("rolled-back-{settlement_no}"),
+            settlement_date: "2026-01-01".into(),
+            file_hash: format!("rolled-back-hash-{settlement_no}"),
+            total_items: 0,
+            total_amount: 0,
+            skipped_count: 0,
+            status: "rolled_back".into(),
+            machine_no: "0001".into(),
+            settlement_no,
+        },
+    )
+    .unwrap()
+}
+
 fn csv_import_count(conn: &crate::db::DbConnection) -> i64 {
     conn.query_row("SELECT COUNT(*) FROM csv_imports", [], |row| row.get(0))
         .unwrap()
@@ -655,14 +675,30 @@ fn test_parse_req401_rejects_other_machine_no() {
 fn test_parse_req401_rejects_other_version_of_same_settlement_and_allows_after_rollback() {
     // REQ-401 / ADR D4・D7 / 32 の表の順 4（Matrix Z4）: 同じ精算の active な取込みで hash が違えば拒み、
     // 取り消した取込みとは比べない（取り込み直せる）
+    // 名指す取込みの ID を 1 以外にする（Matrix RB7。取消済みの取込みは比べる先にならない）
     let (_dir, mut conn) = setup_test_db();
     create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    insert_rolled_back_import(&conn, 4);
     let first = commit_bytes(&mut conn, make_z004_bytes(5, "2026-03-21", &LINE_A), "a").unwrap();
+    assert_ne!(first.csv_import_id, 1);
     let other = make_z004_bytes(5, "2026-03-21", &[("4912345678901", "商品A", 2, 200)]);
-    assert_eq!(
-        import_error(preview(&conn, other.clone(), TEST_TODAY)),
-        "同じ精算と思われる別の資料が既に取り込まれています（精算 5）"
+    let expected = format!(
+        "同じ精算と思われる別の資料が既に取り込まれています（精算 5、取込みID: {}）",
+        first.csv_import_id
     );
+    match preview(&conn, other.clone(), TEST_TODAY) {
+        Err(BizError::SettlementConflict {
+            message,
+            csv_import_id,
+        }) => {
+            assert_eq!(message, expected);
+            assert_eq!(csv_import_id, first.csv_import_id);
+        }
+        other => panic!(
+            "SettlementConflict を期待しました: {:?}",
+            other.map(|r| r.settlement)
+        ),
+    }
     rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
     commit_bytes(&mut conn, other, "b").unwrap();
     let p = crate::db::product_repo::find_by_product_code(&conn, "TEST-001")

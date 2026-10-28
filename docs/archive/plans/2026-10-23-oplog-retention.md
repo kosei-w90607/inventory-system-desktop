@@ -1,6 +1,6 @@
 # Plan Packet: 操作ログの保持を 7 年程度に延ばす
 
-wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は初期投入の手順の lane `docs/plans/2026-10-23-initial-load-procedure.md`〈別の branch〉）。導入の前の関門の candidate「操作ログの保持を 7 年程度へ」（[Plans の導入の前の関門](../../Plans.md#導入の前の関門)、`docs/backlog.md` の「操作ログの保持を 7 年程度に延ばす」、owner の決定 repo 外の回答台帳 TD-348）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
+wave に属さない単独の lane（2026-10-23 に同時に起票した 2 本の 1 本。もう 1 本は初期投入の手順の lane `docs/archive/plans/2026-10-23-initial-load-procedure.md`〈別の branch〉）。導入の前の関門の candidate「操作ログの保持を 7 年程度へ」（[Plans の導入の前の関門](../../Plans.md#導入の前の関門)、`docs/backlog.md` の「操作ログの保持を 7 年程度に延ばす」、owner の決定 repo 外の回答台帳 TD-348）を、関門に足す前提で起票する（owner の決定 repo 外の回答台帳 TD-402、2026-10-23）。
 
 規模と手法（起票の最初に数えた）: 実装で触る code は 3 file（`src-tauri/src/db/schema_v1.rs` の `app_settings` の初期データ 1 行、`src-tauri/src/mnt/log_manager.rs` の `cleanup_old_logs` と test、`src-tauri/src/db/system_repo.rs` の `delete_old_logs` と test）と生成物 1（`docs/function-design/90-traceability.md`）。正本は plan-first で 11 file を直した（72・74・tracking-system-tables・DB_DESIGN・ARCHITECTURE・REQ-700・decision-log〈D-136 と D-051 の Superseded in part の行〉・backlog、Plan Review round 1 の是正で SCREEN_DESIGN・requirements-coverage・20〈§2.8 の `delete_old_logs`〉）。command・DTO・bindings・画面・migration は 0。関数の形（`cleanup_old_logs(conn) -> Result<(), DbError>`、`delete_old_logs(conn, retention_days: u32) -> Result<usize, DbError>`）は変えない。手法: 1 lane のまま（既定の値と掃除の守りは同じ関数の同じ段で、分けると同じ test を 2 回直す）。
 

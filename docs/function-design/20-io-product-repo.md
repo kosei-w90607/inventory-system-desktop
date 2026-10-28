@@ -1,12 +1,12 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
-### 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a)・b1・b2 は実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、stocktake_repo の明細・完了・記録の詳細の読取り（§2.11・§2.11a）と共有 JAN の読取り。商品の読取りが写しの 3 列を返すことは b2（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）。b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で入ったのは、stocktake_repo の明細・完了・記録の詳細の読取り（§2.11・§2.11a）と共有 JAN の読取り。商品の読取りが写しの 3 列を返すことは b2（[Plan Packet](../plans/2026-10-23-stocktake-count-runtime-b2.md)）で入った。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
 | repo 操作 | 処理・返却の契約 |
 |---|---|
-| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。（b2、proposed・未実装）商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
+| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。商品の読取りの 4 つ（`find_by_product_code`・`search_products`・`get_stock_detail`・`list_low_stock_products`。`ProductWithRelations` を返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す（b2。SELECT の `plu_memory_no` の後の 3 列で、`get_stock_detail` の最終入庫日・最終販売日はその後ろ）。`Product` を返す読取り（PLU の書出し・JAN の照合）は写しの 3 列を返さない |
 | stocktake_repo の明細の読取り | `get_stocktake_items`・`find_stocktake_item` は、明細を参照する計数（`stock_counts.stocktake_item_id`）の効く値と置き場の日付、写しの在庫・範囲を返す。差異と要再確認の理由は BIZ が求める |
 | 計数の読取り・保存 | [21](21-io-inventory-repo.md) の新契約（`insert_stock_count` と、商品の計数の鍵の順の一覧） |
 | 共有 JAN の読取り（b1） | `list_shared_jan_conflicts(conn) -> Result<Vec<(String, Vec<String>)>, DbError>`（`pub(crate)`）: 在庫連動の商品と同じ JAN を別の商品が持つ組を JAN の昇順、商品コードの昇順で返す（[36](36-biz-integrity-check.md) の共有 JAN の違反の一覧）。変更の後の状態の検査（BIZ-01）は今の `find_by_jan_code` で行う |
@@ -627,7 +627,7 @@ struct OperationLog {
 6. `start_date` / `end_date` が両方 `None` の場合は既存動作（フィルタなし）を完全維持する。既存呼び出し元・既存テストへの影響はない。
 7. `PaginatedResult<OperationLog>` を返す
 
-**設計判断（UI-11c-D2 との差分メモ）**: 既存 `inventory_repo.rs::list_movements` は `date_to` に対し「10文字なら `T23:59:59` を付与」という緩い当日末判定を使う。本関数は JST暦日の inclusive/exclusive 境界（end は翌日00:00:00未満）を採用し、既存パターンより厳密にする。操作ログは監査用途のため境界の厳密さを優先する判断であり、既存 `list_movements` 側は変更しない（詳細: [74-ui-operation-logs.md](../function-design/74-ui-operation-logs.md) §74.4.3、`docs/decision-log.md` D-037）。
+**設計判断（UI-11c-D2）**: 本関数は JST暦日の inclusive/exclusive 境界（end は翌日00:00:00未満）を採用する。操作ログは監査用途のため保存の時刻の境界の厳密さを優先する（詳細: [74-ui-operation-logs.md](../function-design/74-ui-operation-logs.md) §74.4.3、`docs/decision-log.md` D-037）。在庫変動の履歴は D-118 の b2 で保存の時刻でなく業務日（`YYYY-MM-DD`）の両端を含む比べに変わった（[44](44-cmd-inventory.md) の `list_movements`）。
 
 #### find_distinct_operation_types（新規、UI-11c-D4）
 
@@ -951,4 +951,19 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 
 **エラーハンドリング**:
 - ヘッダ不存在 → DbError::NotFound
+- SQL実行失敗 → DbError::QueryFailed(詳細)
+
+#### list_completed_stocktake_cutoffs
+
+**関数要求**: 完了した棚卸しの ID・完了日時・完了の時点のカーソルを返す。BIZ-06 の `completed_stocktakes_comparing_settlement`（[35](35-biz-stocktake-service.md) §20.6a の共有の判定）が、BIZ-03 の取消の前の読取り（[32](32-biz-csv-import-service.md) §15.6b）のために完了の後の比較の範囲を判定する
+
+**シグネチャ**:
+```
+pub(crate) fn list_completed_stocktake_cutoffs(conn: &DbConnection) -> Result<Vec<(i64, String, StocktakeCutoff)>, DbError>
+```
+
+**処理ステップ**:
+1. stocktakes のうち `status = 'completed'` の行の id・completed_at・cutoff_import_id・cutoff_count_id・cutoff_movement_id を ORDER BY completed_at, id で返す（書かない）
+
+**エラーハンドリング**:
 - SQL実行失敗 → DbError::QueryFailed(詳細)

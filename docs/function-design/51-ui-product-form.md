@@ -1,19 +1,19 @@
 ## 7. UI-01b: 商品登録・修正
 
-### 計数の置き場と在庫の求め直しの契約（D-118。1〜3 つ目の項目は b1 で実装済み、在庫数の表示は b2 で proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。1〜3 つ目の項目は b1、在庫数の表示は b2、2 つ目の項の案内の場所・文・focus は画面の小口の lane で実装済み）
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の商品フォームの側。拒否と回復先は [30](30-biz-product-service.md) と [40](40-cmd-product.md) から受ける。旧 ADR（時点証拠）の `ej_unverified` の間の在庫連動の提案値 false と拒否の文言、非連動化の警告と「在庫数は未調整です」の案内は持たない（置き換えた）。
 
 - 共有 JAN: create / update が `validation`（field `pos_stock_sync` か `jan_code`）で拒否されたら、BIZ の message（「同じ JAN の商品（{商品コード}）があるため、在庫連動にできません」）を該当の欄の近くに出す（今の field 付きの validation の出し方。message を解析しない）。入力値と dirty の状態を保ち、成功の toast や一覧への遷移をしない。在庫連動を自動で off にして再送しない。
-- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、「今の数を入れる」の導線（回復先の `active_count`・`count_now` のどちらも [73](73-ui-stocktake.md) の「今の数を入れる」の入口。`/stocktake/` の search に `product`〈商品コード〉と `returnTo`〈`/products/{商品コード}/edit`〉を渡す）を出す（b1 の実装は文と導線を商品フォームの上部の warning の Alert に置いた。在庫連動の checkbox を持つ `ProductForm.tsx` は b1 の Scope の外のため）。入力値を保つ。導線は route の遷移なので、既存の離脱の確認（UI-USW-D1・D2。在庫連動の checkbox を変えたので dirty）を通る: 「破棄して移動」で離れ、「編集を続ける」なら留まる（guard を外さない。未保存の入力を持ち越さない）。戻った商品フォームは DB の値（在庫連動は付いていない）で開くので、利用者は在庫連動を付け直して保存する。商品フォーム自身の `returnTo`（UI-01b-D2）は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る（b1 の Plan Review round 3 の是正）。
+- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫の節の「数量単位」と「POS販売で在庫を減らす」の行のすぐ下（同じ節の中、全幅）に warning の案内（見出し「「POS販売で在庫を減らす」にできません」、文「「減らさない」の間の売上が在庫の数に入っているか確認できません。「今の数を入れる」で棚の数を入れてから、もう一度「減らす」にして保存してください」。「入っていません」と断定しない: `recount_required` は、売上が効く計数に入らないときのほか、入るか決まらないとき・効く計数どうしが衝突しているときにも返る〈ADR D8、30〉）と、「今の数を入れる」の導線（回復先の `active_count`・`count_now` のどちらも [73](73-ui-stocktake.md) の「今の数を入れる」の入口。`/stocktake/` の search に `product`〈商品コード〉と `returnTo`〈`/products/{商品コード}/edit`〉を渡す）を出し、案内へ focus を移す（保存の button から離れた所に出るので、出たことを見落とさない。focus は案内の領域で、導線の button ではない: Enter で離れない）。画面の語は欄の名と値（「減らす」「減らさない」）で書き、画面に無い「在庫連動」を使わない。商品フォームは BIZ の message（[30](30-biz-product-service.md)。商品一括 import の行の error に出し、そこでは列名「POS在庫連動」〈[60](60-ui-product-import.md)〉が画面にある）を出さず、型（`recount_required`）で分岐して上の文を出す（画面の小口の lane〈[packet](../plans/2026-10-27-stocktake-screen-fixes.md)〉で、b1 の L3 の owner の所感〈repo 外の回答台帳 TD-433〉から決めた）。入力値を保つ。導線は route の遷移なので、既存の離脱の確認（UI-USW-D1・D2。在庫連動の checkbox を変えたので dirty）を通る: 「破棄して移動」で離れ、「編集を続ける」なら留まる（guard を外さない。未保存の入力を持ち越さない）。戻った商品フォームは DB の値（在庫連動は付いていない）で開くので、利用者は在庫連動を付け直して保存する。商品フォーム自身の `returnTo`（UI-01b-D2）は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る（b1 の Plan Review round 3 の是正）。
 - 在庫連動をやめる（true → false）は警告も確認も出さない。
-- 在庫数の表示（b2）: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
+- 在庫数の表示（b2）: 修正の画面の読取り専用の「現在庫」は、写しが要再確認（`stock_recheck`）なら範囲（棚卸しの画面の要再確認の一覧と同じ `formatStockOrRange` の形「{low}〜{high} {単位}」。例「8〜9 個」「4〜4.5 m」）を出し、欄の label の隣に「要再確認」の①状態の badge（文字と icon。色だけで示さない。[66](66-ui-stock-movements.md) と同じ部品 `StockRecheckBadge`）を出す。要再確認でなければ今の 1 つの値。範囲の文字は form の値の baseline と同じ値なので、何も変えなければ dirty にならず離脱の確認も出ない（検証も送信もしない）。badge の要否は `ProductFormPage` が商品の結果の `stock_recheck` を `ProductForm` の prop `stockRecheck` で渡す（[40](40-cmd-product.md) の商品の結果の列）。登録の画面は変えない。
 
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01b、`docs/SCREEN_DESIGN.md` 商品登録・修正画面、`docs/function-design/30-biz-product-service.md` `create_product` / `update_product` / `toggle_discontinue` / `get_product`、`docs/function-design/40-cmd-product.md` CMD-01、`docs/function-design/20-io-product-repo.md` products / departments / suppliers
 
-商品登録・修正は、商品マスタを作成・更新する operator-facing form である。商品検索・一覧 UI-01a からの新規登録 / 修正導線を受け、既存の BIZ-01 / CMD-01 契約を generated binding 経由で呼び出す。
+商品登録・修正は、商品マスタを作成・更新する operator-facing form である。商品と在庫の画面（UI-01a、D-138。今の build は商品検索・一覧）からの新規登録 / 修正導線を受け、既存の BIZ-01 / CMD-01 契約を generated binding 経由で呼び出す。
 
 説明書作成時は、商品登録と入庫記録の役割差を明記する。商品登録は商品マスタ作成と初期在庫の設定に使い、通常の仕入で在庫を増やす作業は UI-02 入庫記録で行う。
 
@@ -22,7 +22,7 @@
 | Spec | Decision ID | 決定 | 理由 / 不採用案 |
 |---|---|---|---|
 | REQ-101 / UI-01b | UI-01b-D1 | route は `/products/new` と `/products/$code/edit` に分ける。file route は `src/routes/products/new.tsx` と `src/routes/products/$code.edit.tsx`。 | create / edit の状態差が大きいため path で mode を明示する。query param だけで mode を切り替える案は、直接 URL 共有時に意図が読み取りにくいため不採用。 |
-| REQ-101 / REQ-102 | UI-01b-D2 | 保存成功後は商品一覧へ戻る。`returnTo` search param は `/products` 一覧 route とその search params だけ許可し、それ以外は `/products` に戻す。 | UI-01a の検索条件 URL state を保って戻れるようにする。一方でフォーム route、import route、外部 URL、他画面 route への遷移は不要で、保存後の循環や誤遷移を生むため許可しない。 |
+| REQ-101 / REQ-102 | UI-01b-D2 | 保存成功後は来た一覧へ戻る。`returnTo` search param は `/products` 一覧 route とその search params だけ許可し、それ以外は `/products` に戻す（許す範囲は D-138 でも変えない）。作る側は `buildProductListReturnTo`（`src/features/products/lib/return-to.ts:30-42`、`URLSearchParams` の手組み）で、受け口は `parseProductListSearchFromReturnTo`（同 `:44-65`）が既知の key を型つきで読み直して `navigate({ to: "/products", search })` へ渡す（`src/routes/products/$code.edit.tsx:29`。中身は router の parseSearch を通らない）。D-138 の後（proposed・未実装）は、両方の関数に統合の画面の URL state の `status`・`selected`（[50](50-ui-product-list.md) §50.4）を足し、行の詳細の「商品修正」はこの作る側で組んだ値を渡す（50 UI-01a-D17、[58](58-ui-stock-inquiry.md) §58.7）。在庫切れ・在庫少の一覧（`status=low_stock`）や開いていた行から直しても、保存・戻るで来た一覧とその行へ戻る。例外: 在庫連動を始める拒否（`recount_required`）の回復で棚卸しを経た後の保存は `/products` に着く（b1〈PR #188〉の Plan Review round 3 の決定。本書の冒頭の b1 の文と同じ）。今の build は 2 つの key を持たず、在庫照会から来ると `returnTo` が無く商品一覧へ着く。 | UI-01a の検索条件 URL state を保って戻れるようにする。一方でフォーム route、import route、外部 URL、他画面 route への遷移は不要で、保存後の循環や誤遷移を生むため許可しない。作る側に router の href（`location.href`）を使わない: router の search の直列化は JSON として読める文字列（`1234567890123` のような数字だけの商品コード）を引用符つきで出し（lockfile の `@tanstack/router-core` 1.171.3 の `src/searchParams.ts` の `stringifySearchWith`。JSON として読める string を `stringify` し直す）、受け口の `URLSearchParams.get` は引用符ごと受けるので、検索語が引用符つきになり 0 件になる。受け口を引用符つきの値も外す形に広げる案は採らない（利用者が引用符ごと検索した語と区別できない）。入れ子の `returnTo`（棚卸しへ渡す `returnTo` の中に一覧の `returnTo` を持たせる）で例外をなくす案は b1 の決定を変えるので本書では採らず、[backlog](../backlog.md) の「商品と在庫の画面の統合の runtime」の候補に置いた。 |
 | CMD-01 / UI-01b | UI-01b-D3 | UI は tauri-specta で生成済みの `commands.createProduct` / `commands.updateProduct` / `commands.toggleDiscontinue` / `commands.listSuppliers` を使う。generated binding の正本は `src/lib/bindings.ts` とする。 | `typedInvoke` fallback は Phase 2 closeout で退役済み。UI-01b だけ ad hoc invoke に戻す案は contract drift のため不採用。 |
 | REQ-101 | UI-01b-D4 | create mode の商品コード入力は「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がある場合だけサーバー発番を使い、`code_prefix` がない部門では保存前 validation で止める。 | 現行 `ProductCreateRequest` は任意 `product_code` 手入力を受けない。UI が手入力欄を出しても backend に送れないため不採用。JANなし商品は独自コード発番対象部門を選ぶ。 |
 | REQ-102 / SP-102-04 | UI-01b-D5 | edit mode では `product_code` と `jan_code` と `stock_quantity` を読取専用にする。`stock_unit` は長さの単位の商品だけ読取専用（個数の単位の商品は UI-01b-D23）。 | `product_code` 変更不可は DB 設計と仕様で確定済み。`ProductUpdateRequest` は `stock_quantity` を更新しない（`stock_unit` は個数の単位どうしの変更だけ。BIZ-01-D8）。単位変更の範囲は D-119 で個数の単位どうしに限って決めた（UI-01b-D23。種類をまたぐ変更は在庫履歴・閾値・POS 連動の数の意味を変えるので採らない）。`stock_unit` の読取専用は UI-01b-D23（D-119）が個数の単位の商品について置き換える（UI-01b-D22 の末尾の「edit mode の単位は読取専用」も同じ）。 |
@@ -230,6 +230,7 @@ Error recovery:
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-10-27 | 画面の小口の実装（PR #210） | D-118 の節の 2 つ目の項（在庫連動を始める拒否の案内の場所・見出しと文・focus）を実装済みの記述にした（[Plan Packet](../plans/2026-10-27-stocktake-screen-fixes.md)）。 |
 | 2026-10-21 | 原価の lane の実装（PR #184） | UI-01b-D22 の 10 個の単位・税抜の label と説明・原価の 1/100 円の入力、UI-01b-D24 の補助、UI-01b-D6 の長さの単位（m）を現行の記述に直した。§7.6 の `cost_price_centi` の検証の文と上限、§7.7・§7.8 の `cm` の記述を直した。 |
 | 2026-10-21 | 原価の lane の起票（D-128） | UI-01b-D22 に原価の lane の後の原価の label（`原価（税抜、必須）`）と価格の節の説明を置いた（原価は税抜、店の答え TD-331）。UI-01b-D24 に、補助を開き直すと 2 つの欄が空から始まることを足した（proposed・未実装のまま）。 |
 | 2026-10-17 | JAN の別名の design lane（D-122） | UI-01b-D25（商品フォームは前の JAN の問いを出さず、edit の JAN は読取専用のまま、create で別名の JAN を入れたときの扱い）を追加。 |

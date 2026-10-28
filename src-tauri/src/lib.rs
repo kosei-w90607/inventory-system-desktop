@@ -316,6 +316,7 @@ fn export_bindings_to(bindings_path: &std::path::Path) -> Result<(), String> {
         cmd::csv_import_cmd::parse_and_validate_csv,
         cmd::csv_import_cmd::commit_csv_import,
         cmd::csv_import_cmd::rollback_csv_import,
+        cmd::csv_import_cmd::preview_rollback_csv_import,
         cmd::csv_import_cmd::list_csv_imports,
         cmd::csv_import_cmd::get_csv_import_record,
         // CMD-12: 日報取込み
@@ -1542,6 +1543,7 @@ pub fn run() {
             cmd::csv_import_cmd::parse_and_validate_csv,
             cmd::csv_import_cmd::commit_csv_import,
             cmd::csv_import_cmd::rollback_csv_import,
+            cmd::csv_import_cmd::preview_rollback_csv_import,
             cmd::csv_import_cmd::list_csv_imports,
             cmd::csv_import_cmd::get_csv_import_record,
             // CMD-12: 日報取込み
