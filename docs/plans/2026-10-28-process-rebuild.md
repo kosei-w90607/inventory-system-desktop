@@ -10,9 +10,9 @@ wave に属さない単独の lane。開発の手続き（packet の形・Workfl
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: aa14364173dda14d22d87b0714f4f683ad39e535
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は本 run の起草役。実装は plan-approved の後の別の run で `subagent_type: writer`）
@@ -34,6 +34,7 @@ manual なし: helper・検査・CI と文書の変更で、Windows native で�
 6. plan-gate のまま是正（2026-10-28、round 2 の reject を受けて）: round 2 の是正（Review Response 参照）。次の round 3 が天井。
 7. plan-gate のまま是正（2026-10-28、round 3〈上限〉の reject を受けて）: round 3 の是正（Review Response 参照）。
 8. plan-gate のまま是正（2026-10-28、closure の P2 を受けて）: closure の是正（Review Response 参照）。
+9. plan-gate → plan-approved → implementing（2026-10-28、Coordinator）: Plan Review は round 1〜3（上限）と、上限の後の是正の確かめ（owner の決定 TD-506）で、独立の reviewer の P1/P2 = 0（Codex 側 Astra の closure が `6c0ce73d` で approve、Claude 側 fresh Opus 5.5 の closure が `aa143641` で approve）。Plan Commit = `aa143641`（計画の最後の commit で、すべての実装の commit より前）。closure の P3 2 件（D-145 (4) に形式の見分けの範囲と止める条件を足す、「強める」の対象から `unknown` を外し migration・依存の 2 つにする）は実装の段で直す。
 
 ## Owner Effort Budget
 
