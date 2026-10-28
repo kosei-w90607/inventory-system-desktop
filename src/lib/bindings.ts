@@ -139,11 +139,11 @@ export const commands = {
 	 */
 	listLowStock: (includeDiscontinued: boolean) => typedError<ProductWithRelations[], CmdError>(__TAURI_INVOKE("list_low_stock", { includeDiscontinued })),
 	/**
-	 *  商品別の在庫変動履歴をフィルタ付きでページング取得する
+	 *  商品別の在庫変動の履歴（movement と計数）をフィルタ付きでページング取得する
 	 *
 	 *  44-cmd-inventory.md §23.8 list_movements
 	 */
-	listMovements: (query: MovementQuery) => typedError<PaginatedResult<MovementRecord>, CmdError>(__TAURI_INVOKE("list_movements", { query })),
+	listMovements: (query: MovementQuery) => typedError<PaginatedResult<StockHistoryItem>, CmdError>(__TAURI_INVOKE("list_movements", { query })),
 	/**
 	 *  Z004ファイルを受け取り、プレビューデータを返す
 	 *
@@ -162,6 +162,12 @@ export const commands = {
 	 *  docs/function-design/41-cmd-pos.md §17.5 rollback_csv_import
 	 */
 	rollbackCsvImport: (csvImportId: number) => typedError<RollbackResult, CmdError>(__TAURI_INVOKE("rollback_csv_import", { csvImportId })),
+	/**
+	 *  取消の前の読取り（取り消した後の要再確認・取り込み直す精算・名指す完了した棚卸し。何も書かない）
+	 *
+	 *  docs/function-design/41-cmd-pos.md §17.5 preview_rollback_csv_import
+	 */
+	previewRollbackCsvImport: (csvImportId: number) => typedError<RollbackPreview, CmdError>(__TAURI_INVOKE("preview_rollback_csv_import", { csvImportId })),
 	/**
 	 *  CSV取込み履歴の一覧を返す
 	 *
@@ -352,6 +358,12 @@ export const commands = {
 };
 
 /* Types */
+// 取消で記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し（32 §15.6b）
+export type AffectedStocktake = {
+	stocktake_id: number,
+	completed_at: string,
+};
+
 // 完了の後の差（確定の差と要再確認の差を分け、確定の差だけを合計する）
 export type AfterCompletionDiff = {
 	confirmed: AfterCompletionDiffItem[],
@@ -432,6 +444,11 @@ export type CmdError = {
 	error_id: string | null,
 	// 棚卸しの守りの拒否の回復先（`stocktake_guard` だけ Some。40）
 	stocktake_recovery: StocktakeRecovery | null,
+	/**
+	 *  拒否の文が名指す取込みID（BIZ-03 の順 4 の拒否〈kind `import_error`〉だけ Some、ほかは null。
+	 *  TS では任意の field。40・41 §17.4）
+	 */
+	related_csv_import_id?: number | null,
 };
 
 /**
@@ -1428,6 +1445,10 @@ export type ProductWithRelations = {
 	department_name: string,
 	supplier_name: string | null,
 	plu_memory_no: number | null,
+	// 写しの要再確認と範囲（ADR SPEC-STK-CNT-D2・D9。範囲は要再確認のときだけ両端が値。40）
+	stock_recheck: boolean,
+	stock_range_low: number | null,
+	stock_range_high: number | null,
 } & (Product);
 
 // 入庫記録リクエスト（31-biz-inventory-service.md §12.3）
@@ -1572,6 +1593,17 @@ export type ReturnRecordSummary = {
 	created_at: string,
 };
 
+// preview_rollback_csv_import の結果（取消の前の読取り。何も書かない。32 §15.6b）
+export type RollbackPreview = {
+	csv_import_id: number,
+	// 取り込み直す精算の番号（この取込みの精算回数）
+	settlement_no: number,
+	// 取り消した後に要再確認である商品（取消の結果と同じ作り方。取り消す前から要再確認の商品を含む。40）
+	recheck_targets: CountRecoveryTarget[],
+	// この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し（範囲による候補。完了の日時の昇順。35）
+	affected_stocktakes: AffectedStocktake[],
+};
+
 // rollback_csv_import の結果（補償の movement は作らない。ADR D7）
 export type RollbackResult = {
 	success: boolean,
@@ -1700,6 +1732,18 @@ export type StockCopy = {
 	stock_range_high: number | null,
 };
 
+// 在庫変動の履歴の計数（44 の D-118 の節）
+export type StockCountHistory = {
+	id: number,
+	count_value: number,
+	// 計数の商品の今の単位（画面は計数の値をこの単位で描く。66 の UI-06c-D3 の部分障害）
+	stock_unit: ProductStockUnit,
+	count_kind: StockCountKind,
+	stocktake_id: number | null,
+	// `stocktake_id` があるときだけ棚卸しの記録への link
+	source: MovementSourceLink | null,
+};
+
 // 計数の種類（「数を保存」「0 にする」= default、「入れ直す」= fresh）
 export type StockCountKind = "default" | "fresh";
 
@@ -1724,6 +1768,22 @@ export type StockDetail = {
 	last_receiving_date: string | null,
 	last_sale_date: string | null,
 };
+
+// 在庫変動の履歴の 1 行（44 の D-118 の節）。`kind` が `movement` なら `movement` だけ、`count` なら `count` だけが値
+export type StockHistoryItem = {
+	kind: StockHistoryKind,
+	// movement の業務日（Z004 は精算日）か計数の日付
+	business_date: string,
+	// Z004 の movement の精算回数と、fresh な計数の保存の時点の精算回数（並びの鍵）。ほかは None
+	settlement_no: number | null,
+	// movement の `created_at` か計数の `counted_at`
+	saved_at: string,
+	movement: MovementRecord | null,
+	count: StockCountHistory | null,
+};
+
+// 在庫変動の履歴の行の種類（44 の D-118 の節。D-061 の生成の literal union）
+export type StockHistoryKind = "movement" | "count";
 
 /**
  *  棚卸しヘッダの行マッピング

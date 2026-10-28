@@ -1,6 +1,6 @@
 # 73. UI-10: 棚卸し画面（StocktakePage）
 
-## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み）
+## 計数の置き場と在庫の求め直しの契約（D-118。b1 で実装済み。「今の数を入れる」の行の route の `product` が外れたときの閉じ方は画面の小口の lane で実装済み）
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の棚卸し画面の側。既存の検索 / HID・候補の確認・一覧・確定の結果を保ち、計数は商品ごとに「数を保存」で即保存する（今の Excel と同じく、数えたら入れる。既定の計数）。棚を今見た数で直すときは「入れ直す」（fresh な計数。ADR D3・D5）。旧 ADR（時点証拠）の「今から数える」（begin）・token・失効・応答不明の照会・legacy / auto_filled / force_fill の表示・非連動化の未調整の案内は持たない（置き換えた）。旧 UI-10-D10・§73.6 / §73.10 / §73.12 の current_stock の差異の計算、UI-10-F5・UI-10-D4 ほかの force_fill の確認 dialog と再送信、補正の一覧の結果画面、とそれらのテストの oracle は、b1（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で本節に置き換えた（以下の §73.1〜§73.14 は置き換えた後の現行の契約。決定の履歴の文は当時のまま残し、置き換えた所に注記した）。
 
@@ -9,7 +9,7 @@
 | 商品を特定 | 商品名・コード・単位、写しの在庫（要再確認なら範囲と「要再確認」）、前に保存した数（読取り）。数量欄は空で focus。保存の日付 D を常に出す（既定は今日） |
 | 「前の日の分を入れる」 | 日付を選ぶ（今日より後は選べない）。選んだ日付の計数より後の計数が既にあれば、保存の前に「後の数が既にあり、そちらが効きます」（保存は拒まない。[42](42-cmd-sales-stocktake.md) の `preview_stock_count_placement`） |
 | 商品の「入れ直す」 | 前に保存した数があり、棚を今見て直すとき（打ち直しを含む）。日付は今日だけで選べない。保存は `fresh=true`（それより先に保存した数を置き換え、保存の前に入れた今日の入出庫を含む数になる） |
-| 「今の数を入れる」（商品を受けて開く） | 回復先（[51](51-ui-product-form.md) の在庫連動の拒否の案内の `active_count`・`count_now`）から開く入口。route `/stocktake/` の search の `product`（商品コード）と `returnTo` を受ける。棚卸し・既存の計数・要再確認の有無によらず、棚を見た数を `fresh=true` で保存できる（`stocktake_item_id` は進行中の棚卸しにその商品の明細があるときだけ送る）。保存の後は `returnTo` へ戻る。`returnTo` は `/products/{product と同じ商品コード}/edit` だけを受け、外れれば（無い・別の path・別の商品）保存の後も `/stocktake/` に留まる（UI-01b-D2 と同じく許す先を限り、誤った遷移を防ぐ）。戻った商品フォームは DB の値で開く（未保存の入力は 51 の離脱の確認で破棄されている。b1 の Plan Review round 3 の是正） |
+| 「今の数を入れる」（商品を受けて開く） | 回復先（[51](51-ui-product-form.md) の在庫連動の拒否の案内の `active_count`・`count_now`）から開く入口。route `/stocktake/` の search の `product`（商品コード）と `returnTo` を受ける。棚卸し・既存の計数・要再確認の有無によらず、棚を見た数を `fresh=true` で保存できる（`stocktake_item_id` は進行中の棚卸しにその商品の明細があるときだけ送る）。保存の後は `returnTo` へ戻る。`returnTo` は `/products/{product と同じ商品コード}/edit` だけを受け、外れれば（無い・別の path・別の商品）保存の後も `/stocktake/` に留まる（UI-01b-D2 と同じく許す先を限り、誤った遷移を防ぐ）。戻った商品フォームは DB の値で開く（未保存の入力は 51 の離脱の確認で破棄されている。b1 の Plan Review round 3 の是正）。route の `product` が外れても（サイドバーの「棚卸し」の link で外れても、別の商品の読込みの途中でも、保存の応答の保留中でも）欄は開いたまま残り、その商品の保存の成功で閉じる（途中の読込みの応答は捨てる）。保存の成功で閉じる時点で route の `product` が外れていれば、保存を始めた時に捕らえた戻り先（`returnTo`）へ戻らずに閉じて `/stocktake/` に留まる。外れていなければ（route が別の商品へ変わり、その読込みが失敗した場合を含む）今のまま保存の時の `returnTo` へ戻る。保存の成功の後始末（閉じる・戻る）を行う時点で棚卸しの画面を離れていれば（サイドバーで別の画面へ移り、画面が unmount した）、戻らず、閉じる操作の route の更新もしない（どちらも route の遷移で、離れた先から商品フォームか棚卸しの画面へ連れ戻す）（画面の小口の lane〈[packet](../plans/2026-10-27-stocktake-screen-fixes.md)〉で決めた） |
 | 保存 | 保存した数・在庫（写し・範囲）・差（35 の新契約の「読取り」）を反映し、保存済みの feedback を出して検索欄へ戻る。要再確認になれば理由を文字で出す |
 | 日付の変わり目 | 画面を開いたまま PC の日付が前の保存から変わったら、保存の前に「日付が変わりました（{前} → {今日}）。今日の分として保存しますか」を確かめる |
 | 要再確認の一覧 | 棚卸しの有無にかかわらず、画面の上部に「数え直しが必要な商品」の一覧（[35](35-biz-stocktake-service.md) の `list_recheck_products`。各行は商品・範囲〈単位どおり。[40](40-cmd-product.md) の `CountRecoveryTarget` の範囲〉・理由）。棚卸しの明細の無い商品の「今の数を入れる」の欄の商品の文脈は [42](42-cmd-sales-stocktake.md) の `preview_stock_count_placement` の結果から読む。各行に「入れ直す」（`fresh=true`。行が `stocktake_item_id` を持てば一緒に送り、明細の実数の表示を置き換わった計数に揃える。ADR D5） |
@@ -122,6 +122,12 @@
 ### UI-10-D10: 一覧の差異・最終カウント列 + 確定警告の視認性 + 前回比較の独立表示（実装レビュー起因の追記）
 
 以下は決定の履歴。b1 で差異は BIZ が求める差異（[35](35-biz-stocktake-service.md) の「読取り」の `difference`）に置き換え、画面は計算しない。在庫列は写し（要再確認なら範囲と「要再確認」）。警告の視認性・前回比較の独立表示は維持する。
+
+最終カウント列は、画面の小口の lane（[packet](../plans/2026-10-27-stocktake-screen-fixes.md)。b1 の L3 の owner の所感、repo 外の回答台帳 TD-433）で、保存の時刻（`counted_at`）から効く計数の業務日（`count_business_date`。「前の日の分を入れる」で選んだ日付、既定は保存した日）に置き換えた（owner の決定 2026-10-27、repo 外の回答台帳 TD-452: A〈業務日だけ〉）。
+- **Why**: b1 から計数は業務日で効き（ADR D3）、「前に保存した数」の欄（§73.5 の 3）と棚卸しの記録の詳細（[65](65-inventory-record-traceability.md)）は業務日を出す。一覧だけが保存の時刻を出すと、前の日の分を入れたのに一覧に今日と出て、入れた日付が効いたかを一覧で確かめられない。
+- **Rejected**: 保存の時刻のまま（上の迷いが残る）。業務日と保存の時刻の両方（1 つの列に日付と時刻の 2 つの種類が混ざり、どちらが効く日か読み分けが要る。保存の時刻は業務記録の側で引ける）。
+- 計数が無い（`actual_count` が null）か業務日が null の行は「—」。保存の時刻へ戻して埋めない（列に 2 つの種類を混ぜない）。
+- **Revisit trigger**: 同じ業務日に何度も入れ直す使い方で、どれが最後かを一覧で見分ける要望が出たとき。
 
 - **決定**: 2026-07-08、Windows native L3 実機観察（PR #159）と実装コード確認を受けて 3 点を追加・是正する。
   1. **一覧に「差異」「最終カウント」列を追加**する。差異は `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式、35-biz §20.4「差異の動的計算」を一覧にも適用）。`actual_count` が `null`（未入力）の行は差異・最終カウントとも「—」。列表示は符号付き数値のプレーンテキストのみとし、結果画面の `adjusted_items` テーブル（既存、色分けなし）と表現を揃える（新規に色分けを導入しない）。最終カウントは既存 `formatMovementDateTime`（`src/features/stock-movements/lib/movement-formatters.ts`）と同じ `T` 区切り→スペース変換を流用する。**既存の「システム在庫」列（`stocktake_items.system_stock`、開始時点の参考値）は「現在在庫」列に改め、表示値を `current_stock` に揃える**（カウント入力欄の選択商品情報表示も同様）。差異の計算根拠と画面表示の在庫値が異なる列に見えると、棚卸し中に在庫が動いた場合（35-biz §20.4 の前提どおり CSV 取込み等で変動しうる）に「現在在庫 10 / 実際 9 / 差異 +3」のような数値的に矛盾した表示になるため、両者を同一ソースに統一する（実装レビュー P2 是正、2026-07-08）。
@@ -254,7 +260,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 進捗表示 | 「入力済み {counted_items} / 全 {total_items}」+ `Progress`（value = `counted_items / total_items * 100`、`02-component-catalog.md` 既存採用パターン）。`uncounted_items` は確定ダイアログの文言にのみ使う。 |
 | 差異列（UI-10-D10） | BIZ の `difference`（35「読取り」。画面で計算しない）。計数が無ければ「—」。符号付きで、正負と 0 の tone を文字の符号と併用する（m の商品は m の形）。 |
 | 在庫列 | 写し（`current_stock`）。要再確認なら範囲（「4〜5」）と「要再確認」の badge（icon 付き）。 |
-| 最終カウント列（UI-10-D10） | `counted_at`。`null` なら「—」、値ありは `formatMovementDateTime` と同じ `T`→スペース変換（`src/features/stock-movements/lib/movement-formatters.ts` 流用）。 |
+| 最終カウント列（UI-10-D10） | 効く計数の業務日 `count_business_date`（`YYYY-MM-DD`、時刻を付けない）。`actual_count` が `null`（未入力）か業務日が `null` なら「—」（UI-10-D10 の画面の小口の段落）。 |
 | 廃番 badge（UI-10-D13） | `item.is_discontinued === true` の行の商品名セルに「廃番」badge（`variant="secondary"` + `border-border`、icon なし）を表示する。非廃番行には表示しない。 |
 | 並び順 | 変更しない（`ORDER BY si.id ASC`、UI-10-D3）。 |
 | 表示件数 | catalog ⑩ canonical `Pagination`（旧 `ProductPagination`）（`docs/design-system/02-component-catalog.md` §⑩）+ `LIST_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 未入力のみ表示 → 表示件数（S4a）。 |
@@ -328,7 +334,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 在庫列 見出し（UI-10-D10、一覧 + カウント入力欄選択商品情報。値は `current_stock`） | 現在在庫 |
 | 差異列 見出し（UI-10-D10） | 差異 |
 | 最終カウント列 見出し（UI-10-D10） | 最終カウント |
-| 未入力行の差異・最終カウント（UI-10-D10） | — |
+| 未入力行の最終カウント・効く計数の無い行の差異（UI-10-D10） | — |
 | 検索/スキャン欄 | 商品を検索・スキャン |
 | 検索/スキャン欄 placeholder（UI-10-D2 契約監査追記） | 商品コード・JAN・商品名を入力 |
 | 商品名検索フォールバック 複数候補時の案内（UI-10-D2 契約監査追記） | 候補から商品を選んでください |
@@ -377,7 +383,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 - `find_stocktake_item` が `None` → `searchProducts` で商品名検索にフォールバックする。0 件は「棚卸しの対象にありません」文言が表示され `save_stock_count` は呼ばれない、1 件は自動的にその `product_code` で再解決して選択（数量欄へフォーカス移動）、複数件は候補テーブルが表示され選択操作で解決する（UI-10-D2 契約監査追記）
 - counted 済み商品を再度指定 → 入力 → 確認ダイアログなしで `save_stock_count` が呼ばれる（UI-10-D2）
 - 進捗表示が `progress.counted_items` / `total_items` の値と一致し、`Progress` の value が同じ比率で表示される（UI-10-D10）
-- 一覧の在庫列は `current_stock` を表示し（`system_stock` ではない）、差異列は BIZ の `difference` を出す（画面で計算しない）。未入力行は差異・最終カウントとも「—」表示になる。`system_stock !== current_stock` のケースで在庫列と差異列の数値が矛盾しないことを検証する（UI-10-D10、実装レビュー P2 是正）
+- 一覧の在庫列は `current_stock` を表示し（`system_stock` ではない）、差異列は BIZ の `difference` を出す（画面で計算しない）。未入力行の最終カウントの列は「—」（前の計数を持ち業務日のある未入力行も「—」）。差異の列は BIZ の `difference` で、効く計数が無ければ「—」になる（BIZ は業務日と差異を同じ効く計数から作るので、前の計数を持つ未入力行の差異は数。35「読取り」）。最終カウントは保存の時刻でなく効く計数の業務日を出す（画面の小口の lane）。`system_stock !== current_stock` のケースで在庫列と差異列の数値が矛盾しないことを検証する（UI-10-D10、実装レビュー P2 是正）
 - 確定 CTA → 常に title「棚卸しの確定」+ warning Alert（最後の精算の問いを含む）のダイアログを経て `complete_stocktake({ stocktake_id })` が呼ばれる（UI-10-D4/D10、b1 の U7）
 - 確定結果画面が `total_cost`・明細の数・在庫を動かさない旨を表示し、補正の一覧を出さない。前回比較が総額カードとは別の独立した要素として表示される（UI-10-D5/D10、b1 の U8）
 - b1 の計数・要再確認・完了の拒否・「今の数を入れる」の振舞いは Matrix の U1〜U9・U15・U16（`StocktakePage.test.tsx`）
@@ -394,7 +400,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 |---|---|---|---|
 | L3-1 | `/stocktake`、継続表示ヘッダ | 棚卸しを開始する | ヘッダに「棚卸し中（開始日: YYYY-MM-DD HH:MM:SS）」の形式で**日時**が表示される（内部 ID の数字ではない）。進捗バーが表示される。アプリ再起動後も継続表示に戻る |
 | L3-2 | `/stocktake`、検索/スキャン欄・数量入力欄 | 検索欄をクリックしてカーソルを置く → 商品コード（またはバーコードスキャナで JAN）を入力し Enter → 数量を入力し Enter、を**マウスに触らず**3商品分連続で行う | 1商品目: コード確定後、自動的にカーソルが「実際の数」欄へ移る。数量確定後、自動的にカーソルが検索欄へ戻る。この一連が3商品ともマウスクリックなしで完了する |
-| L3-3 | `/stocktake`、一覧 | counted 済み（差異列に数値が入っている）行のコードを再度検索・スキャンし、「入れ直す」で別の数量を保存 | 確認ダイアログなしで保存でき、一覧の実カウント・差異・最終カウント日時が更新される |
+| L3-3 | `/stocktake`、一覧 | counted 済み（差異列に数値が入っている）で最終カウントが今日より前の日付の行（今日数えた行を今日入れ直しても日付は変わらず、更新を目で確かめられない）のコードを再度検索・スキャンし、「入れ直す」で別の数量を保存 | 確認ダイアログなしで保存でき、一覧の実カウント・差異・最終カウント（保存した日付）が更新される |
 | L3-4 | `/stocktake`、確定ダイアログ・結果画面 | 「棚卸しを確定する」を押す | ダイアログ title が「棚卸しの確定」、直下に黄色い警告ボックス（⚠️ アイコン + 太字「確定すると取り消せません」）と最後の精算の問いが表示される。未計数があれば理由ごとの一覧が出て、片付けてから確定すると、結果画面の「前回の棚卸し」カードの金額が、画面上部の「仕入原価総額」（今回確定した金額）と**異なる値**になっている |
 | L3-6 | `/stocktake`、一覧 | カウント中に別画面（商品登録）で新商品を1件登録し、棚卸し画面へ戻る | 一覧を開き直すと新規商品の明細が表示される（専用の通知は出ない） |
 | L3-7 | `/stocktake`、検索/スキャン欄 | L3-6 で登録した新商品の**商品名**（コード/JANではなく）を検索欄に入力して「対象を確認」を押す | 「対象にありません」エラーにならず、1件だけ一致すれば自動的にその商品が選択され数量入力欄にフォーカスが移る。複数件一致する名前で試すと候補テーブル（商品コード/商品名/部門 + 選択ボタン）が表示され、選択すると対象が確定する |
@@ -442,3 +448,5 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §73.15 現行buildの停止の節（SPEC-STOP-D4、案内の見出し・本文の正本、無効にする操作と使える操作）を追加。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§73.15 の停止の節を外し、F4・F5・D4・§73.4〜§73.13 の数の保存・確定・差異・結果の画面を計数の保存・完了の拒否の一覧・在庫を動かさない確定に置き換えた。L3 の (e) を自動 test へ移した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
 | 2026-10-24 | stocktake-count-runtime-b1 の Final Review の是正 | §73.1 と UI-10-D7 の現在形の説明を CMD-10 の 11 command（`save_stock_count` ほか）に揃えた（廃止した `update_count` と「7 本」が残っていた）。 |
+| 2026-10-27 | 画面の小口（導入の前の関門 6、起票） | 一覧の最終カウント列を効く計数の業務日にする決定（UI-10-D10 の段落、§73.6）と、route の `product` が外れたときの「今の数を入れる」の欄の閉じ方と、閉じる時点で外れていれば保存の時の戻り先へ戻らないこと（冒頭の D-118 の節。Plan Review round 3 の是正で、棚卸しの画面を離れた後に届いた保存の成功では何もしないことを足した）を置いた（proposed・未実装。[Plan Packet](../plans/2026-10-27-stocktake-screen-fixes.md)） |
+| 2026-10-27 | 画面の小口の実装（PR #210） | UI-10-D10 の段落・§73.6 の最終カウント列と、冒頭の D-118 の節の「今の数を入れる」の行の route の `product` が外れたときの閉じ方を、実装済みの記述にした（[Plan Packet](../plans/2026-10-27-stocktake-screen-fixes.md)） |

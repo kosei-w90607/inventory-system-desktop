@@ -49,7 +49,7 @@ export function useOperationLogs(args: {
 | ID | 決定 | 理由 / 棄却案 |
 |---|---|---|
 | UI-11c-D1 | URL search state は `start_date` / `end_date` / `operation_type` / `page` の4キーに限定し、いずれかの変更で `page=1` に戻す。初期の両日付未指定だけは `start_date = today-29`, `end_date = today`（JST暦日）を既定生成する。日付inputを明示的にclearした状態はURLの空文字で保持し、正規化後はCMDへ`null`として渡す。 | Owner Decision #2/#5 の固定。初期未初期化と利用者が両日付をclearした状態を混同すると片側指定が失われるため、空文字はURL/UI専用sentinelとする。`InventoryRecordsPage` / `StockMovementsPage` の既存 URL state 契約を再利用する（§74.17 Adjacent Pattern Audit）。 |
-| UI-11c-D2 | 期間は JST 暦日の `start` inclusive・`end` は翌日00:00:00 exclusive の predicate にする。既存 `list_movements` の `created_at <= dateTo + "T23:59:59"` パターン（`inventory_repo.rs`）は再利用せず、新しい predicate を採用する。 | Owner Decision #2 の明示固定（JST inclusive/exclusive）。既存パターンは秒精度に依存し、将来 `created_at` にミリ秒等が付いた場合に境界が曖昧になるリスクがある。操作ログは監査用途のため境界の厳密さを優先する。既存 movement/records 画面は本設計で変更しない（scenario が異なるため据え置き、§74.17）。 |
+| UI-11c-D2 | 期間は JST 暦日の `start` inclusive・`end` は翌日00:00:00 exclusive の predicate にする。 | Owner Decision #2 の明示固定（JST inclusive/exclusive）。保存の時刻の終端に時刻の文字列を足して比べる形は秒精度に依存し、将来 `created_at` にミリ秒等が付いた場合に境界が曖昧になるリスクがある。操作ログは監査用途のため境界の厳密さを優先する。在庫変動の履歴は D-118 の b2 で業務日の両端を含む比べに変わった（[44](44-cmd-inventory.md) の `list_movements`）。入出庫の記録の画面は本設計で変更しない（scenario が異なるため据え置き、§74.17）。 |
 | UI-11c-D3 | `LogQuery` に `start_date` / `end_date`（`Option<String>`, `YYYY-MM-DD`）を追加する。両方省略時は現行動作を完全維持する。`items` と `total_count` は同一 predicate を使う。 | Owner Decision #2。行 query と件数 query が別 predicate になると pagination 契約が壊れるため、同一 WHERE 句を共有する実装を必須にする（43-cmd-settings-log.md / 20-io-product-repo.md 側で明文化）。 |
 | UI-11c-D4 | operation_type の候補は現在ページ/現在の filter 済み結果から生成しない。保持中ログ全体の distinct operation_type を返す**新規 CMD `list_log_operation_types` + IO `find_distinct_operation_types`** を新設する。日本語ラベルとカテゴリ分類は frontend 所有の静的 registry（`OPERATION_TYPE_LABELS`）が持ち、backend が返す値のうち registry 未収載の値は raw 表示にする。 | Owner Decision #3 + Plan Packet 明示要求（「新CMD/IO契約の設計を含む」）。frontend 静的リストのみだと DB 実態との drift を検出できない。backend 側が日本語ラベルを持つ案は、ラベルが表示専用の UI 関心事であり CMD 層を厚くする（棄却）。 |
 | UI-11c-D5 | Table は1行1ログとし、各行の明示的なnative button「詳細を表示」で detail をその場（同じ行の直下）に展開する。展開中の可視文言とaccessible nameは「詳細を閉じる」に変わる。Enter / Spaceはnative button契約で動作する。行全体clickは追加せず、同時に展開できる行は常に1件（新しい行を開くと前の展開行は閉じる）。 | キーボード・アクセシビリティ上の操作対象を明確にし、行内の関連記録リンクとのclick競合と誤展開を避ける。複数同時展開も棄却（ページが際限なく伸び、スクロール位置を見失うリスクが高い）。 |
@@ -124,7 +124,7 @@ export interface NormalizedOperationLogsSearch {
 
 #### 74.4.3 既存パターンとの差分
 
-既存 `list_movements`（`inventory_repo.rs`）は `date_to` に対して「10文字なら `T23:59:59` を付与」という緩い当日末判定を使い、逆転範囲チェックを持たない。UI-11c は JST 暦日の inclusive/exclusive 境界と逆転範囲エラーを新規導入する。既存 movement/records 画面のこのロジックは本設計では変更しない（scenario が異なる: 操作ログは監査境界の厳密性を要求される一方、movement/records は業務日付ベースの緩い当日末で運用上問題が出ていない）。将来 movement/records 側で境界問題が実運用で顕在化した場合に横展開を検討する（decision-log D-037 参照）。
+UI-11c は JST 暦日の inclusive/exclusive 境界と逆転範囲エラーを新規導入する。在庫変動の履歴（[44](44-cmd-inventory.md) の `list_movements`）は D-118 の b2 で、保存の時刻でなく業務日（`YYYY-MM-DD`）の両端を含む比べに変わった。入出庫の記録の画面（`InventoryRecordsPage`）は日付の列を `<= date_to` で比べ、逆転範囲チェックを持たない。このロジックは本設計では変更しない（scenario が異なる: 操作ログは監査境界の厳密性を要求される一方、records は業務日付で比べ運用上問題が出ていない）。将来 records 側で境界問題が実運用で顕在化した場合に横展開を検討する（decision-log D-037 参照）。
 
 ---
 
@@ -569,7 +569,7 @@ SELECT changes() AS deleted_rows;
 | 診断ログファイル/ディレクトリ導線（MNT-04） | 別種のログ（アプリ診断ログ）であり operation_logs とは別責務 | `70-mnt-diagnostic-log.md` |
 | 業務記録の訂正・取消 | 操作ログは監査ログであり業務記録の代替にしない（TRACE-D3） | `65-inventory-record-traceability.md` |
 | `csv_import` / `stocktake` 記録種別の関連リンク | 両種の詳細 route は実装済みだが、2026-09-01 の producer 実効化 R3 では据置とし、許可リストからの除外を維持する。csv_import / stocktake producer への `record_type` 採用と関連リンク追加は、それぞれ別 follow-up で行う | `65-inventory-record-traceability.md` §65.10 実装スライス |
-| movement/records 画面の期間 predicate を JST inclusive/exclusive に統一 | scenario が異なるため本 PR では変更しない。実運用で境界問題が出た場合に横展開を検討 | `21-io-inventory-repo.md` / decision-log D-037 |
+| records 画面の期間 predicate を JST inclusive/exclusive に統一 | scenario が異なるため本 PR では変更しない。実運用で境界問題が出た場合に横展開を検討 | `21-io-inventory-repo.md` / decision-log D-037 |
 
 ---
 
@@ -586,7 +586,7 @@ SELECT changes() AS deleted_rows;
 | EmptyState | 単一文言 | 単一文言 | **2系統に分岐**（既定0件 vs filter該当0件。意図的な相違、UI-11c-D9） |
 | 範囲外 page 回復 | なし | なし | **追加する**（意図的な相違、UI-11c-D8） |
 | keyboard/行展開 | 該当機能なし | 該当機能なし | 新規パターン（§74.7、既存踏襲元なし） |
-| 期間 predicate | `date_to + T23:59:59` 緩い当日末 | 同左（`records.tsx` も同じ IO 経由） | **JST inclusive/exclusive に変更**（意図的な相違、UI-11c-D2） |
+| 期間 predicate | 業務日の両端を含む（b2） | 日付の列の両端を含む（`<= date_to`） | **JST inclusive/exclusive に変更**（意図的な相違、UI-11c-D2） |
 | 明示clear日付 | 日付キー欠落は既定値へfallback | 同左 | 片側・両側clearをURL空文字で明示し、初期未初期化と区別する（UI-11c-D1。既存画面への横展開はしない） |
 
 ---

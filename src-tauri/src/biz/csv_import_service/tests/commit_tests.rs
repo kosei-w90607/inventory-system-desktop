@@ -670,16 +670,33 @@ fn test_commit_req401_rejects_shared_or_newly_matched_jan_and_rechecks_settlemen
     assert!(matches!(commit_cached(&mut conn, cached, TEST_TODAY),
         Err(BizError::ImportError(ref m)) if m == REGISTRATION_CHANGED));
     assert_eq!(write_surface(&conn), before);
-    // (c) 順 1〜5 は cache の settlement で取り直す（preview の後に同じ精算の別の版が確定していれば順 4）
+    // (c) 順 1〜5 は cache の settlement で取り直す（preview の後に同じ精算の別の版が確定していれば順 4）。
+    // 名指す取込みの ID を 1 以外にする（Matrix RB7。取消済みの取込みは比べる先にならない）
+    super::parse_tests::insert_rolled_back_import(&conn, 6);
     let cached = preview_cached(&conn, make_z004_bytes(7, "2026-03-22", &rows[..1]));
-    commit_bytes(
+    let v2 = commit_bytes(
         &mut conn,
         make_z004_bytes(7, "2026-03-22", &[("4912345678901", "商品A", 2, 200)]),
         "v2",
     )
     .unwrap();
-    assert!(matches!(commit_cached(&mut conn, cached, TEST_TODAY),
-        Err(BizError::ImportError(ref m)) if m == "同じ精算と思われる別の資料が既に取り込まれています（精算 7）"));
+    assert_ne!(v2.csv_import_id, 1);
+    match commit_cached(&mut conn, cached, TEST_TODAY) {
+        Err(BizError::SettlementConflict {
+            message,
+            csv_import_id,
+        }) => {
+            assert_eq!(
+                message,
+                format!(
+                    "同じ精算と思われる別の資料が既に取り込まれています（精算 7、取込みID: {}）",
+                    v2.csv_import_id
+                )
+            );
+            assert_eq!(csv_import_id, v2.csv_import_id);
+        }
+        other => panic!("SettlementConflict を期待しました: {other:?}"),
+    }
     // 対照: preview の後に変わったのが在庫連動の設定だけなら拒否せず、stock_linked は確定の時点の値
     let cached = preview_cached(&conn, make_z004_bytes(8, "2026-03-23", &rows[..1]));
     conn.execute(

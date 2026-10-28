@@ -157,6 +157,7 @@ pub fn import_plu_register_snapshot(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     let mut conn = state

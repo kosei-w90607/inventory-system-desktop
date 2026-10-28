@@ -115,6 +115,7 @@ fn scan_register_sd_with_state(
                 field: None,
                 error_id: None,
                 stocktake_recovery: None,
+                related_csv_import_id: None,
             })
         }
         Some(path) => DailyReportSdSelection::Selected(PathBuf::from(path)),
@@ -164,6 +165,7 @@ fn parse_from_sd_with_state(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     let files = {
@@ -182,6 +184,7 @@ fn parse_from_sd_with_state(
                 field: None,
                 error_id: None,
                 stocktake_recovery: None,
+                related_csv_import_id: None,
             })?;
         snapshot
             .files_by_candidate
@@ -193,6 +196,7 @@ fn parse_from_sd_with_state(
                 field: None,
                 error_id: None,
                 stocktake_recovery: None,
+                related_csv_import_id: None,
             })?
     };
     preview_and_cache(state, files)
@@ -238,6 +242,7 @@ fn commit_daily_report_import_with_state(
                 field: None,
                 error_id: None,
                 stocktake_recovery: None,
+                related_csv_import_id: None,
             });
         };
         if cached.created_at.elapsed().as_secs() > constants::PREVIEW_CACHE_TTL_SECS {
@@ -249,6 +254,7 @@ fn commit_daily_report_import_with_state(
                 field: None,
                 error_id: None,
                 stocktake_recovery: None,
+                related_csv_import_id: None,
             });
         }
         cached.clone()
@@ -338,6 +344,7 @@ fn validate_daily_report_files(files: &[DailyReportSourceFileRequest]) -> Result
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     if files
@@ -350,6 +357,7 @@ fn validate_daily_report_files(files: &[DailyReportSourceFileRequest]) -> Result
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     Ok(())
@@ -363,6 +371,7 @@ fn validate_preview_token(preview_token: &str) -> Result<(), CmdError> {
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     Ok(())

@@ -74,7 +74,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 
 **enum 契約化（D-061 / D-064、二層化）**: wire 経路（CMD 境界の request/response）は tax_rate/stock_unit を generated enum で型検査する。一方、file 由来の `ImportRow.tax_rate: String` / `stock_unit: Option<String>` は維持する。file 経路の値域 guard は BIZ が持つ: tax_rate と stock_unit（preview が code か表示の語を code に正規化し、missing / 空文字は `None` のまま保持して INSERT 時に `"pcs"`、一覧に無い値は行の error。BIZ-01-D8）。
 
-**設計判断（BIZ-01-D1、JAN 形式 validation、2026-08-11）**: step 1g として jan_code が Some の場合の形式検証を追加する。適用は手入力 create 経路のみ。CSV/Z004 import 経路と既存 DB 行は対象外（実店舗データ互換のため寛容性を意図的に維持し、preview_import / commit_import は検証を追加しない）。edit は jan_code 変更不可（product_repo 契約）のため対象外。検証対象は受領済みの正規化後 wire 値であり、trim と全角→半角正規化は 51 UI-01b-D17（frontend）が実行済み、BIZ は再正規化しない。検証内容 = ASCII 数字 8 桁または 13 桁、かつモジュラス 10 チェックディジット整合。違反は `ValidationFailed`（文言は 51 UI-01b-D17 の 2 文言と完全一致）。チェックディジット判定は BIZ 所有の core validator（新設 module）が行い、CASIO adapter（io/plu_formatter）の CV17 出力検証関数は共有しない — adapter 詳細を core 契約へ昇格しない（[ARCHITECTURE.md POS Adapter Boundary](../ARCHITECTURE.md) / D-023）。EAN-8 は 7 桁データ部の先頭桁（idx 0）に重み 3 を割り当てる交互配分（idx 偶数 = 3 / 奇数 = 1）で、EAN-13（idx 偶数 = 1 / 奇数 = 3）とは重み配分の偶奇が逆である（既存 adapter 関数のコピー実装禁止）。core validator（BIZ）/ frontend validator（51 の `jan-code.ts`）/ adapter validator（io、不変）は同一 GS1 標準の意図的独立実装とし、golden 独立転記 oracle は 2 profile で拘束する: EAN-13 は三側共通（valid `4901234567887` / invalid `4901234567890`、偶奇反転 mutation の kill case = `4901234567887`）、EAN-8（GS1 公表例 `96385074` / synthetic `49123456`、kill case = `49123456`）は core/frontend の二側のみ（adapter は EAN-13 専用のため置かない）。ISBN-10 は許容しない（本は 13 桁 JAN で登録 = owner 裁定 2026-08-11）。
+**設計判断（BIZ-01-D1、JAN 形式 validation、2026-08-11。適用の経路は 2026-10-27 に BIZ-01-D10 で改めた）**: step 1g として jan_code が Some の場合の形式検証を追加する。適用は手入力 create 経路と商品 CSV の取込み（preview_import の行の検証と commit_import の TX を開く前の再検証。BIZ-01-D10、D-140。判定は下の core validator を共有し、文は経路ごとに持つ）。Z004 の取込み（商品を作らない）と既存 DB 行は対象外。edit は jan_code 変更不可（product_repo 契約）のため対象外。検証対象は受領済みの正規化後 wire 値であり、trim と全角→半角正規化は 51 UI-01b-D17（frontend）が実行済み、BIZ は再正規化しない。検証内容 = ASCII 数字 8 桁または 13 桁、かつモジュラス 10 チェックディジット整合。違反は `ValidationFailed`（文言は 51 UI-01b-D17 の 2 文言と完全一致）。チェックディジット判定は BIZ 所有の core validator（新設 module）が行い、CASIO adapter（io/plu_formatter）の CV17 出力検証関数は共有しない — adapter 詳細を core 契約へ昇格しない（[ARCHITECTURE.md POS Adapter Boundary](../ARCHITECTURE.md) / D-023）。EAN-8 は 7 桁データ部の先頭桁（idx 0）に重み 3 を割り当てる交互配分（idx 偶数 = 3 / 奇数 = 1）で、EAN-13（idx 偶数 = 1 / 奇数 = 3）とは重み配分の偶奇が逆である（既存 adapter 関数のコピー実装禁止）。core validator（BIZ）/ frontend validator（51 の `jan-code.ts`）/ adapter validator（io、不変）は同一 GS1 標準の意図的独立実装とし、golden 独立転記 oracle は 2 profile で拘束する: EAN-13 は三側共通（valid `4901234567887` / invalid `4901234567890`、偶奇反転 mutation の kill case = `4901234567887`）、EAN-8（GS1 公表例 `96385074` / synthetic `49123456`、kill case = `49123456`）は core/frontend の二側のみ（adapter は EAN-13 専用のため置かない）。ISBN-10 は許容しない（本は 13 桁 JAN で登録 = owner 裁定 2026-08-11）。
 
 **設計判断（BIZ-01-D2、plu_target 初期提案判定の二重実装契約、2026-08-11）**: `should_default_plu_target`（一覧 inline 導出と CSV import の初期 plu_target 導出が使用）と frontend `suggestPluTarget`（51 UI-01b-D18）は「ASCII 数字 13 桁のみ true」の同一意味論を持つ意図的二重実装である。BIZ 側の入力 domain は正規化後 wire 値であり trim を行わない（現実装どおり）。実装統合（wire 越え SSOT 化）は行わず、両側に同一ケース表の独立転記 oracle drift-guard test を置いて意味論 drift を機械検出する。
 
@@ -486,7 +486,8 @@ struct OldJanAliasAnswer {
    - 部門ID: 整数変換可能、departments に存在すること
    - 売価: 0以上の整数。原価: 小数 2 桁までの円（SPEC-UNIT-D10 の `原価` の行の error の分け方）
    - 税率: '10', '8', '0' のいずれか
-   - `PLU対象=1` かつ JAN が 13 桁数字でない、または check digit 不正の場合は preview warning を付けて `plu_target=0` に正規化する
+   - 商品コードと JANコードの形（BIZ-01-D10）: 指数の形の `商品コード`・`JANコード`、13 桁の数字の `商品コード` で `JANコード` が空の行、`JANコード` が BIZ-01-D1 の判定（ASCII 数字 8 桁か 13 桁で、チェックディジットが合う）を通らない行は行の error。重複の分類（手順 5）より前なので、上書きの候補の行にも当たる
+   - `PLU対象=1` かつ JAN が 13 桁数字でない（空か 8 桁。形の誤った JAN は上の BIZ-01-D10 の行の error が先に止める）場合は preview warning を付けて `plu_target=0` に正規化する
    - バリデーション失敗 → error_rows に追加
 
 5. **重複チェック**
@@ -530,9 +531,10 @@ struct ImportResult {
 
 **処理ステップ**:
 
-0. **商品コードの上限の再検証**（BIZ-01-D5）
+0. **商品コードの上限と、商品コード・JANコードの形の再検証**（BIZ-01-D5・BIZ-01-D10）
    - TX を開く前に valid_rows の全行を §4.8 step 4 と同じ判定で調べる（wire から来る行を信頼しない）
    - 1 行でも 100 文字（UTF-16 code unit）を超えれば BizError::ValidationFailed("商品コードは100文字以内で入力してください") を返し、DB を変えない（正常な行も登録しない）
+   - 1 行でも BIZ-01-D10 の形に当たれば、valid_rows の順で最初に当たった行の、preview の行の error と同じ最初の文で BizError::ValidationFailed を返し、DB を変えない（正常な行も登録しない）。判定は行の値だけで DB を読まないので、preview を通った行では起きない（preview を通らない wire にだけ当たる）
 
 0b. （proposed・未実装、D-122）**前の JAN の答えの形の検査**: TX を開く前に §4.9.2 の判定表の「TX を開く前」の行（J1・J2）を確かめ、満たさなければその行の error を返し、DB を変えない
 
@@ -562,11 +564,28 @@ struct ImportResult {
 
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
-- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
+- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限と、商品コード・JANコードの形は step 0 で再検証する（BIZ-01-D5・BIZ-01-D10）
 - （D-118 の b1）共有 JAN の不変条件か在庫連動を始める検査に当たる行（preview の後に DB が変わったか、上書きを選んだ行どうしが当たった場合）→ 上の「計数の置き場と在庫の求め直しの契約」の節の形で `BizError::ValidationFailed`（field なし、最初に当たった行を名指す）、TX 全体を戻す
 - （proposed・未実装、D-122）前の JAN の答えの形・別名の判定を満たさない → §4.9.2 の判定表の行の error（step 0b の行は DB を変えず、step 2 e. の行は TX 全体を戻す）
 
 **設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。
+
+**設計判断（BIZ-01-D10、商品 CSV の商品コードと JANコードの形、2026-10-27、D-140）**: 商品 CSV の取込みは、黙って入るとレジの売上（Z004）に引き当たらないか、誤ったコードのまま変えられない（SP-102-04）形の行を、preview の行の error で名指して止める（owner の決定、repo 外の回答台帳 TD-421・TD-426）。判定は行の値（IO-03 が前後の空白を除いた後）だけで行い、DB を読まない。preview（§4.8 手順 4。重複の分類より前なので新規の行と上書きの候補の行の両方）と commit（§4.9 手順 0。TX を開く前、wire の行を信頼しない）で同じ判定を 1 か所の関数で使う。
+
+| # | 当たる行 | 行の error の文（`{値}` は CSV の値） |
+|---|---|---|
+| F1 | `商品コード` か `JANコード` が指数の形（ASCII 数字が 1 つ以上、任意で `.` と ASCII 数字 1 つ以上、`E` か `e`、`+`、ASCII 数字 1 つ以上。例 `4.90123E+12`・`5E+12`）。列ごとに判定し、両方が当たれば 2 つ出す | `{列}が指数の形です: '{値}'。Excel が桁を落として書いた値です。元の Excel でその列を文字列の値にして（TEXT の列）保存し直してください。セルを選んだときの上の欄（数式バー）に E+ が出るなら、元の資料から全部の桁を入れ直してください`（`{列}` は `商品コード` か `JANコード`。直し方は初期投入の手順書の流れ 1 の手順 4 の `TEXT` の列と同じで、普通は列ごとに 1 回で直り、使い手に 1 行ずつ打ち直させない。D-127） |
+| F2 | `商品コード` が ASCII 数字ちょうど 13 桁で、`JANコード` が空（列が無い場合を含む） | `商品コードが13桁の数字でJANコードが空です: '{値}'。JANを商品コードにした商品は、JANコードにも同じ値を入れてください` |
+| F3 | `JANコード` が空でなく F1 に当たらず、BIZ-01-D1 の core validator（`biz::jan_code::validate`）が長さか文字で外す | `JANコードが8桁か13桁の数字ではありません: '{値}'。先頭の0が落ちていないかを見て、商品のバーコードの数字を元の資料から文字列で入れ直してください` |
+| F4 | `JANコード` が空でなく F1 に当たらず、同じ validator がチェックディジットで外す | `JANコードのチェックディジットが合いません: '{値}'。商品のバーコードの数字を元の資料から入れ直してください` |
+
+- 行の errors の中の順: 形の検査の文は全部、`JANコード` を読んだ直後の 1 か所に、上の表の順（F1 の `商品コード`、F1 の `JANコード`、F2、F3、F4）で入れる（F1 の `JANコード` と F3・F4 は排他、F2 と F1 の `JANコード` も排他）。行の error は今と同じく `ImportErrorRow.errors` の文字列で、wire の型は変えない。
+- 通るもの（今のまま）: `JANコード` の空（JAN を持たない商品）、独自コードの行（`JANコード` が空でも）、13 桁の数字の `商品コード` に `JANコード` があり F3・F4 を通る行（`商品コード` と同じ値でなくても通る）、先頭 2 の店内コードと共有 JAN（グループコード）でチェックディジットが合う値（GS1 の同じモジュラス 10。実物のバーコードは合う）、12 桁・14 桁の数字の `商品コード` で `JANコード` が空の行（F2 は 13 桁だけ）。12 桁を通す理由: 値だけで「JAN を商品コードにした行」と言えるのは 13 桁ちょうどだけで、12 桁の数字は先頭の 0 が落ちた 13 桁の JAN とほかの数字のコードを値で分けられず、店の今の独自コードに数字だけのものがあるかは確かめていない（8 桁と同じ前提。Revisit）。この形は、当面は初期投入の手順書の流れ 1 の手順 4 の不一致の確かめ（数字だけの `商品コード` が `JANコード` と同じでない行が 0）が拾う（止めるかは下の Revisit で決める）。
+- 文を手入力の create（51 UI-01b-D17 と完全一致の 2 文）と分ける理由: CSV の行は Excel で直すので、原因の見当（先頭の 0、Excel の桁落ち）と直す場所（元の資料、文字列で入れる）を名指す。判定（validator）は共有し、文だけを経路が持つ。
+- 上書きの行で `商品コード` が 13 桁の数字の商品の JAN を消す行（`JANコード` が空か列が無い）は F2 で止まる（その JAN を商品コードにした商品から JAN を消すと Z004 が引き当たらない）。13 桁の数字でない商品の JAN を消す上書き（意図した契約。上の BIZ-01-D8 の上書きの段の `plu_dirty` の項、§4.9.2 の「JAN を空にする変更」）は止めない。
+- 却下: 形の誤りを warning にして取り込む（黙って入る形が残り、初期投入で見落とす。TD-421 の答え b は止める）。行を補う（`JANコード` を `商品コード` から補う、指数の形を数に戻す。指数の形は桁が既に失われ、補った値は誤る。13 桁の独自コードを JAN と見なす誤りも作る）。DB の CHECK（既存の DB 行の互換と `products` の作り直し。master-tables の「jan_code の形式 validation を DB に置かない理由」）。frontend で検査する（preview の行の分類は BIZ が持つ。UI に判定を写さない）。
+- 範囲: 本判定より前に入った DB の行（開発・試験 DB）は直さず、その商品を上書きする CSV の行だけが当たる（その行の JAN を直して取り込む）。Z004 の取込みは商品を作らないので対象外のまま。
+- Revisit: 8 桁の JAN を商品コードにする形（初期投入の手順書の J4 の a）を採るとき（8 桁の数字の `商品コード` で `JANコード` が空の行も F2 に足すか）。手入力の create は 8 桁の JAN もそのまま商品コードにする（§4.2 の手順 3 の product_code の決定。`test_create_product_req101_accepts_valid_jan_8_and_jan_13` が `96385074`・`49123456` で assert する）ので、J4 の答えと関係なく導入の後に 8 桁の JAN の商品コードの商品ができ、その商品を CSV で上書きして `JANコード` を空にすると JAN が黙って消える（Z004 が引き当たらない。13 桁と違い F2 は止めない）。8 桁の JAN をレジがどう Z004 に書くかが分かったとき（13 桁で `00000` から始まる `JANコード` を止めるか）。店の独自コードに数字だけのものが無いと分かったとき（12 桁の数字の `商品コード` で `JANコード` が空の行〈先頭の 0 が落ちた 13 桁の JAN を商品コードにした行〉も止めるか）。
 
 ---
 

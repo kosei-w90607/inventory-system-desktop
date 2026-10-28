@@ -130,7 +130,7 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 ## 16-17. stocktakes + stocktake_items（棚卸し）
 
 ### 役割
-年末棚卸しの記録。10月〜大晦日の長期作業に対応する中断・再開機能付き。
+年末棚卸しの記録。一人で数千点の商品を回る作業（10 月からの準備と、大晦日に終える正式カウント。[73](../function-design/73-ui-stocktake.md) §73.1）に対応する中断・再開機能付き。
 
 ### stocktakes カラム定義
 

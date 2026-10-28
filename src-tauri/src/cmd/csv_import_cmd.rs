@@ -51,6 +51,7 @@ pub fn parse_and_validate_csv(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
 
@@ -124,6 +125,7 @@ pub fn commit_csv_import(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
 
@@ -143,6 +145,7 @@ pub fn commit_csv_import(
                     field: None,
                     error_id: None,
                     stocktake_recovery: None,
+                    related_csv_import_id: None,
                 });
             }
             Some(cached) => {
@@ -163,6 +166,7 @@ pub fn commit_csv_import(
                         field: None,
                         error_id: None,
                         stocktake_recovery: None,
+                        related_csv_import_id: None,
                     });
                 }
                 cached.clone()
@@ -206,6 +210,23 @@ pub fn rollback_csv_import(
         .lock()
         .map_err(|error| CmdError::internal("DB接続エラー", error))?;
     csv_import_service::rollback_csv_import(&mut conn, csv_import_id).map_err(CmdError::from)
+}
+
+/// 取消の前の読取り（取り消した後の要再確認・取り込み直す精算・名指す完了した棚卸し。何も書かない）
+///
+/// docs/function-design/41-cmd-pos.md §17.5 preview_rollback_csv_import
+#[tauri::command]
+#[specta::specta]
+pub fn preview_rollback_csv_import(
+    state: State<AppState>,
+    csv_import_id: i64,
+) -> Result<csv_import_service::RollbackPreview, CmdError> {
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    csv_import_service::preview_rollback_csv_import(&mut conn, csv_import_id)
+        .map_err(CmdError::from)
 }
 
 /// CSV取込み履歴の一覧を返す
@@ -328,19 +349,27 @@ mod tests {
                 .contains_key(&token)
         };
 
-        // preview の後に同じ精算の別の版が確定した → 順 4 で拒否、token は残る
-        let other = insert_import(
-            &app.state::<AppState>().db.lock().unwrap(),
-            "completed",
-            "other",
-        );
+        // preview の後に同じ精算の別の版が確定した → 順 4 で拒否、token は残る。名指す取込みの ID は
+        // 1 でも最大でもない値にする（前後に比べる先にならない取消済みの取込み。Matrix RB7）
+        let other = {
+            let state = app.state::<AppState>();
+            let conn = state.db.lock().unwrap();
+            insert_import(&conn, "rolled_back", "before");
+            let other = insert_import(&conn, "completed", "other");
+            let after = insert_import(&conn, "rolled_back", "after");
+            assert!(other != 1 && other < after);
+            other
+        };
         for _ in 0..2 {
             let error = commit_csv_import(app.state::<AppState>(), token.clone()).unwrap_err();
             assert_eq!(error.kind, CmdErrorKind::ImportError);
             assert_eq!(
                 error.message,
-                "同じ精算と思われる別の資料が既に取り込まれています（精算 1）"
+                format!(
+                    "同じ精算と思われる別の資料が既に取り込まれています（精算 1、取込みID: {other}）"
+                )
             );
+            assert_eq!(error.related_csv_import_id, Some(other));
             assert!(has_token(&app));
         }
 
@@ -349,6 +378,40 @@ mod tests {
         let result = commit_csv_import(app.state::<AppState>(), token.clone()).unwrap();
         assert_eq!(result.total_items, 1);
         assert!(!has_token(&app));
+    }
+
+    #[test]
+    fn test_preview_rollback_csv_import_cmd_req401_maps_error_kinds() {
+        // REQ-401 / 41 §17.5 preview_rollback_csv_import（Matrix W1）: 無い ID は not_found、取消済みは
+        // validation、成功は BIZ の精算回数をそのまま返し、何も書かない（取込みは active のまま）
+        let (_dir, conn) = setup_test_db();
+        let completed = insert_import(&conn, "completed", "completed-hash");
+        let rolled_back = insert_import(&conn, "rolled_back", "rolled-back-hash");
+        let app = app_with(conn);
+
+        let preview = preview_rollback_csv_import(app.state::<AppState>(), completed).unwrap();
+        assert_eq!(
+            (preview.csv_import_id, preview.settlement_no),
+            (completed, 1)
+        );
+        let status: String = app
+            .state::<AppState>()
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT status FROM csv_imports WHERE id = ?1",
+                [completed],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(status, "completed");
+        let missing = preview_rollback_csv_import(app.state::<AppState>(), 99_999).unwrap_err();
+        assert_eq!(missing.kind, CmdErrorKind::NotFound);
+        assert_eq!(missing.message, "CSV取込み記録が見つかりません: ID 99999");
+        let done = preview_rollback_csv_import(app.state::<AppState>(), rolled_back).unwrap_err();
+        assert_eq!(done.kind, CmdErrorKind::Validation);
+        assert_eq!(done.message, "この取込みは取り消し済みです");
     }
 
     #[test]

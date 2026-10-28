@@ -82,23 +82,25 @@ UI-00 ([53-ui-home.md](53-ui-home.md)) が「4 useQuery 並列 + 部分障害許
 | ファイル | 責務 |
 |---|---|
 | `src/routes/csv-import.tsx` | TanStack Router file route。`<CsvImportPage />` mount のみに痩せる |
-| `src/features/csv-import/CsvImportPage.tsx` | 最上位レイアウト。ページタイトル「売上データ取込み」とタブ（既定 `日報取込み` / `商品別CSV取込み（Z004）`）を所有する。Z004タブでは既存 `CsvImportFlowPanel` を表示する |
+| `src/features/csv-import/CsvImportPage.tsx` | 最上位レイアウト。ページタイトル「売上データ取込み」とタブ（既定 `日報取込み` / `商品別CSV取込み（Z004）`。search `tab` で初期選択、§55.11）を所有する。Z004タブでは「取り込んだ記録を見る（取り消すときはここから）」と既存 `CsvImportFlowPanel` を表示する |
 | `src/features/daily-report-import/DailyReportImportPage.tsx` | 日報取込みタブ。SD から読む一覧（UI-07-D15）と予備のファイル選択（UI-07-D16。1 つずつの選択の一覧と置き換えの確認）、プレビュー、同日追加確認、取込み結果、論理取消を描画する |
 | `src/features/daily-report-import/types.ts` | `DailyReportImportState`（discriminated union。状態の一覧は UI-07-D15 (5) の `scanning`・`sd_list`、SD から来たことの `sdOrigin`、recoverTo の `"sd_list"` を含む）+ `DailyReportImportAction` 等の日報画面ローカル型 |
 | `src/features/daily-report-import/reducer.ts` | 日報取込み state 遷移の純関数。preview snapshot を importing/error 復帰に保持する |
 | `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts` | `useReducer + useMutation × 5（SD の scan・SD からの preview・手で選んだ preview・commit・rollback）+ useBlocker` を束ねる日報取込み hook。SD は `scanRegisterSd`・`parseAndValidateDailyReportFromSd`（UI-07-D15）、予備の日報ファイル選択は `@tauri-apps/plugin-dialog.open` + `@tauri-apps/plugin-fs.readFile` で選択の一覧を持ち、dialog の path を各要素の `source_path` に入れて CMD-12 を呼ぶ（UI-07-D16）。ファイル選択ダイアログは前回選択フォルダ（localStorage key `inventory:daily-report-import:last-dir:v1`、選んだ時に選択パスから導出して保存）を `defaultPath` に渡して開く。localStorage 不可の環境では記憶のみ無効化し選択フローは継続する（issue #135 派生。CASIO PCツール保存領域の深い年/月ディレクトリを毎回辿る operator 負担の除去）。commit/rollback 成功時は D-052-C10 の SSOT helper を適用する |
 | `src/features/daily-report-import/reducer.test.ts` | REQ-401 日報取込み UI state の focused unit tests |
 | `src/features/csv-import/CsvImportPage.tsx` 内 `CsvImportFlowPanel` | 既存Z004取込みフローの本体。`useCsvImportFlow()` の戻り値を子コンポーネントに分配し、`state.status` で 4 step UI を切替（`ParseStep` / `PreviewStep` / `ImportingStep` / `ResultStep`）+ `error` variant 重ね描き |
-| `src/features/csv-import/types.ts` | `CsvImportState`（6 variant discriminated union）+ `CsvImportAction`（9 variant）+ `ErrorRecoverTo` 等の画面ローカル型 |
+| `src/features/csv-import/types.ts` | `CsvImportState`（6 variant discriminated union）+ `CsvImportAction`（9 variant）+ `ErrorRecoverTo` 等の画面ローカル型。search `tab` の値の集合 `CSV_IMPORT_TAB_VALUES` と `csvImportSearchSchema`（UI-STATE-D2、§55.11） |
 | `src/features/csv-import/reducer.ts` | `csvImportReducer(state, action): CsvImportState` 純関数。9 action × 6 state の遷移表を 1 箇所に集約。テスト容易性のため副作用ゼロ |
-| `src/features/csv-import/hooks/useCsvImportFlow.ts` | `useReducer + useMutation × 3 + useBlocker` を束ねる中核 hook。dispatch + 副作用 trigger 関数（`selectFile` / `confirmImport` / `rollback` / `reset`）を露出 |
+| `src/features/csv-import/hooks/useCsvImportFlow.ts` | `useReducer + useMutation × 2 + useRollbackCsvImport + useBlocker` を束ねる中核 hook。dispatch + 副作用 trigger 関数（`selectFile` / `confirmImport` / `rollback` / `reset`）を露出 |
+| `src/features/csv-import/hooks/useRollbackCsvImport.ts` | 取消の mutation（成功の Toast 8 秒・D-052-C9 の再取得・失敗の Toast）。取込みの画面と CSV取込みの詳細が使う（UI-07-D18） |
+| `src/features/csv-import/components/RollbackConfirmDialog.tsx` | 取消の確認（開くたびに `previewRollbackCsvImport` を読み、読めるまで「取り消す」を押せない）。取込みの結果の画面と CSV取込みの詳細が使う（UI-07-D18） |
 | `src/lib/extractFilename.ts` | 共通 FilePicker の dialog path / drop `File.name` から basename を取り出す純関数。`/` と `\` の両区切りに対応し、Windows WebView2 の絶対パス流入を両経路で防ぐ |
 | `src/features/csv-import/lib/formatErrorRow.ts` | `ErrorRow.error_type` 4 値（`unmatched_product` / `invalid_format` / `invalid_jan` / `invalid_number`）→ Badge variant + ラベル変換純関数 |
 | `src/features/csv-import/components/ParseStep.tsx` | step 1/3。`FileDropzone` + `Loader2` spinner（parsing 中）+ 状態文言 |
 | `src/features/csv-import/components/PreviewStep.tsx` | step 2/3。`FileInfo` / `MatchedSummary` / `ErrorSummary` と知らせ（取り込まれていない精算・日付のずれ）の表示 + 「取り込む」「ファイルを選び直す」CTA |
 | `src/features/csv-import/components/ImportingStep.tsx` | step 3/3（commit 進行中）。`Loader2 + animate-spin` + 「取込み中…数百行で約 N 秒かかります」補助文言 + 離脱不可バナー |
-| `src/features/csv-import/components/ResultStep.tsx` | 完了表示。4 サマリ（csv_import_id / total_items / total_amount / skipped_count）+ 「売上レポートを見る」（UI-09a 着手済、`navigate({ to: "/reports/daily", search: { date: settlementDate } })` 遷移、Round 1 P1 fix で settlementDate URL state 化）+ 「取り消す」（rollback）+ 「ホームに戻る」 |
-| `src/features/csv-import/components/ErrorState.tsx` | error variant の表示。CmdError kind 別メッセージ + 「最初に戻る」or「プレビューに戻る」ボタン（`recoverTo` で分岐）|
+| `src/features/csv-import/components/ResultStep.tsx` | 完了表示。4 サマリ（csv_import_id / total_items / total_amount / skipped_count）+ 「売上レポートを見る」（UI-09a 着手済、`navigate({ to: "/reports/daily", search: { date: settlementDate } })` 遷移、Round 1 P1 fix で settlementDate URL state 化）+ 「取り消す」（rollback。確認は `RollbackConfirmDialog`）+ 「ホームに戻る」 |
+| `src/features/csv-import/components/ErrorState.tsx` | error variant の表示。CmdError kind 別メッセージ（`related_csv_import_id` が数なら取込みの詳細への link。§55.11）+ 「最初に戻る」or「プレビューに戻る」ボタン（`recoverTo` で分岐）|
 | `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx` | 日報取込みタブが使う（Z004 は D-118 の b1 で使わなくなった）。`AdditionalImportConfirmationRequired` 時にactive同日import全件と今回分を示す shadcn `<AlertDialog>`。Esc はcancel（Radix標準）|
 | `src/features/csv-import/components/ErrorRowsTable.tsx` | `ErrorSummary.items`（最大 100 件）の表示。`formatErrorRow` の Badge variant で色分け + `normalized_jan === null` で「(不明)」表示 |
 | `src/features/csv-import/components/FileDropzone.tsx` | 共通 `FilePicker`（`accept=".csv,.txt"`）を用い、native dialog と drag & drop の両経路を同じ `{ bytes, filename, size }` 契約へ統合する |
@@ -175,7 +177,7 @@ invalid 遷移（例: `idle` で `parse_succeeded`）は reducer 内で現 state
 |---|---|---|
 | `parseAndValidateMutation` | `{ fileBytes: number[]; filename: string }` | `{ previewData: PreviewData; previewToken: string }` |
 | `commitMutation` | `{ previewToken: string; settlementDate: string }` | `ImportResult` |
-| `rollbackMutation` | `{ csvImportId: number }` | `RollbackResult` |
+| `rollbackMutation`（`useRollbackCsvImport`） | `csvImportId: number` | `RollbackResult` |
 
 `commands.*` 経由は specta 自動 camelCase 化（CMD 引数: `file_bytes` → `fileBytes`、`preview_token` → `previewToken`、`csv_import_id` → `csvImportId`）。struct field は snake_case 直接アクセス（`previewData.file_info.settlement_date` 等、[53-ui-home.md §53.2 bindings.ts subsection](53-ui-home.md) と同方針）。
 
@@ -226,7 +228,7 @@ useMutation には queryKey を持たせない（TanStack Query v5 仕様、muta
 |---|---|---|
 | `parseAndValidateMutation` | `(args) => unwrapResult(commands.parseAndValidateCsv(args.fileBytes, args.filename))` | なし（preview はキャッシュ非対象、CMD 層内部 memory cache に保持） |
 | `commitMutation` | `(args) => unwrapResult(commands.commitCsvImport(args.previewToken))` | D-052-C8 の SSOT helperを適用 |
-| `rollbackMutation` | `(args) => unwrapResult(commands.rollbackCsvImport(args.csvImportId))` | D-052-C9 の SSOT helperを適用（集合は C8 と同じでも mutation entry は分離） |
+| `rollbackMutation`（共有の `useRollbackCsvImport`、§55.11） | `(csvImportId) => unwrapResult(commands.rollbackCsvImport(csvImportId))` | D-052-C9 の SSOT helperを適用（集合は C8 と同じでも mutation entry は分離） |
 
 **prefix helper の根拠**: page/perPage で分かれる query を mutation 後に一括で stale 化するため、root/prefix factory を `query-keys.ts` に置く。どの prefix を C8/C9 に含めるかは D-052 SSOT が所有する（TanStack Query v5 の [prefix match](https://tanstack.com/query/v5/docs/framework/react/guides/query-invalidation)）。
 
@@ -292,7 +294,7 @@ Phase 2 closeout で `typedInvoke` fallback / baseline 監視は撤去済み。C
 15. `StepIndicator` "3/3 結果" + `ResultStep` mount
 16. 4 サマリ表示（csv_import_id / total_items / total_amount / skipped_count）+ status badge（`"completed"` = 成功 / `"completed_partial"` = 部分成功）+ 数え直しが必要な商品（`recheck_targets`。商品・範囲・理由と「棚卸しの画面で入れ直す」）
 17. 「売上レポートを見る」CTA → `navigate({ to: "/reports/daily", search: { date: settlementDate } })` で UI-09a 日次売上レポート画面へ遷移、settlementDate を URL state で渡して取込み済 (≠当日) のケースでも対象日のデータを直接表示（UI-09a PR Round 1 P1 fix で確立、`aria-disabled` + Tooltip + `onClick preventDefault` の disabled 状態は撤去済）
-18. 「取り消す」CTA → 対象import IDとsummaryを保持した `<AlertDialog>` で `この取込みだけを取り消します。同じ日の他の取込みは残ります。` と確認 → 対象IDでrollback → 成功時は日次/商品/月次/一覧/詳細をD-052契約どおりinvalidateし、残存aggregateを再取得してからidleへ戻り、idle の画面の上に取消の結果（取り消した件数と数え直しが必要な商品）を出す
+18. 「取り消す」CTA → UI-07-D18（§55.11）の共通の確認（対象import ID・summary・取消の前の読取りの名指し）→ 対象IDでrollback → 成功時は日次/商品/月次/一覧/詳細をD-052契約どおりinvalidateし、残存aggregateを再取得してからidleへ戻り、idle の画面の上に取消の結果（取り消した件数と数え直しが必要な商品）を出す
 19. 「ホームに戻る」CTA → `router.navigate({ to: "/" })`、Sidebar 経由でもよい
 
 **Error 経路**:
@@ -309,7 +311,7 @@ Phase 2 closeout で `typedInvoke` fallback / baseline 監視は撤去済み。C
 
 | CmdError.kind | 表示 | recoverTo | 補足 |
 |---|---|---|---|
-| `import_error` | `ErrorState` フルスクリーン表示。「再度ファイルを選択してください」+ メッセージ本文（BIZ-03 由来の日本語）+「最初に戻る」ボタン | `"idle"` | キャッシュ期限切れ（30 分超）/ プレビュー消失 / 重複ブロック。preview に戻っても再利用不可、idle 強制 |
+| `import_error` | `ErrorState` フルスクリーン表示。「再度ファイルを選択してください」+ メッセージ本文（BIZ-03 由来の日本語）+「最初に戻る」ボタン。`related_csv_import_id` が数（32 の順 4 の拒否）なら Alert の中に取込みの詳細への link（§55.11） | `"idle"` | キャッシュ期限切れ（30 分超）/ プレビュー消失 / 重複ブロック / 精算の識別の拒否。preview に戻っても再利用不可、idle 強制 |
 | `validation` | `ErrorState` 表示。recoverTo は元 state による（parsing → idle、importing → preview） | `"idle"` or `"preview"` | サイズ超過 / プレビュー token 不正等、CMD-07 入口で弾かれた防御チェック |
 | `internal` | `ErrorState` 表示。題名「エラーが発生しました」+ 本文（`describeError`）+ recoverTo に応じた「最初に戻る」/「プレビューに戻る」ボタン。recoverTo は元 state による（parsing → idle、importing → preview） | `"idle"` or `"preview"` | DB ロック競合等。取込み（commit）の失敗ならプレビューに戻り、同じプレビューから取込みをやり直せる |
 | `not_found` ほか上記以外の kind | `internal` と同じ `ErrorState` 表示（題名「エラーが発生しました」） | `"idle"` or `"preview"` | 解析・取込みでは通常発生しないが、発生しても `ErrorState` に出す |
@@ -389,7 +391,7 @@ idle state では特に loading 表示なし。`FileDropzone` が常時 mount �
 
 #### `useBlocker` による importing 中の常時 block
 
-TanStack Router の `useBlocker` を `useCsvImportFlow` 内で登録し、`state.status === "importing"` 期間中の navigation を block する。
+TanStack Router の `useBlocker` を `useCsvImportFlow`（Z004 タブ）と `useDailyReportImportFlow`（日報取込みタブ。`src/features/daily-report-import/hooks/useDailyReportImportFlow.ts`）の中で同じ形で登録し、それぞれの `state.status === "importing"` 期間中の navigation を block する。本節が持つ進行中の処理のガードの hook（[UI_TECH_STACK](../UI_TECH_STACK.md) UI-USW-D1 の `useBlocker` の直接使用の例外）は、この 2 つと、取消の応答を待つ間の `useRollbackCsvImport`（下の UI-07-D18）。
 
 ```ts
 useBlocker({
@@ -402,13 +404,20 @@ useBlocker({
 
 - importing 中に確認ダイアログを出すと、利用者が「はい」を押した場合に commit IPC が完了する前に画面が unmount され、`commitMutation.onSuccess` の invalidation / settlementDate state 反映 / Sonner success トーストが page unmount 後に走る → state が宙に浮く
 - 解: 常時 block + 画面上に状態バナー「取込み完了まで他画面に移れません」を ImportingStep 内で表示。利用者は画面外操作（Sidebar クリック / ブラウザバック）が無視されるが、画面内の操作は IPC 完了を待つだけなので体感的な詰まり感はない（数秒〜10 秒程度）
-- `enableBeforeUnload`: アプリ全体 close / リロード時にもブラウザ標準の「変更を保存していない可能性…」確認を出す。Tauri webview は beforeunload を尊重する
+- 止める範囲: route の移動（`useBlocker`）と、リロード等の page の離脱（`enableBeforeUnload`。ブラウザ標準の「変更を保存していない可能性…」確認）。native の window の close（×・Alt+F4）は、[UI_TECH_STACK](../UI_TECH_STACK.md) UI-USW-D4 のとおり止めることを保証しない（Tauri の native の close は webview の `beforeunload` を経ない。取込み・取消・未保存の編集の 3 つの止めに横断する `onCloseRequested` は UI-USW-D4 の別 backlog）。本節の止めは全てこの範囲（取消は単一の transaction で DB を守るので、native の close で失うのは結果の通知だけ）
+
+#### 取消の応答を待つ間の block（UI-07-D18）
+
+Z004 の取消（§55.11）の応答を待つ間も、importing と同じ範囲（上の「止める範囲」）で止める。止めは取消の mutation の共有の hook `useRollbackCsvImport` の中の 1 か所に置き（`useBlocker({ shouldBlockFn: () => mutation.isPending, enableBeforeUnload: () => mutation.isPending })`）、取込みの結果の画面と CSV取込みの詳細（[65](65-inventory-record-traceability.md) §65.5a）の両方に効く。理由: 離れた後に取消が失敗すると、知らせが別の画面の Toast だけになり、同じ画面で再試行できない（D-127「問題は起きたその画面で名指し」）。
+
+タブの切替えは router の遷移でなく `useBlocker` が効かない（`TabsContent` は選ばれていないタブの中身を unmount するので、Z004 の flow ごと消える）。Z004 タブの取消の応答を待つ間は、2 つの `TabsTrigger` を disabled にする（flow の `isRollingBack` を panel から `CsvImportPage` へ上げる。flow の置き場は変えない）。止めたときに文は出さない（応答は短く、取消の button の「取り消し中…」と spinner で待っていることが分かる）。確認の読取り（preview）の間は止めない（読取りだけで何も書かない）。
 
 #### `useBlocker` の解除タイミング
 
 - `importing` → `result` 遷移時、自動解除
 - `importing` → `error` 遷移時、自動解除（error 後の navigation は許可）
-- `result` / `error` / `idle` / `parsing` / `preview` の各 state では block しない（本節は Z004 タブの `useCsvImportFlow`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)）
+- 取消の応答の後（成功・失敗とも）に解く。成功は Toast と D-052 C9 の再取得の後、失敗は失敗の Toast の後（mutation の pending は `onSuccess` / `onError` の後に外れる）。失敗なら元の画面のまま同じ取込みID で再試行できる（§55.9）。本行は Z004 タブの `useRollbackCsvImport`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)（`useDailyReportImportFlow` の取消の mutation の pending で止め、同じく成功の Toast と再取得の後・失敗の Toast の後に解く）
+- 取消の応答を待っていない `result` と、`error` / `idle` / `parsing` / `preview` の各 state では block しない
 
 #### page unmount 後の state 喪失問題
 
@@ -526,6 +535,26 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 
 ---
 
+### 55.11 取消の確認と、取り込んだ記録への導線（UI-07-D18）
+
+取消の入口は 2 つ: 取込みの結果の画面の「取り消す」（§55.4 の手順 18）と、CSV取込みの詳細の「この取込みを取り消す」（[65](65-inventory-record-traceability.md) §65.5a）。どちらも同じ確認の部品を使い、確認の中身と取消の後の処理を 2 つに分けない。
+
+- 確認（destructive の確認 dialog。DSR-07・DSR-20）: 開いたときに CMD-07 `previewRollbackCsvImport`（[41](41-cmd-pos.md)、[32](32-biz-csv-import-service.md) §15.6b）を読み、次を出す。
+  - 対象: 取込みID・精算日・「精算 {n}」・ファイル名・件数・金額（UI-07-D14 の Z004 の項目に精算回数を足した）。
+  - 「この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みの売上と在庫の変動を取り消し、在庫を記録から求め直します。」
+  - 要再確認: `recheck_targets` があれば「取り消した後、次の商品は数え直しが必要です（今すでに必要な商品を含みます）」と商品・範囲・理由の一覧（§55 冒頭の Z004 の表の要再確認と同じ部品。日本語の label と icon を併用し、色だけで示さない。`recheck_targets` は取り消した後に要再確認である商品の全部で、取り消す前から要再確認の商品も入るので、取り消したことが原因だとは言わない。この一覧は確認の中なので、入れ直しへ進む操作は置かず、部品は「操作」列と入れ直しの文を出さない形で使う）。無ければ「取り消しても、数え直しが必要になる商品はありません」。
+  - 取り込み直し: 「正しい版のファイルがあれば、取り消した後に「商品別CSV取込み（Z004）」で取り込み直してください（精算 {n}）。取り込み直した結果に、数え直しが必要な商品が出ることがあります。」（取り込み直した取込みは、それより前に保存した計数の判定の n の算出に入らない。その精算 k は k ≤ 判定の n なら数に入り、日付で判定されるのは取り込み直した精算が判定の n だった場合だけで、そのとき精算日が計数の日なら要再確認になる。ADR D3・D7。どの商品かは取り込み直す file で決まるので、取込みの結果の要再確認の一覧で名指す）
+  - 完了した棚卸し: `affected_stocktakes` があれば、各棚卸しについて「完了した棚卸し（{完了の日付}）の評価額は変わりません。棚卸しの記録の詳細の「差異」「ロス原価」と「完了の後に入った記録による差」が変わることがあります。」（ADR D6 の非遡及。記録の詳細の明細の差異とロス原価は完了の時点のカーソルで切った今 active な精算から〈b1 の版の [35](35-biz-stocktake-service.md) §20.6a の手順 3〉、参考の差は完了の後の比較の範囲の記録から求め直すので、取消でどちらも変わりうる。名指すのは記録の詳細の画面の列の見出し「差異」「ロス原価」と、参考の差の節の名「完了の後に入った記録による差」〈節の aria-label と同じ文字で、見出しはこれに「（参考。評価額は変わりません）」が続く。b1 の `c667d52c` の `src/features/inventory-records/StocktakeRecordDetailPage.tsx` の 189・192・265・267 行〉。`affected_stocktakes` は比較の範囲の判定による候補で、どの数が実際に変わるかは見ないので言い切らない）。無ければ出さない。
+  - 読取りの間は「取り消した後のようすを確かめています…」と spinner を出し、「取り消す」を押せない。読取りに失敗したら dialog の中に「取り消した後のようすを読み込めませんでした。閉じてから、もう一度開いてください」を出し、「取り消す」を押せない（何が起きるかを示せないまま取り消させない）。取消済み（kind `validation`）なら、その文（BIZ の message）を出して「取り消す」を押せない。
+  - 読取りは dialog を開くたびに行い、cache を使い回さない（query key は `queryKeys.inventoryRecords` の下。取消の再取得〈D-052 C9〉は `inventoryRecords.root()` を含むので、取消の後に残らない）。
+- 取消の実行と後: 今の取消の mutation（成功の Toast・D-052 C9 の再取得・失敗の Toast と同じ ID での再試行、§55.9）を 1 つの hook にし、取込みの画面と CSV取込みの詳細の両方がそれを使う。取消の応答を待つ間は、同じ hook が route の移動とリロード等の page の離脱を止め（native の window の close は §55.7 の「止める範囲」のとおり保証しない）、Z004 タブではタブの切替えも止める（§55.7 の「取消の応答を待つ間の block」）。取消が失敗すれば止めを解き、元の画面のまま同じ取込みID で再試行できる。結果の画面は今の「取消の結果」（§55 冒頭の表）を出す。CSV取込みの詳細は 65 §65.5a。
+- 取り込んだ記録への導線: Z004 タブの上に「取り込んだ記録を見る（取り消すときはここから）」を置き、入出庫履歴を種別「CSV取込み」で開く（`/inventory/records?recordType=csv_import`）。取込みの結果の画面を離れた後に誤った版に気づいたときの入口（AGENTS.md の「使い手に押しつけない」）。
+- 順 4 の拒否からの導線: [32](32-biz-csv-import-service.md) の冒頭の D-118 の節の表の順 4 の拒否（同じ精算と思われる別の資料が既に取り込まれている。preview と確定の取り直しの両方）は、文が名指す取込みID を error の構造でも持つ（`CmdError.related_csv_import_id`。kind は今の `import_error` のまま。ほかの拒否と error には無い）。取込みの画面の error の表示（§55.5 の `ErrorState` の Alert）は、それが数のときだけ「取込みID {id} の記録を見る（取り消すときはここから）」の link を置き、CSV取込みの詳細（`/csv-import/records/{id}`、`returnTo` は `/csv-import?tab=z004`）を開く。誤った版に気づくのはこの拒否のときが多く、その画面から取消の入口へ進める（AGENTS.md の「使い手に押しつけない」）。
+- Z004 タブを直接開く search: `/csv-import` は `tab`（`daily-report` | `z004`）を受け、`z004` なら Z004 タブを開く。欠落・ほかの値は今の既定（日報取込み）。取消の結果の「商品別CSV取込み（Z004）を開く」が使う。タブを切り替えても URL は書き換えない（`tab` は開く時の初期選択だけを決める。同じ画面を開いたまま戻る・進むで search が変わっても、選んでいるタブは変えない）。値の集合は `src/features/csv-import/types.ts` が readonly tuple と Zod schema で持ち、route はその schema を import し、タブの値と導線の search も同じ tuple から導く（[UI_TECH_STACK](../UI_TECH_STACK.md) UI-STATE-D2）。
+- 理由: 取り消す前に何が起きるか（取り消した後に要再確認である商品、取り込み直しの要否と番号、完了した棚卸しの評価額と、記録の詳細の差異・ロス原価・参考の差への効き方）を名指し、取り消した後にその場で直せる（AGENTS.md の「使い手に押しつけない」）。2 つの入口で同じ確認にするのは、同じ操作の確認の中身を入口で変えないため（04-backbone の「同じ操作は同じ顔と挙動」）。棄却: 取り込み直したときに数え直しが要る見込みの商品を、取り消した版の行から先に並べる案（取り込み直す正しい版の行で決まるので、先の一覧は外れうる。取り込み直した結果の一覧が正）。
+
+---
+
 ### 更新履歴
 
 | 日付 | PR | 内容 |
@@ -541,4 +570,8 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 | 2026-10-23 | sd-direct-read-runtime（Plan Review round 2、D-111） | UI-07-D16 (a) に、手で選んだ経路の preview の「ファイルを選び直す」の行き先（dialog を開き、選べば `idle` の空の新しい一覧に足す。キャンセルなら preview のまま）と、preview から直接 `parsing` へ進む分岐を持たないことを足した。 Codex 側の是正で、UI-07-D15 (6)（SD から来た取込みの結果から同じ scan の一覧へ戻り、取り込んだ行を「取込み済み」に替えて出す）を足し、(5) の SD から来たことを持つ状態に `result` と選んだ行の `candidate_key` を足した。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§55.0 の停止の節を外し、Z004 タブの同じ日の追加の確認・state・useMutation・手順を知らせと要再確認の一覧と取消の結果に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
 | 2026-10-24 | sd-direct-read-runtime（実装、PR #172） | §55.0 の利用者フロー手順 2・UI-07-D16・§55.1 の Page・`types.ts`・hook の行の未実装の注記・「今の」の注記・lane の注記を実装の記述に直した。 |
+| 2026-10-25 | z004-rollback-entry（PR #197） | §55.11（UI-07-D18）を現行に。§55.1 の module の表に共通の確認と取消の mutation の hook、§55.3 の `rollbackMutation` を共有の hook に、§55.4 の手順 18 を共通の確認に、§55.5 の `import_error` の行に順 4 の拒否の link を足した（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
 | 2026-10-26 | sd-direct-read-runtime（Final Review の是正、PR #172） | UI-07-D15 (6) に、日報取込みタブが取消の応答を待つ間も画面の移動を止めることを足し、§55.7 の解除の行が Z004 タブの hook の記述であることを添えた。 |
+| 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 2） | §55.7 に取消の応答を待つ間の block（共有の hook の `useBlocker` と、Z004 タブの `TabsTrigger` の disabled）を足し、解除の行を、取消の応答の後に解くことと、止めない state の書き分けに直した。§55.11 の「取消の実行と後」に同じ止めを足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
+| 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 4） | §55.7 の止める範囲を UI_TECH_STACK UI-USW-D4 に合わせた（route の移動とリロード等の page の離脱。native の window の close は保証しない）。「Tauri webview は beforeunload を尊重する」と、取消の止めを window の close まで止めると書いた文（§55.7・§55.11）を直した。§55.7 が名指す進行中の処理のガードの hook に `useDailyReportImportFlow` を足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
+| 2026-10-29 | sd-direct-read-runtime（main との同期、PR #172） | §55.7 の解除の行の注記を、PR #197 の取消の解除の行（Z004 タブの `useRollbackCsvImport`）に移し、日報取込みタブの取消の止め（UI-07-D15 (6)）が同じ時点で解くことを添えた。 |

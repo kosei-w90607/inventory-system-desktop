@@ -6,14 +6,14 @@
 
 #### 精算の識別と並び（SPEC-STK-CNT-D4）
 
-`parse_and_validate` は IO-02 の精算の識別メタ（[23](23-io-z004-parser.md) の `settlement_metadata` の machine_no・settlement_no・精算日）を受け、次の順に検査する。どれかに当たれば preview を拒否し（既存の `ImportError`、下の message）、確定の TX でも同じ検査をやり直す（preview の後に別の取込みが確定した場合を拾う）。
+`parse_and_validate` は IO-02 の精算の識別メタ（[23](23-io-z004-parser.md) の `settlement_metadata` の machine_no・settlement_no・精算日）を受け、次の順に検査する。どれかに当たれば preview を拒否し（既存の `ImportError`、下の message。順 4 だけは `BizError::SettlementConflict { message, csv_import_id }` で、文が名指す取込みID を構造でも持つ〈§15.10〉）、確定の TX でも同じ検査をやり直す（preview の後に別の取込みが確定した場合を拾う）。
 
 | 順 | 条件 | message |
 |---|---|---|
 | 1 | machine_no か settlement_no が無い・settlement_no が 10 進の整数でない（従来の形の file を含む）。10 進の整数は ASCII の数字だけで、値が 0 以上 `9007199254740991` 以下（JavaScript の安全な整数の範囲。精算回数と知らせの区間の端を wire の number で正確に運ぶため。2026-10-22、b1 の起票で決めた） | 精算回数の無い file は取り込めません。レジの SD の商品別の売上（Z004）を選んでください |
 | 2 | Z004 の取込み（取り消したもの〈rolled_back〉を含む）があり、その machine_no がこの file と違う | machine_no の違う active な取込みがある: レジの番号が前の精算と合いません。レジの入替・初期化を確かめてください。取り消した取込みとだけ違う: 取り消した取込みとレジの番号が合いません（取込みID: {id}、精算 {n}、取込み日: {imported_at}、レジ: {machine_no}。この file のレジ: {この file の machine_no}）。どちらが店のレジの資料かを確かめてください |
 | 3 | 同じ hash の active な取込みがある | （今の重複の拒否のまま） |
-| 4 | 同じ machine_no・settlement_no の active な取込みがあり、hash が違う | 同じ精算と思われる別の資料が既に取り込まれています（精算 {n}） |
+| 4 | 同じ machine_no・settlement_no の active な取込みがあり、hash が違う | 同じ精算と思われる別の資料が既に取り込まれています（精算 {n}、取込みID: {id}）。{id} は [24](24-io-csv-import-repo.md) の同じ精算の active な取込みの一覧の先頭（id の昇順）。CMD は kind `import_error` のまま `CmdError.related_csv_import_id` に同じ id を入れ（[41](41-cmd-pos.md) §17.4）、画面はそこから CSV取込みの詳細へ進める（[55](55-ui-csv-import.md) UI-07-D18） |
 | 5 | active な取込みのうち、settlement_no がこの file より小さいのに精算日がこの file より後のもの、または settlement_no が大きいのに精算日が前のものがある | レジの日付か番号が前の精算と合いません。レジの時計か、レジの入替・初期化を確かめてください |
 
 - 順 3〜5 と下の知らせは、取り消した取込み（rolled_back）を比べる先にしない（誤った版を取り消して正しい版を取り込める。SPEC-STK-CNT-D7）。順 2 だけは取り消した取込みとも比べる（b1 の Plan Review round 3 の是正）: machine_no は版でなくレジを示し、誤った版も同じレジの資料なので D7 の取り込み直しを妨げない。active だけと比べると、全ての取込みを取り消した後に別のレジの file が通る（店のレジは 1 台の前提。ADR D1・D4。fresh な計数と完了の判定は、保存・完了の後の取込みを判定の n に数えないので〈ADR D3・D6〉通っても「k ≤ n」で黙って計数に入りはしないが、照合は残す。owner の決定〈repo 外の回答台帳 TD-388〉）。比べる先は [24](24-io-csv-import-repo.md) の「Z004 の取込みの machine_no の照合先」が返す 1 件（active を優先する）で、それが取り消した取込みのとき（machine_no の違う active な取込みが無いとき）は、拒否の文でその取込みを名指す（最初に別のレジの file を取り込んで取り消した DB では、店のレジの file がずっと順 2 で拒まれ、原因を名指さないと利用者に理由が分からない。D-127。照合は残し、照合の基準を入れ替える操作は持たない。2026-10-23、owner の決定〈repo 外の回答台帳 TD-388〉、b1 の Plan Review closure の是正）。順 5 は取り消した誤った版の精算日と比べると正しい精算を拒みうるので active だけと比べる。全てを取り消した後のレジの番号の戻りは順 5 が止めないが、fresh な計数の判定の n と完了の時点の精算の n は、保存・完了の後の取込みと取り消した取込みを数えないので（取込みのカーソル。ADR D3・D6、b1 の Plan Review closure〈Codex〉の是正）、戻った番号の精算は日付の判定に倒れる。
@@ -57,7 +57,7 @@ src-tauri/src/
     mod.rs                   -- pub mod csv_import_service を追加
     product_service.rs       -- 既存（BIZ-01）
     inventory_service/       -- 既存（BIZ-02、ディレクトリモジュール）
-    csv_import_service/      -- CSV取込みの業務ロジック（本セクション。mod.rs の型、parse.rs・commit.rs・rollback.rs）
+    csv_import_service/      -- CSV取込みの業務ロジック（本セクション。mod.rs の型、parse.rs・commit.rs、rollback.rs〈取消と取消の前の読取り。§15.5・§15.6b〉）
 ```
 
 ---
@@ -426,6 +426,38 @@ file_hash は重複取込み判定の内部値であり operator 向け情報で
 
 ---
 
+### 15.6b preview_rollback_csv_import（取消の前の読取り、BIZ-03-D2）
+
+取消（上の「計数の置き場と在庫の求め直しの契約」の取消、SPEC-STK-CNT-D7）と同じ本体を使う。取込みの結果の画面と CSV取込みの詳細の取消の確認（[55](55-ui-csv-import.md) UI-07-D18、[65](65-inventory-record-traceability.md) §65.5a）が、取り消す前に何が起きるかを名指すために読む。
+
+**関数要求**: 指定した取込みを取り消した後に、どの商品が要再確認か（取り消す前から要再確認の商品を含む）・取り込み直す精算の番号・記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸しを返す。何も書かない（売上・movement・写し・取込みの状態・操作ログ・preview の cache のどれも変えない）。
+
+**シグネチャ**:
+```
+pub fn preview_rollback_csv_import(
+    conn: &mut DbConnection,
+    csv_import_id: i64,
+) -> Result<RollbackPreview, BizError>
+```
+
+**RollbackPreview 構造体**（wire DTO。CSV import family の他 wire 型と同じく BIZ-03 が所有する）:
+- csv_import_id: i64
+- settlement_no: i64（取り込み直す精算の番号。この取込みの精算回数）
+- recheck_targets: Vec\<CountRecoveryTarget\>（取り消した後に要再確認である商品。取消の結果の `RollbackResult.recheck_targets` と同じ作り方で、求め直した商品〈計数を持つ全ての商品とこの取込みの商品〉のうち要再確認のものなので、取り消す前から要再確認の商品も入る。[40](40-cmd-product.md) の CountRecoveryTarget）
+- affected_stocktakes: Vec\<AffectedStocktake\>（この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し。範囲の判定による候補で、取り消すと記録の詳細の明細の差異・ロス原価〈完了の時点の精算の n 以下の精算から求める〉と参考の差が変わることがある。範囲〈精算回数 ≤ 完了の時点の精算の n、または精算日 < 完了日〉は差異・ロス原価が使う精算を含むので、名指す集合を広げなくてよい。どの数が実際に変わるかは他の精算の判定〈ADR D3 の「D に精算があるか」「最初の 1 本」〉でも決まるので求めず、確認の文は変わりうると言うだけにする。`AffectedStocktake { stocktake_id: i64, completed_at: String }`、完了の日時の昇順）
+
+**処理ステップ**:
+1. sales_repo::find_csv_import_by_id。None → BizError::NotFound（「CSV取込み記録が見つかりません: ID {csv_import_id}」）。rolled_back → BizError::ValidationFailed（「この取込みは取り消し済みです」）
+2. 精算回数: [24](24-io-csv-import-repo.md) の「active な Z004 の精算の一覧」から import ID の一致する行を引く
+3. 記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し: 完了した棚卸しのうち、この取込みの精算が [35](35-biz-stocktake-service.md) の「完了の後の比較の範囲」（完了の時点のカーソルと完了日で決める範囲）に入るもの。範囲の規則は BIZ-06 の共有の関数 `completed_stocktakes_comparing_settlement`（記録の詳細の `ledger_at_cutoff` と同じ判定の関数を使う）で判定し、BIZ-03 に写さない
+4. TX を開き、取消の本体と同じ関数 `apply_rollback`（`&Transaction` を受ける `pub(crate)`。売上と movement の無効化、取込みの状態、ADR D2 の求め直す商品の `recompute_stock`、要再確認の商品の一覧。取消〈§15.5〉と preview がこれを呼ぶ）を当てて recheck_targets を得る
+5. TX を明示の rollback で戻す（drop の振舞いに頼らない）。戻せなければ BizError::DatabaseError
+6. RollbackPreview を返す（操作ログを書かない）
+
+**設計判断 — 取消を同じ TX で当てて戻す（BIZ-03-D2）**: 取り消した後の要再確認は、精算の一覧が変わったことで ADR D3 の判定の n・「D に精算があるか」・「最初の 1 本」が変わる商品に出る（取消の前に要再確認でなかった商品にも出る）。取消と同じ関数を TX の中で当てれば、preview と取消は同じ規則で同じ商品を出す。棄却: (a) 求め直しに「この取込みを除く」引数を通して書かずに求める（`biz::stock_ledger` の全ての経路に引数が増え、取消の規則を 2 か所に持つ）。(b) 取消の結果だけで知らせる（取り消す前に名指せない。取り消してから要再確認に気づく形になる）。制約: preview は SQLite の書込みの TX を開くが、CMD の 1 本の接続（`AppState.db` の Mutex）で他の command と順に走り、戻すまで他の書込みと交わらない。preview と取消の間に記録が変われば、取消の結果（`RollbackResult.recheck_targets`）が正で、画面は結果の一覧を出し直す。見直しの契機: preview の待ち時間が利用者に見えるほど長くなったとき（求め直しは計数を持つ全ての商品に当たるので、商品と計数が増えたとき）。
+
+---
+
 ### 15.7 非目的
 
 このモジュールが**やらないこと**を明示する。責務境界の誤解を防ぐため。
@@ -489,7 +521,8 @@ enum BizError {
     NotFound(String),           // 既存 — rollback 時の csv_import 不存在
     DuplicateProductCode(String), // 既存（本モジュールでは不使用）
     DatabaseError(DbError),     // 既存
-    ImportError(String),        // 既存 — parse失敗、同一hashブロック、精算の識別と並びの拒否、引き当ての食い違い等
+    ImportError(String),        // 既存 — parse失敗、同一hashブロック、精算の識別と並びの拒否（順 4 を除く）、引き当ての食い違い等
+    SettlementConflict { message: String, csv_import_id: i64 }, // 順 4 の拒否（文が名指す取込みID を構造でも持つ。CMD は kind import_error）
     IdempotencyConflict(String), // 既存（本モジュールでは不使用。INV-6方式）
 }
 ```
@@ -497,7 +530,8 @@ enum BizError {
 **ImportError の使い分け（BIZ層）**:
 - ファイル形式の問題（parse 失敗、サイズ超過）→ ImportError
 - 重複ブロック（file_hash 一致で取込み済み）→ ImportError
-- 精算の識別と並びの拒否（上の表の順 1〜5）、preview の引き当てと確定の取り直しの食い違い → ImportError（何も書かない）
+- 精算の識別と並びの拒否（上の表の順 1〜3・5）、preview の引き当てと確定の取り直しの食い違い → ImportError（何も書かない）
+- 順 4（同じ精算の別の版が active）→ SettlementConflict（何も書かない。名指した取込みの詳細へ画面が link を出すため、取込みID を構造で持つ。順 2・3 の文の取込みID は文だけ）
 - マスタ未登録（error_rows で表現）→ エラーではなくプレビューの一部として返す
 - ※ キャッシュ問題（token不正、有効期限切れ、不存在）はCMD層の責務。BIZ層には到達しない
 
@@ -515,3 +549,4 @@ enum BizError {
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体の記述と明記 |
 | 2026-10-17 | JAN の別名の design lane（D-122） | §15.3 手順 4 b に、ヒット0件の行で前の JAN の別名を引く段と、引き当ての規則を preview と確定の取り直しで共有する文を足した（proposed・未実装） |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§15.0 の停止の節を外し、§15.2 の型（知らせ・`recheck_targets`）と §15.3〜§15.5 の手順を精算の識別・確定の取り直し・求め直しの新しい経路に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-25 | z004-rollback-entry（PR #197） | §15.6b（BIZ-03-D2）を現行に（取消の本体を `apply_rollback` に切り出し、取消と preview が呼ぶ。完了した棚卸しの判定は BIZ-06 の共有の関数）。冒頭の表の順 4 の文に取込みID を足し、`BizError::SettlementConflict` で返す（§15.10）（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |

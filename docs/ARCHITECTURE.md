@@ -1,15 +1,15 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a)・b1・b2 は実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存・完了・Z004 の識別と確定と取消・要再確認の一覧・共有 JAN と在庫連動を始める検査・MNT の migration v11 が入り、停止の入口を外した。商品の画面の範囲の表示と在庫変動の履歴の計数の行は b2（proposed・未実装）。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存・完了・Z004 の識別と確定と取消・要再確認の一覧・共有 JAN と在庫連動を始める検査・MNT の migration v11 が入り、停止の入口を外した。b2（[Plan Packet](plans/2026-10-23-stocktake-count-runtime-b2.md)）で、商品の結果の写しの 3 列と商品の画面の範囲の表示、在庫変動の履歴の計数の行（BIZ が movement と計数を並びの鍵の順に合成する）が入った。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
 | UI | 商品ごとの即保存（日付 D を常に出す、前の日の分の選択、日付の変わり目の確認）、要再確認の一覧と入れ直し、範囲の表示、完了の拒否の一覧と「0 にする」。[UI task](architecture/ui-task-specs.md)、51/55/58/65/66/73 |
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
-| BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
-| IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
+| BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、在庫変動の履歴の合成（鍵の順・絞り込み・ページ）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
+| IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込みと読取り、在庫変動の履歴の並べない読取り。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
 | MNT | 列と表を足す migration（(a) の v9、b1 の v11。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
@@ -128,7 +128,7 @@ POS連携は、レジ固有の adapter とアプリ内共通モデルの境界�
 | ID | タスク名 | 対応REQ | 対応画面 | 責務 |
 |----|---------|---------|---------|------|
 | UI-00 | ホーム画面 | REQ-301/302, SP-102-07 | ホーム | ダッシュボード式の入口。サマリカード（昨日の売上、在庫切れ件数、在庫少件数）、PLU未反映通知バー、毎日機能への大ボタン |
-| UI-01a | 商品検索・一覧 | REQ-103 | 商品マスタ一覧 | 商品の検索・絞込み・並替え・廃番視覚区別 |
+| UI-01a | 商品検索・一覧 | REQ-103 | 商品マスタ一覧 | 商品の検索・絞込み・並替え・廃番視覚区別。D-138 で UI-06a と 1 つの画面「商品と在庫」（`/products`）にする（proposed・未実装） |
 | UI-01b | 商品登録・編集 | REQ-101, 102 | 商品登録、商品編集 | 商品情報の入力フォーム、JANスキャン、独自コード発番、売価変更、廃番切替 |
 | UI-01c | 商品一括インポート | REQ-104 | 一括インポート | CSVアップロード、プレビュー表示、エラー表示、上書き/スキップ選択 |
 | UI-02 | 入庫記録画面 | REQ-201 | 入庫記録 | 複数商品の一括入庫入力、取引先選択、数量入力 |
@@ -136,8 +136,8 @@ POS連携は、レジ固有の adapter とアプリ内共通モデルの境界�
 | UI-04 | 手動販売出庫画面 | REQ-203 | 手動販売出庫 | PLU未登録商品の販売記録、PLU登録済み警告表示 |
 | UI-05 | 廃棄・破損記録画面 | REQ-204 | 廃棄・破損 | 種別選択、理由入力、ロス原価記録 |
 | UI-02b / UI-03b / UI-04b / UI-05b / UI-07b / UI-10b | 入出庫履歴・記録詳細 | REQ-206, 207 | 入出庫履歴、各業務記録詳細 | 横断検索、入庫・返品交換・手動販売・廃棄破損・CSV取込み・棚卸しの追跡。取消・訂正は後続 |
-| UI-06a | 商品別在庫照会 | REQ-301 | 在庫照会 | 商品検索→在庫数・売価・原価・最終入庫日・最終販売日 |
-| UI-06b | 在庫少一覧 | REQ-302 | 在庫照会（deep-link、独立画面なし） | UI-06a `/stock` の `status=low_stock` フィルタへのサイドバー deep-link（D-047）。閾値以下の商品一覧、廃番除外は UI-06a の既存 `list_low_stock` contract を再利用 |
+| UI-06a | 商品別在庫照会 | REQ-301 | 在庫照会 | 商品検索→在庫数・売価・原価・最終入庫日・最終販売日。D-138 で UI-01a と 1 つの画面「商品と在庫」にする（proposed・未実装） |
+| UI-06b | 在庫少一覧 | REQ-302 | 在庫照会（deep-link、独立画面なし） | UI-06a `/stock` の `status=low_stock` フィルタへのサイドバー deep-link（D-047）。閾値以下の商品一覧、廃番除外は UI-06a の既存 `list_low_stock` contract を再利用。D-138 の後は「在庫切れ・在庫少」として `/products?status=low_stock` を開く（proposed・未実装） |
 | UI-06c | 在庫変動履歴 | REQ-303 | 変動履歴 | 商品別の全変動を時系列表示、種別・期間絞込み |
 | UI-07 | 売上データ取込み画面 | REQ-401 | 売上データ取込み | current operation ではZ001/Z002/Z005日報取込みを主動線にする。既存Z004商品別取込みはPLU確認後の別トラックとして扱う |
 | UI-08 | PLU書出し画面 | REQ-402 | レジ登録データ作成 | 全件/差分選択、書出し実行、plu_dirty商品一覧 |
@@ -215,7 +215,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ### 実装順序（依存関係に基づく）
 
-以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は [Plans](Plans.md) を参照する。
+以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は helper の status と git log、導入の前の関門は [Plans](Plans.md) を参照する（D-145）。
 
 ```
 第1段階: 基盤
@@ -296,8 +296,6 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ## 4. 未確定事項
 
-- **IO-04（PLUフォーマッター）**: 2026-07-03 field gate により、現場ツール CV17 1.1.1 / SR-S4000 向けの `.txt`、11列、13桁JAN必須、通常PLU216枠使用時217始まりの profile と、`CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の一連フローを確認済み。アプリはPCツール受理やレジ反映を自動検知しないため、保存後のapp-side confirmationは利用者の明示操作に分離する。
-- **宅急便部門**: ~~在庫管理対象かどうか利用者返答待ち~~ → 在庫管理対象外と確定（2026-04-10）。サービス取次であり追跡すべき在庫が存在しない。departmentsにはZ005対応で残すがcode_prefix=NULL
 - **Q40（障害時の対応）**: 画面ごとの CmdError と retry（UI-13 ほか）と共通の Error Boundary は実装済み。包括的な障害時対応の方針の残りは [backlog](backlog.md) の Q40 の項目が追う
 
 ---

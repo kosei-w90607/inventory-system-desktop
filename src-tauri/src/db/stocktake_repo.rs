@@ -621,6 +621,32 @@ pub fn get_stocktake_record_detail(
     })
 }
 
+/// 完了した棚卸しの ID・完了日時・完了の時点のカーソルを完了日時の昇順で返す
+/// （BIZ-03 の取消の前の読取りが完了の後の比較の範囲を判定する。20 §2.11a）
+pub(crate) fn list_completed_stocktake_cutoffs(
+    conn: &DbConnection,
+) -> Result<Vec<(i64, String, StocktakeCutoff)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, completed_at, cutoff_import_id, cutoff_count_id, cutoff_movement_id
+         FROM stocktakes WHERE status = 'completed'
+         ORDER BY completed_at, id",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                StocktakeCutoff {
+                    import_id: row.get(2)?,
+                    count_id: row.get(3)?,
+                    movement_id: row.get(4)?,
+                },
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
 /// 完了の検査と評価に使う明細を id の順で取得する（35「完了」）
 pub(crate) fn list_items_for_completion(
     conn: &DbConnection,

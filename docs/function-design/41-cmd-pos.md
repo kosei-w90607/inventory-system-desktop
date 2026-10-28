@@ -95,6 +95,7 @@ let result = biz::some_function(&mut conn, ...);
 | BizError | CmdError.kind | CmdError.message |
 |----------|--------------|------------------|
 | ImportError(msg) | "import_error" | msg をそのまま使用 |
+| SettlementConflict { message, csv_import_id } | "import_error" | message をそのまま使用。`related_csv_import_id: Some(csv_import_id)`（[32](32-biz-csv-import-service.md) の表の順 4 の拒否だけ。ほかの変換と CMD が作る error は None で、wire は null。TS では任意の field） |
 | ExportError(msg) | "export_error" | msg をそのまま使用 |
 | IdempotencyConflict(msg) | "idempotency_conflict" | msg をそのまま使用 |
 | ValidationFailed(msg) | "validation" | msg をそのまま使用（既存） |
@@ -424,6 +425,31 @@ fn get_csv_import_record(
 
 read-only command であり、preview キャッシュ・idempotency・operation log 記録には関与しない（[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a の read-only 責務分離と同じ）。
 
+#### preview_rollback_csv_import
+
+**関数要求**: 取消の確認（[55](55-ui-csv-import.md) UI-07-D18）が、取り消す前に何が起きるかを読む。[32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6b を呼ぶだけで、何も書かない（BIZ が取消を TX の中で当てて戻す。BIZ-03-D2）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+#[specta::specta]
+fn preview_rollback_csv_import(
+    state: State<AppState>,
+    csv_import_id: i64,
+) -> Result<RollbackPreview, CmdError>
+```
+
+**出力型**: [32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6b の RollbackPreview
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::csv_import_service::preview_rollback_csv_import(&mut conn, csv_import_id) を呼ぶ
+3. Ok → RollbackPreview をそのまま返す
+4. Err(BizError::NotFound) → kind `not_found`、Err(BizError::ValidationFailed)（取消済み）→ kind `validation`
+5. Err(other) → 17.4 の変換表に従い CmdError に変換して返す
+
+preview キャッシュ・idempotency・operation log 記録には関与しない（get_csv_import_record と同じ）。登録は §17.9 の 2 面（`src-tauri/src/lib.rs` の Specta の登録〈`collect_commands!`〉と runtime の登録〈`tauri::generate_handler!`〉）。2 面と宣言・bindings の wire 名の一致は `scripts/check-command-drift.sh` が静的に確かめる。
+
 ---
 
 ### 17.6 CMD-08 コマンド
@@ -696,6 +722,7 @@ CMD-07/CMD-08が**やらないこと**を明示する。
     cmd::csv_import_cmd::parse_and_validate_csv,
     cmd::csv_import_cmd::commit_csv_import,
     cmd::csv_import_cmd::rollback_csv_import,
+    cmd::csv_import_cmd::preview_rollback_csv_import,
     cmd::csv_import_cmd::list_csv_imports,
     cmd::csv_import_cmd::get_csv_import_record,
     // CMD-08（新規）
@@ -715,3 +742,4 @@ wire の型を変えたら `src/lib/bindings.ts` を generator で再生成す�
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、bindings再生成義務を正本化。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。commit_csv_import から同じ日の追加の確認のフラグを外し、token は成功のときだけ消す。知らせと `recheck_targets`、停止の注記を外した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-25 | z004-rollback-entry（PR #197） | CMD-07 に `preview_rollback_csv_import` を足し（§17.5、§17.9 の 2 面に登録）、§17.4 に順 4 の拒否の `SettlementConflict` → kind `import_error`・`related_csv_import_id` の行を足した（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |

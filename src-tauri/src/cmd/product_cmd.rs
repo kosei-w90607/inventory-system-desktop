@@ -228,6 +228,7 @@ pub fn preview_import(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         });
     }
     let conn = state

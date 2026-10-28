@@ -313,6 +313,7 @@ fn save_receipt_image_with_runtime<R: tauri::Runtime>(
             field: None,
             error_id: None,
             stocktake_recovery: None,
+            related_csv_import_id: None,
         })?;
 
     // 2. app_data_dir 取得
