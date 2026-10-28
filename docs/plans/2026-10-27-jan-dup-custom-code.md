@@ -6,7 +6,7 @@ wave に属さない単独の lane（2026-10-27 に同時に起票した 4 本�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 0925c9ecd712b51f3dea5a28009ebbc01ee8ecbb
 - Amendments: none
@@ -24,6 +24,8 @@ wave に属さない単独の lane（2026-10-27 に同時に起票した 4 本�
 2. spec-check → design（2026-10-27、起草役）: 30 §4.2 の手順 3a（JAN を商品コードにし、商品コードの重複で `DuplicateProductCode`）と 51 の商品フォームには、JAN をほかの商品が使っているときの知らせと独自コードの道が無い。30・40・51・SCREEN_DESIGN・UI_TECH_STACK・decision-log を直す必要がある。
 3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の出力（30 BIZ-01-D11、51 UI-01b-D26、40 の変換、UI_TECH_STACK の invalidation の entry、D-141）は本 commit に置いた。未解決の設計の問いは無い（owner の判断事項 2 問は owner の方針〈repo 外の回答台帳 TD-401〉で推奨を既定にした。下の「owner の判断事項」）。
 4. plan-draft のまま是正（round 1、2026-10-29、Coordinator の裁定）: 計画の review round 1（fresh Opus 5.5・Codex、どちらも request changes）の findings を全件受理した Coordinator の裁定どおりに、packet・Matrix・設計正本（30・51・SCREEN_DESIGN・master-tables・decision-log の D-141・backlog）を直した。判定・件数・採否は下の Review Response。Phase と Plan Commit は変えない。
+5. plan-draft → plan-approved（2026-10-29、Coordinator）: 計画の review の closure（round 2、`0925c9ec`）は fresh Opus 5.5・Codex とも approve（P1/P2 0、P3 だけ。PR #212 の comment「計画の review の closure（round 2）」）。`scripts/plan-approve.sh` で Plan Commit を `0925c9ec` に固定した（`3c1974af`）。
+6. plan-approved → implementing（2026-10-29、Coordinator）: 実装の Writer（Opus 5.5 subagent、発注 678）が `948bb671`〜`2e9f5b76` で実装した。旧形式の packet は Phase が承認の前の値の間は承認の前と扱われる（`docs/DEV_WORKFLOW.md` の「承認の後の計画の変更」）ので、Phase の行を本 commit で進めた（`plan-approve.sh` は Phase を書かない）。D-052 の道標の行は、固定の Scope の文（D-141 が accepted になったら足す）に合わせて実装の commit から戻した。
 
 plan-gate へ進める前に Coordinator がすること: (1) main（`ee5b221a`、PR #202 の merge を含む。起票の起点 `50f97a76` の後に入った）を単段で取り込む（`git -c merge.directoryRenames=false merge origin/main`）。予想する衝突は `docs/decision-log.md` の末尾（#202 の D-138 と本 lane の D-141。番号の順に両方を残す）だけ。51・SCREEN_DESIGN・backlog・UI_TECH_STACK の #202 の hunk は本 lane の hunk と別の行（下の節の所有表）。(2) 関門 8 の lane の予定 path と節を取り直し、下の所有表を直す（同時の起票なので本 run からは見えない）。(3) 30 の局所の決定の ID: 関門 8 の lane（PR #209）が `BIZ-01-D10` を使うので、本 lane は `BIZ-01-D11` にした（2026-10-27、Coordinator。済み）。
 
