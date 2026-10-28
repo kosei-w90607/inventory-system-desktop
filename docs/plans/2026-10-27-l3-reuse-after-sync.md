@@ -8,9 +8,9 @@ wave に属さない単独の lane。helper（`scripts/pr-gate.py`）の manual 
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: fabc9d67e355b63664f997269a4bad5e234732fe
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は発注 638。実装は plan-approved の後の別の run）
@@ -32,6 +32,7 @@ manual なし: helper と test と docs の変更で、Windows native で確か�
 6. plan-gate のまま是正（2026-10-28、round 2 の reject を受けて）: round 2 の是正（Review Response 参照）。
 7. plan-gate のまま是正（2026-10-28、round 3〈上限〉の reject を受けて）: round 3 の是正（Review Response 参照）。
 8. plan-gate のまま是正（2026-10-28、closure の P2 を受けて）: 是正の確かめ（closure）の是正（Review Response 参照）。
+9. plan-gate → plan-approved → implementing（2026-10-28、Coordinator）: Plan Review は round 1〜3（上限）と、上限の後の是正の確かめ（owner の決定 TD-503・TD-504）で、独立の reviewer の P1/P2 = 0（Claude 側 fresh Opus 5.5 の closure が `ee0386b0` で approve、Codex 側 Sol の closure が `fabc9d67` で approve）。Plan Commit = `fabc9d67`（計画の最後の commit で、すべての実装の commit より前）。
 
 ## Owner Effort Budget
 
