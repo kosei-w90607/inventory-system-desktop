@@ -8,7 +8,7 @@ wave に属さない単独の lane。helper（`scripts/pr-gate.py`）の manual 
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -27,6 +27,7 @@ manual なし: helper と test と docs の変更で、Windows native で確か�
 1. kickoff → spec-check（2026-10-27、起草役）: 範囲を TD-474・TD-476 の A・B・同期の closure と、それに合わせる正本の文にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役、同じ commit）: merge-evidence の「base同期だけでheadが変わる場合」の再利用の条件を置き換える設計が要る（下の Design Readiness）。
 3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の成果を正本へ置いた（merge-evidence MG-D13 と同節、D-144）。未解決の設計の問いは無い。
+4. plan-draft → plan-gate（2026-10-28、Coordinator）: packet と Matrix は起票の commit `4d057c65` で commit 済み。`doc-consistency-check.sh --target plan` は全チェック通過。
 
 ## Owner Effort Budget
 
