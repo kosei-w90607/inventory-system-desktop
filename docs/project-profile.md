@@ -161,7 +161,7 @@ Project-specific failure modes to test:
 - Requirement/spec IDs should be attached to tests or test comments when the touched area has traceability.
 - Behavior changes must update the relevant source document in the same change: architecture, DB design, function design, screen design, or UI tech stack.
 - Task-local evidence belongs in active/archive plans. Long PR histories should not make `Plans.md` the product truth.
-- `docs/PROJECT_HANDOFF.md` is navigation only. Current state is in `Plans.md`; long candidates are in `docs/backlog.md`, and archived handoffs are historical.
+- `docs/PROJECT_HANDOFF.md` is navigation only. Completion is in git log, lane state is in the helper status, and pre-deployment gates, blockers, and open product decisions are in `Plans.md` (D-145); long candidates are in `docs/backlog.md`, and archived handoffs are historical.
 - Keep CMD thin and BIZ authoritative. UI and CMD should not duplicate business rules that belong in BIZ.
 - Prefer Windows native verification for Japanese input and operator-facing Phase 2+ UI flows.
 - Risk classification is review-assisted and self-reported in this workflow PR. Machine detection for under-classified changes belongs in a future workflow-hardening plan/PR.
