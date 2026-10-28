@@ -1,26 +1,17 @@
 // src/features/csv-import/components/ResultStep.tsx
 //
 // Step 3/3 完了: 4 サマリ + status badge + 「売上レポートを見る」(/reports/daily 遷移、UI-09a 着手済) / 「取り消す」(rollback) / 「ホームに戻る」(navigate)。
-// 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4 step 15-19 / §55.6 rollback spinner
+// 「取り消す」の確認は CSV取込みの詳細と同じ部品（55 UI-07-D18）。
+// 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4 step 15-19 / §55.6 rollback spinner / §55.11
 
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecheckTargetList } from "@/features/stocktake/components/RecheckTargetList";
 import type { CountRecoveryTarget, ImportResult, RollbackResult } from "@/lib/bindings";
+import { RollbackConfirmDialog } from "./RollbackConfirmDialog";
 
 /** 55: 要再確認の一覧の各行から 73 の「今の数を入れる」の入口（棚卸しの画面）へ進む */
 function RecheckTargets({ targets }: { targets: readonly CountRecoveryTarget[] }) {
@@ -125,53 +116,16 @@ export function ResultStep({
           売上レポートを見る
         </Button>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" disabled={isRollingBack}>
-              {isRollingBack && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
-              {isRollingBack ? "取り消し中…" : "取り消す"}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>取込みを取り消しますか？</AlertDialogTitle>
-              <AlertDialogDescription>
-                この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みによる在庫数も元に戻ります。
-              </AlertDialogDescription>
-              {/* DSR-16: 単一レコード確認の definition list は原則適合。囲み階層が
-                  AlertDialogContent と二重にならないよう、独立した box border は持たせず
-                  border-t の行区切りのみにする（gated Amendment 3 最小調整）。 */}
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">取込み ID</dt>
-                  <dd className="font-medium">{result.csv_import_id}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">精算日</dt>
-                  <dd className="font-medium">{settlementDate}</dd>
-                </div>
-                <div className="col-span-2">
-                  <dt className="text-muted-foreground">ファイル名</dt>
-                  <dd className="font-medium break-words">{filename}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">取込み件数</dt>
-                  <dd className="font-medium">{result.total_items.toLocaleString()} 件</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">合計金額</dt>
-                  <dd className="font-medium">¥{result.total_amount.toLocaleString()}</dd>
-                </div>
-              </dl>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>キャンセル</AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={onRollback}>
-                取り消す
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <RollbackConfirmDialog
+          csvImportId={result.csv_import_id}
+          settlementDate={settlementDate}
+          filename={filename}
+          totalItems={result.total_items}
+          totalAmount={result.total_amount}
+          triggerLabel="取り消す"
+          onConfirm={onRollback}
+          isRollingBack={isRollingBack}
+        />
 
         <Button
           onClick={() => {

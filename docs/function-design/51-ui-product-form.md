@@ -1,13 +1,13 @@
 ## 7. UI-01b: 商品登録・修正
 
-### 計数の置き場と在庫の求め直しの契約（D-118。1〜3 つ目の項目は b1 で実装済み、在庫数の表示は b2 で proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（D-118。1〜3 つ目の項目は b1、在庫数の表示は b2、2 つ目の項の案内の場所・文・focus は画面の小口の lane で実装済み）
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の商品フォームの側。拒否と回復先は [30](30-biz-product-service.md) と [40](40-cmd-product.md) から受ける。旧 ADR（時点証拠）の `ej_unverified` の間の在庫連動の提案値 false と拒否の文言、非連動化の警告と「在庫数は未調整です」の案内は持たない（置き換えた）。
 
 - 共有 JAN: create / update が `validation`（field `pos_stock_sync`）で拒否されたら、BIZ の message（「同じ JAN の商品（{商品コード}）があるため、在庫連動にできません」）を該当の欄の近くに出す（今の field 付きの validation の出し方。message を解析しない）。入力値と dirty の状態を保ち、成功の toast や一覧への遷移をしない。在庫連動を黙って off にして再送しない（UI-01b-D26 のダイアログは、在庫連動なしになることを名指して利用者が「独自コードで登録する」を押してから送る）。create で入れた JAN を他の商品が使っているときは、この拒否の前に UI-01b-D26 の知らせが出る。
-- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、「今の数を入れる」の導線（回復先の `active_count`・`count_now` のどちらも [73](73-ui-stocktake.md) の「今の数を入れる」の入口。`/stocktake/` の search に `product`〈商品コード〉と `returnTo`〈`/products/{商品コード}/edit`〉を渡す）を出す（b1 の実装は文と導線を商品フォームの上部の warning の Alert に置いた。在庫連動の checkbox を持つ `ProductForm.tsx` は b1 の Scope の外のため）。入力値を保つ。導線は route の遷移なので、既存の離脱の確認（UI-USW-D1・D2。在庫連動の checkbox を変えたので dirty）を通る: 「破棄して移動」で離れ、「編集を続ける」なら留まる（guard を外さない。未保存の入力を持ち越さない）。戻った商品フォームは DB の値（在庫連動は付いていない）で開くので、利用者は在庫連動を付け直して保存する。商品フォーム自身の `returnTo`（UI-01b-D2）は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る（b1 の Plan Review round 3 の是正）。
+- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫の節の「数量単位」と「POS販売で在庫を減らす」の行のすぐ下（同じ節の中、全幅）に warning の案内（見出し「「POS販売で在庫を減らす」にできません」、文「「減らさない」の間の売上が在庫の数に入っているか確認できません。「今の数を入れる」で棚の数を入れてから、もう一度「減らす」にして保存してください」。「入っていません」と断定しない: `recount_required` は、売上が効く計数に入らないときのほか、入るか決まらないとき・効く計数どうしが衝突しているときにも返る〈ADR D8、30〉）と、「今の数を入れる」の導線（回復先の `active_count`・`count_now` のどちらも [73](73-ui-stocktake.md) の「今の数を入れる」の入口。`/stocktake/` の search に `product`〈商品コード〉と `returnTo`〈`/products/{商品コード}/edit`〉を渡す）を出し、案内へ focus を移す（保存の button から離れた所に出るので、出たことを見落とさない。focus は案内の領域で、導線の button ではない: Enter で離れない）。画面の語は欄の名と値（「減らす」「減らさない」）で書き、画面に無い「在庫連動」を使わない。商品フォームは BIZ の message（[30](30-biz-product-service.md)。商品一括 import の行の error に出し、そこでは列名「POS在庫連動」〈[60](60-ui-product-import.md)〉が画面にある）を出さず、型（`recount_required`）で分岐して上の文を出す（画面の小口の lane〈[packet](../plans/2026-10-27-stocktake-screen-fixes.md)〉で、b1 の L3 の owner の所感〈repo 外の回答台帳 TD-433〉から決めた）。入力値を保つ。導線は route の遷移なので、既存の離脱の確認（UI-USW-D1・D2。在庫連動の checkbox を変えたので dirty）を通る: 「破棄して移動」で離れ、「編集を続ける」なら留まる（guard を外さない。未保存の入力を持ち越さない）。戻った商品フォームは DB の値（在庫連動は付いていない）で開くので、利用者は在庫連動を付け直して保存する。商品フォーム自身の `returnTo`（UI-01b-D2）は棚卸しへ渡さず、戻った後の保存は `/products` へ戻る（b1 の Plan Review round 3 の是正）。
 - 在庫連動をやめる（true → false）は警告も確認も出さない。
-- 在庫数の表示（b2）: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
+- 在庫数の表示（b2）: 修正の画面の読取り専用の「現在庫」は、写しが要再確認（`stock_recheck`）なら範囲（棚卸しの画面の要再確認の一覧と同じ `formatStockOrRange` の形「{low}〜{high} {単位}」。例「8〜9 個」「4〜4.5 m」）を出し、欄の label の隣に「要再確認」の①状態の badge（文字と icon。色だけで示さない。[66](66-ui-stock-movements.md) と同じ部品 `StockRecheckBadge`）を出す。要再確認でなければ今の 1 つの値。範囲の文字は form の値の baseline と同じ値なので、何も変えなければ dirty にならず離脱の確認も出ない（検証も送信もしない）。badge の要否は `ProductFormPage` が商品の結果の `stock_recheck` を `ProductForm` の prop `stockRecheck` で渡す（[40](40-cmd-product.md) の商品の結果の列）。登録の画面は変えない。
 
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >
@@ -234,6 +234,7 @@ Error recovery:
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-10-27 | JAN が重複したときの独自コードでの新規登録の lane の起票（D-141） | UI-01b-D26（JAN を他の商品が使っているときの確認のダイアログと、独自コードで送り直す道）を追加（proposed・未実装）。冒頭の共有 JAN の項の field を `pos_stock_sync` だけにし、UI-01b-D25 の「商品コードの重複で止まる」、§7.5 Create 5・§7.6・§7.8 を合わせた。 |
+| 2026-10-27 | 画面の小口の実装（PR #210） | D-118 の節の 2 つ目の項（在庫連動を始める拒否の案内の場所・見出しと文・focus）を実装済みの記述にした（[Plan Packet](../plans/2026-10-27-stocktake-screen-fixes.md)）。 |
 | 2026-10-21 | 原価の lane の実装（PR #184） | UI-01b-D22 の 10 個の単位・税抜の label と説明・原価の 1/100 円の入力、UI-01b-D24 の補助、UI-01b-D6 の長さの単位（m）を現行の記述に直した。§7.6 の `cost_price_centi` の検証の文と上限、§7.7・§7.8 の `cm` の記述を直した。 |
 | 2026-10-21 | 原価の lane の起票（D-128） | UI-01b-D22 に原価の lane の後の原価の label（`原価（税抜、必須）`）と価格の節の説明を置いた（原価は税抜、店の答え TD-331）。UI-01b-D24 に、補助を開き直すと 2 つの欄が空から始まることを足した（proposed・未実装のまま）。 |
 | 2026-10-17 | JAN の別名の design lane（D-122） | UI-01b-D25（商品フォームは前の JAN の問いを出さず、edit の JAN は読取専用のまま、create で別名の JAN を入れたときの扱い）を追加。 |

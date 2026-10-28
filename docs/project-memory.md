@@ -81,7 +81,7 @@ Keep it factual and stable.
 
 ## Current Work and History
 
-現在のphase・blocker・次の行動は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)。この文書には進行状態を複製しない。
+完了は git log、lane の現在地は helper の status、導入の前の関門・ブロッカー・製品の未決判断は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)（D-145）。この文書には進行状態を複製しない。
 
 旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録)（閉じた記録は [archive の同じ節](archive/2026-10-19-backlog-closed.md#過去memoryの未決記録)）に残し、関係する作業で成立・解消状況を確認する。
 
@@ -154,7 +154,7 @@ Keep it factual and stable.
 - 締めで印刷している Excel は 1 シート（売上日報）で、A4 縦・1 ページに縮小して収める。上に年月日、その下に 4 つの枠（売上明細 Z001・取引キー Z002・部門 Z005・PLU Z004）を横に並べ、各枠の列は CSV と同じ（レコード / キャラクター / 個数(件数) / 金額）。行数は Z001 が 28、Z002 が 38、Z005 が 21。PLU の枠は見出しだけで中身は空。1 日 1 枚 — owner確認 2026-09-29
 - 締めで印刷する紙は A4 縦。見返すのは日付と印刷のずれの確認だけ。導入後も紙で要るもの = 日報・月の売上・棚卸しの一覧・入荷や廃棄の記録。申告の前に紙で作る集計の用紙の項目 = ページ番号、メーカー、JAN コード（メーカー型番と兼用）、売価、仕入れ価格、数量、金額 — 店主回答（owner 経由の質問票）2026-09-29
 - 毎日の締めで EJ も取り込める（取込みの頻度は今は月 1 回ほど）— 店主回答（owner 経由の質問票）2026-09-29
-- 値下げ品の売り方: バーコードのある商品は読んでから値引きキー、バーコードの無い商品は部門キー — 店主回答（owner 経由の質問票）2026-09-29
+- PLU をレジに書いた後の値下げ品の売り方: バーコードのある商品は読んでから値引きキー、バーコードの無い商品は部門キー（今は PLU を使っておらず、全部の商品を部門キーで売る。PLU-24、2026-07-23。2026-09-17 の確かめも同じ） — 店主回答（owner 経由の質問票）2026-09-29
 - Daily register closing happens same-day, with the store kept open; during closing the SD card is imported through CV17, the reports are pasted into Excel and printed, and only then is the store closed — owner回答2026-09-22
 - Sales made between the day's register closing and the store's actual close are therefore folded into the next day's closing — Coordinator の推論（上の行の owner回答2026-09-22 からの帰結で、owner の発言ではない）
 - PC work such as product edits can also happen after the day's register closing — owner回答2026-09-22

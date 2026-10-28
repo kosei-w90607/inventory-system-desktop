@@ -3,7 +3,7 @@
 // REQ-205 / UI-10 Test Design Matrix T1〜T16（UI-10-D10）+ T17（UI-10-D11）+ T18〜T20（契約監査）+ T21（UI-10-D10 差異符号、受入台本 L3 起源）
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -434,8 +434,9 @@ describe("StocktakePage (UI-10)", () => {
     );
   });
 
-  it("T16 list shows difference and last counted columns, blank for uncounted items (UI-10-D10)", async () => {
+  it("SF1 (T16) list shows the effective count's business date in the last-count column, blank for uncounted items (UI-10-D10)", async () => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    // 行は BIZ の出す状態（count_business_date と difference は同じ効く計数から。35「読取り」）
     mockGetItems.mockResolvedValueOnce(
       listResponse({
         items: [
@@ -447,6 +448,7 @@ describe("StocktakePage (UI-10)", () => {
             current_stock: 12,
             actual_count: 9,
             counted_at: "2026-10-01T09:05:00",
+            count_business_date: "2026-09-28",
             // 差異は BIZ の値（35「読取り」）。値の期待（+3）は変えない
             difference: 3,
           }),
@@ -458,25 +460,74 @@ describe("StocktakePage (UI-10)", () => {
             actual_count: null,
             counted_at: null,
           }),
+          stocktakeItem({
+            id: 603,
+            product_code: "P-903",
+            name: "前に数えた未入力商品",
+            actual_count: null,
+            counted_at: null,
+            count_business_date: "2026-09-20",
+            difference: -1,
+          }),
+          stocktakeItem({
+            id: 604,
+            product_code: "P-904",
+            name: "ゼロの商品",
+            actual_count: 0,
+            counted_at: "2026-09-27T17:00:00",
+            count_business_date: "2026-09-27",
+            difference: -2,
+          }),
+          stocktakeItem({
+            id: 605,
+            product_code: "P-905",
+            name: "業務日の無い商品",
+            actual_count: 4,
+            counted_at: "2026-10-02T10:00:00",
+            count_business_date: null,
+          }),
         ],
       }),
     );
     await renderPage();
 
     const table = await screen.findByRole("table");
-    const row = within(table).getByText("差異あり商品").closest("tr");
-    if (row === null) throw new Error("row not found");
+    const rowOf = (name: string) => {
+      const row = within(table).getByText(name).closest("tr");
+      if (row === null) throw new Error(`row not found: ${name}`);
+      return row;
+    };
+    const lastCountCell = (row: HTMLElement) => {
+      const cells = within(row).getAllByRole("cell");
+      return cells[cells.length - 1];
+    };
+
+    const row = rowOf("差異あり商品");
     // 表示される在庫値は差異の計算根拠と同じ current_stock（12）であり、
     // system_stock（10）ではないことを検証する（Codex レビュー P2 是正）。
     expect(within(row).getByText("12")).toBeInTheDocument();
     expect(within(row).queryByText("10")).not.toBeInTheDocument();
     expect(within(row).getByText("+3")).toBeInTheDocument();
-    expect(within(row).getByText("2026-10-01 09:05:00")).toBeInTheDocument();
+    expect(lastCountCell(row)).toHaveTextContent(/^2026-09-28$/);
+    expect(within(row).queryByText(/2026-10-01/)).not.toBeInTheDocument();
 
-    const uncountedRow = within(table).getByText("未入力商品").closest("tr");
-    if (uncountedRow === null) throw new Error("uncounted row not found");
-    const dashes = within(uncountedRow).getAllByText("—");
-    expect(dashes).toHaveLength(2);
+    // 計数の無い未入力の行: 差異と最終カウントが「—」
+    const uncountedRow = rowOf("未入力商品");
+    expect(within(uncountedRow).getAllByText("—")).toHaveLength(2);
+    expect(lastCountCell(uncountedRow)).toHaveTextContent(/^—$/);
+
+    // 前の計数を持つ未入力の行: 最終カウントは「—」（差異は BIZ の値）
+    const previouslyCountedRow = rowOf("前に数えた未入力商品");
+    expect(lastCountCell(previouslyCountedRow)).toHaveTextContent(/^—$/);
+    expect(within(previouslyCountedRow).queryByText(/2026-09-20/)).not.toBeInTheDocument();
+
+    // actual_count 0 は計数
+    expect(lastCountCell(rowOf("ゼロの商品"))).toHaveTextContent(/^2026-09-27$/);
+
+    // 業務日が null なら保存の時刻へ戻さない
+    const noDateRow = rowOf("業務日の無い商品");
+    expect(lastCountCell(noDateRow)).toHaveTextContent(/^—$/);
+    expect(within(noDateRow).queryByText(/2026-10-02/)).not.toBeInTheDocument();
   });
 
   it("T8 negative actual_count shows FieldError and is not sent", async () => {
@@ -1786,6 +1837,192 @@ describe("StocktakePage D-118 b1（73）", () => {
         stocktake_item_id: null,
       });
     });
+    expect(onReturnTo).not.toHaveBeenCalled();
+  });
+
+  // route の product が外れる経路（73 の D-118 の節「今の数を入れる」）。P-005 = A、P-006 = B
+  function renderCountNowRoute(previewB: Promise<ReturnType<typeof placement>>) {
+    mockGetActive.mockResolvedValue(ok(null));
+    mockPreviewPlacement.mockImplementation((productCode) =>
+      productCode === "P-005"
+        ? Promise.resolve(
+            placement({
+              product_name: "連動なしの糸",
+              count_value: null,
+              count_kind: null,
+              count_business_date: null,
+            }),
+          )
+        : previewB,
+    );
+    const utils = renderWithReturn({ product: "P-005", returnTo: "/products/P-005/edit" });
+    const setRoute = (search: StocktakeSearch) => {
+      utils.rerender(
+        <QueryClientProvider client={utils.queryClient}>
+          <StocktakePage
+            search={search}
+            onSearchChange={utils.onSearchChange}
+            onReturnTo={utils.onReturnTo}
+          />
+        </QueryClientProvider>,
+      );
+    };
+    return { ...utils, setRoute };
+  }
+
+  function placementB() {
+    return placement({
+      product_name: "緑の糸",
+      count_value: null,
+      count_kind: null,
+      count_business_date: null,
+    });
+  }
+
+  function holdSave() {
+    const held: { resolve: (value: ReturnType<typeof saveResult>) => void } = {
+      resolve: () => undefined,
+    };
+    mockSave.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          held.resolve = resolve;
+        }),
+    );
+    return held;
+  }
+
+  // 応答を解いた後の microtask と invalidate の await を流し切る
+  async function flushSaveFollowUp(invalidateSpy: { mock: { calls: unknown[] } }) {
+    await waitFor(() => {
+      expect(invalidateSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+    await act(async () => {
+      for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  it("SF4 count_now field for A closes on save after the route's product is removed while B loads (73)", async () => {
+    let resolvePreviewB: () => void = () => undefined;
+    const { onReturnTo, setRoute } = renderCountNowRoute(
+      new Promise((resolve) => {
+        resolvePreviewB = () => {
+          resolve(placementB());
+        };
+      }),
+    );
+    const user = userEvent.setup();
+    await screen.findByText("連動なしの糸");
+
+    setRoute({ product: "P-006" });
+    await waitFor(() => {
+      expect(mockPreviewPlacement).toHaveBeenCalledWith("P-006", expect.anything());
+    });
+    setRoute({});
+    expect(screen.queryByText("操作できませんでした")).not.toBeInTheDocument();
+    expect(screen.getByText("連動なしの糸")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/^実際の数/), "9");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("heading", { name: "今の数を入れる" })).not.toBeInTheDocument();
+    });
+    expect(onReturnTo).not.toHaveBeenCalled();
+
+    // 途中の B の読込みの応答は捨てる
+    resolvePreviewB();
+    await act(async () => {
+      for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.queryByText("緑の糸")).not.toBeInTheDocument();
+    expect(screen.queryByText("操作できませんでした")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["a: removed before the response"],
+    ["b: removed after the pending close"],
+    ["c: removed without another product"],
+    ["d: page unmounts"],
+  ] as const)(
+    "SF5 count_now save for A started with returnTo does not return after the route's product is removed or the page unmounts (%s) (73)",
+    async (label) => {
+      const save = holdSave();
+      const { onReturnTo, onSearchChange, invalidateSpy, queryClient, setRoute, unmount } =
+        renderCountNowRoute(new Promise(() => undefined));
+      const user = userEvent.setup();
+      await screen.findByText("連動なしの糸");
+      await user.type(screen.getByLabelText(/^実際の数/), "9");
+      await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+      await waitFor(() => {
+        expect(mockSave).toHaveBeenCalledTimes(1);
+      });
+
+      if (label.startsWith("d")) {
+        // サイドバーで別の画面へ移った後に保存の成功が届く
+        const searchCalls = vi.mocked(onSearchChange).mock.calls.length;
+        unmount();
+        save.resolve(saveResult());
+        await flushSaveFollowUp(invalidateSpy);
+        expect(onReturnTo).not.toHaveBeenCalled();
+        expect(onSearchChange).toHaveBeenCalledTimes(searchCalls);
+        return;
+      }
+
+      if (!label.startsWith("c")) {
+        setRoute({ product: "P-006" });
+        await waitFor(() => {
+          expect(mockPreviewPlacement).toHaveBeenCalledWith("P-006", expect.anything());
+        });
+      }
+      if (label.startsWith("b")) {
+        save.resolve(saveResult());
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "今の数を保存" })).toBeEnabled();
+        });
+        await waitFor(() => {
+          expect(queryClient.isFetching()).toBe(0);
+        });
+        await flushSaveFollowUp(invalidateSpy);
+        // A の欄は B の読込みの決着を待つ閉じ待ちで残る
+        expect(screen.getByText("連動なしの糸")).toBeInTheDocument();
+        setRoute({});
+      } else {
+        setRoute({});
+        // 外れた時点では欄を閉じない（未保存の入力を失わない）
+        expect(screen.getByText("連動なしの糸")).toBeInTheDocument();
+        expect(screen.queryByText("操作できませんでした")).not.toBeInTheDocument();
+        save.resolve(saveResult());
+      }
+
+      await waitFor(() => {
+        expect(screen.queryByRole("heading", { name: "今の数を入れる" })).not.toBeInTheDocument();
+      });
+      expect(onReturnTo).not.toHaveBeenCalled();
+      expect(screen.queryByText("操作できませんでした")).not.toBeInTheDocument();
+    },
+  );
+
+  it("SF6 pending count_now save for A keeps B's field after B loads and the route's product is removed (73)", async () => {
+    const save = holdSave();
+    const { onReturnTo, invalidateSpy, setRoute } = renderCountNowRoute(
+      Promise.resolve(placementB()),
+    );
+    const user = userEvent.setup();
+    await screen.findByText("連動なしの糸");
+    await user.type(screen.getByLabelText(/^実際の数/), "9");
+    await user.click(screen.getByRole("button", { name: "今の数を保存" }));
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
+    });
+
+    setRoute({ product: "P-006" });
+    await screen.findByText("緑の糸");
+    setRoute({});
+    save.resolve(saveResult());
+    await flushSaveFollowUp(invalidateSpy);
+
+    expect(screen.getByRole("heading", { name: "今の数を入れる" })).toBeInTheDocument();
+    expect(screen.getByText("緑の糸")).toBeInTheDocument();
     expect(onReturnTo).not.toHaveBeenCalled();
   });
 

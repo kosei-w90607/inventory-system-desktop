@@ -1,15 +1,15 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 計数の置き場と在庫の求め直しの契約（D-118。(a) と b1 は実装済み、b2 は proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a)・b1・b2 は実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存・完了・Z004 の識別と確定と取消・要再確認の一覧・共有 JAN と在庫連動を始める検査・MNT の migration v11 が入り、停止の入口を外した。商品の画面の範囲の表示と在庫変動の履歴の計数の行は b2（proposed・未実装）。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。b1（[Plan Packet](archive/plans/2026-10-22-stocktake-count-runtime-b1.md)）で、計数の保存・完了・Z004 の識別と確定と取消・要再確認の一覧・共有 JAN と在庫連動を始める検査・MNT の migration v11 が入り、停止の入口を外した。b2（[Plan Packet](plans/2026-10-23-stocktake-count-runtime-b2.md)）で、商品の結果の写しの 3 列と商品の画面の範囲の表示、在庫変動の履歴の計数の行（BIZ が movement と計数を並びの鍵の順に合成する）が入った。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
 | UI | 商品ごとの即保存（日付 D を常に出す、前の日の分の選択、日付の変わり目の確認）、要再確認の一覧と入れ直し、範囲の表示、完了の拒否の一覧と「0 にする」。[UI task](architecture/ui-task-specs.md)、51/55/58/65/66/73 |
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
-| BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
-| IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
+| BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、在庫変動の履歴の合成（鍵の順・絞り込み・ページ）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
+| IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込みと読取り、在庫変動の履歴の並べない読取り。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
 | MNT | 列と表を足す migration（(a) の v9、b1 の v11。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
@@ -215,7 +215,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ### 実装順序（依存関係に基づく）
 
-以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は [Plans](Plans.md) を参照する。
+以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は helper の status と git log、導入の前の関門は [Plans](Plans.md) を参照する（D-145）。
 
 ```
 第1段階: 基盤

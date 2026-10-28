@@ -325,6 +325,8 @@ fn get_stocktake_record(
 
 **設計ノート（差異の定義）**: 詳細画面の「差異」は本書冒頭の「読取り」の差異（完了した棚卸しは完了の時点のカーソルで求める）。補正の movement は作らないので、その quantity は使わない。
 
+**共有の判定（BIZ-03 の取消の前の読取り）**: 精算が完了の時点の入力・完了の後の比較の範囲に入るか（精算回数 ≤ 完了の時点の精算の n、または精算日 < 完了日）は 1 つの判定の関数で決め、手順 3・4 と `completed_stocktakes_comparing_settlement(conn, settlement)`（`pub(crate)`）が使う。後者は完了した棚卸しのうち、指定の精算が完了の後の比較の範囲に入るものを完了の日時の昇順で返す（範囲による候補で、記録の詳細のどの数が変わるかは見ない。[32](32-biz-csv-import-service.md) §15.6b の手順 3 が呼び、規則を写さない）。完了した棚卸しの一覧は [20](20-io-product-repo.md) §2.11a の `list_completed_stocktake_cutoffs`。
+
 ---
 
 ### 20.7 非目的
@@ -402,3 +404,4 @@ CMD層では `kind="validation"` と BIZ の message / field をそのまま保�
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §20.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-06 停止文言の正本）を追加。§20.3〜§20.5 は旧本体 `legacy_*` の記述と明記 |
 | 2026-09-25 | 棚卸しの評価額（本 PR） | §20.5a 評価額の計算（SPEC-STK-VAL-D1〜D6: 価格の基準数量、1/100 円の商品別の金額、円未満を四捨五入した総額）を追加。§20.2 / §20.5 と新方式の total_cost の式を §20.5a へ寄せる |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節を現行に。§20.0 の停止の節を外し、§20.2〜§20.5・§20.6a・§20.8〜§20.10 を計数の保存・0 にする・完了の拒否と評価額の固定・記録の詳細の新しい経路に置き換えた（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-25 | z004-rollback-entry（PR #197） | §20.6a に、完了の後の比較の範囲の判定を BIZ-03 の取消の前の読取りと共有する関数 `completed_stocktakes_comparing_settlement` を足した（規則は変えない。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
