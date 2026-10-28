@@ -46,13 +46,14 @@ Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touch
   `rg -n "<old-term>|<new-term>|<related-term>" docs src src-tauri scripts`.
 - Check generated bindings after command or DTO changes.
 - Check active plans with `bash scripts/doc-consistency-check.sh --target plan` when workflow artifacts changed.
-- For R2+ work, check whether Design Phase completed before implementation: source design docs are cited as sufficient or updated in the same PR.
+- For R3/R4 work, check whether Design Phase completed before implementation: source design docs are cited as sufficient or updated in the same PR. For R2 (packet なし), check that the Risk is right (not a stateful screen, migration, dependency, or contract change).
 - For R3/R4 work, check the `Contract Ledger` (old packets: `Design Intent Trace` and `Trace Matrix`): contract / design decision IDs, source design sections, implementation targets, and test targets should be connected.
 - Treat Plan Packet-only design rationale as drift when it is durable and absent from source design docs, `docs/decision-log.md`, or ADRs.
 - For UI changes affecting operator flow, state whether Windows native L3 verification is required.
 - data safety の review では `git status --short` を見て、実 POS / 店舗の成果物が ignored のままかを確かめる。
 - Before claiming that a file is absent, stale, duplicated, or divergent, confirm its file type with `git ls-files -s` (mode `120000` is a symlink) or `eza -l` (the symlink arrow). A static `git log` or a line-count difference in `diff --stat` is not evidence of a duplicate by itself.
 - Closure of an accepted P1/P2 confirms its pin: the pinning test (or L3 item / sweep) is in the diff and reverting the fix turns it red. A missing pin keeps that finding open; it is not a new finding.
+- closure の固定の問い（D-145）: 是正で足した契約文と、是正で見送った経路を全部挙げ、それぞれが今の版で成り立つかを答える。挙げ漏れた是正の文は closure を通さない。
 
 ## Same PR vs Follow-up
 
@@ -74,7 +75,7 @@ Track as follow-up:
 
 ## Final Review Protocol
 
-- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for R3/R4 review orders.
+- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for review orders (R3/R4 and the R2 差分の review).
 - The reviewer is read-only and findings-only.
 - The implementer verifies every finding independently before fixing, rejecting, or deferring.
 
