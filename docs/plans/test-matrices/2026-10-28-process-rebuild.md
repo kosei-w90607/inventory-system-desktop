@@ -18,7 +18,7 @@ Risk: R3
 - D-145 (7) GA の後、Scope・AC が同じなら closure（H7）
 - D-145 (8) R2 は packet なしの道（H8）
 - D-145 (9) 同じ head の CI を 1 回にする（H9）
-- D-145 (10) reviewer の報告から reviewed head を読む（H11）、lane の一覧を引く（H12）、生きた docs に `path:行` を新しく足さない（H13）、packet の最小形（H14）
+- D-145 (10) reviewer の報告から reviewed head を読む（H11）、生きた docs に `path:行` を新しく足さない（H13）、packet の最小形（H14）
 - 隣接（変えない）: helper は PR の base の版だけが判定する（D-099）、古い head・base の record を拒む、broad の本数の不足を拒む、R4 の承認を使い回さない、PK5 の ancestry と不変、不可逆 finding の 4 項目（文だけ）
 
 ## Failure Modes
@@ -43,12 +43,15 @@ Risk: R3
 | PA1 `plan-approve.sh` が `Plan Commit: pending` を報告の SHA に置き換え、packet だけの commit を 1 本作る | 手写しの誤記 | CLI（合成 repo） | `scripts/tests/plan-approve.test.sh` PA1 | 置き換えが別の行に当たる、commit が packet 以外を含む |
 | PA2 SHA が branch の祖先でない・40 桁の小文字 hex でない・既に SHA が入っている → exit 非 0、何も書かない | 承認していない版を固定、Plan Commit の書き換え（PK5 違反） | CLI | 同 PA2 | 祖先の検査か不変の検査が抜ける |
 | PA3 `--amend SHA` は `Amendments` に足す（`none` → SHA、既存の列の後ろ）。重複・Plan Commit の子孫でない SHA は拒む | Amendments の順の崩れ | CLI | 同 PA3 | 列の前に足す、重複を通す |
-| PA4 reviewer の読んだ SHA から HEAD までの差分（`git diff --name-only <SHA> HEAD`）に packet 以外の path があれば exit 非 0、何も書かない。差分が空か packet だけなら通す | reviewer が読んでいない実装・計画の変更を積んでから承認を書く | CLI | 同 PA4 | 差分の検査が無い |
+| PA4 (a) lane の commit（`git log --first-parent --no-merges --name-only <SHA>..HEAD`）に packet 以外の path があれば exit 非 0、何も書かない。(b) `<SHA>` の版と HEAD の版の packet の本文が、Workflow State の `Plan Commit`・`Amendments` の行を除いて byte で違えば exit 非 0（負例: `<SHA>` の後に同じ packet の `## Scope` に 1 項足して commit → 拒む）。差分が空か、packet の承認の記録の行だけなら通す | reviewer が読んでいない実装・計画の変更を積んでから承認を書く（Codex r2 #1・Opus r2 F4 の反例） | CLI | 同 PA4 | 差分の検査が path だけで、packet の本文を比べない |
+| PA5 `<SHA>` の後に `origin/main` の単段の merge（#217 の同期だけの条件を満たす）を挟んでも通る。間の merge が条件を満たさない（merge の中の編集・main の外の branch）なら拒む | 計画の承認の前の同期で承認の道が閉じる／同期に紛れた変更を通す | CLI（合成 repo） | 同 PA5 | 二点の diff で main 側の path を拾う、merge を無条件に通す |
 | PH1 Phase 行の無い新しい packet: `Plan Commit: pending` → helper `status` は `Plan Gate incomplete`、`capture` は拒む | 承認の前に capture・record できる | unit（`parse_packet`・`snapshot`） | `scripts/tests/pr-gate.test.py` PH1 | `phase == implementing` の代わりの判定が pending を通す |
 | PH2 Phase 行の無い packet で Plan Commit が SHA → `status` が blocker の評価に進む | 承認済みの lane が止まる | unit | 同 PH2 | SHA の packet を計画中と扱う |
 | PH3 旧形式の packet（Workflow State に Phase の行がある。Coordinator・Writer・Plan Reviewer・Final Reviewer・Branch・Owner Effort Budget を持つ）を受け、Phase の値を評価しない（8 値の外でも拒まない）。Plan Commit・Amendments・Risk の形の検査は今のまま。Phase の行の有無で形式を見分ける | 走っている lane（#216 ほか）が止まる | unit | 同 PH3 | 旧い行を必須か拒否にする |
 | PH4 active な packet（起点の tree に無い dated packet）のどれかが `Plan Commit: pending` で、起点からの差分に classifier の `rust`・`frontend`・`generated`・`env`・`unknown` が出るか、`scripts/**`・`.github/**` の path があれば ERROR | 計画の承認の前の実装を通す（K11） | CLI（`check-workflow-git.sh`、合成 repo） | `scripts/tests/workflow-git-checks.test.sh` PH4 | 先走りの検査が無い、code の種類の一部を見落とす |
 | PH5 同じ条件で差分が docs・packet だけなら通す（plan-first の commit は止めない） | 起票の commit が止まる | CLI | 同 PH5 | docs を code と数える |
+| PH7 file 名の日付が 2026-10-29 以後で Workflow State に `Phase` の行がある packet、または新形式（`Phase` の行が無い）で Risk R2 の packet は PK4 と helper が拒む。2026-10-28 以前の日付の `Phase` のある packet は旧形式として受ける | 走っている lane の packet を写して新しい lane で旧形式の `Final Review Minimum: 1` を使う（Opus r2 F3）／新形式の R2 の Minimum を推測で決める | CLI・unit | `doc-consistency-plan-packet.test.sh`・`pr-gate.test.py` PH7 | 日付の境を見ない、R2 の新形式を受ける |
+| PH8 active な packet の `Plan Commit` が SHA（承認済み）なら、code の差分があっても PH4 の ERROR を出さない | 承認の後の実装が止まる（PH4 の判定の反転を検出する組） | CLI | `workflow-git-checks.test.sh` PH8 | pending の判定を外す・反転する |
 | PH6 起点が解決できない・merge-base が一意でない → active な packet を決められないとして ERROR で止め、理由を出す（全 packet の検査に落とさない） | fail-open／merge 済みの packet で必ず落ちる | CLI | 同 PH6 | 起点が取れないときに 0 件で通す、全 packet を見て merge 済みの packet の PK5 で落ちる |
 | MN1 新形式の packet（Phase の行が無い）: R3 = 2、R4 = 2 と r4、classifier `workflow=true` = 2（packet に Minimum を書かない） | 新形式の R3 が 1 本で通る（TD-484） | unit（`requirements`） | `pr-gate.test.py` MN1 | 導出の表を誤る |
 | MN2 旧形式の packet は書いた `Final Review Minimum` をそのまま使う（R3 で 1 なら 1、同期の後も 2 に上げない。R4・`workflow=true` で 2 を求める今の検査は残す）。新形式で `Final Review Minimum` の行があれば導いた値との大きい方（新形式の R3 に 1 と書いても 2） | 走っている lane の本数が同期の後に上がる／新形式で書いた 1 で下げる | unit | 同 MN2 | 旧形式に導出を当てる、新形式で min を取る |
@@ -59,30 +62,31 @@ Risk: R3
 | AR2 PK1・PK4 の対象は active な packet（起点の tree に無い dated packet。`check-workflow-git.sh` と同じ起点の取り方）。起点が取れなければ ERROR | merge 済みの packet の旧い形が他の PR を止める／起点が取れず検査 0 件 | CLI（`doc-consistency-check.sh`） | `scripts/tests/doc-consistency-plan-packet.test.sh` AR2 | 定義が PK5・helper と違う、fail-open |
 | AR3 PK4 の `docs/Plans.md` の `## 次の行動` の pointer の検査を外す。`--target plan PATH` の明示の検査は今のまま | Plans の節を消すと全 PR が止まる | CLI | 同 AR3 | pointer の検査が残る |
 | AR4 helper: merge 済みの packet（base にある dated packet）の typo を直すだけの PR は `--risk R0` の道で通る。同じ PR が active な packet を足していれば `--packet` を要る（今のまま） | merge 済みの packet を直す道が無い（Opus F1 の反例） | unit（`requirements`） | `pr-gate.test.py` AR4 | active の判定が「差分が触る packet」のまま |
-| AR5 `check-workflow-git.sh`: merge 済みの packet を 1 行直す差分で PK5 と H2 が対象にしない（squash の Plan Commit が祖先でなくても通る）。merge 済みの packet の Workflow State の行を変える差分は ERROR。active な packet は今と同じに PK5 を見る | merge 済みの packet の編集で PK5 が落ちる／merge の時点の記録の書換え | CLI（合成 repo で squash を再現） | `workflow-git-checks.test.sh` AR5 | 対象の定義が古い、記録の保護が無い |
+| AR5 `check-workflow-git.sh`: merge 済みの packet を 1 行直す差分で PK5 と H2 が対象にしない（squash の Plan Commit が祖先でなくても通る）。merge 済みの packet の Workflow State の行を変える差分は ERROR。merge 済みの packet の `docs/archive/plans/` への移動（`docs/plans/` 側の削除と archive 側の追加、#215 の型）は通る。active な packet は今と同じに PK5 を見る | merge 済みの packet の編集で PK5 が落ちる／merge の時点の記録の書換え／#215 型の移動が行の変更と判定されて止まる | CLI（合成 repo で squash を再現） | `workflow-git-checks.test.sh` AR5 | 対象の定義が古い、記録の保護が無い、移動を行の変更と数える |
 | AR6 link の検査: merge 済みの packet の link 切れは WARN、active な packet と生きた docs の link 切れは今のまま ERROR | 文書の改名のたびに merge 済みの packet の修正を強いる／生きた link 切れを見落とす | CLI | `doc-consistency-plan-packet.test.sh` AR6 | WARN の範囲が広すぎる・狭すぎる |
 | C1 L3 の後の lane の commit が classifier で docs だけ（`workflow=false`）で `## L3` 節が byte で同じ → manual を使い回す（#217 の A・B と同じ record の道） | 締めの docs の commit で L3 が無効（K13） | unit（合成 repo） | `pr-gate.test.py` C1 | C の分岐が無い |
 | C2 同じで `## L3` 節が変わる → 使い回さず、理由に「L3 節が変わった」を出す | 別の基準の PASS を使い回す（反例 9） | unit | 同 C2 | 節の比較が抜ける |
 | C3 lane の commit に runtime・生成物・`unknown`・`workflow=true` の path、または通常の path から docs への rename → 使い回さない（`--no-renames`） | runtime の変更の後の L3 を使い回す | unit | 同 C3 | classifier の flag の一部を見ない、rename を docs と数える |
 | C4 R4 は C でも使い回さない | R4 の承認の使い回し | unit | 同 C4 | R4 を引き継ぐ |
-| C5 旧形式の manual の packet で `## L3` が無いとき: `## Test Plan` 節の全体を比べ、L3 の合格基準だけを変えた docs の commit では使い回さない（#210 の型）。`## Test Plan` が同じなら使い回す。`## L3` も `## Test Plan` も無ければ使い回さない | 旧形式で変わった基準に対する PASS を流用する（Codex #2 の反例） | unit | 同 C5 | 無い節どうしを同じと扱う |
+| C5 旧形式の manual の packet で `## L3` が無いとき: `## Test Plan` 節の全体と、packet が link する Test Design Matrix の file の全体を比べる。(1) L3 の合格基準だけを `## Test Plan` で変えた docs の commit では使い回さない（#210 の型）。(2) packet は変えず Matrix の `Manual` 節の基準だけを変えた docs の commit でも使い回さない（#211 の型。例「9 pt 以上」→「10 pt 以上」）。(3) どちらも同じなら使い回す。(4) `## L3` も `## Test Plan` も無い、Matrix の link が 0 本か 2 本以上、link 先の file が無いときは使い回さない | 旧形式で変わった基準に対する PASS を流用する（Codex r1 #2・r2 #2 の反例） | unit（合成 repo） | 同 C5 | 無い節どうしを同じと扱う、Matrix を比べない |
 | RC1 `--review-stage docs`: 版の間の lane の commit が C1 と同じ条件で、`--evidence` に P3 だけと裁定した pointer があれば review の closure を機械で書く | P3 の docs の是正で review を取り直す（TD-476 (2)） | unit | 同 RC1 | 分岐が無い |
-| RC2 同じ道で `workflow=true` の docs（`docs/agent-guidance/**`・`docs/DEV_WORKFLOW.md` ほか gate の文書）・packet の `## Scope`・`## AC`・`## 契約の一覧`（旧い packet は `## Acceptance Criteria`・`## Contract Ledger`）の変更・`--evidence` の欠け → 拒む | gate の文や計画を人の review なしに変える | unit | 同 RC2 | workflow の docs を通す、計画の節の比較が抜ける |
-| RC3 RC1 の道で、旧形式の packet の `## Test Plan`（`## L3` が無いとき）が変わる → 拒む | 旧形式の L3 の基準を人の review なしに変える | unit | 同 RC3 | L3 の比較対象を RC に当てない |
+| RC2 同じ道で `workflow=true` の docs（`docs/agent-guidance/**`・`docs/DEV_WORKFLOW.md` ほか gate の文書）・計画の節（packet の「計画の節」の定義: `## Scope`・`## Acceptance Criteria`・`## Contract Ledger`。旧形式で Ledger が無ければ `## Spec Contract`・`## Trace Matrix`）の変更・`--evidence` の欠け → 拒む | gate の文や計画を人の review なしに変える | unit | 同 RC2 | workflow の docs を通す、計画の節の比較が抜ける |
+| RC3 RC1 の道で、旧形式の packet の `## Test Plan`（`## L3` が無いとき）か、link する Matrix の file が変わる → 拒む | 旧形式の L3 の基準を人の review なしに変える | unit | 同 RC3 | L3 の比較対象を RC に当てない |
+| RC4 RC1 の道で Risk が R4 の packet → 拒む（`## Recovery` だけを変えた P3 の docs の commit でも） | R4 の復旧の文を人の review なしに変える（Opus r2 F6） | unit | 同 RC4 | H6 が R4 を受ける |
 | GA1 GA の後、broad の版と今の版で計画の節（`## Scope`・`## Acceptance Criteria`・`## Contract Ledger`。旧形式で Ledger が無ければ `## Spec Contract`・`## Trace Matrix`）が byte で同じ → closure を受ける | 同じ範囲で fresh broad を取り直す | unit（`validate_review`） | 同 GA1 | 比較が無い |
 | GA2 Scope か AC が変わる、節が読めない → `FRESH_BROAD`（今のまま） | 範囲が変わったのに closure で通す | unit | 同 GA2 | 節が読めないときに closure を受ける（fail-open） |
-| GA3 `## Contract Ledger` だけが変わる（Scope・AC は同じ）→ `FRESH_BROAD` | 足した契約が broad の Contract Audit を通らずに入る（Opus F4 の反例） | unit | 同 GA3 | H7 が Ledger を比べない |
+| GA3 `## Contract Ledger` だけが変わる（Scope・AC は同じ）→ `FRESH_BROAD` | 足した契約が broad の Contract Audit を通らずに入る（Opus r1 F4 の反例） | unit | 同 GA3 | H7 が Ledger を比べない |
+| GA4 R4 の packet で `## Recovery` か `## Data Safety` だけが変わる → `FRESH_BROAD` | R4 の復旧の変更が closure だけで入る（Opus r2 F6） | unit | 同 GA4 | R4 の計画の節に Recovery・Data Safety が無い |
 | R2N1 `--risk R2`（packet なし）は Minimum 1、`plan_commit` null で、`--manual` を要る | R2 の道が無い | unit | 同 R2N1 | `--risk` が R0/R1 だけ |
 | R2N2 packet なしの R2 で classifier が `workflow=true` か `unknown=true` → 拒み、理由に「R3 の packet で起票する」を出す。`rust=true`・`frontend=true` だけなら受ける。diff が active な packet を足していれば拒む（`--packet` の道へ） | gate・未知の変更が R2 で通る／R2 の行き先が 2 つある | unit | 同 R2N2 | flag の検査が抜ける、rust を拒む |
 | R2N3 R2 の画面の修正で `--manual required` なら、目視の manual の record が pass になるまで status が `manual incomplete` | 画面の目視を飛ばして merge | unit | 同 R2N3 | R2 で manual を not-required に固定する |
+| R2N4 packet なしの R2 で差分に migration（`src-tauri/src/db/migration.rs`・`src-tauri/src/db/migration_tx.rs`・`src-tauri/src/db/schema_v*.rs`）か `package.json`・`package-lock.json`・`.npmrc` があれば拒み、理由にその path と「R3 の packet で起票する」を出す | migration・依存の変更が計画の review なしに入る（Opus r2 F7） | unit | 同 R2N4 | path の検査が無い |
 | CI1 Draft の run の aggregate の名が `Merge gate`（`.github/workflows/ci.yml` の `merge_gate` の name 式）、`ready_for_review` で run を作らない | 同じ head の CI が 2 回（TD-481） | CLI（`scripts/tests/ci-workflow.test.sh`） | `ci-workflow.test.sh` CI1 | name 式か trigger が残る |
 | CI2 helper `ci()` は同じ head の最新の成功の run（`pull_request` の Draft を含む）で `Merge gate` が 1 つなら受ける。別の head・失敗・`Merge gate` の欠け・別の app は今のまま拒む | 古い head の CI を受ける（K5） | unit | `pr-gate.test.py` CI2 | head の照合か app の照合が抜ける |
 | CI4 `.github/workflows/ci.yml` の docs job の `doc-consistency-check.sh` の step が `WORKFLOW_BASE_SHA` を env に持つ | hosted で起点が無く H13 が WARN に落ち、H2・H4 が止まる | CLI | `ci-workflow.test.sh` CI4 | env の行が無い |
 | CI3 Ready の後の push を pre-push が拒む挙動は今のまま | Ready の後の未検証の head | CLI | `scripts/tests/pre-push.test.sh` の既存の Ready push の case | 既存の case を消す |
 | RP1 `record --report FILE` は FILE の `REVIEWED_HEAD=<40hex>` の 1 行を `--reviewed-head` に使い、capture の head と違えば何も書かない | 報告と違う版の record | unit | `pr-gate.test.py` RP1 | 照合が無い |
 | RP2 行が無い・2 行ある・形が違う・`--reviewed-head` と両方 → 入力の誤り（exit 2） | 曖昧な報告を受ける | unit | 同 RP2 | 先頭の 1 行だけ読む |
-| LN2 packet の無い PR は「packet なし」と書き、PR body の Risk から `--risk`・`--manual` を補う（読めなければ status を呼ばない）。base の版の helper が exit 2 を返す PR は理由の 1 行を書いて次へ進む | 1 本の PR の失敗で表全体が止まる・手元の helper の版で誤った status を出す | CLI（fake gh） | `lanes.test.sh` LN2 | 補いが無い、exit 2 で全体が止まる |
-| LN1 `scripts/lanes.sh` は open の PR ごとに番号・branch・packet（差分が触る `docs/plans/` の dated file）・head・helper status の blocker を 1 表で出し、何も書かない（`git status --porcelain` が空のまま、PR に書込みの API を呼ばない） | handoff の lane の表の手写し | CLI（fake gh） | `scripts/tests/lanes.test.sh` LN1 | 書込みの API を呼ぶ、packet の取り方が helper と違う |
 | FL1 起点からの差分で生きた docs（`docs/**`、`AGENTS.md`・`CLAUDE.md`。下の FL3 の対象外を除く）に `<path>.<md|rs|ts|tsx|py|sh>:<数>` を足すと ERROR。既にある行は ERROR にしない | 腐る引用を新しく作る（D-125） | CLI | `doc-consistency-plan-packet.test.sh` か新しい test の FL1 | 既存の行まで ERROR、足した行を見落とす |
 | FL2 差分が取れない → 全 live docs を対象にせず WARN と理由（既存 231 か所を一斉に ERROR にしない）。pre-push と hosted は起点を渡す | 起点の無い local の実行で全件 ERROR | CLI | 同 FL2 | fail の向きを誤る |
 | FL3 D-125 (2)・(3) の適用除外は ERROR にしない: `docs/backlog.md` の行で同じ行に commit（7〜40 桁の hex）を添えた `path:行`、`docs/research/**`・`docs/archive/**`・`docs/plans/**`・`docs/decision-log.md` への追加。commit の無い backlog の行は ERROR | 規則が許す時点の記録を拒む（Codex #4 の反例）／除外が広すぎる | CLI | 同 FL3 | 除外が無い、commit の検出が無い |
@@ -96,7 +100,7 @@ workflow の状態（計画・review・L3・CI の証拠）の寿命を並べる
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 計画の固定（Plan Commit） | packet 起票、`pending` | Plan Review 中 | `plan-approve.sh` が SHA を書く | GA で Amendments に足す | helper が head の packet を読み直す | 再開は open の PR → packet | — | 祖先でない SHA を拒む | 正しい SHA で再実行 | PA1〜PA3・PH1・PH2 |
+| 計画の固定（Plan Commit） | packet 起票、`pending` | Plan Review 中 | `plan-approve.sh` が SHA を書く | GA で Amendments に足す | helper が head の packet を読み直す | 再開は open の PR → packet | — | 祖先でない SHA を拒む | 正しい SHA で再実行 | PA1〜PA5・PH1・PH2 |
 | 先走りの検査 | pending の packet | branch に code の差分 | 承認の後は検査しない | — | push ごと | — | — | ERROR で push を止める | plan-approve の後に push | PH4〜PH6 |
 | Final Review の本数 | Risk と classifier から導く | broad の record | Minimum を満たす | Scope・AC の変更（GA2）で fresh broad | status ごとに導き直す | — | — | 不足で blocker | broad を足す | MN1・MN2・GA1・GA2 |
 | manual（L3） | `## L3` 節の有無 | L3 を頼む | PASS の record | runtime の commit・L3 節の変更 | status が確かめ直す | 同期 A/B（#217）・C | — | FAIL は直した項目を取り直す | 取り直しの record | MN3・C1〜C4 |
@@ -121,7 +125,7 @@ workflow の状態（計画・review・L3・CI の証拠）の寿命を並べる
 - unknown reference: 祖先でない SHA（PA2）、未知の path（C3・R2N2・PH4）
 - dependency missing: 起点の ref が無い（PH6・AR2・FL2）、GitHub の API の失敗（helper の今の exit 2 のまま）
 - permission/write failure: `plan-approve.sh` の commit の失敗で packet の変更を残さない（PA1 の後片付け）
-- dry-run side effect: `lanes.sh` と helper `status` は何も書かない（LN1）
+- dry-run side effect: helper `status` は何も書かない（今のまま）
 
 ## Boundary Checks
 
@@ -141,8 +145,7 @@ workflow の状態（計画・review・L3・CI の証拠）の寿命を並べる
 
 - old schema/input: 走っている lane の旧い packet（PH3・MN2・MN3・MN4）、#215 の移送の PR（AR1）、#217 の record の形（RC1）
 - new schema/input: 最小形の packet（PK1N・PH1・PH2）
-- output order: `lanes.sh` は PR 番号の降順（LN1）
-- optional field behavior: 旧い packet の担当 4 行・Branch・Owner Effort Budget は在っても無くても受ける
+- optional field behavior: 旧形式の packet の担当 4 行・Branch は在っても無くても受ける（helper も PK も評価しない）。旧形式の `## Owner Effort Budget` は今までどおり PK1 の必須で、欠ければ ERROR（既存の拒否の test を弱めない）
 
 ## Data Safety Checks
 
@@ -161,16 +164,14 @@ workflow の状態（計画・review・L3・CI の証拠）の寿命を並べる
 
 ## Mutation-style Adequacy Questions
 
-- If a key branch is inverted: PH4 の「pending なら止める」を反転すると PH4・PH5 の両方が red
+- If a key branch is inverted: PH4 の「pending なら止める」の pending の判定を反転すると PH4 と PH8 が red（PH5 は code の差分が無いので、反転しても green のまま。検出の期待は PH4・PH8 に限る）
 - If a threshold comparison changes: MN2 の max を min にすると MN2 が red
 - If a guard is removed: C2 の L3 節の比較、RC2 の workflow の docs の拒否、GA2 の読めない節の扱い、AR1 の削除の拒否を外すと各 test が red
 - If an output field is omitted: RP1 で reviewed head を落とすと record の照合で red
 - If output order changes: PA3 の Amendments の順
-- If dry-run performs a side effect: LN1
 - 実注入（Contract Audit の Mutation / anti-tautology）: 実装の段で Writer が上の 6 つを production 側に注入し、red を報告に残す
 
 ## Residual Test Gaps
 
 - 文書の書き換え（AGENTS・DEV_WORKFLOW・MANUAL・template）が読み手の振舞いを変えるかは test できない。Plan Review と Final の 2 本が読む
 - 「packet の節を発注の固定の問いに移しても同じだけ拾うか」は測れない（v2 §10.1 の 3）。作り直しの後の 3 lane で、問いが拾った finding の数を handoff に残す
-- `lanes.sh` の表を handoff に貼る運用は repo の外（Coordinator）
