@@ -4,7 +4,7 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 
 **実装は SD 直読みの runtime（PR #172、`agent/sd-direct-read-runtime`）の merge の後**。#172 は同じ file（`sales_repo.rs`・`sales_service.rs`・`sales_cmd.rs`・`daily_report_parser.rs`・`lib.rs`・`bindings.ts`）の test の fixture の型（`NewDailyReportImport.settlement_no`・`DailyReportInputFile.sd_relative_path` 等）と `commit_daily_report_import` の引数を変えるので、本 lane の test はその後の形で書く。**#172 の merge の後に `origin/main` を単段で同期してから plan-gate へ進める**（下の「並走との重なり」）。
 
-**規模と手法（1 lane のまま。実装の順を S1〜S7 に固定する）**: 2026-10-27 に本 worktree（HEAD `50f97a76`）で数えた。予定 path は 41（下の「予定 path の一覧」。`wc -l` → `41`）: Rust 6（`io/daily_report_parser.rs`・`db/sales_repo.rs`・`biz/sales_service.rs`・`cmd/sales_cmd.rs`・`lib.rs`・`constants.rs`）、TS と CSS 11（既存 7: `DailySalesPage.tsx` とその test・`ExportBar.tsx`・`query-keys.ts` とその test・`globals.css` とその test。新設 4: `DailyReportSheet.tsx` とその test、`ExportBar.test.tsx`、`useDailyReportSheet.ts`）、生成物 2（`src/lib/bindings.ts`・`docs/function-design/90-traceability.md`）、合成の fixture 8（新設 `tests/fixtures/daily-report-sheet/`）、docs 14（packet と Matrix を含む）。層は 6 つ（parser の規則〈IO-07-D4a・D6〉・IO〈`sales_repo` の読取り 2 つと支払の行を足さずに返す形〉・BIZ〈D2 の関数・紙・画面の支払集計〉・CMD〈1 command〉・画面〈日次売上の文・行の key・印刷ボタン・紙の描画〉・印刷〈`@page`・`@media print`〉）。wire は新しい command 1 つと DTO 3 つ（`DailyReportSheet`・`DailyReportSheetRow`・`DailyReportSheetPluImport`）。既存の wire の型は変えない（IO の DB DTO `OfficialDailyReportRow.payment_lines` の要素の形だけが変わる。wire に出ない）。migration 0（DB の列・制約は変えない。migration を足す必要が出たら足す前に止まる）。画面は既存の日次売上 1 つ（新しい route は無い）。
+**規模と手法（1 lane のまま。実装の順を S1〜S7 に固定する）**: 2026-10-27 に本 worktree（HEAD `50f97a76`）で数えた。予定 path は 50（2026-10-29 の round 1 の是正で 41 から数え直した。下の「予定 path の一覧」）: Rust 8（`io/daily_report_parser.rs`・`db/sales_repo.rs`・`biz/sales_service.rs`・`cmd/sales_cmd.rs`・`lib.rs`・`constants.rs`、round 1 で `biz/daily_report_import_service/parse.rs`・`tests.rs`）、TS と CSS 12（既存 7: `DailySalesPage.tsx` とその test・`ExportBar.tsx`・`query-keys.ts` とその test・`globals.css` とその test。新設 4: `DailyReportSheet.tsx` とその test、`ExportBar.test.tsx`、`useDailyReportSheet.ts`。round 1 で既存の `DailyReportImportPage.flow.test.tsx`）、生成物 2（`src/lib/bindings.ts`・`docs/function-design/90-traceability.md`）、合成の fixture 13（新設 `tests/fixtures/daily-report-sheet/`。round 1 で商品の CSV と改ページの日の 4 file を足した）、docs 15（packet と Matrix を含む。round 1 で 37）。層は 6 つ（parser の規則〈IO-07-D4a・D6〉と取込みの画面の文〈BIZ-08-D2a〉・IO〈`sales_repo` の読取り 2 つと支払の行を足さずに返す形〉・BIZ〈D2 の関数・紙・画面の支払集計〉・CMD〈1 command〉・画面〈日次売上の文・行の key・印刷ボタン・紙の描画〉・印刷〈`@page`・`@media print`〉）。wire は新しい command 1 つと DTO 3 つ（`DailyReportSheet`・`DailyReportSheetRow`・`DailyReportSheetPluImport`）。既存の wire の型は変えない（IO の DB DTO `OfficialDailyReportRow.payment_lines` の要素の形だけが変わる。wire に出ない）。migration 0（DB の列・制約は変えない。migration を足す必要が出たら足す前に止まる）。画面は既存の日次売上 1 つ（新しい route は無い）。
 - 分けない理由: 分ける案（(i) 画面の支払集計の鍵と parser の規則、(ii) 紙）は、どちらも SALES-SHEET-D2 の同じ 1 つの関数（D-142 の (4)）と同じ file（`sales_service.rs`・`sales_repo.rs`・`DailySalesPage.tsx`）を取り合い、(i) だけを先に入れると画面の warning が「紙（日報を印刷）で取込みごとに見られます」と案内する紙が無い main ができる（34 §19.3 手順 3 の文）。L3 も 2 回になる。1 lane で順に積み、L3 を 1 回にする。
 - 実装の順: S1 parser（IO-07-D4a・D6）→ S2 IO（`sales_repo`）→ S3 BIZ（D2 の関数・画面の支払集計・紙）→ S4 CMD と登録・bindings → S5 画面と印刷 → S6 設計正本の「proposed・未実装」を現行の記述へ直す → S7 L3 の準備（`cargo check --release`、fixture）。
 
@@ -27,6 +27,7 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 1. kickoff → spec-check（2026-10-27、起草役）: Coordinator の発注 599（D-120 の後続の runtime の起票）を Scope にし、規模を数えて 1 lane のままと決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-27、起草役）: 対象の正本は 34 §19.3・§19.3a、24 §14.21・§14.21a・§14.21b、42 §22.4・§22.8、29 IO-07-D4・D4a・§29.4.1・§29.5、56 UI-09a-D13・D15〜D19、UI_TECH_STACK §6.5.5、pos-tables §12d、10 の「入力の上限と安全な整数の範囲」。backlog の「日次売上と日報の紙の wire の i64 を安全な整数の範囲で扱う横断の規則を決める」（本 lane の起票の前に決めると書かれていた）が未決で、正本は紙と画面の支払集計の足し方を別々の層（IO と BIZ）に置いていた。D-142 を決め、同じ commit で正本を直した（下の「本 commit で変えた正本」）。
 3. design → plan-draft（2026-10-27、起草役、同じ commit）: 設計の出力は D-120・D-142 と上の正本にあり、未解決の設計の問いは無い。owner の判断事項（下の Open Questions の O1〜O4）は推奨の既定で書き進め、答えで変わる所を名指した。残る外部前提（Contract Probe の P1・P2・P5・P8）は実装の前・L3・D19 で確かめるもので、設計の問いではない。plan-gate へは Coordinator が #172 の merge と main の同期の後に進める。
+4. plan-draft のまま是正（round 1、2026-10-29、Coordinator の裁定）: Plan Review round 1（fresh Opus 5.5 と Codex、`REVIEWED_HEAD=ee8065b1`）の findings を Coordinator が全件受理し、発注 669 で起草役が packet・Matrix・設計正本を直した（下の Review Response）。Phase と Plan Commit は変えない。
 
 ## 本 commit で変えた正本
 
@@ -43,6 +44,20 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 
 D-120 の本文（Compatibility が引く「24 §14.21 手順 3」）は書き換えず、D-142 の Decision (4) が引き先の移動を記録する（decision-log の過去の決定を書き換えない）。
 
+round 1 の是正の commit（2026-10-29）で変えた正本:
+
+| file | 節 | 変えたこと |
+|---|---|---|
+| `docs/decision-log.md` | D-142（本 lane の未 merge の決定） | 題に照合の置き場を足し、Status・Decision (1)・新しい (5)・Why の (5)・Revisit を直した。(1) は上限の越えを `number_too_large` にし取込みの画面の文が帳票と列を名指すこと（BIZ-08-D2a）。(5) は D-120 の Guarantee range の未確認の前提（レジスターツールの日報との行ごとの一致）を確かめる場を UI-09a-D19 の (2) へ移すこと（O2 の既定 a。Ready の前に owner の明示の答え）。D-120 の本文は変えない |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.3 手順 3 の BIZ-08-D2a（新設）、§37.7 の行、更新履歴 | 上限の越えの利用者向けの文（帳票と列を名指し、値・file 名・行番号を出さない。`settlement_mismatch` の文の次に優先） |
+| `docs/function-design/29-io-daily-report-parser.md` | IO-07-D6、§29.5 の表、§29.4.1 の「行の構成と性質」の末尾 | 上限の越えの `error_type` を `number_too_large` にし文の作り方（値を入れない）を書いた。§29.5 の `invalid_number` の行を main の形に戻し `number_too_large` の行を足した。レジスターツールとの照合の置き場を UI-09a-D19 の (2) へ |
+| `docs/function-design/10-common-rules.md` | (a) の表のレジの日報の行、更新履歴 | 誤りの種類を `number_too_large` に、画面の文は BIZ-08-D2a |
+| `docs/function-design/34-biz-sales-service.md` | §19.3a の「精算をまたいで足してよい根拠」、更新履歴 | 照合の置き場を UI-09a-D19 の (2) へ（D-142 の (5)） |
+| `docs/function-design/24-io-csv-import-repo.md` | §14.21 手順 6 の命名の例・手順 8、更新履歴 | 手順 8 を内部の支払の行・公開する支払の集計・Z001 の単純な写像の 3 つに分けた。命名の例を無くなる `OfficialDailyPaymentRow` から `OfficialDailyDepartmentRow` へ |
+| `docs/function-design/56-ui-daily-sales.md` | UI-09a-D18・D19 の (2)、更新履歴 | P1 を「実装の後の L3（L3-1）で確かめる」に。D19 の (2) がレジスターツールとの照合を兼ねること |
+| `docs/UI_TECH_STACK.md` | §6.5.5 の未確認の前提、§7.4 更新履歴 | P1 を「実装の後の L3（L3-1）で確かめる」に |
+| `docs/backlog.md` | 「日報の紙の runtime」 | P1 を L3-1 に、照合を UI-09a-D19 の (2) に（D-142 の (5)） |
+
 ## Owner Effort Budget
 
 - 介入回数上限: 6（既定）
@@ -53,7 +68,7 @@ D-120 の本文（Compatibility が引く「24 §14.21 手順 3」）は書き�
 |---|---|---|---|---|---|
 | 介入 | 6 | 0（2026-10-27 起票時。O1〜O4 は推奨の既定で進め、問わない〈TD-401〉） | 4（L3 の 1 round 1〈L3-1〜L3-3 を 1 回の Windows の操作でまとめる。O1・O3 の答えも同じ回の PASS / FAIL と記号で得る〉、O2・O4 の既定の確認 1〈L3 の依頼と同じ 1 回で見せる〉、Ready 1、merge 1） | 2（L3 の 2 round 目 1、P1 が効かず代わりの道〈UI-09a-D18〉を採るときの店の PC の `.html` の関連付けの確かめ 1） | 6 = 0 + 4 + 2 |
 
-既定値・数え方は `docs/DEV_WORKFLOW.md` `Owner Effort Budget`。承認依頼は `この change での介入 N 回目 / 予算 6 回` と「承認すると、日次売上の画面の `日報を印刷` で、その日の日報を 1 日 1 枚の紙に印刷できるようになる」の 1 文。L3 は D-124 のとおり、本 PR が merge の train の先頭に来て最新の `origin/main` を取り込んだ head で頼む。owner の操作を減らす工夫: (1) L3 の入力物（合成の束と Z004）は tracked の fixture にし、Coordinator が取り込む順の 1 行の手順と一緒に渡す（owner は取込みの画面で file を選ぶだけ）。(2) 紙の並びは既定の案 a だけを印刷し、読みにくいときだけ b・c を名指してもらう（O1）。(3) レジスターツールの日報との値の照合は、運用開始の後の UI-09a-D19 の (2) の確かめに寄せ、本 PR の L3 にしない（O2）。(4) 印刷の手段の確かめ（P1）は L3-1 で同じ回に行い、実装の前に owner の操作を足さない（下の Contract Probe の P1）。
+既定値・数え方は `docs/DEV_WORKFLOW.md` `Owner Effort Budget`。承認依頼は `この change での介入 N 回目 / 予算 6 回` と「承認すると、日次売上の画面の `日報を印刷` で、その日の日報を 1 日 1 枚の紙に印刷できるようになる」の 1 文。L3 は D-124 のとおり、本 PR が merge の train の先頭に来て最新の `origin/main` を取り込んだ head で頼む。owner の操作を減らす工夫: (1) L3 の入力物（合成の商品の一括 import の CSV、日報の束と Z004）は tracked の fixture にし、Coordinator が取り込む順の手順と一緒に渡す（owner は商品の一括 import と取込みの画面で file を選ぶだけ。DB への直接の挿入を求めない）。(2) 紙の並びは既定の案 a だけを印刷し、読みにくいときだけ b・c を名指してもらう（O1）。(3) レジスターツールの日報との値の照合は、運用開始の後の UI-09a-D19 の (2) の確かめに寄せ、本 PR の L3 にしない（O2、D-142 の (5)。受容リスクは owner が持つので、L3 の依頼と同じ 1 回で owner の明示の答えを得て、Ready の前の条件にする〈AC12〉）。(4) 印刷の手段の確かめ（P1）は L3-1 で同じ回に行い、実装の前に owner の操作を足さない（下の Contract Probe の P1）。
 
 ## Risk
 
@@ -71,7 +86,7 @@ Goal Invariant:
 
 - 日次売上の画面の `日報を印刷` で、その日の完了した日報の取込みを位置と名称の組で足した 1 日 1 枚の紙（SALES-SHEET-D1〜D6）を、Windows の実機のプリンタで A4 縦・文字 9 pt 以上・色なしで印刷できる（UI-09a-D17・D18）。PLU の部分はその日に売れた Z004 の行だけが載る。押したときに読み直し、古い内容で印刷しない。印刷できない日（未取込み・読込みの失敗）は、ボタンの下にその理由とその場で直せるリンク・`再試行` が出る。
 - 日次売上の画面の支払集計が紙と同じ規則（SALES-SHEET-D2）で、BIZ-05 の同じ 1 つの関数で足され、名称か並びの変わった日・足さない日は warning の注記で知らせる（34 §19.3 手順 3、UI-09a-D16）。
-- parser が `credit` の鍵を導かず（IO-07-D4a）、上限を越える数の束を列を名指して拒む（IO-07-D6、D-142）。
+- parser が `credit` の鍵を導かず（IO-07-D4a）、上限を越える数の束を拒み、取込みの画面がその束の誤りとして帳票と列を名指す（値は出さない。IO-07-D6、BIZ-08-D2a、D-142）。
 - 設計正本の D-120・D-142 の「proposed・未実装」の注記が、実装した現行の記述になっている。
 
 ### 失敗定義
@@ -80,7 +95,7 @@ Goal Invariant:
 - 画面の支払集計と紙で足し方が食い違う、または D2 の実装が 2 つある。
 - 押した時点より古い内容で印刷する、読み直しの失敗・`import_count` 0 でも印刷する。
 - 紙の文字が 9 pt を割る、色を使う、画面に紙の内容が出る、アプリの枠を印刷する。
-- 既存の test を不都合だから削除・skip・弱体化して通す（IO の支払集計の test の期待は BIZ の test へ同じ値で移す。下の Scope の S2）。
+- 既存の test を不都合だから削除・skip・弱体化して通す（IO の支払集計の test の期待は、34 §19.3 手順 3 の互換の範囲の中の入力は同じ値で、範囲の外の入力は同じ段の「範囲の外の入力は新しい規則の値」を出所に新しい規則の値で BIZ の test へ移す。正本の変更で期待が変わる test と、その検出力を保つ範囲の中の test は Matrix の「既存の test の移し方」が名指す。下の Scope の S2）。
 - 実データ・店の名称の値・金額を repo に入れる。
 
 ### 非目的
@@ -108,7 +123,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 画面を開いた後に、別の画面でその日の取込みを取り消した | `日報を印刷` | 読み直しで `import_count` が 0 になり、印刷せず未取込みの文が出る | 取り込み直す | — |
 | 紙の内容の読込みが失敗した | 日次売上を開く | ボタンは押せず、下に CmdError の文と `再試行` | `再試行` を押す | — |
 | Z004 を取り込んだが、商品に当たらない行がある日 | 日次売上を開き、`日報を印刷` | 画面に `数えていない PLU の行が {N} 行あります` とリンク `取込みの記録を開く`、紙の PLU の下に同じ数の文。印刷は止めない | リンクから取込みの記録で行の理由を見る | — |
-| 上限を越える数を持つ日報の束（壊れた・作られた file） | 売上データ取込みで選ぶ | 取り込めず、その束の誤りに `Z001の金額列の値が大きすぎます` のように列が名指される | 正しい file を選び直す | P8（実データは上限のはるか下か） |
+| 上限を越える数を持つ日報の束（壊れた・作られた file） | 売上データ取込みで選ぶ | 取り込めず、取込みの画面の誤りの文に `Z001の金額列の値が大きすぎます。この日報ファイルは取り込めません。レジの日報ファイルを選び直してください。` のように帳票と列が名指される（値・file 名・行番号は出さない。BIZ-08-D2a） | 正しい file を選び直す | P8（実データは上限のはるか下か） |
 | 翌日 | 前の日を選んで `日報を印刷` | いつでも過去の日の紙を作り直せる（保存しない、SALES-SHEET-D6） | — | — |
 
 ## Scope
@@ -117,7 +132,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### S1 parser（IO-07-D4a・D6）
 
-- `src-tauri/src/io/daily_report_parser.rs`: `payment_key` から `クレジット` / `credit` の分岐を外す（`現金` → `cash` と並び順の `payment_N` は残す）。`parse_optional_i64`・`parse_optional_hundredths` に上限の検査を置き、形の誤りと上限の越えを区別して返す（例: `enum NumberError { Invalid, TooLarge }`）。呼ぶ所（Z001・Z002・Z005 の各列の `match`。`parse_required_i64` も `parse_optional_i64` を通る）は `TooLarge` のとき `invalid_number` の誤りに `{帳票}の{列}の値が大きすぎます` の文を入れ、`Invalid` のときは今の `…を変換できません` の文のまま。
+- `src-tauri/src/io/daily_report_parser.rs`: `payment_key` から `クレジット` / `credit` の分岐を外す（`現金` → `cash` と並び順の `payment_N` は残す）。`parse_optional_i64`・`parse_optional_hundredths` に上限の検査を置き、形の誤りと上限の越えを区別して返す（例: `enum NumberError { Invalid, TooLarge }`）。呼ぶ所（Z001・Z002・Z005 の各列の `match`。`parse_required_i64` も `parse_optional_i64` を通る）は `TooLarge` のとき `error_type` `number_too_large` の誤りに `{帳票}の{列}の値が大きすぎます` の文（帳票と列の語だけ。値・file 名・行番号を入れない）を入れ、`Invalid` のときは今の `invalid_number` と `…を変換できません` の文のまま（29 IO-07-D6・§29.5）。
+- `src-tauri/src/biz/daily_report_import_service/parse.rs`（round 1 で足した）: `parse_and_validate_daily_report`（#172 の後は `_with_sd_lookup`）の `parse_errors` の分岐で、今の `settlement_mismatch`（BIZ-08-D2）の次に `number_too_large` の分岐を 1 つ足し、37 BIZ-08-D2a の文（IO の `error_message` に `。` を付け、重複を除き、帳票と列の順につなぎ、`この日報ファイルは取り込めません。レジの日報ファイルを選び直してください。` を続ける）を利用者向けの message と `operation_logs.summary` にする。他の `error_type` は今の汎用の文のまま（BIZ-08-D1）。CMD（`daily_report_import_cmd.rs` の `ImportError` → `CmdError` の `import_error`）と画面（`DailyReportImportPage.tsx` の `describeError`）は文をそのまま運ぶので変えない。#172 の branch の同じ file（`git show origin/agent/sd-direct-read-runtime:src-tauri/src/biz/daily_report_import_service/parse.rs`）も同じ分岐（`settlement_mismatch` → 汎用の文）を持つので、#172 の merge の後の形にそのまま 1 つ足せる（2026-10-29 に読んで確かめた）。
+- `src-tauri/src/biz/daily_report_import_service/tests.rs`（round 1）: Matrix の BIZ-08-D2a の 2 本を足す。既存の `test_daily_report_req401_parse_error_logs_parse_failed`（形の誤り → 汎用の文）の期待は変えない。
+- `src/features/daily-report-import/DailyReportImportPage.flow.test.tsx`（round 1）: Matrix の BIZ-08-D2a → UI の 1 本を足す（`commands.parseAndValidateDailyReport` を mock する既存の形）。
 - `src-tauri/src/constants.rs`: `MAX_DAILY_REPORT_INTEGER: i64 = 9_999_999_999` と `MAX_DAILY_REPORT_QUANTITY_HUNDREDTHS: i64 = 999_999_999`（名前は Writer が決めてよい。値は 29 IO-07-D6）。
 - 既存の test: parser の fixture の `クレジット` の行（`daily_report_parser.rs` の test の bundle の文字列 2 か所、`biz/daily_report_import_service/tests.rs` の bundle の文字列）は `payment_key` を assert していない（`rg -n '"credit"' src-tauri/src` は `daily_report_parser.rs` の `payment_key` の 2 行と `db/sales_repo.rs` の test の 2 行〈`payment_key: "credit"` の fixture と assert〉だけ。2026-10-27）ので変えない。`sales_repo.rs` の test の `"credit"` は保存済みの鍵の fixture の値として残す（S2）。
 
@@ -128,7 +146,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `get_daily_report_sheet_lines`（新設、§14.21a）と DTO `DailyReportSheetLinesRow`・`DailyReportSheetLineRow`。
   - `get_active_z004_import_totals`（新設、§14.21b）。
 - 作る所・読む所（2026-10-27 に `rg -n 'OfficialDailyReportRow \{' src-tauri/src src-tauri/tests` → 構造体の定義と `get_completed_daily_report_aggregate` の構築の 2 行だけ）: 読む所は `biz/sales_service.rs` の `map_official_daily_report` だけ（`rg -n 'payment_lines' src-tauri/src/biz/sales_service.rs`）。
-- 既存の test の移し方（弱体化しない）: `sales_repo.rs` の test のうち支払の集約の値を assert する `test_completed_daily_report_aggregate_req501_all_active_parents`・`test_get_completed_daily_report_aggregate_req501_propagates_parent_and_line_nulls`・`test_get_completed_daily_report_aggregate_req501_groups_identities_deterministically`・`test_get_completed_daily_report_aggregate_req501_aggregate_overflow_is_error` は、IO の側では「足さずに返す行の並びと値」を assert する形に直し、足した値・代表・NULL・溢れの期待は同じ fixture と同じ値のまま BIZ の test（S3）へ移す。溢れの期待は `DbError::QueryFailed` から `BizError::ValidationFailed`（D-142 の (4)。34 §19.3 手順 3）。部門・gross / net・Z001 の assert は変えない。移した先の test 名は Matrix の「既存の test の移し方」の表。
+- 既存の test の移し方（弱体化しない）: `sales_repo.rs` の test のうち支払の集約の値を assert する `test_completed_daily_report_aggregate_req501_all_active_parents`・`test_get_completed_daily_report_aggregate_req501_propagates_parent_and_line_nulls`・`test_get_completed_daily_report_aggregate_req501_groups_identities_deterministically`・`test_get_completed_daily_report_aggregate_req501_aggregate_overflow_is_error` は、IO の側では「足さずに返す行の並びと値」を assert する形に直し、支払の足した値の期待は assert の単位で BIZ の test（S3）へ移す（Matrix の「既存の test の移し方」の表。2026-10-29 の round 1 で直した）。4 本の支払の fixture はどれも 34 §19.3 手順 3 の互換の範囲の外か支払の行を持たない: `all_active_parents` は範囲の外だが新しい規則でも並びと値が同じ（2 の warning が 1 件増える）、`propagates_parent_and_line_nulls` と `groups_identities_deterministically` は範囲の外で、同じ段の「範囲の外の入力は新しい規則の値」を出所に D2 の 2 の 2 行と 2 の warning 1 件の期待へ変える（**正本の変更で期待が変わる**。弱体化でない）。`aggregate_overflow_is_error` は支払の assert がもともと無い（`rg -n 'i64::MAX' src-tauri/src/db/sales_repo.rs` の当たりは部門と Z001 だけ）ので移すものは無い。NULL の伝播・代表の選び方・溢れの検出力は、範囲の中の fixture の BIZ の test（`test_daily_sales_payment_overflow_and_null_order`・`test_daily_sales_payment_representative_in_range_is_first_row`）と D2 の関数の unit test が持つ。部門・gross / net・Z001・月次の assert は変えない。
 
 ### S3 BIZ（34 §19.3 手順 3・§19.3a）
 
@@ -159,17 +177,26 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 24・29・34・42・56・10・UI_TECH_STACK §6.5.5・pos-tables §12d・`docs/SCREEN_DESIGN.md` の日次売上の段の、D-120・D-142 の「proposed・未実装」を現行の記述に直す（下の AC7。更新履歴の行は残す）。
 - `docs/architecture/ui-task-specs.md` の UI-09a の印刷ボタンの行（「仕様未定のため Phase 2 では disabled」）を `日報を印刷`（UI-09a-D17）に直す。UI-09b（月次）の行は変えない。
 - 56 の §56.1 のファイル構成の `ExportBar` の行・§56.7 の `Tooltip` の行・§56.13 の「印刷ボタンの本実装」の行と更新履歴。
+- 29 の IO-07-D4 の段の今の `credit` の規則を書いた 2 行（`gross_sales` / `net_sales` / `cash` / `credit` はラベルだけで決める〈… クレジット → `credit` …〉の行と、`credit` の鍵は全角の `クレジット` を含むラベルだけ、の行。2026-10-29 に `rg -n 'クレジット → .credit.|.credit. の鍵は全角' docs/function-design/29-io-daily-report-parser.md` → 117・119 行目）を、IO-07-D4a の後の現行の記述（`credit` の鍵は導かない）に直す（AC7）。
+- `src-tauri/src/db/sales_repo.rs` の `OfficialDailyPaymentRow`（2026-10-29 に `rg -n 'OfficialDailyPaymentRow' src-tauri/src` → 定義 :1111・`OfficialDailyReportRow.payment_lines` の型 :1088・構築 :1256 の 3 行）を、支払の行の型（S2）に置き換えて消す（AC3）。
 - `docs/function-design/90-traceability.md` は新しい test の REQ の参照の後に再生成（AUTO-GENERATED）。
 - backlog の「日報の紙の runtime」と「code の comment・文言の古い句 2 つ」の (1) の日次の分は closeout で閉じる（本 lane の PR では backlog の完了の整理をしない。D-124 の共有の path を減らす）。
 
 ### S7 L3 の準備
 
-- `tests/fixtures/daily-report-sheet/`（新設、合成だけ）: README と、支払集計を足さない日（D2 の 3。Z002 の行がずれ同じ名称の行がある 2 取込み）の Z001・Z002・Z005 の 2 束（6 file、CP932・CRLF、layout A）と、2 回取り込んだ日（既存の `tests/fixtures/daily-report-z001/` の `2026-03-24`）の Z004 の 1 file（PLU の行数行と商品に当たらない行 1 つ）。名称は `項目A` のような合成の語。
+- `tests/fixtures/daily-report-sheet/`（実装で作る。新設、合成だけ。全て CP932・CRLF。作り方と確かめ方は `tests/fixtures/z004/README.md` の「変更時の生成手順」「生成後の verification」と同じ）: 2026-10-29 の round 1 の是正で、L3 に到達できる入力の一式にした（空の DB には商品が無く `get_daily_sales_records` は `INNER JOIN products` なので、商品を入れないと PLU の行が出ない。b1 の後の Z004 は精算の識別メタの無い file を拒む〈`tests/fixtures/z004/README.md` の冒頭、32 の表の順 1〉）。
+  - `README.md`: 合成であること、取り込む順（Matrix の Manual の (1)〜(6)）、各 file の役、各 Z004 の商品に当たる行の数と当たらない行の数、`2026-03-26` の束が改ページを起こす行の数。
+  - `products-sheet.csv`（商品の一括 import）: b1 の `products-new.csv`（`src-tauri/src/io/l3_fixtures.rs` の `PRODUCT_HEADER` と `product_line`）と同じ形（見出し `商品コード,商品名,部門ID,売価,原価,税率,JANコード,在庫単位,初期在庫,POS在庫連動`、部門ID は作り直した空の DB にある初期の部門 `1`、在庫単位 `pcs`、POS在庫連動 `1`）。合成の商品 80（商品コード `SHEET-P01`〜`SHEET-P80`、商品名 `合成P01` の形、JAN は `29` で始まる店内の範囲の合成の 13 桁で check digit が合う〈`l3_fixtures.rs` の `jan` と同じ作り方〉、初期在庫は売る数より多い）。
+  - 支払集計を足さない日（D2 の 3。Z002 の行がずれ同じ名称の行がある 2 取込み）の `2026-03-25` の Z001・Z002・Z005 の 2 束（6 file、layout A。精算回数 `0001`・`0002`）。
+  - `Z004_260324.CSV`（2 回取り込んだ日〈既存の `tests/fixtures/daily-report-z001/` の `2026-03-24`〉の Z004）: layout A（`l3_fixtures.rs` の `z004` と同じ前文。マシンNo. `0001`、精算回数 `0001`、日付 `2026-03-24`、時刻 `20:00`）で、商品に当たる行 5（`SHEET-P01`〜`P05` の JAN、数量と金額は 0 でない）と、どの商品にも当たらない JAN の行 1。
+  - `2026-03-26` の束（改ページの日。layout A、精算回数 `0001`。`Z001_260326_0001.CSV`・`Z002_260326_0001.CSV`・`Z005_260326_0001.CSV`）: Z001 30 行（1・2 行目は `総売`・`純売`、他は `項目01` の形）、Z002 80 行（1 行目 `現金`、他は `支払01` の形）、Z005 60 行（`部門01` の形）。名称に番号を入れ、L3-2 で紙の境の前後の行が続いているかを番号で見られるようにする。
+  - `Z004_260326.CSV`: layout A（マシンNo. `0001`、精算回数 `0002`〈`Z004_260324.CSV` の次の番号。32 の表の順 5 と欠けの知らせに当たらない〉、日付 `2026-03-26`）で、`SHEET-P01`〜`P80` の行 80（全部商品に当たる）。
+  - 改ページが必ず起きる理由（56 UI-09a-D17 の見積りの前提: 行の高さ 4.4〜5 mm、印刷できる高さ 277 mm で 1 枚に約 55〜63 行）: 左の段（Z001 30 行と Z005 60 行と見出しの 4 行）と右の段（Z002 80 行と見出しの 2 行）がどちらも 1 枚目を越えて 2 枚目に続き、PLU の表（80 行と見出しの 2 行）は 2 枚目の左の段の後から始まり 3 枚目へ続く。行の高さが 3.5 mm（1 枚に約 75 行）でも、両段と PLU がどれも紙をまたぐ。
 - Writer は L3 の前に `cargo check --release`（`docs/DEV_WORKFLOW.md` Implementation Rules）。
 
 ### 予定 path の一覧（`comm -12` の入力）
 
-41 path（Rust 6・TS と CSS 11・生成物 2・fixture 8・docs 14）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
+50 path（Rust 8・TS と CSS 12・生成物 2・fixture 13・docs 15。2026-10-29 の round 1 で 9 を足した）。所有表の突き合わせは L3 を頼む時点の head で取り直す（D-124）。
 
 ```
 docs/SCREEN_DESIGN.md
@@ -182,17 +209,21 @@ docs/function-design/10-common-rules.md
 docs/function-design/24-io-csv-import-repo.md
 docs/function-design/29-io-daily-report-parser.md
 docs/function-design/34-biz-sales-service.md
+docs/function-design/37-biz-daily-report-import-service.md
 docs/function-design/42-cmd-sales-stocktake.md
 docs/function-design/56-ui-daily-sales.md
 docs/function-design/90-traceability.md
 docs/plans/2026-10-27-daily-report-sheet-runtime.md
 docs/plans/test-matrices/2026-10-27-daily-report-sheet-runtime.md
+src-tauri/src/biz/daily_report_import_service/parse.rs
+src-tauri/src/biz/daily_report_import_service/tests.rs
 src-tauri/src/biz/sales_service.rs
 src-tauri/src/cmd/sales_cmd.rs
 src-tauri/src/constants.rs
 src-tauri/src/db/sales_repo.rs
 src-tauri/src/io/daily_report_parser.rs
 src-tauri/src/lib.rs
+src/features/daily-report-import/DailyReportImportPage.flow.test.tsx
 src/features/daily-sales/DailySalesPage.test.tsx
 src/features/daily-sales/DailySalesPage.tsx
 src/features/daily-sales/components/DailyReportSheet.test.tsx
@@ -213,9 +244,14 @@ tests/fixtures/daily-report-sheet/Z002_260325_0002.CSV
 tests/fixtures/daily-report-sheet/Z005_260325_0001.CSV
 tests/fixtures/daily-report-sheet/Z005_260325_0002.CSV
 tests/fixtures/daily-report-sheet/Z004_260324.CSV
+tests/fixtures/daily-report-sheet/products-sheet.csv
+tests/fixtures/daily-report-sheet/Z001_260326_0001.CSV
+tests/fixtures/daily-report-sheet/Z002_260326_0001.CSV
+tests/fixtures/daily-report-sheet/Z005_260326_0001.CSV
+tests/fixtures/daily-report-sheet/Z004_260326.CSV
 ```
 
-件数は `sed -n '/^### 予定 path の一覧/,/^### 並走/p' docs/plans/2026-10-27-daily-report-sheet-runtime.md | grep -cE '^(docs|src|src-tauri|tests)/'` → `41`。
+件数は `sed -n '/^### 予定 path の一覧/,/^### 並走/p' docs/plans/2026-10-27-daily-report-sheet-runtime.md | grep -cE '^(docs|src|src-tauri|tests)/'` → `50`（2026-10-29。起票の時点は `41`）。
 
 ### 並走との重なり（`comm -12`）
 
@@ -223,7 +259,7 @@ tests/fixtures/daily-report-sheet/Z004_260324.CSV
 
 | PR（branch） | 重なる path |
 |---|---|
-| #172（`sd-direct-read-runtime`） | `docs/SCREEN_DESIGN.md`・`docs/backlog.md`・`docs/db-design/pos-tables.md`・`docs/function-design/24-io-csv-import-repo.md`・`docs/function-design/29-io-daily-report-parser.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/sales_service.rs`・`src-tauri/src/cmd/sales_cmd.rs`・`src-tauri/src/db/sales_repo.rs`・`src-tauri/src/io/daily_report_parser.rs`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts` |
+| #172（`sd-direct-read-runtime`） | `docs/SCREEN_DESIGN.md`・`docs/backlog.md`・`docs/db-design/pos-tables.md`・`docs/function-design/24-io-csv-import-repo.md`・`docs/function-design/29-io-daily-report-parser.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/biz/sales_service.rs`・`src-tauri/src/cmd/sales_cmd.rs`・`src-tauri/src/db/sales_repo.rs`・`src-tauri/src/io/daily_report_parser.rs`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`。round 1 で足した path のうち `docs/function-design/37-biz-daily-report-import-service.md`・`src-tauri/src/biz/daily_report_import_service/parse.rs`・`src-tauri/src/biz/daily_report_import_service/tests.rs`・`src/features/daily-report-import/DailyReportImportPage.flow.test.tsx` |
 | #193（`stocktake-count-runtime-b2`） | `docs/SCREEN_DESIGN.md`・`docs/function-design/10-common-rules.md`・`docs/function-design/90-traceability.md`・`src/lib/bindings.ts` |
 | #196（`initial-load-procedure`） | `docs/backlog.md` |
 | #197（`z004-rollback-entry`） | `docs/SCREEN_DESIGN.md`・`docs/architecture/ui-task-specs.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`・`src/lib/query-keys.ts` |
@@ -233,6 +269,8 @@ tests/fixtures/daily-report-sheet/Z004_260324.CSV
 | #190（`backup-offsite-runtime`） | `docs/backlog.md`・`docs/decision-log.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts` |
 | #194（`backup-offsite-runtime-b`） | `docs/UI_TECH_STACK.md`・`docs/backlog.md`・`docs/decision-log.md`・`docs/function-design/10-common-rules.md`・`docs/function-design/90-traceability.md`・`src-tauri/src/lib.rs`・`src/lib/bindings.ts`・`src/lib/query-keys.ts` |
 
+round 1 の是正（2026-10-29）で足した 9 path は、`git fetch origin` の後に open の PR の branch（#172・#190・#194・#201・#212・#216）の `git diff --name-only --no-renames origin/main...origin/agent/<branch>` と `comm -12` で突き合わせ、重なりは #172 の 4 path（上の表の #172 の行）だけだった（fixture の 5 は新設の folder。`origin/main` は `f3f29630`）。起票の時点からある path の重なりは取り直していない（L3 を頼む時点の head で取り直す）。
+
 節の所有表（重なる file の、本 lane が触る所と相手が触る所。末尾への追記と生成物は merge の順で両方を残し、生成物は取り込んだ後に再生成する〈D-098〉）:
 
 | file | 本 lane | 相手（主な PR） | 揃え方 |
@@ -240,6 +278,9 @@ tests/fixtures/daily-report-sheet/Z004_260324.CSV
 | `src-tauri/src/db/sales_repo.rs` | `get_completed_daily_report_aggregate` の支払の読取り、`OfficialDailyReportRow`、新しい 2 関数と DTO、test module の末尾 | #172: `NewDailyReportImport`・`insert_daily_report_import`・`find_same_settlement_daily_report_import`（新設）と test module の末尾 | #172 が先。本 lane は同期の後の fixture の形で書く |
 | `src-tauri/src/io/daily_report_parser.rs` | `payment_key`、`parse_optional_i64`・`parse_optional_hundredths` と呼ぶ所の文、test module の末尾 | #172: `DailyReportParseResult.settlement_no` と `parse_daily_report_bundle` の精算回数、test module の末尾 | #172 が先 |
 | `src-tauri/src/biz/sales_service.rs`・`src-tauri/src/cmd/sales_cmd.rs` | 支払の写し・warning、`get_daily_report_sheet`、新しい test | #172: test の fixture の field（`settlement_no`・`sd_relative_path`・`register_sd_scan_cache`）と `commit_daily_report_import` の引数 | #172 が先。本 lane の新しい test は同期の後の形 |
+| `src-tauri/src/biz/daily_report_import_service/parse.rs`・`tests.rs` | `parse_errors` の分岐に `number_too_large`（BIZ-08-D2a）を 1 つ、test を 2 本 | #172: `_with_sd_lookup`・手順 1a の出所の判定・BIZ-08-D4〜D6 と、test の fixture の field（`sd_relative_path` 等） | #172 が先。本 lane は同期の後の `parse_errors` の分岐（#172 でも `settlement_mismatch` → 汎用の文の形のまま）に足す |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.3 手順 3 の BIZ-08-D2a、§37.7 の 1 行、更新履歴の末尾 | #172: §37.3 手順 1a・4 の BIZ-08-D6、§37.4・§37.9 ほか | 段が別（手順 3 の中の BIZ-08-D2 の直後）。更新履歴の末尾は両方を残す |
+| `src/features/daily-report-import/DailyReportImportPage.flow.test.tsx` | test を 1 本 | #172: `parseAndValidateDailyReportFromSd` の mock ほか | #172 が先。本 lane の test は同期の後の mock の形で書く |
 | `src-tauri/src/lib.rs` | CMD-09 の塊に 1 行ずつ | #172（CMD-12 の 2 行と `AppState`）、#197・#190・#194（各 command）、#201（dev の bin の外し） | 行が別。merge の順で両方を残す |
 | `src/lib/bindings.ts`・`docs/function-design/90-traceability.md` | 再生成 | #172・#193・#197・#190・#194 | 生成物。取り込んだ後に再生成 |
 | `src/lib/query-keys.ts` | `dailyReportSheet` を `dailySales` の隣に 1 行 | #197（取込みの記録の key）、#194（backup の key） | 行が別 |
@@ -267,21 +308,22 @@ merge の順: **#172 が先**（本 lane の実装は #172 の merge の後に�
 数の baseline は開始 HEAD `50f97a76` に本 commit の正本の変更を当てた作業 tree で、下の command をそのまま実行した出力（2026-10-27。出力が無く exit 1 は 0）。完了時の期待は実装の後の head で同じ command を実行した値。
 
 - AC1（IO-07-D4a）: `rg -c -F '"credit".to_string()' src-tauri/src/io/daily_report_parser.rs` が 0（baseline `1`）。`daily_report_parser.rs` の test `test_payment_key_has_no_credit_rule` が PASS。
-- AC2（IO-07-D6、D-142）: `rg -c 'MAX_DAILY_REPORT' src-tauri/src/constants.rs` が 2（baseline exit 1）。Matrix の IO-07-D6 の行の test（上限ちょうどを受ける・1 越えると列を名指した `invalid_number`・形の誤りの文は今のまま・個数の上限）が PASS。
-- AC3（IO）: `rg -c 'fn get_daily_report_sheet_lines\(|fn get_active_z004_import_totals\(' src-tauri/src/db/sales_repo.rs` が 2（baseline exit 1）、`rg -c 'PaymentGroup' src-tauri/src/db/sales_repo.rs` が 0（baseline `2`）。Matrix の 24 §14.21・§14.21a・§14.21b の行の test が PASS。
+- AC2（IO-07-D6、D-142）: `rg -c 'MAX_DAILY_REPORT' src-tauri/src/constants.rs` が 2（baseline exit 1）。Matrix の IO-07-D6 の行の test（上限ちょうどを受ける・1 越えると列を名指した `number_too_large`・形の誤りの `invalid_number` と文は今のまま・個数の上限）と BIZ-08-D2a の行の test（取込みの画面の文が帳票と列を名指し値を出さない・文の優先・形の誤りは汎用の文のまま・画面に文が出て選び直せる）が PASS。`rg -c 'number_too_large' src-tauri/src/biz/daily_report_import_service/parse.rs` が 1 以上（baseline exit 1）。
+- AC3（IO）: `rg -c 'fn get_daily_report_sheet_lines\(|fn get_active_z004_import_totals\(' src-tauri/src/db/sales_repo.rs` が 2（baseline exit 1）、`rg -c 'PaymentGroup' src-tauri/src/db/sales_repo.rs` が 0（baseline `2`）。`rg -c 'OfficialDailyPaymentRow' src-tauri/src` の出力が空（baseline `src-tauri/src/db/sales_repo.rs:3`。2026-10-29 の round 1 で足した）。Matrix の 24 §14.21・§14.21a・§14.21b の行の test が PASS。
 - AC4（BIZ）: `rg -c 'pub fn get_daily_report_sheet\(' src-tauri/src/biz/sales_service.rs` が 1（baseline exit 1）。Matrix の SALES-SHEET-D1〜D6 と 34 §19.3 手順 3 の行の test が PASS。
 - AC5（CMD と bindings）: `rg -c 'get_daily_report_sheet' src-tauri/src/lib.rs` が 2（baseline exit 1）、`rg -c 'getDailyReportSheet' src/lib/bindings.ts` が 1（baseline exit 1）。`cd src-tauri && cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts` が exit 0。`bash scripts/check-command-drift.sh` が exit 0。
 - AC6（画面）: `rg -c -F '準備中（Phase 4 で実装予定）' src/features/daily-sales/components/ExportBar.tsx` が 0（baseline `1`）、`rg -c -F '日報の部門確認が必要です' src` の出力が空（baseline `DailySalesPage.test.tsx:3`・`DailySalesPage.tsx:1`）、`rg -c -F '日報を印刷' src/features/daily-sales/components/ExportBar.tsx` が 1（baseline exit 1）。Matrix の UI-09a の行の component test が PASS。
-- AC7（正本の注記）: `rg -n 'proposed・未実装' docs/function-design/24-io-csv-import-repo.md docs/function-design/29-io-daily-report-parser.md docs/function-design/34-biz-sales-service.md docs/function-design/42-cmd-sales-stocktake.md docs/function-design/56-ui-daily-sales.md docs/function-design/10-common-rules.md docs/UI_TECH_STACK.md docs/db-design/pos-tables.md docs/SCREEN_DESIGN.md | rg 'D-120|D-142|SALES-SHEET|IO-07-D4a|IO-07-D6|UI-09a' | rg -v ':\| 20[0-9]{2}-' | wc -l` が 0（baseline `18`。更新履歴の行は数えない）。`rg -c -F '仕様未定のため Phase 2 では disabled' docs/architecture/ui-task-specs.md` が 1（baseline `2`。残るのは UI-09b の月次の行）。
+- AC7（正本の注記）: `rg -n 'proposed・未実装' docs/function-design/24-io-csv-import-repo.md docs/function-design/29-io-daily-report-parser.md docs/function-design/34-biz-sales-service.md docs/function-design/37-biz-daily-report-import-service.md docs/function-design/42-cmd-sales-stocktake.md docs/function-design/56-ui-daily-sales.md docs/function-design/10-common-rules.md docs/UI_TECH_STACK.md docs/db-design/pos-tables.md docs/SCREEN_DESIGN.md | rg 'D-120|D-142|SALES-SHEET|IO-07-D4a|IO-07-D6|UI-09a|BIZ-08-D2a' | rg -v ':\| 20[0-9]{2}-' | wc -l` が 0（baseline `22`。2026-10-29 の round 1 の是正の後の作業 tree。起票の時点の 37 と BIZ-08-D2a を除いた式では `18` で、round 1 で 24 の手順 8・29 §29.5 の `number_too_large` の行・37 の 2 行が増えた。更新履歴の行は数えない）。`rg -n 'クレジット → .credit.|.credit. の鍵は全角' docs/function-design/29-io-daily-report-parser.md` の出力が空（baseline 2 行〈117・119 行目〉。round 1 で足した）。`rg -c -F '仕様未定のため Phase 2 では disabled' docs/architecture/ui-task-specs.md` が 1（baseline `2`。残るのは UI-09b の月次の行）。
 - AC8（検査）: `bash scripts/doc-consistency-check.sh` と `--target plan` が ERROR 0。`cd src-tauri && cargo run --bin generate_traceability -- --check` が OK。`cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` と `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` が exit 0（hosted の changed 分類でも同じ job）。
 - AC9（L3、Human Gate の manual）: Matrix の Manual の L3-1〜L3-3 が owner の PASS。L3 の前に Writer が `cargo check --release` を通す（AC の証跡は PR の本文）。
-- AC10（並走）: plan-gate の前に、#172 の merge の commit が HEAD の祖先（`git merge-base --is-ancestor <#172 の merge の commit> HEAD` が exit 0）で、同期は `origin/main` の単段 merge 1 回（`Plan Commit` は同期の後の packet の版）。
-- AC11（公開してよい形）: `git diff -U0 50f97a76 HEAD -- docs tests` の追加の行に、店の金額・商品名・JAN・部門名・発言の原文・実データの名称の値が無い（fixture の名称は `項目A` のような合成の語、数は合成の値）。Plan Review と Final Review で差分を読んで確かめる。
+- AC10（並走）: plan-gate の前に、#172 の merge の commit が HEAD の祖先（`git merge-base --is-ancestor <#172 の merge の commit> HEAD` が exit 0）で、同期は `origin/main` の単段 merge 1 回（`Plan Commit` は同期の後の packet の版）。plan-gate の前に、Contract Probe の P8 の行に、Z001・Z002・Z005 の数の列ごとの絶対値の最大の桁数と、数えた時点（日付と、数えた手元の Z 帳票の写しの版）が書かれている（Coordinator が数える。値は書かない）。
+- AC11（公開してよい形）: `git diff -U0 origin/main...HEAD -- docs tests`（merge-base からの本 lane の差分。同期で取り込んだ他の lane の行を数えない）の追加の行に、店の金額・商品名・JAN・部門名・発言の原文・実データの名称の値が無い（fixture の名称は `項目A` のような合成の語、数は合成の値）。Plan Review と Final Review で差分を読んで確かめる。
+- AC12（owner の判断事項 O2）: Ready の前に、O2（レジスターツールの日報との照合の置き場）への owner の明示の答えがある（L3 の依頼と同じ 1 回で、記号で得る。答えの原文は repo の外の回答台帳、PR には ID で引く）。答えが a なら D-142 の (5) のまま。答えが b なら Matrix の Manual に L3-4 を足す Gated Amendment を出し、D-142 の (5) を外す（下の Open Questions の表）。受容リスク（merge の時点では照合していない紙を、切替えまで比べるときだけ印刷する）は owner が持つ（`AGENTS.md` の Decision and Approval Boundaries）。答えの無いまま既定で Ready にしない。2026-10-29 の round 1 で足した。
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: 34 冒頭の「数量と単位」・§19.2・§19.3（手順 1〜3、設計判断）・§19.3a（SALES-SHEET-D1〜D6）／24 §14.21（手順 1〜8）・§14.21a・§14.21b／42 §22.3・§22.4 の `get_daily_report_sheet`・§22.8／29 §29.2 の IO-07-D2・D4・D4a・D6、§29.4.1、§29.5／56 §56.1 の UI-09a-D13・D15・D16・D17・D18・D19、§56.7、§56.8、§56.13／UI_TECH_STACK §6.4・§6.5.5／pos-tables §12c・§12d・§12e／10 の「入力の上限と安全な整数の範囲」の (a)〜(e)／SCREEN_DESIGN の日次売上画面／D-096・D-104・D-120・D-142・D-123。
-- 必要な設計成果物: BIZ・IO の振舞い = updated in this PR（34 §19.3 手順 3、24 §14.21 手順 3・5・7、29 IO-07-D6。D-142）／command・DTO = existing sufficient（42 の `get_daily_report_sheet`、34 §19.3a の型）／report の形 = existing sufficient（34 SALES-SHEET-D3・D4、56 UI-09a-D17）／operator workflow・文言 = existing sufficient（56 UI-09a-D16〜D19。IO-07-D6 の文は 29 に足した）／表・migration = existing sufficient（変えない）／durable な判断 = updated in this PR（D-142）。
+- 引用する設計正本（節まで）: 34 冒頭の「数量と単位」・§19.2・§19.3（手順 1〜3、設計判断）・§19.3a（SALES-SHEET-D1〜D6）／24 §14.21（手順 1〜8）・§14.21a・§14.21b／42 §22.3・§22.4 の `get_daily_report_sheet`・§22.8／29 §29.2 の IO-07-D2・D4・D4a・D6、§29.4.1、§29.5／56 §56.1 の UI-09a-D13・D15・D16・D17・D18・D19、§56.7、§56.8、§56.13／UI_TECH_STACK §6.4・§6.5.5／pos-tables §12c・§12d・§12e／10 の「入力の上限と安全な整数の範囲」の (a)〜(e)／37 §37.3 手順 3（BIZ-08-D1・D2・D2a）・§37.7／SCREEN_DESIGN の日次売上画面／D-096・D-104・D-120・D-142・D-123。
+- 必要な設計成果物: BIZ・IO の振舞い = updated in this PR（34 §19.3 手順 3、24 §14.21 手順 3・5・7・8、29 IO-07-D6、37 BIZ-08-D2a。D-142）／command・DTO = existing sufficient（42 の `get_daily_report_sheet`、34 §19.3a の型）／report の形 = existing sufficient（34 SALES-SHEET-D3・D4、56 UI-09a-D17）／operator workflow・文言 = existing sufficient（56 UI-09a-D16〜D19。IO-07-D6 の文は 29 に足した）／表・migration = existing sufficient（変えない）／durable な判断 = updated in this PR（D-142）。
 - plan にしかない durable な判断の昇格先: D-142 と上の正本に置いた。packet にだけあるのは、規模と手法の数え、実装の順、予定 path と所有表、AC の数、owner の判断事項の文面、L3 の手順。
 - 前提・制約と、延期した design gap の follow-up: P1（WebView2 の印刷）は L3-1、P5（1 枚に収まるか）は L3-2、P2（レジスターツールの日報との行ごとの一致）は UI-09a-D19 の (2)（O2 の既定）、P8（実データの最大の桁）は plan-gate の前に Coordinator が repo の外で数える。手動販売の金額欄の上限は backlog（D-142 の (3)）。延期が安全な理由: どれも紙の内容の規則を変えず、外れたときの戻り先（代わりの道の Gated Amendment、並びの Gated Amendment、D-120 の Revisit、上限の値の見直し）が正本にある。
 - 絶対保証の自己点検: 「画面と紙は同じ値を同じ書き方で出す」は公式日報の部分（総売・純売・支払・部門）の値の範囲についての保証で、画面の支払集計と紙の Z002 は同じ関数の同じ結果、画面の部門別集計（部門マスタで照合）と紙の Z005（レジの名称のまま、SALES-SHEET-D2）は D-120 のとおり足し方が違う（範囲の保証は両方に及ぶ）。「読取りで範囲を検査しない」の例外は parser を通らない値（DB の直接の書換え・上限を入れる前の開発・試験 DB の行。10 の (e)）と手動販売の金額（保証の外）。「古い内容で印刷しない」は押したときの読み直し（SALES-SHEET-D6）に依り、読み直しと印刷の間に別の画面で取り消す経路は単一利用者の画面で起きない（34 §19.3a の前提条件）。
@@ -319,7 +361,7 @@ merge の順: **#172 が先**（本 lane の実装は #172 の merge の後に�
 - internal type: IO の DB DTO `DailyReportSheetLinesRow`・`DailyReportSheetLineRow`（24 §14.21a）、`OfficialDailyReportRow.payment_lines` の行の型（24 §14.21 手順 3。足さない）。個数は 100 倍の `i64` で足し、`quantity_hundredths_to_units` で `f64` へ（IO-07-D2）。
 - precision/range: D-142。parser の上限（金額・件数 `9999999999`、個数 `9999999.99`）で、1 つの集計が `9007199254740991` を越えるには金額で 900,720 本の取込みの行、個数で 9,007,200 行が要る（`python3` で 2026-10-27 に計算: `9007199254740991 // 9999999999` = `900719`、`// 999999999` = `9007199`）。Z004 は `i32`（`// 2147483647` = `4194304`）。読取りで範囲を検査しない（画面も紙も）。和は `checked_add` で、溢れは `BizError::ValidationFailed`。
 - round-trip path: 取込み（`daily_report_*_lines`・`sale_records`・`csv_imports`）→ IO の読取り → BIZ の足し算 → CMD → UI の描画 → `window.print()`。保存も往復もしない。
-- invalid input: 日付の形式・暦の誤り → `ValidationFailed`（§19.3 と同じ文言）。取込みが 0 件の日は `import_count = 0`。上限を越える数の束は parser が `invalid_number`（取込みの段で止まり、紙に届かない）。
+- invalid input: 日付の形式・暦の誤り → `ValidationFailed`（§19.3 と同じ文言）。取込みが 0 件の日は `import_count = 0`。上限を越える数の束は parser が `number_too_large`（取込みの段で止まり、紙に届かない。取込みの画面の文は BIZ-08-D2a で帳票と列を名指し、値を出さない）。
 - compatibility: 新しい command と DTO を足すだけ。支払集計の互換の範囲と範囲の外の値は 34 §19.3 手順 3。返す `payment_key` の意味は変えず、画面の行の key を `${payment_key}-${index}` にする。
 
 ### 新しい契約の文と境界の 4 観点
@@ -333,6 +375,15 @@ merge の順: **#172 が先**（本 lane の実装は #172 の merge の後に�
 | 失敗の時点と順序 | 上限の越えは parser の段（取込みの前、何も書かない）。紙の失敗の順は SALES-SHEET-D5（日付 → 読取り → 足し算）のまま。画面の支払集計の溢れは IO の `DbError` から BIZ の `ValidationFailed` に変わり、読取りの後の足し算の段になる（34 §19.3 手順 3 に書いた。上限の下では届かない） |
 | 単位や種類の混在 | 金額・件数（整数）と個数（100 倍の整数）で上限を分けた。紙の `個数/件数` の列は `quantity` があればそれ、無ければ `count`（UI-09a-D17）。PLU の数量は商品の単位で出す（SPEC-UNIT-D3） |
 
+round 1 の是正（2026-10-29）で足した契約の文（37 BIZ-08-D2a、29 IO-07-D6 の `number_too_large` と文の作り方、24 §14.21 手順 8、D-142 の (5)、Matrix の「既存の test の移し方」の新しい期待）を同じ 4 観点で一巡した。
+
+| 観点 | 確かめたこと |
+|---|---|
+| 安全な整数の範囲 | BIZ-08-D2a の文は数を持たない（値を入れない）。上限の値と範囲の計算は変えていない。既存の test の移し方の新しい期待は fixture の値の和（`200`・`100`・`9000` 等）で、`i64` と安全な整数の範囲の中 |
+| 0 の表示 | 上限は絶対値で掛けるので 0 と負の値は `number_too_large` にならない（Matrix の上限ちょうどの test に `-9999999999`）。移し方の新しい期待で NULL の行は NULL のまま（`(cash, 現金旧, NULL, 1)`）で 0 にしない |
+| 失敗の時点と順序 | 上限の越えは parse の段（BIZ-08 の §37.3 手順 3）で止まり、何も書かない（`daily_report_imports` に行を作らない、`operation_logs` は best-effort）。文の優先は `settlement_mismatch`（BIZ-08-D2）→ `number_too_large`（BIZ-08-D2a）→ 汎用の文。複数の列の越えは帳票の Z001 → Z002 → Z005、帳票の中は列の左からの順で、parse の順や入力の file の順に依らない（Matrix の test は Z005 の file を先に渡す）。D-142 の (5) は Ready の前に owner の答え（AC12）、照合は紙の切替えの前（UI-09a-D19 の (2)） |
+| 単位や種類の混在 | 形の誤り（`invalid_number`）と上限の越え（`number_too_large`）を `error_type` で分け、BIZ は文の中身でなく `error_type` で分岐する。列の語は個数と金額で違う（`個数列`・`金額列`・Z001 の `個数/件数列`）。24 手順 8 は内部の行（ID を持つ）と公開の集計（ID を持たない）と Z001 の写像を分けた |
+
 ## Test Plan
 
 Test Design Matrix: [2026-10-27-daily-report-sheet-runtime](test-matrices/2026-10-27-daily-report-sheet-runtime.md)。
@@ -342,22 +393,22 @@ Test Design Matrix: [2026-10-27-daily-report-sheet-runtime](test-matrices/2026-1
 - compatibility checks: 互換の範囲の日の支払集計が今と同じ行と値（Matrix の 34 §19.3 手順 3 の行）。
 - data safety checks: fixture と test は合成だけ（AC11）。
 - main wiring/integration checks: 日次売上 → `useDailyReportSheet` → `commands.getDailyReportSheet` → CMD → BIZ → IO（`sales_cmd.rs` の command の test と ExportBar の component test）、印刷の dialog（L3-1）。
-- L3（Human Gate の manual）: 項目ごとの到達経路・入力物・依存は Matrix の Manual。受理される入力物は `tests/fixtures/daily-report-z001/`（2 回取り込んだ日 `2026-03-24`）と `tests/fixtures/daily-report-sheet/`（足さない日 `2026-03-25` と、`2026-03-24` の Z004）で、Coordinator が Ready の依頼と同時に取り込む順の手順を渡す（CP932・CRLF の実 encoding、`docs/DEV_WORKFLOW.md` Human Visual Confirmation）。Writer は L3 の前に `cargo check --release`。
+- L3（Human Gate の manual）: 項目ごとの到達経路・入力物・依存は Matrix の Manual。受理される入力物は `tests/fixtures/daily-report-z001/`（2 回取り込んだ日 `2026-03-24`）と `tests/fixtures/daily-report-sheet/`（商品の一括 import の CSV、足さない日 `2026-03-25`、改ページの日 `2026-03-26`、`2026-03-24` と `2026-03-26` の Z004。S7）で、Coordinator が Ready の依頼と同時に取り込む順の手順（Matrix の Manual の (1)〜(6)。owner に DB への直接の挿入を求めない）を渡す（CP932・CRLF の実 encoding、`docs/DEV_WORKFLOW.md` Human Visual Confirmation）。Writer は L3 の前に `cargo check --release`。
 - Human visual confirmation（画面の変更）: 日次売上（`/reports/daily`）の印刷ボタンと押せない状態の文、支払集計の注記の見出しと文、2 回以上の日の文。Windows の native の L3 も要る（印刷）。
 
 ## Review Focus
 
 - Ordinary Operation の列が、正常な条件で目的（締めの後にアプリから 1 日 1 枚の紙を印刷する）を達成できるか。押せない日に、その場で直せる導線があるか。
-- D-142: 上限の値と「読取りで検査しない」が、画面と紙の食い違いを生まないか。手動販売の金額を保証の外に残すことが、紙の範囲で安全か。D2 を BIZ の 1 つの関数に移すことで、互換の範囲（34 §19.3 手順 3）の日の支払集計の行と値が変わらないか、IO の既存の test の期待が同じ値で BIZ へ移るか（弱体化しない）。
+- D-142: 上限の値と「読取りで検査しない」が、画面と紙の食い違いを生まないか。手動販売の金額を保証の外に残すことが、紙の範囲で安全か。D2 を BIZ の 1 つの関数に移すことで、互換の範囲（34 §19.3 手順 3）の日の支払集計の行と値が変わらないか、IO の既存の test の期待が assert の単位で BIZ へ移るか（範囲の中は同じ値、範囲の外は正本の新しい規則の値で、検出力を範囲の中の test が保つ。弱体化しない。Matrix の「既存の test の移し方」）。
 - #172 との所有と順（同じ file の test の fixture の形）。
 - この変更で不要になる記述・条件・code が下の節で尽くされているか。
 
 ## この変更で不要になるもの
 
-- code: `sales_repo.rs` の `get_completed_daily_report_aggregate` の支払の集約（`PaymentGroup` と group の代表の選び方。BIZ の D2 の関数へ移す）、`payment_key` の `クレジット` / `credit` の分岐、`ExportBar.tsx`（日次）の頭の comment「Phase 4 で window.print 検討」と Tooltip「準備中（Phase 4 で実装予定）」と `aria-disabled` の印刷の `span`、`DailySalesPage.tsx` の見出し `日報の部門確認が必要です` と 2 回以上の日の旧い文。
-- 正本の記述: D-120・D-142 の「proposed・未実装」の注記（AC7）、`docs/architecture/ui-task-specs.md` の UI-09a の「仕様未定のため Phase 2 では disabled」、56 §56.13 の「印刷ボタンの本実装」の非目的の行、24 §14.21 の支払の集約の手順（本 commit で BIZ へ移した）、10 の (e) の「売上の金額」の項（本 commit で分けた）。
+- code: `sales_repo.rs` の `get_completed_daily_report_aggregate` の支払の集約（`PaymentGroup` と group の代表の選び方。BIZ の D2 の関数へ移す）と、集約した支払の DB DTO `OfficialDailyPaymentRow`（行の型に置き換わる。AC3。round 1 で足した）、`payment_key` の `クレジット` / `credit` の分岐、`ExportBar.tsx`（日次）の頭の comment「Phase 4 で window.print 検討」と Tooltip「準備中（Phase 4 で実装予定）」と `aria-disabled` の印刷の `span`、`DailySalesPage.tsx` の見出し `日報の部門確認が必要です` と 2 回以上の日の旧い文。
+- 正本の記述: D-120・D-142 の「proposed・未実装」の注記（AC7）、`docs/architecture/ui-task-specs.md` の UI-09a の「仕様未定のため Phase 2 では disabled」、56 §56.13 の「印刷ボタンの本実装」の非目的の行、24 §14.21 の支払の集約の手順（本 commit で BIZ へ移した）と手順 8 の旧い返却の契約（「Z001 …だけが親 ID と imported_at を持つ」「BIZ …並びと値を変えない」。round 1 で 3 つに分けて直した）、10 の (e) の「売上の金額」の項（本 commit で分けた）、29 の IO-07-D4 の段の今の `credit` の規則の 2 行（117・119 行目。S6 で直す。AC7。round 1 で足した）、56 UI-09a-D18・UI_TECH_STACK §6.5.5・backlog の P1 の「実装の前に」と、34・29・backlog の P2 の「runtime の lane の L3 で確かめる」（round 1 で直した）。
 - backlog: 「日報の紙の runtime」の項と、「code の comment・文言の古い句 2 つ」の (1) の日次の分（closeout で閉じる）。「日次売上と日報の紙の wire の i64 …」の項は本 commit で「手動販売の金額欄の上限」に置き換えた。
-- 残すもの（理由）: `payment_key`・`line_key` の列と保存（D-120。表示の行の鍵と既存の wire が使う）、月次の `ExportBar` の印刷の disabled と Tooltip（月次の印刷は未定）、D-120 の本文（決定の記録。引き先の移動は D-142 が記録する）。
+- 残すもの（理由）: `payment_key`・`line_key` の列と保存（D-120。表示の行の鍵と既存の wire が使う）、月次の `ExportBar` の印刷の disabled と Tooltip（月次の印刷は未定）、D-120 の本文（決定の記録。引き先の移動と P2 の照合の置き場の移動は D-142 の (4)・(5) が記録する）、BIZ-08-D1 の汎用の文（形の誤りなど `number_too_large` 以外の parse の失敗は、今の「日報ファイルの解析に失敗しました」のまま）。
 
 ## Open Questions
 
@@ -366,19 +417,28 @@ owner の判断事項（TD-401 により問わずに推奨の既定で書き進�
 - O1 紙の並びの比べ方（UI-09a-D17・D-120 の Q1）:
   - a = 既定の案 a だけを実装して L3 で印刷し、読みやすければ a に決める。読みにくければ b（1 段・値が全部 0 の行を外す・12 pt）か c（2 枚・12 pt）を名指し、Gated Amendment で直す（既定）
   - b = a・b・c の 3 案を実装して L3 で並べて印刷する
-  - 推奨: a（candidate）。理由: owner の印刷は 1 回で済み、b・c の code を選ばれない案のために書かない。答えで変わる所: b なら S5 の紙の component に案の切替えを足し、L3-2 の印刷が 3 回になる。
+  - 推奨: a（candidate）。理由: owner の印刷は 1 回で済み、b・c の code を選ばれない案のために書かない。答えで変わる所は下の表。
 - O2 レジスターツールの日報との値の照合（D-120 の P2）の置き場:
   - a = 本 PR の L3 から外し、運用開始の後の UI-09a-D19 の (2)（切り替える前に実際の 1 日でアプリの紙と今の Excel の紙を並べる）に寄せる（既定）
   - b = 本 PR の L3 に入れる（owner が持ち帰りの Z の写しの過去の日〈2 回精算した日を含む〉を Windows の開発の build に取り込んで紙を印刷し、店の綴りの同じ日の紙と並べる）
-  - 推奨: a（precondition-dependent: D19 の (2) が切替えの前に必ず行われること）。理由: 店は切替えまで Excel を続け、merge は店の運用を変えないので、照合を merge の条件にすると店へ行く日まで PR が止まる。答えで変わる所: b なら Matrix の Manual に L3-4 を足し、Human Gate の manual の round が店へ行く日に依る。
+  - 推奨: a（precondition-dependent: D19 の (2) が切替えの前に必ず行われること）。理由: 店は切替えまで Excel を続け、merge は店の運用を変えないので、照合を merge の条件にすると店へ行く日まで PR が止まる。a は D-120 の Guarantee range（「runtime の lane の L3 で確かめる」）の置き場を動かすので、本 lane の round 1 で D-142 の (5) に記録し、34・29・56 UI-09a-D19・backlog の文を合わせた（D-120 の本文は変えない）。受容リスクは owner が持つので、既定のまま Ready にせず、owner の明示の答えを Ready の前の条件にする（AC12）。答えで変わる所は下の表。
 - O3 名称か並びの変わった日の画面の 2 つの知らせ（D-120 の Final Review の closure の P3）:
   - a = 公式セクションの注記と、印刷ボタンの下の帳票ごとの文の両方を残す（正本どおり。既定）
   - b = Z002 の文は注記だけにし、印刷ボタンの下からは外す
-  - 推奨: a（candidate）。理由: 注記は画面の支払集計、ボタンの下は紙の知らせで、読む場所が違う。L3-3 で owner が読み違えるか重いと判じたら b。答えで変わる所: b なら 56 UI-09a-D17 の表の 1 件以上の行の文と ExportBar の test を直す Gated Amendment。
+  - 推奨: a（candidate）。理由: 注記は画面の支払集計、ボタンの下は紙の知らせで、読む場所が違う。L3-3 で owner が読み違えるか重いと判じたら b。答えで変わる所は下の表。
 - O4 parser の上限で取り込めない束（D-142 の (1)）:
   - a = 金額・件数 `9999999999`、個数 `9999999.99` を越える束は取り込めず、列を名指す（既定。技術の判断で、owner の承認を要しない。見せるだけ）
   - b = 上限を掛けない（画面と紙が 2^53 を越える値を黙って誤って出しうる）
-  - 推奨: a（confirmed: TD-213 の入力の上限の方針と同じ形）。答えで変わる所: b なら D-142 と IO-07-D6 を外す。
+  - 推奨: a（confirmed: TD-213 の入力の上限の方針と同じ形）。答えで変わる所は下の表（b でも D-142 の全部は外さず、上限の項だけを外す）。
+
+答えで変わる所（既定でない答えのときに Gated Amendment で直す所。2026-10-29 の round 1 で表にした）:
+
+| 答え | Scope | AC | Matrix | 正本 |
+|---|---|---|---|---|
+| O1 = b（3 案を並べる） | S5 の紙の component に案 a・b・c の切替え（L3 の build だけで選べる形） | AC9（L3-2 の印刷が 3 回） | Manual の L3-2（3 案を並べて印刷し、1 つを名指す） | 選んだ案が a 以外なら 56 UI-09a-D17 の「紙の並び」と 34 SALES-SHEET-D3（D-120 の Revisit） |
+| O2 = b（照合を本 PR の L3 に入れる） | S7 に照合の手順（owner が持ち帰りの Z の写しの過去の日〈2 回精算した日を含む〉を Windows の開発の build に取り込む。入力は repo の外で、tracked にしない） | AC9 に L3-4、AC12 は b の答え | Manual に L3-4（アプリの紙と店の綴りの同じ日の紙を並べ、行ごとに値が同じ）、Residual Test Gaps の照合の行 | D-142 の (5) を外す。34 §19.3a の「精算をまたいで足してよい根拠」・29 §29.4.1 の末尾・56 UI-09a-D19 の (2) の括弧・backlog の Human Gate の文を「runtime の lane の L3」へ戻す。Owner Effort Budget の L3 の round が店へ行く日に依る |
+| O3 = b（Z002 の文は注記だけ） | S5 の `ExportBar.tsx` の帳票ごとの文から Z002 を外す | AC6（ExportBar の test の期待） | Test Matrix の `ExportBar shows label change notices per source (UI-09a)` の期待（Z002 の行が出ない）、Manual の L3-3 の期待（ボタンの下の `支払集計（Z002）：…` の文が出ない） | 56 UI-09a-D17 の状態の表の「`import_count` が 1 以上」の行の帳票ごとの文 |
+| O4 = b（上限を掛けない） | S1 の上限の検査・`constants.rs` の定数・`number_too_large`・S1 の BIZ-08-D2a の分岐と test を外す（`credit` の規則〈IO-07-D4a〉は残す） | AC2 を外す（AC1 は残す） | IO-07-D6 の上限の 2 行と BIZ-08-D2a の新しい 3 行（既存の test の行〈`test_parse_daily_report_req401_invalid_number`・`test_daily_report_req401_parse_error_logs_parse_failed`〉は残す）・`test_daily_sales_and_sheet_return_same_large_values`・Failure Modes・Negative Paths・Boundary Checks の上限の行・State Lifecycle の上限の行 | D-142 の (1)・(2) と Guarantee range の「parser を通って保存された日報の値は上限の中」を外し、(3)・(4)・(5) と題の BIZ の共通化は残す（D2 を BIZ の 1 つの関数に置く決定は上限に依らない）。29 IO-07-D6 と §29.5 の `number_too_large` の行、37 BIZ-08-D2a と §37.7 の行、10 の (a) の表の行と (e) のレジの日報の段、34 冒頭の「レジの日報の値」の段（範囲の保証が無くなる: 画面と紙は同じ値を出すが、2^53 を越える値を正確に出す保証は無い）。Goal の 3 つ目の項の上限の部分、Ledger の IO-07-D6・10 (e)・BIZ-08-D2a の行、Ordinary Operation の上限の行 |
 
 店に聞くこと: 無し（紙を渡す先が並びや項目を気にするかは D-120 の S1 のまま、切り替える前に owner が新しい紙を 1 枚見せて確かめる）。
 
@@ -398,7 +458,9 @@ agent 側で解く問い: Contract Probe の P1・P5（L3）、P8（plan-gate �
 | 24 §14.21a・§14.21b（読む範囲・並び・`import_ids`・Z005 は `raw_department_name`・`(0, 0)`） | 24 | S2 | Matrix の 14.21a・14.21b の行 | 非対象 |
 | CMD `get_daily_report_sheet`（登録 2 か所と bindings） | 42 §22.4・§22.8 | S4 | `scripts/check-command-drift.sh`、bindings の clean diff、`sales_cmd.rs` の command の test | 非対象 |
 | IO-07-D4a（`credit` の規則を外す、正規化しない） | 29 §29.2 | S1 | `test_payment_key_has_no_credit_rule` | 非対象 |
-| IO-07-D6（数の上限、文、1 か所の検査） | 29 §29.2・§29.5、10 (a) の表の行、D-142 | S1 | Matrix の D6 の行 | 非対象 |
+| IO-07-D6（数の上限、`number_too_large` と文〈帳票と列の語だけ〉、1 か所の検査） | 29 §29.2・§29.5、10 (a) の表の行、D-142 の (1) | S1 | Matrix の D6 の行 | 非対象 |
+| BIZ-08-D2a（上限の越えの利用者向けの文。帳票と列を名指し値を出さない、`settlement_mismatch` の次に優先、他の失敗は汎用の文のまま） | 37 §37.3 手順 3・§37.7、D-142 の (1) | S1 の `parse.rs` | Matrix の BIZ-08-D2a の行（BIZ の integration 2 本と既存 1 本、画面の component 1 本） | 非対象 |
+| D-142 の (5)（P2 の照合の置き場を UI-09a-D19 の (2) へ） | D-142、34 §19.3a、29 §29.4.1、56 UI-09a-D19 | 運用（O2 の答えを AC12 で Ready の前に得る） | 非対象 | 非対象（O2 が b なら L3-4） |
 | 10 (e)（レジの日報・Z004 の値は読取りで拒まない、手動販売は保証の外） | 10、34 冒頭、D-142 | 検査を足さないこと（画面と紙） | Matrix の「範囲の検査を置かない」の行 | 非対象 |
 | UI-09a-D16（2 回以上の日の文、注記の見出し、支払集計の行の key、2・3 の warning を注記に出す） | 56 §56.1 | S5 `DailySalesPage.tsx` | Matrix の D16 の行 | L3-3（読みやすさ、O3） |
 | UI-09a-D17（印刷ボタンと 4 つの状態の文・リンク・`再試行`、押したときの順、紙の並び・表・値・知らせ・9 pt・色なし・続け方・画面に出さない、帳票ごとの画面の文、`skipped_count` の文とリンク） | 56 §56.1 | S5 `ExportBar.tsx`・`DailyReportSheet.tsx`・`useDailyReportSheet.ts`・`query-keys.ts` | Matrix の D17 の行 | L3-1・L3-2 |
@@ -409,12 +471,12 @@ agent 側で解く問い: Contract Probe の P1・P5（L3）、P8（plan-gate �
 
 ## Contract Probe
 
-- P1（Windows の WebView2 で `window.print()` が OS の印刷の dialog を出し、`@page` の A4 縦と余白 10 mm が効き、`@media print` でアプリの枠が出ない）: 未確認（本 run は Windows で動かしていない。出所は D-120 の設計 lane の推測）。→ backlog は「実装の前に確かめる」と書くが、確かめるには Windows の build と owner の操作が要り、`window.print()` の道は code が小さい（CSS と 1 つの呼出し）ので、実装してから L3-1 で確かめる（owner の操作を 1 回にまとめる）。効かなければ、UI-09a-D18 の代わりの道を、店の PC の `.html` の関連付けが印刷できるブラウザであることを確かめた後に、42 に command を足す Gated Amendment で入れる（Owner Effort Budget の予備 1）。
-- P2（足した値が行ごとにレジスターツールの日報の値と同じ）: 未確認の前提（D-120 の P2。店主の答え TD-280・TD-305）。→ O2 の既定 a で、運用開始の後の UI-09a-D19 の (2) で確かめる。違えば D-120 の Revisit。
-- P5（既定の案 a が A4 縦 1 枚に 9 pt で収まるか、収まらない日に見出しが繰り返し 2 段が段ごとに続くか）: 未実測（D-120 の P5 の見積り: PLU の行のある日は 2 枚目へ続く見込み）。→ L3-2。
-- P6（Z004 の取込みが使えるか）: 停止 ADR（`docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`）は 2026-10-23 に superseded（b1 が入口を外した。ADR の Status の行と 32 の「停止の解除」の節を 2026-10-27 に読んだ）。→ 記録。PLU の部分は Z004 を取り込んだ日に出る。L3-2 は合成の Z004 を取り込んで PLU の行を出せる。
+- P1（Windows の WebView2 で `window.print()` が OS の印刷の dialog を出し、`@page` の A4 縦と余白 10 mm が効き、`@media print` でアプリの枠が出ない）: 未確認（本 run は Windows で動かしていない。出所は D-120 の設計 lane の推測）。→ 確かめるには Windows の build と owner の操作が要り、`window.print()` の道は code が小さい（CSS と 1 つの呼出し）ので、実装してから L3-1 で確かめる（owner の操作を 1 回にまとめる）。起票の時点では 56 UI-09a-D18・UI_TECH_STACK §6.5.5・backlog が「実装の前に確かめる」と書いていたので、round 1 の是正（2026-10-29）で 3 つとも「実装の後の L3（L3-1）で確かめる」に直した。効かなければ、UI-09a-D18 の代わりの道を、店の PC の `.html` の関連付けが印刷できるブラウザであることを確かめた後に、42 に command を足す Gated Amendment で入れる（Owner Effort Budget の予備 1）。
+- P2（足した値が行ごとにレジスターツールの日報の値と同じ）: 未確認の前提（D-120 の P2。店主の答え TD-280・TD-305）。→ O2 の既定 a で、運用開始の後の UI-09a-D19 の (2) で確かめる。違えば D-120 の Revisit。置き場の移動は D-142 の (5) に記録し、34 §19.3a・29 §29.4.1・56 UI-09a-D19・backlog の文を合わせた（round 1、2026-10-29。D-120 の本文は変えない）。owner の明示の答えを Ready の前に得る（AC12）。
+- P5（既定の案 a が A4 縦 1 枚に 9 pt で収まるか、収まらない日に見出しが繰り返し 2 段が段ごとに続くか）: 未実測（D-120 の P5 の見積り: PLU の行のある日は 2 枚目へ続く見込み）。→ L3-2。続け方は、収まるかに依らず必ず改ページが起きる `2026-03-26` の束（S7）で、明示の PASS の条件（Matrix の L3-2 の (b)）で確かめる（round 1、2026-10-29。起票の時点の「2 枚目に続くなら」の条件付きの基準をやめた）。
+- P6（Z004 の取込みが使えるか）: 停止 ADR（`docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`）は 2026-10-23 に superseded（b1 が入口を外した。ADR の Status の行と 32 の「停止の解除」の節を 2026-10-27 に読んだ）。→ 記録。PLU の部分は Z004 を取り込んだ日に出る。L3 は、商品の一括 import で合成の商品を入れた後に、精算の識別メタを持つ layout A の合成の Z004 を取り込んで PLU の行を出す（b1 の後の Z004 は精算回数の無い file を拒み〈32 の表の順 1〉、`get_daily_sales_records` は `INNER JOIN products` なので商品が無いと行が出ない。round 1 の是正、2026-10-29。S7）。
 - P7（Z004 の parser の個数・金額は `i32`）: `src-tauri/src/io/z004_parser.rs` の行の型の `quantity: i32`・`amount: i32` と 23 §13.6 の「金額・数量」の行を 2026-10-27 に読んだ。→ 確認済み（D-142 の (2) の前提）。
-- P8（実データの日報の金額・件数・個数の最大の桁が上限〈10 桁、個数は整数部 7 桁〉のはるか下）: 未実測。→ plan-gate の前に Coordinator が repo の外の手元の Z 帳票の写しで、Z001・Z002・Z005 の数の列の絶対値の最大の桁数だけを数え（値は書かない）、ここに桁数と数えた時点を書く。上限に近ければ D-142 の上限を見直す。
+- P8（実データの日報の金額・件数・個数の最大の桁が上限〈10 桁、個数は整数部 7 桁〉のはるか下）: 未実測。→ plan-gate の前に Coordinator が repo の外の手元の Z 帳票の写しで、Z001・Z002・Z005 の数の列の絶対値の最大の桁数だけを数え（値は書かない）、ここに桁数と数えた時点を書く（AC10 の条件。書かれていなければ plan-gate へ進めない）。上限に近ければ D-142 の上限を見直す。
 
 ## Data Safety
 
@@ -428,4 +490,19 @@ agent 側で解く問い: Contract Probe の P1・P5（L3）、P8（plan-gate �
 
 ## Review Response
 
-（review の後に書く）
+### Plan Review round 1（2026-10-29、`REVIEWED_HEAD=ee8065b1`）
+
+- 判定: fresh Opus 5.5 = request changes（P1 0 / P2 3 / P3 2。`.local/reports/wave-2026-10-29/pr211-plan-r1-opus.md`、local-only で tracked でない）、Codex = request changes（P1 0 / P2 6 / P3 1。`.local/codex-orders/last-663-plan-review-daily-report-sheet.md`、local-only）。重なりを除いて 8 件。Coordinator が全件受理（採 8 / 否 0）し、発注 669 で起草役が直した。
+
+| # | finding（出所） | 採否 | 直した所 |
+|---|---|---|---|
+| 1 | 既存の IO の test の期待を「同じ fixture と同じ値のまま」BIZ へ移せない 2 本と、支払の assert の無い overflow の 1 本（両者 P2） | 採 | Matrix の「既存の test の移し方」を assert の単位の表に直し、範囲の中か外かと、範囲の外の 2 本の新しい期待（D2 の 2 の 2 行と 2 の warning、34 §19.3 手順 3 が出所）、検出力を保つ範囲の中の BIZ の test を名指した。S2・失敗定義・Review Focus の文を合わせた。範囲の中の代表の test を Matrix に 1 本足した |
+| 2 | L3-2 が空の DB の商品の無さと b1 の後の Z004 の形で到達できない（両者 P2）、改ページを観測する入力が無い（Codex P2） | 採 | S7 に商品の一括 import の CSV（b1 の `products-new.csv` と同じ形）、Z004 の layout A と精算の識別メタ・当たる行と当たらない行の数、必ず改ページが起きる `2026-03-26` の束と Z004 を足した。Matrix の Manual に取り込む順 (1)〜(6) と、L3-2 の (b) の明示の PASS の条件（見出しの繰り返し・日付・段の続き・PLU の始まる位置）を書いた |
+| 3 | P1・P2 の確かめの置き場が正本と食い違う（両者 P2） | 採 | P1: 56 UI-09a-D18・UI_TECH_STACK §6.5.5・backlog を「実装の後の L3（L3-1）」に。P2: D-142 に (5) を足し（新しい D にしなかった理由は下）、34 §19.3a・29 §29.4.1・56 UI-09a-D19・backlog を合わせた。AC12（owner の O2 の明示の答えを Ready の前に） |
+| 4 | 上限の越えの列名が汎用の文に置き換わり利用者に届かない（Codex P2） | 採 | 37 BIZ-08-D2a と §37.7 の行、29 IO-07-D6 の `number_too_large` と文の作り方、10 (a)、D-142 (1)。S1 に `parse.rs`・`tests.rs`・`DailyReportImportPage.flow.test.tsx`、Matrix に BIZ-08-D2a の 4 行、AC2、Ledger、Ordinary Operation。#172 の branch の同じ file を読んで分岐の形が同じことを確かめた |
+| 5 | 24 §14.21 手順 8 が新しい支払の行と矛盾する（Codex P2） | 採 | 手順 8 を (a) 内部の支払の行・(b) 公開する支払の集計・(c) Z001 の単純な写像に分けて書き直した。手順 6 の命名の例も直した |
+| 6 | O1〜O4 の答えで変わる所の列挙が足りない（両者 P3） | 採 | Open Questions に答えごとの Scope・AC・Matrix・正本の表。O4 の b は D-142 の上限の項だけを外す形に限った |
+| 7 | 不要になるものの漏れ（29 の `credit` の 2 行、`OfficialDailyPaymentRow`。Opus P3） | 採 | 「この変更で不要になるもの」と S6 に足し、AC3・AC7 に `rg` の 0 件を足した |
+| 8 | AC11 の範囲が他の lane の行を数える、P8 が AC に結ばれていない（Opus P3） | 採 | AC11 を `origin/main...HEAD` に、AC10 に P8 の行の桁数と数えた時点を足した |
+
+- D-142 への追記にした理由（新しい D にしなかった）: (5) は本 lane の起票の決定 D-142 と同じ lane の、同じ D-120 の後続の実装で動かす検証の置き場で、D-142 は未 merge なので直せる。新しい番号を取ると並走の lane と番号を取り合い（D-143〜D-147 は他の lane が使っている）、O2 の答えが b のときに外す所が 2 つの D に分かれる。O4 の b が外すのは (1)・(2) の上限の項だけで、(5) とは独立に外せる（上の表）。
