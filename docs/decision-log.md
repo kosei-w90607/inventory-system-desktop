@@ -1233,3 +1233,15 @@ Use concise ADR-style entries.
 - Compatibility: D-034（Workflow State の Phase の部分）・D-038（Owner Effort Budget）・D-055（train の委任の範囲）・D-097・D-101（Plans の完了の行と closeout）・D-107（PK4 が見る packet の範囲を active な packet に絞る所）・D-124 の残り（L3 の順）・`docs/agent-guidance/merge-evidence.md` の MG-D3（Draft はマージ根拠の check を出さない）と MG-D9（closeout の PR）を置き換える（各々に Superseded の行を足す）。D-039（PK5。対象は (5) の active な packet）・D-062・D-085・D-098・D-099・D-125・D-127・D-144 は変えない。archive の packet・WER は遡って変えない。
 - owner の決定（repo 外の回答台帳、要旨）: TD-474（L3 の使い回し A と B）、TD-475（手続きの重さ）、TD-476（軽量化の 5 案を全部採る）、TD-478（芯から組み直す）、TD-481（同じ head の CI を 1 回）、TD-483（表示だけの修正は R2）、TD-484（R3 の Final は 2 本を既定）、TD-487（Plans は変わりにくいものだけ）、TD-488〜497（導ける値を手で書かない、写しの型と費用で決める、古い前提で動かない、SHA を重りにしない、原文と証跡は置き場を 1 つ）、TD-498（Q1 = A）、TD-499（Q2 = C）、TD-500（Q3 = A）、TD-501（Q4 = A）、TD-502（Q5 = B）。
 - Revisit: 作り直しの後の 3 lane で、review の本数・owner の手の回数・計画の review の固定の問いが拾った finding の数を handoff に残し、見込み（R3 の owner の手は L3 1 回と束ねた承認 1 回）から外れたとき。reviewer の報告の SHA が record で拒まれることが多いとき（発注書に SHA を戻すかを見直す）。docs だけの commit の機械の closure の後に、その docs の欠陥が後の lane で見つかったとき。
+
+## D-146: 同期の後の L3 の使い回し B の「L3 の項目に影響なし」は、合否と確かめた業務の結果が変わらないこと（2026-10-28）
+
+- Status: accepted（owner の裁定、repo 外の回答台帳 TD-516、2026-10-28。lane「B の影響なしの意味」〈Plan Packet `docs/plans/2026-10-28-l3-reuse-meaning.md`〉で起票した）
+- Context: PR #197 の 2 回目の同期は main 側の code を取り込み、D-144 の B（closure 2 本の「L3 の項目に影響なし」の判定と owner の承認）で L3 を使い回す形だった。取り込んだ変更で、L3 の項目の合否は変わらず、項目が見る一覧の「最終カウント」の表示値だけが変わった。B の closure で Codex は表示の値の変化を理由に reject し、Fable は approve して判定が割れた。「影響なし」の意味が文に無く、reviewer ごとに読みが分かれた。
+- Decision: B の「L3 の項目に影響なし」は、同期で取り込んだ変更が L3 の各項目の合否と、確かめた操作・業務の結果を変えないこと。変わるのが画面の表層（表示の値・文言・配置）だけなら、項目が見る値（合格基準が名指す値を含む）でも影響に数えない。項目の操作が通る処理（裏のロジック）を変え、合否や業務の結果を変え得る変更は影響ありとする。規則の文は [merge-evidence](agent-guidance/merge-evidence.md) MG-D13 の「manualの使い回し」(B 承認) の 1 か所が持つ。
+- Why: owner の裁定 TD-516 の要旨は「表示だけなら L3 の再試行は要らない、裏のロジックまで変えるならテストが要る」。L3 が確かめるのは店の業務の操作が正しく通ることで、表示の値の変化は合否を変えない限りその確かめを古くしない。
+- Alternatives: 合格基準が観測する事柄の変化は全部影響ありとする（#197 での Codex の reject の読み。表層の変化のたびに L3 をやり直し、D-144 の B が働かない）; #197 は L3 をやり直す（TD-516 の b。owner は採らなかった）。
+- Guarantee range: 「表層」と「操作が通る処理」の線引きは項目ごとに B の closure の reviewer 2 本と owner が持ち、機械では判定しない（D-144 の Guarantee range のまま）。B は今も機械の保証でない。
+- Compatibility: D-144 の (4) B の判定の意味を足すもので、D-144 の Decision・Guarantee range は変えない（D-144 には行を足さない。置き換えではないので Superseded の行も要らない）。B の機械の条件（同期だけの条件・code に触れない条件）、closure の本数（2 本）と owner の承認、A・C・docs の closure の条件は変えない。
+- owner の決定（repo 外の回答台帳、要旨）: TD-516（a を選ぶ: 表示だけの変化は影響なし、裏のロジックの変更は影響あり）。
+- Revisit: B で使い回した L3 の項目が merge の後に FAIL したとき。「表層」か「操作が通る処理」かで closure の判定がまた割れたとき。
