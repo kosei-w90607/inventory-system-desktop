@@ -9,7 +9,7 @@ decision-log の番号: 本 lane は D-146 を予約する（起票の時点で 
 ## Workflow State
 
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: df41889a4ad2b5fb0edba66db9d60d4538ffeeb9
 - Amendments: none
 
 ## Risk
