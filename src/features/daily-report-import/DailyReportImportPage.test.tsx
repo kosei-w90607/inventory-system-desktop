@@ -114,6 +114,7 @@ function setFlow(state: DailyReportImportState, isImporting = false) {
     isParsing: false,
     isImporting,
     isRollingBack: false,
+    isBlocking: false,
   });
 }
 

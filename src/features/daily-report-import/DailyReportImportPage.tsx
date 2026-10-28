@@ -9,7 +9,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -43,9 +43,17 @@ import {
 } from "./hooks/useDailyReportImportFlow";
 import { AdditionalImportConfirmDialog } from "../csv-import/components/AdditionalImportConfirmDialog";
 
-export function DailyReportImportPage() {
+export function DailyReportImportPage({
+  onBlockingChange,
+}: {
+  /** UI-07-D15 (6)・55 §55.7: 取込み・取消の応答を待つ間を親（CsvImportPage）へ上げ、タブの切替えも止める */
+  onBlockingChange?: (isBlocking: boolean) => void;
+} = {}) {
   const flow = useDailyReportImportFlow();
-  const { state } = flow;
+  const { state, isBlocking } = flow;
+  useEffect(() => {
+    onBlockingChange?.(isBlocking);
+  }, [isBlocking, onBlockingChange]);
 
   const content = (() => {
     switch (state.status) {

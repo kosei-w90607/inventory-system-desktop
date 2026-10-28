@@ -404,5 +404,7 @@ export function useDailyReportImportFlow() {
     isParsing: parseMutation.isPending || parseFromSdMutation.isPending,
     isImporting: commitMutation.isPending,
     isRollingBack: rollbackMutation.isPending,
+    /** 取込み中か取消の応答を待つ間（useBlocker と同じ条件。親のタブの切替えも止める、55 §55.7） */
+    isBlocking: blocking,
   };
 }

@@ -416,7 +416,7 @@ Z004 の取消（§55.11）の応答を待つ間も、importing と同じ範囲�
 
 - `importing` → `result` 遷移時、自動解除
 - `importing` → `error` 遷移時、自動解除（error 後の navigation は許可）
-- 取消の応答の後（成功・失敗とも）に解く。成功は Toast と D-052 C9 の再取得の後、失敗は失敗の Toast の後（mutation の pending は `onSuccess` / `onError` の後に外れる）。失敗なら元の画面のまま同じ取込みID で再試行できる（§55.9）。本行は Z004 タブの `useRollbackCsvImport`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)（`useDailyReportImportFlow` の取消の mutation の pending で止め、同じく成功の Toast と再取得の後・失敗の Toast の後に解く）
+- 取消の応答の後（成功・失敗とも）に解く。成功は Toast と D-052 C9 の再取得の後、失敗は失敗の Toast の後（mutation の pending は `onSuccess` / `onError` の後に外れる）。失敗なら元の画面のまま同じ取込みID で再試行できる（§55.9）。本行は Z004 タブの `useRollbackCsvImport`。日報取込みタブが取消の応答を待つ間も止めるのは UI-07-D15 (6)（`useDailyReportImportFlow` の取消の mutation の pending で止め、同じく成功の Toast と再取得の後・失敗の Toast の後に解く）。日報取込みタブの止め（取込み中〈`importing`〉と取消の応答を待つ間。hook の `isBlocking` で、`useBlocker` と同じ条件）はタブの切替えも止め、上の Z004 の取消と同じく 2 つの `TabsTrigger` を disabled にする（`isBlocking` を `DailyReportImportPage` から `CsvImportPage` へ上げる。flow の置き場は変えない）。止めないと日報の flow が unmount され、取消が失敗した後に戻ると `idle` になって同じ取込みID で再試行できない
 - 取消の応答を待っていない `result` と、`error` / `idle` / `parsing` / `preview` の各 state では block しない
 
 #### page unmount 後の state 喪失問題
@@ -575,3 +575,4 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 | 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 2） | §55.7 に取消の応答を待つ間の block（共有の hook の `useBlocker` と、Z004 タブの `TabsTrigger` の disabled）を足し、解除の行を、取消の応答の後に解くことと、止めない state の書き分けに直した。§55.11 の「取消の実行と後」に同じ止めを足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
 | 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 4） | §55.7 の止める範囲を UI_TECH_STACK UI-USW-D4 に合わせた（route の移動とリロード等の page の離脱。native の window の close は保証しない）。「Tauri webview は beforeunload を尊重する」と、取消の止めを window の close まで止めると書いた文（§55.7・§55.11）を直した。§55.7 が名指す進行中の処理のガードの hook に `useDailyReportImportFlow` を足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
 | 2026-10-29 | sd-direct-read-runtime（main との同期、PR #172） | §55.7 の解除の行の注記を、PR #197 の取消の解除の行（Z004 タブの `useRollbackCsvImport`）に移し、日報取込みタブの取消の止め（UI-07-D15 (6)）が同じ時点で解くことを添えた。 |
+| 2026-10-29 | sd-direct-read-runtime（Final の closure の是正、PR #172） | §55.7 の解除の行の日報取込みタブの注記に、取込み中と取消の応答を待つ間はタブの切替えも止める（2 つの `TabsTrigger` を disabled にする）ことを足した。 |
