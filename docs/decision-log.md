@@ -1245,3 +1245,15 @@ Use concise ADR-style entries.
 - Compatibility: D-144 の (4) B の判定の意味を足すもので、D-144 の Decision・Guarantee range は変えない（D-144 には行を足さない。置き換えではないので Superseded の行も要らない）。B の機械の条件（同期だけの条件・code に触れない条件）、closure の本数（2 本）と owner の承認、A・C・docs の closure の条件は変えない。
 - owner の決定（repo 外の回答台帳、要旨）: TD-516（a を選ぶ: 表示だけの変化は影響なし、裏のロジックの変更は影響あり）。
 - Revisit: B で使い回した L3 の項目が merge の後に FAIL したとき。「表層」か「操作が通る処理」かで closure の判定がまた割れたとき。
+
+## D-147: 最小の実装の梯子を AGENTS.md の正本に置き、Writer の定義に写し、ponytail plugin を project で切る（2026-10-29）
+
+- Status: accepted（owner の判断、repo 外の回答台帳 TD-526〜530、2026-10-29。lane「最小の実装の規則」〈Plan Packet `docs/plans/2026-10-29-minimal-impl-rule.md`〉で起票した）
+- Context: ponytail plugin は user global の `enabledPlugins` で有効で、SessionStart で main に、SubagentStart で全 subagent に「最小の実装」の指示を注入していた。reviewer・相談役にも「lazy」の指示が入る（計画の review round 1 の reviewer の run で `PONYTAIL MODE ACTIVE — level: full` を観測）。owner はこの project で plugin を切る（TD-528）が、「強度と効果は保ちたい」とし、置き換えと切る操作を同じ merge に入れる（TD-529・TD-530）。AGENTS.md への 1 行は単独の R3 にせず手続きの lane に束ねる（TD-527）。
+- Decision: 規則の正本は `AGENTS.md` Working Rules の「最小の実装（D-147）」の 1 項目。`.claude/agents/writer.md` の「Minimal implementation (D-147)」の節は、Writer の起動のたびに system prompt に入れて強さを保つ意図した写しで、直すときは同じ PR で両方を直す。review の観点は `docs/code_review.md` Blocking Review Focus の作り込みすぎの項目（P3。作り込みすぎだけを理由に P2 にしない）。plugin は同じ merge で `.claude/settings.json` の `enabledPlugins` に `"ponytail@ponytail": false` を置いて切り、`scripts/tests/claude-hooks.test.sh` で固定する。効くのは本体の checkout を同期し Claude Code を起動し直した後。
+- Why: agent の定義の本文は起動のたびに system prompt に入る。AGENTS.md は Codex も読み、非 fork の subagent にも載る（context として。system prompt より弱い）。reviewer・相談役の定義には Writer 向けの手順を入れない。AGENTS.md の共通の項目は全 agent に届くが、実装のときに当てるもので、reviewer の調べる範囲・判定・必須の検証を縮めない。
+- Alternatives: plugin のまま（reviewer・相談役への注入が残る）; 今すぐ切る（置き換えまで効かない版ができる）; `PONYTAIL_SUBAGENT_MATCHER=^writer$` で Writer だけに注入する（main への注入が残り、設定が env と user global に散り、Codex に届かない）; merge の後に別の lane で切る（R3 がもう 1 本要る）; `.claude/settings.local.json` で手元だけ切る（他の checkout に効かない）; CLAUDE.md にも書く（`@AGENTS.md` で取り込むので重複）。
+- Compatibility: D-127 を変えない（「最小」は D-127 と Safety の確かめやすさの意味で読み、差分の行数で読まない）。承認済みの要件（packet・PR body）が求める依存・抽象・設定は禁じない（npm 供給網ガードの依存の追加の条件もそのまま）。test の数と形は packet の Test Plan と AGENTS.md の「意味のあるテスト」に従う。repo の中の `ponytail:` comment は名前のまま残す。
+- Guarantee range: Codex の Writer は AGENTS.md の 1 項目と発注で受け、Claude の Writer より弱い。main は AGENTS.md と global の `~/.claude/CLAUDE.md` の行だけで受ける。project の `false` が user global の `true` に勝つことは merge の後の session で観測する（packet の AC8）。効き目の同等性は測らない。
+- owner の決定（repo 外の回答台帳、要旨）: TD-526〜530（plugin をこの project で切る・強度と効果は保つ・AGENTS.md の 1 行は手続きの lane に束ねる・置き換えと切る操作を同じ merge に入れ、#222 に束ねて切る）。
+- Revisit: 切った後の数本の lane の Final で作り込みすぎの指摘を見る。比べる基準として、切る前の lane（#220 など）の差分を同じ観点で数えておく。
