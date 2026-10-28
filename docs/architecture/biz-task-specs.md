@@ -101,7 +101,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 8. operation_logsに記録
 
 **CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で外す。今の build には `bulk_set_plu_target` が残る）:**
-- `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。不正 JAN の `1` は warning + `0`
+- `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。JAN が空か正しい 8 桁（13 桁の数字でない）のときの `1` は warning + `0`。形の誤った JAN（8 桁・13 桁の数字でないか、チェックディジットが合わない）は [30](../function-design/30-biz-product-service.md) BIZ-01-D10 の行の error で、warning に届かない
 - 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117。今の build は解放する、BIZ-04 の「runtime の状態」）
 
 **前の JAN の別名（D-122、proposed・未実装）:**
