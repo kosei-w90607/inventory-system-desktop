@@ -875,6 +875,8 @@ class Gate:
         snap, pr = self.snapshot(clean=True)
         require(captured == snap, 'capture/server/head/base changed; fresh capture required')
         req, server = snap['requirements'], snap['server']
+        # MG-D13 / D-127: name the real reason before any other check or write.
+        require(args.kind != 'review' or req['minimum'], 'R0/R1 lanes have no review record (--kind review needs a lane with review)', 2)
         old = server['record'] if server else None
         current = old and (old['head'],old['base']) == (snap['head'],snap['base'])
         if current:
@@ -893,7 +895,7 @@ class Gate:
                 record['manual']=self.carry_manual(old,snap)
         if args.kind == 'review' and args.review_stage in ('sync', 'docs'):
             docs = args.review_stage == 'docs'
-            require(req['minimum'] and args.outcome == 'pass' and not (args.pass_model or args.run_ref or args.reviewed_head
+            require(args.outcome == 'pass' and not (args.pass_model or args.run_ref or args.reviewed_head
                     or args.pr_reviews is not None) and (len(args.evidence) == 1 if docs else not args.evidence),
                     '--review-stage sync takes only --outcome pass (no --pass-model/--run-ref/--evidence/--reviewed-head/--pr-reviews);'
                     ' --review-stage docs also takes exactly one --evidence POINTER to the P3-only judgement', 2)
@@ -902,7 +904,7 @@ class Gate:
             record['review']=self.sync_closure(old,current,record,req,snap,docs)
             self.validate_review(record,req,snap['head'],snap['base'])
         elif args.kind == 'review':
-            require(req['minimum'] and args.review_stage and args.pass_model and args.run_ref and args.evidence,
+            require(args.review_stage and args.pass_model and args.run_ref and args.evidence,
                     'review needs stage/model/run-ref/evidence', 2)
             # SPEC-WF-HARNESS5-D8: the audited head must be the captured head, for broad and closure alike.
             require(args.reviewed_head, 'review needs --reviewed-head', 2)

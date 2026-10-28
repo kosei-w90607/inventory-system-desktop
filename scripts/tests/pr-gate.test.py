@@ -530,6 +530,27 @@ class SyncRecords(SyncCase):
     def test_sync_stage_requires_same_plan_contract(self):
         self.docs_sync();old=self.old(req=NO_MANUAL);old['review']['broad']['amendments']=[OLD]
         self.sync_stop(old,FRESH_BROAD)
+    def test_review_kind_names_no_review_for_r0r1(self):
+        # MG-D13 / D-127: R0/R1 has no review record; every stage stops on that reason, before any write.
+        stages=dict(sync=SYNC,docs=SYNC|dict(values=['https://example.invalid/p3']),broad={},closure={})
+        for sync in ('docs_sync','code_sync'):
+            getattr(self,sync)()
+            for stage,kw in stages.items():
+                with self.subTest(sync=sync,stage=stage):
+                    with self.assertRaises(g.GateError) as caught:self.rec(self.old(req=LOW),kind='review',req=LOW,stage=stage,**kw)
+                    self.assertEqual(caught.exception.code,2)
+                    self.assertEqual(self.writes,[])
+                    message=str(caught.exception)
+                    self.assertIn('R0/R1',message)
+                    for wrong in ('takes only','manual pass not carried'):self.assertNotIn(wrong,message)
+    def test_sync_stage_carries_manual_and_closure(self):
+        # MG-D13 A + sync closure: one --review-stage sync record carries the manual and records the machine closure.
+        self.docs_sync()
+        record=self.rec(self.old(),kind='review',stage='sync',**SYNC)
+        self.assertEqual(record['manual'],self.carried|dict(source_head=self.repo.source))
+        self.assertEqual(record['review']['closure'],dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source))
+        self.assertEqual(record['review']['outcome'],'pass')
+        self.assertEqual(record['r4'],dict(outcome='pending',evidence=[]))
     def test_sync_stage_chain_keeps_audited_origin(self):
         self.docs_sync();first=self.sync_review(self.old(req=NO_MANUAL))
         self.assertEqual(first['review']['closure'],dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source))
