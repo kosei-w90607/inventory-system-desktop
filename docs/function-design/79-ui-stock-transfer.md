@@ -24,7 +24,7 @@
 |---|---|---|---|
 | D-143 / UI-16 | UI-16-D1 | route は `/inventory/transfer`、file route は `src/routes/inventory/transfer.tsx`（layout）と `src/routes/inventory/transfer/index.tsx`、画面本体は `src/features/stock-transfer/StockTransferPage.tsx`。サイドバーの入出庫の「廃棄・破損」の次に置き、label と画面の題は「詰め替え・切り分け」、description は「仕入れた品を別の商品にした数を移します」。 | 入出庫のほかの作成画面（UI-02〜05）と prefix と置き場を揃える。店の語（TD-358 の問いの語）で名指し、「振替」は画面に出さない（[52](52-ui-shared-layout.md) UI-12 の route 表）。不採用: 廃棄・破損の画面の中の切替（ロスの画面に別の目的の操作が混ざる）、商品の画面から始める形（元と先の 2 つの商品を選ぶ所が要り、商品の画面の道具が増える）。owner の判断事項 (i)。 |
 | D-143 / CMD-13 | UI-16-D2 | UI は generated `commands.createTransfer(req)` / `commands.getTransferRecord(recordId)` と既存の `commands.listInventoryRecords(query)` だけを使う。振替だけの一覧の command は作らない。 | 最近の記録は入出庫履歴と同じ一覧で足りる（[21](21-io-inventory-repo.md) §10.5a）。 |
-| D-143 / rows | UI-16-D3 | 明細は「減らす商品」と「増やす商品」の 2 つの表に分け、どちらも 1 行以上を要る。各表に商品追加欄を 1 つずつ置く（[64](64-ui-disposal.md) UI-05-D5・D6・D16 と同じ検索・スキャン・候補の形）。同じ表に同じ商品を追加すると数量を +1 する。もう片方の表にある商品は追加せず、その欄の近くに「この商品は「減らす商品」に入っています」（または「増やす商品」）と出す。 | 1 本の反物を 2 種の端切れに分ける・複数の商品から 1 つを作る記録を 1 回で残す（owner の判断事項 (iii) の既定 = 両方とも複数行）。同じ商品を減らして増やすことは無いので、追加の時点で名指して止める（BIZ も拒む。[31](31-biz-inventory-service.md) §12.6b の手順 5）。 |
+| D-143 / rows | UI-16-D3 | 明細は「減らす商品」と「増やす商品」の 2 つの表に分け、どちらも 1 行以上を要る。各表に商品追加欄を 1 つずつ置く（[64](64-ui-disposal.md) UI-05-D5・D6・D16 と同じ検索・スキャン・候補の形）。同じ表に同じ商品を追加すると数量を +1 する。もう片方の表にある商品は追加せず、その欄の近くに「この商品は「減らす商品」に入っています」（または「増やす商品」）と出す。2 つの商品追加欄の検索の範囲は 64 と同じで、廃番の商品を含めない（`searchProducts` の `is_discontinued: false`。`src/components/patterns/useProductAddSuggest.ts`。owner の判断事項 (iv) の既定。BIZ〈[31](31-biz-inventory-service.md) §12.6b〉は廃番を見ないので、範囲を変えるときは画面の検索の条件だけを変える）。 | 1 本の反物を 2 種の端切れに分ける・複数の商品から 1 つを作る記録を 1 回で残す（owner の判断事項 (iii) の既定 = 両方とも複数行）。同じ商品を減らして増やすことは無いので、追加の時点で名指して止める（BIZ も拒む。[31](31-biz-inventory-service.md) §12.6b の手順 5）。 |
 | D-143 / quantity | UI-16-D4 | 数量は行ごとにその商品の単位で入れる（個数は整数、`m` の商品は m で小数 2 桁まで受けて cm に直す。上限は `9999999`〈長さは `99999.99` m〉。[64](64-ui-disposal.md) UI-05-D8 と同じ純関数）。元と先の数の釣り合いは求めず、換算もしない。保存の前に、減らす商品・増やす商品のどちらかが 0 行、数量が 0 以下・形の誤り・上限越えを日本語の field error で止める。 | 元と先の数の対応は回ごとに違いうる（D-143 (3)）。長さと個数を足し合わせる表示は作らない（SPEC-UNIT-D3 の集計の規則に当たる所を作らない）。 |
 | D-143 / cost | UI-16-D5 | 原価・金額の欄を持たない。保存は商品の原価を変えない。 | D-143 (4)。owner の判断事項 (ii) の既定 A。 |
 | D-143 / idempotency | UI-16-D6 | `idempotency_key` は [64](64-ui-disposal.md) UI-05-D9 と同じ（1 保存試行に 1 つ、同内容の再試行で再利用、成功・リセット・編集の後の再送で新しくする）。 | 二重の振替を防ぐ。 |
@@ -108,7 +108,7 @@ route の入れ子は廃棄の `src/routes/inventory/disposal.tsx`・`disposal/i
 - 日付不正、どちらかの表が 0 行、数量 0 以下・形の誤り・上限越え: command の前に日本語の field error。ページ先頭へはスクロールしない。
 - BIZ validation error（[31](31-biz-inventory-service.md) §12.6b の手順 0・1・2・5 の文。画面の検証を通らずに届くのは同じ商品の重複と、画面の後に変わった商品の不在）: form state を保持する。入力を直して再送するときは新しい `idempotencyKey`。
 - internal error: 入力と `idempotencyKey` を保持し、同内容のまま再試行できる。
-- 誤った振替を保存した後: 取消は無い（D-143 (5)）。減らす商品と増やす商品を入れ替えた振替を同じ日付で保存して戻す（同じ日付に計数のある商品は要再確認になる。ADR の過剰側 H5 と同じ）。この案内を記録の詳細（§79.8）に出す。
+- 誤った振替を保存した後: 取消は無い（D-143 (5)）。減らす商品と増やす商品を入れ替えた振替を、元の記録と同じ日付・同じ数量で保存して戻す（同じ日付に計数のある商品は要再確認になる。ADR の過剰側 H5 と同じ）。この案内を記録の詳細（§79.8）に出す。
 
 ## 79.7 Cache / Navigation
 
@@ -120,7 +120,7 @@ route の入れ子は廃棄の `src/routes/inventory/disposal.tsx`・`disposal/i
 
 - route `/inventory/transfer/records/$recordId`、本体 `src/features/inventory-records/TransferRecordDetailPage.tsx`（ほかの記録の詳細と同じ置き場と形。[65](65-inventory-record-traceability.md) TRACE-D14）。
 - 見出しは「詰め替え・切り分け #{id}」、記録ID・日付・作成日時・状態。「減らした商品」と「増やした商品」の 2 つの表（商品コード・商品名・部門・数量と単位）と、関連する在庫変動（既存の `MovementTable`）。
-- 取消・訂正の CTA は出さない。代わりに「間違えたときは、減らす商品と増やす商品を入れ替えて、もう一度詰め替え・切り分けを記録してください」を出す。
+- 取消・訂正の CTA は出さない。代わりに「間違えたときは、この記録と同じ日付・同じ数量で、減らす商品と増やす商品を入れ替えて、もう一度詰め替え・切り分けを記録してください」を出す（§79.6。作成画面の日付の既定は今日なので、日付を名指さないと、後日の訂正が別の日の在庫の動きになり、間の日に計数のある商品では在庫が戻らない）。
 - 「前の画面へ戻る」は `returnTo`（DSR-18）、欠落・不正は `/inventory/records`。
 - 記録が無い（NotFound）ときは他の記録の詳細と同じ not found の表示。
 
@@ -144,7 +144,7 @@ route の入れ子は廃棄の `src/routes/inventory/disposal.tsx`・`disposal/i
 - UI-16-D9: 最近の記録を `record_type: "transfer_record"` で取得し、空・失敗・成功を出せる。
 - UI-16-D10: 保存成功時の実呼出し集合が D-052-C23 の独立 test oracle と完全一致する。
 - UI-16-D11: 保存結果と recent list の「詳細を見る」が現在の URL を `returnTo` で送る。
-- UI-16b: 詳細に 2 つの表と関連在庫変動、取消の代わりの案内、戻り先。
+- UI-16b: 詳細に 2 つの表と関連在庫変動、取消の代わりの案内（「この記録と同じ日付・同じ数量で」を含む）、戻り先。
 
 ## 79.11 変更履歴
 

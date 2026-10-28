@@ -341,7 +341,7 @@ fn create_transfer(conn: &mut DbConnection, req: TransferCreateRequest) -> Resul
 - idempotent_replay: bool
 - stock_warnings: Vec<String>
 
-**処理ステップ**（検証は全て書く前。順は廃棄の §12.6 と同じで、振替だけの検査は手順 1 と 4 の 2 つ）:
+**処理ステップ**（検証は全て書く前。順は廃棄の §12.6 と同じで、振替だけの検査は手順 1 と 5 の 2 つ）:
 0. **冪等キーの検査**: trim して空なら `ValidationFailed("冪等性キーは必須です")`、255 文字を越えれば `ValidationFailed("冪等性キーは255文字以内です")`
 1. **明細の形の検査（DB を見ない）**: items が空なら `ValidationFailed("明細が1件以上必要です")`。減らす明細と増やす明細のどちらかが無ければ `ValidationFailed("減らす商品と増やす商品を1つ以上ずつ入れてください")`
 2. **業務日の検査**: `validate_business_date(&req.transfer_date)`（「業務日の形と暦の検査」）
