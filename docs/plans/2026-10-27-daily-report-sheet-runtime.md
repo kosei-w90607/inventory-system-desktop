@@ -12,7 +12,7 @@ wave に属さない単独の lane（2026-10-27 起票。Coordinator が同時�
 
 - Phase: plan-draft
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 2fca3b1836ffce0a4f120d2123d86dabe893ff5b
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（起票は本 run の起草役。実装は座組表の Writer の行〈`subagent_type: writer`〉）
