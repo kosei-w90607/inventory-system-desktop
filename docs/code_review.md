@@ -6,7 +6,7 @@ Use this alongside [quality/review-checklist.md](quality/review-checklist.md). T
 
 関係する設計正本から契約を確認し、live code・diff・tests・生成物と照合する。対象に応じて ARCHITECTURE / FUNCTION_DESIGN / DB_DESIGN / SCREEN_DESIGN / UI_TECH_STACK の該当節を選び、無関係な設計書の全文を読む順序にはしない。
 
-Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
+Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R3/R4 は対象packetの Design Readiness を確認する（R0〜R2 は packet が無く PR body の 5 行。D-145）。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
 
 店の事実を前提にする判断は、`docs/project-memory.md` の「Store Premises Facts（現場の前提）」と照合する。載っていない事実は owner へ 1 問にして送る。
 
@@ -46,13 +46,14 @@ Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touch
   `rg -n "<old-term>|<new-term>|<related-term>" docs src src-tauri scripts`.
 - Check generated bindings after command or DTO changes.
 - Check active plans with `bash scripts/doc-consistency-check.sh --target plan` when workflow artifacts changed.
-- For R2+ work, check whether Design Phase completed before implementation: source design docs are cited as sufficient or updated in the same PR.
+- For R3/R4 work, check whether Design Phase completed before implementation: source design docs are cited as sufficient or updated in the same PR. For R2 (packet なし), check that the Risk is right (not a stateful screen, migration, dependency, or contract change).
 - For R3/R4 work, check the `Contract Ledger` (old packets: `Design Intent Trace` and `Trace Matrix`): contract / design decision IDs, source design sections, implementation targets, and test targets should be connected.
 - Treat Plan Packet-only design rationale as drift when it is durable and absent from source design docs, `docs/decision-log.md`, or ADRs.
 - For UI changes affecting operator flow, state whether Windows native L3 verification is required.
 - data safety の review では `git status --short` を見て、実 POS / 店舗の成果物が ignored のままかを確かめる。
 - Before claiming that a file is absent, stale, duplicated, or divergent, confirm its file type with `git ls-files -s` (mode `120000` is a symlink) or `eza -l` (the symlink arrow). A static `git log` or a line-count difference in `diff --stat` is not evidence of a duplicate by itself.
 - Closure of an accepted P1/P2 confirms its pin: the pinning test (or L3 item / sweep) is in the diff and reverting the fix turns it red. A missing pin keeps that finding open; it is not a new finding.
+- closure の固定の問い（D-145）: 是正で足した契約文と、是正で見送った経路を全部挙げ、それぞれが今の版で成り立つかを答える。挙げ漏れた是正の文は closure を通さない。
 
 ## Same PR vs Follow-up
 
@@ -74,7 +75,7 @@ Track as follow-up:
 
 ## Final Review Protocol
 
-- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for R3/R4 review orders.
+- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for review orders (R3/R4 and the R2 差分の review).
 - The reviewer is read-only and findings-only.
 - The implementer verifies every finding independently before fixing, rejecting, or deferring.
 

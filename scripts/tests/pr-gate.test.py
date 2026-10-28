@@ -124,13 +124,17 @@ class Records(unittest.TestCase):
         self.assertNotIn('mode',parsed)
         marker='- Phase: implementing'
         mutants=[(marker,'- Evidence Mode: legacy\n'+marker),(marker,'- Evidence Mode: mystery\n'+marker),
-                 ('Phase: implementing','Phase: local-verified'),('Final Review Minimum: 2','Final Review Minimum: 0'),
-                 ('Human Gate: ready,merge,manual','Human Gate: none'),(P,'pending')]
+                 ('Final Review Minimum: 2','Final Review Minimum: 0'),('Human Gate: ready,merge,manual','Human Gate: none')]
         mutants+=[(marker,f'- {field}: required\n'+marker) for field in ('Reviewed Content HEAD','Final Exact-HEAD Evidence','Hosted CI Requirement')]
         # Valueless lines must not vanish: Evidence Mode at section end and mid-section, and an empty required field.
-        mutants+=[('\n\n## Risk','\n- Evidence Mode:\n## Risk'),(marker,'- Evidence Mode:\n'+marker),('Writer: codex','Writer:')]
+        mutants+=[('\n\n## Risk','\n- Evidence Mode:\n## Risk'),(marker,'- Evidence Mode:\n'+marker),('Amendments: none','Amendments:')]
         for source,dest in mutants:
             with self.subTest(dest=dest),self.assertRaises(g.GateError):g.parse_packet(text.replace(source,dest,1))
+        # PH3 / D-145 (3): an old packet's Phase value and role lines are read but not evaluated (rewritten from the
+        # Phase-enum, empty-role and pending-in-implementing rejections); pending only means the plan is not approved.
+        for source,dest in (('Phase: implementing','Phase: local-verified'),('Writer: codex','Writer:'),('- Writer: codex\n',''),(P,'pending')):
+            with self.subTest(accepted=dest):
+                self.assertEqual(g.parse_packet(text.replace(source,dest,1))['risk'],'R3')
         fields=g.workflow_fields(text.replace(marker,'- Evidence Mode:\n'+marker,1))
         self.assertEqual((fields['Evidence Mode'],fields['Phase']),('','implementing'))
         # T-H2: old template lines are accepted and Execution Mode is not evaluated.
@@ -618,7 +622,8 @@ class CLI(unittest.TestCase):
         git('remote','add','origin','https://github.com/'+g.REPO+'.git')
         policy=json.loads((ROOT/'.github/merge-gate-ruleset.json').read_text())
         self.state={'owner':g.OWNER,'calls':[],'pr':dict(number=7,state='open',merged=False,draft=True,
-            head=dict(sha=self.head,ref='feature',repo=dict(full_name=g.REPO)),base=dict(sha=self.head,ref='main',repo=dict(full_name=g.REPO)),mergeable=True,mergeable_state='clean'),
+            head=dict(sha=self.head,ref='feature',repo=dict(full_name=g.REPO)),base=dict(sha=self.head,ref='main',repo=dict(full_name=g.REPO)),mergeable=True,mergeable_state='clean',
+            body='## 要約\n\nRisk: R0（目視: 不要）\n'),
             'files':[dict(filename='docs/example.md',status='modified')], 'comments':[], 'policy':policy,
             'contents':{'scripts/ci/classify-changes.sh':(ROOT/'scripts/ci/classify-changes.sh').read_text(),g.POLICY:json.dumps(policy),
                         HELPER:HELPER_TEXT},
@@ -642,7 +647,11 @@ class CLI(unittest.TestCase):
 
     def configure_packet(self, **overrides):
         packet='docs/plans/2026-09-14-fixture.md'
-        self.plan_ref=self.head
+        # D-145 (4): the helper reads the packet's form from the commit that added it after the base.
+        path=self.repo/packet;path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_text(self.packet_text({'Phase':'plan-gate','Risk':'R3','Plan Commit':'pending','Amendments':'none'}))
+        self.git('add',packet);self.git('commit','--allow-empty','-qm','plan-first')
+        self.plan_ref=self.git('rev-parse','HEAD')
         self.git('commit','--allow-empty','-qm','candidate after plan')
         self.head=self.git('rev-parse','HEAD')
         self.state['pr']['head']['sha']=self.head
@@ -671,6 +680,25 @@ class CLI(unittest.TestCase):
                 self.assertIn('approved packet condition changed: '+key,result)
                 self.run_cli('ready','--packet',packet,expected=1)
 
+    def test_plan_change_after_approval_rejected(self):
+        # Final review C1 (D-145 H2/H7): the plan sections of the latest approved snapshot bind HEAD; a Scope edit
+        # without a Gated Amendment stops status, capture and Ready, and names the --amend route.
+        packet,fields=self.configure_packet()
+        scope=lambda text:text+'\n## Scope\n\n- reviewed item\n'
+        self.state['snapshots'][self.plan_ref][packet]=scope(self.state['snapshots'][self.plan_ref][packet])
+        self.state['contents'][packet]=scope(self.packet_text(fields));self.save()
+        self.assertNotIn('approved plan changed',' '.join(self.run_cli('status','--packet',packet)['blockers']))
+        self.state['contents'][packet]=self.packet_text(fields)+'\n## Scope\n\n- reviewed item\n- unreviewed item\n';self.save()
+        for action in ('status','capture','ready'):
+            with self.subTest(action=action):
+                error=self.run_cli(action,'--packet',packet,expected=1)
+                for text in ('approved plan changed','Scope','plan-approve.sh '+packet+' --amend'):self.assertIn(text,error)
+    def test_old_pre_gate_phase_is_not_approved(self):
+        # Final review C1: an old packet still at a pre-gate Phase is not approved even with a SHA (the old rule).
+        packet,fields=self.configure_packet(Phase='plan-gate')
+        status=self.run_cli('status','--packet',packet)
+        self.assertEqual(status['blockers'],['Plan Gate incomplete'])
+        self.assertIn('Plan Gate incomplete',self.run_cli('capture','--packet',packet,expected=1))
     def test_execution_mode_change_is_not_a_gate_condition(self):
         # T-H6: approved snapshot carries Execution Mode; current changes or drops it without a condition error.
         for current in ('dual-vendor-no-fable',None):
@@ -710,7 +738,9 @@ class CLI(unittest.TestCase):
             self.state['pr']['head']['sha']=self.git('rev-parse','HEAD')
             self.state['contents'][packet]=path.read_text();self.save()
             capture=self.run_cli('capture','--packet',packet)['capture']
-            check=subprocess.run(['bash',str(ROOT/'scripts/check-workflow-git.sh')],cwd=self.repo,capture_output=True,text=True)
+            # D-145 (5): the checker measures active packets from the fixture's base commit.
+            check=subprocess.run(['bash',str(ROOT/'scripts/check-workflow-git.sh')],cwd=self.repo,capture_output=True,text=True,
+                                 env={**os.environ,'WORKFLOW_BASE_SHA':self.state['pr']['base']['sha']})
             return json.loads(Path(capture).read_text())['requirements'],check
         required,check=observe()
         self.assertTrue(required['manual'])
@@ -760,7 +790,7 @@ class CLI(unittest.TestCase):
         waiting=self.run_cli('status',*common)
         self.assertIn('Plan Gate incomplete',waiting['blockers'])
         self.assertIn('Plan Gate incomplete',self.run_cli('ready',*common,expected=1))
-        self.assertIn('packet has not reached implementing',self.run_cli('capture',*common,expected=1))
+        self.assertIn('Plan Gate incomplete',self.run_cli('capture',*common,expected=1))
         self.assertIn('Plan Gate incomplete',self.run_cli('merge',*common,expected=1))
 
 
@@ -926,6 +956,7 @@ class CLI(unittest.TestCase):
         self.state['pr']['head']['ref']=branch;self.state['runs'][0]['head_branch']=branch;self.save()
         self.run_cli('status');self.assertFalse(marker.exists())
     def test_required_manual_record_and_comment_only_write(self):
+        self.state['pr']['body']='Risk: R0（目視: 要）';self.save()
         capture=self.run_cli('capture','--manual','required')['capture']
         self.run_cli('ready','--manual','required',expected=1)
         self.run_cli('record','--manual','required','--capture',capture,'--kind','manual','--outcome','pass','--evidence','https://example.invalid/manual')
@@ -941,6 +972,7 @@ class HelperVersion(unittest.TestCase):
     CHANGED=HELPER_TEXT+'\n'  # One trailing byte: normalizing (rstrip, newline folding) must still differ.
     def captures(self):return sorted((self.repo/'.local/pr-gate').glob('*.json'))
     def test_mismatch_blocks_every_action(self):
+        self.state['pr']['body']='Risk: R0（目視: 要）';self.save()
         capture=self.run_cli('capture','--manual','required')['capture']
         self.load();self.state['contents'][HELPER]=self.CHANGED;self.state['calls']=[];self.save()
         before=self.captures()
@@ -957,6 +989,7 @@ class HelperVersion(unittest.TestCase):
         self.assertEqual(self.captures(),before)
     def test_mismatch_command_is_complete(self):
         # T5-1 / D-107 (5): the recovery command restores the original argv, quoted for the shell.
+        self.state['pr']['body']='Risk: R0（目視: 要）';self.save()
         capture=self.run_cli('capture','--manual','required')['capture']
         self.load();self.state['contents'][HELPER]=self.CHANGED;self.save()
         extra=('record','--manual','required','--capture',capture,'--kind','manual','--outcome','pass','--evidence',"a b; touch x 'q'")
@@ -1110,7 +1143,7 @@ class ReviewedHead(unittest.TestCase):
     def broad_then_sync(self):
         self.review('broad','sonnet',self.head,outcome='pending');self.review('broad','opus',self.head)
         self.audited=self.head;base=self.load()['pr']['base']['sha']
-        self.git('switch','-qc','upstream',base);(self.repo/'docs').mkdir();(self.repo/'docs/b.md').write_text('b\n')
+        self.git('switch','-qc','upstream',base);(self.repo/'docs').mkdir(exist_ok=True);(self.repo/'docs/b.md').write_text('b\n')
         self.git('add','docs/b.md');self.git('commit','-qm','main docs');base=self.git('rev-parse','HEAD')
         self.git('switch','-q','feature');self.git('-c','merge.directoryRenames=false','merge','--no-ff','-q','-m','sync','upstream')
         self.head=self.git('rev-parse','HEAD')
@@ -1174,11 +1207,11 @@ class PacketScope(unittest.TestCase):
         status=self.run_cli('status','--packet',MINE)
         self.assertFalse([b for b in status['blockers'] if 'packet' in b],status['blockers'])
     def test_two_active_packets_in_diff_rejected(self):
-        self.configure_packet();self.phase(OTHER,'implementing');self.diff(('added',MINE),('modified',OTHER))
+        self.configure_packet();self.phase(OTHER,'implementing');self.diff(('added',MINE),('added',OTHER))
         self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
     def test_diff_across_pages_rejected(self):
         self.configure_packet();self.phase(OTHER,'implementing')
-        self.state['file_pages']=[[dict(filename='docs/example.md',status='modified'),dict(filename=MINE,status='added')],[dict(filename=OTHER,status='modified')]]
+        self.state['file_pages']=[[dict(filename='docs/example.md',status='modified'),dict(filename=MINE,status='added')],[dict(filename=OTHER,status='added')]]
         self.save()
         self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
     def test_packet_argument_mismatch_rejected(self):
@@ -1201,12 +1234,20 @@ class PacketScope(unittest.TestCase):
         self.assertEqual(self.run_cli('status')['blockers'],[])
         self.run_cli('ready');self.run_cli('merge')
         self.assertTrue(self.load()['pr']['merged'])
-        self.assertTrue(self.fetched(self.archive(x)) and self.fetched(self.archive(y)))
+        # AR1: the move alone is checked; the archive copy's Phase line is no longer read.
+        self.assertFalse(self.fetched(self.archive(x)) or self.fetched(self.archive(y)))
     def test_r0_closeout_reported_as_remove_and_add_passes(self):
         self.phase(self.archive(OTHER),'archive');self.diff(('removed',OTHER),('added',self.archive(OTHER)))
         self.assertEqual(self.run_cli('status')['blockers'],[])
     def test_r0_edit_of_active_packet_rejected(self):
+        # D-145 (5): an added packet is active and needs --packet (rewritten: 'modified' now means merged, see AR4).
+        self.phase(OTHER,'implementing');self.diff(('added',OTHER))
+        self.assertIn('R2+ active packet requires --packet',self.run_cli('status',expected=1))
+    def test_r0_typo_in_merged_packet_passes(self):
+        # AR4: a merged packet (in the base tree, so 'modified') is fixed on the R0 route without --packet.
         self.phase(OTHER,'implementing');self.diff(('modified',OTHER))
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+        self.diff(('modified',OTHER),('added',MINE))
         self.assertIn('R2+ active packet requires --packet',self.run_cli('status',expected=1))
     def test_r0_packet_deletion_without_archive_rejected(self):
         self.state['http_error_path']='/contents/'+self.archive(OTHER)  # GitHub 404: the archive is absent.
@@ -1219,13 +1260,18 @@ class PacketScope(unittest.TestCase):
         for action in ('status','ready'):
             self.assertIn(LEAVE,self.run_cli(action,expected=1))
         self.assertFalse(self.fetched(self.archive(a)))
-    def test_r0_archive_move_without_phase_archive_rejected(self):
+    def test_r0_archive_move_without_phase_archive_passes(self):
+        # AR1 (rewritten from the Phase archive rejection): #215's move passes whatever the Phase line says.
         self.phase(self.archive(OTHER),'implementing');self.diff(('renamed',self.archive(OTHER),OTHER))
-        self.assertIn('moved packet is not Phase archive',self.run_cli('status',expected=1))
-    def test_archive_contents_http_failure_is_error(self):
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+    def test_archive_move_reads_no_archive_contents(self):
+        # AR1 (rewritten from the archive-fetch failure): the move needs no archive read, so a 404 there cannot matter;
+        # a move out of docs/plans to anywhere but the same-named archive still stops.
         self.state['http_error_path']='/contents/'+self.archive(OTHER)
         self.diff(('renamed',self.archive(OTHER),OTHER))
-        self.run_cli('status',expected=2)
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+        self.diff(('renamed','docs/elsewhere/'+Path(OTHER).name,OTHER))
+        self.assertIn(LEAVE,self.run_cli('status',expected=1))
     def test_packet_scope_does_not_list_docs_or_read_plans(self):
         self.run_cli('status')
         self.configure_packet();self.run_cli('status','--packet',MINE)
@@ -1241,5 +1287,322 @@ class PacketScope(unittest.TestCase):
                 self.state['files']=[dict(filename=f'docs/x{i}.md',status='modified') for i in range(count)];self.save()
                 result=self.run_cli('status',expected=expected)
                 if expected:self.assertIn('PR diff unavailable or truncated',result)
+
+# D-145: synthetic packets for the rebuild (Matrix docs/plans/test-matrices/2026-10-28-process-rebuild.md).
+PKT='docs/plans/2026-10-20-lane.md';MATRIX='docs/plans/test-matrices/2026-10-20-lane.md'
+def rebuild_packet(risk='R3',form='old',gate='ready,merge,manual',l3=None,test_plan=True,link=True,extra='',minimum='2',
+                   scope='- scope item\n',ledger='| C1 | x | y | z | n |\n',recovery='- restore\n',plan=None):
+    ws={'Risk':risk,'Plan Commit':plan or 'pending','Amendments':'none'}
+    if form=='old':ws={'Phase':'implementing',**ws,'Coordinator':'c','Writer':'w','Final Review Minimum':minimum,'Human Gate':gate}
+    elif gate is not None:ws['Human Gate']=gate
+    text='# Plan Packet: lane\n\n## Workflow State\n\n'+''.join(f'- {k}: {v}\n' for k,v in ws.items())
+    text+=f'\n## Risk\n\nRisk: {risk}\n\n## Scope\n\n{scope}\n## Acceptance Criteria\n\n- AC1\n\n## Contract Ledger\n\n{ledger}\n'
+    if test_plan:text+='## Test Plan\n\n'+('Test Design Matrix: [m](test-matrices/2026-10-20-lane.md)\n' if link else '- none\n')+'\n'
+    if l3 is not None:text+=f'## L3\n\n{l3}'
+    if risk=='R4':text+=f'## Recovery\n\n{recovery}\n## Data Safety\n\n- data\n'
+    return text+extra
+
+class PacketForm(SyncCase):
+    """PH7 / PH10: the form is the first add after the origin; the Phase line must agree."""
+    def add(self,text,path=PKT):return self.repo.commit({path:text},'packet')
+    def form(self,path=PKT):return g.packet_form(path,self.repo.base0,self.head())
+    def test_form_from_first_add_parent(self):
+        self.add(rebuild_packet());self.assertEqual(self.form(),'old')
+        self.repo.commit({g.APPROVE:'#!/bin/sh\n'},'approve script');self.add(rebuild_packet()+'more\n')
+        self.assertEqual(self.form(),'old')  # the first add after the origin decides
+        other='docs/plans/2026-10-21-new.md';self.add(rebuild_packet(form='new'),other)
+        self.assertEqual(self.form(other),'new')
+        with self.assertRaisesRegex(g.GateError,'must not have a Phase line'):g.parse_packet(rebuild_packet(),'new')
+        with self.assertRaisesRegex(g.GateError,'needs its Phase line'):g.parse_packet(rebuild_packet(form='new'),'old')
+        with self.assertRaisesRegex(g.GateError,'R3 or R4'):g.parse_packet(rebuild_packet(form='new',risk='R2'),'new')
+    def test_readded_path_and_rename_are_new(self):
+        # A path that existed before the origin and is re-added later is judged by the re-add (range = origin..HEAD).
+        self.repo.commit({g.APPROVE:'#!/bin/sh\n',PKT:rebuild_packet()},'old lane');old_origin=self.head()
+        self.repo.commit({PKT:None},'archive');self.add(rebuild_packet())
+        self.assertEqual(g.packet_form(PKT,old_origin,self.head()),'new')
+        # PH10: a rename is not followed; the renamed path is a new add after plan-approve.sh.
+        self.repo.move(PKT,'docs/plans/2026-10-22-renamed.md');self.repo.git('commit','-qm','rename')
+        self.assertEqual(g.packet_form('docs/plans/2026-10-22-renamed.md',old_origin,self.head()),'new')
+        with self.assertRaisesRegex(g.GateError,'never renamed or re-cut'):g.parse_packet(rebuild_packet(),'new')
+    def test_unreadable_parent_tree_is_an_error(self):
+        # Final review C3: a failed ls-tree of the add's parent is undecidable, never 'old'.
+        self.add(rebuild_packet())
+        real=self.repo.bridge
+        def failing(*args,**kw):
+            if args and args[0]=='ls-tree':raise g.GateError('command failed: git (exit 128)',2)
+            return real(*args,**kw)
+        with patch.object(g,'git',side_effect=failing),self.assertRaisesRegex(g.GateError,'tree を読めず'):self.form()
+        self.assertEqual(self.form(),'old')  # a successful empty listing is the absence of plan-approve.sh
+    def test_root_add_and_missing_add_are_errors(self):
+        with self.assertRaisesRegex(g.GateError,'commit が見つからない'):self.form()
+        self.repo.git('checkout','-q','--orphan','root');self.repo.git('rm','-rqf','.')
+        root=self.repo.commit({PKT:rebuild_packet()},'root add')
+        with self.assertRaisesRegex(g.GateError,'親が無'):g.packet_form(PKT,self.repo.base0,root)
+
+class PacketReuse(SyncCase):
+    """C1..C5, RC1..RC4, RC1b, GA1..GA4: lane docs commits against a packet in a synthetic repo."""
+    exercise=RecordLifecycle.exercise;old=SyncRecords.old;rec=SyncRecords.rec;stop=SyncRecords.stop
+    carried=SyncRecords.carried
+    def setUp(self):
+        super().setUp()
+        self.repo.git('reset','-q','--hard',self.repo.base0)
+        self.repo.source=self.repo.commit({PKT:rebuild_packet(l3='- PASS 基準: 9 pt 以上\n'),MATRIX:'## Manual\n\n- 9 pt 以上\n'},'lane + L3')
+    def lane(self,files):return self.repo.commit(files,'lane docs')
+    def edit(self,**kw):return self.lane({PKT:rebuild_packet(**kw)})
+    def reset(self):self.repo.git('reset','-q','--hard',self.repo.source)
+    def docs(self,old,req=NO_MANUAL,**kw):
+        return self.rec(old,kind='review',req=req,stage='docs',**SYNC|dict(values=['https://example.invalid/p3'])|kw,packet=PKT)
+    def docs_stop(self,old,*texts,req=NO_MANUAL,code=1,**kw):
+        with self.assertRaises(g.GateError) as caught:self.docs(old,req=req,**kw)
+        self.assertEqual((caught.exception.code,self.writes),(code,[]),str(caught.exception))
+        for text in texts:self.assertIn(text,str(caught.exception))
+    def carry(self,req=REQ):return self.rec(self.old(),kind='r4',req=req,packet=PKT)
+    def status_ok(self,record,req=NO_MANUAL):
+        with patch.object(g,'api',side_effect=AssertionError('status must not call GitHub here')):
+            self.gate.nonci(dict(head=self.head(),base=self.repo.base,requirements=req,server=dict(record=record)))
+    def test_c1_docs_commit_keeps_l3(self):
+        self.lane({'docs/lane.md':'typo fixed\n'})
+        self.assertEqual(self.carry()['manual'],self.carried|dict(source_head=self.repo.source))
+        # Explicit A takes the same route.
+        record=self.rec(self.old(),kind='manual',source=self.repo.source,approval=None,packet=PKT)
+        self.assertEqual(record['manual']['source_head'],self.repo.source)
+    def test_c2_l3_section_change_stops(self):
+        self.edit(l3='- PASS 基準: 10 pt 以上\n')
+        self.stop(self.old(),'L3 節が変わった',kind='r4',packet=PKT)
+    def test_c3_runtime_unknown_workflow_and_rename_stop(self):
+        for files,texts in (({'src/app.ts':'app2\n'},['not docs only','frontend']),({'weird/x.bin':'?\n'},['not docs only','unknown']),
+                            ({'docs/DEV_WORKFLOW.md':'gate\n'},['not docs only','workflow'])):
+            with self.subTest(texts=texts):
+                self.reset();self.lane(files)
+                self.stop(self.old(),*texts,kind='r4',packet=PKT)
+        self.reset();self.repo.move('src/x.ts','docs/x.md');self.repo.git('commit','-qm','rename into docs')
+        self.stop(self.old(),'src/x.ts','not docs only',kind='r4',packet=PKT)
+    def test_c4_r4_never_takes_docs_route(self):
+        self.lane({'docs/lane.md':'typo\n'})
+        self.stop(self.old(),'lane commit',kind='r4',req=REQ|dict(risk='R4'),packet=PKT)
+    def test_c5_old_packet_without_l3_compares_test_plan_and_matrix(self):
+        self.repo.git('reset','-q','--hard',self.repo.base0)
+        self.repo.source=self.repo.commit({PKT:rebuild_packet(),MATRIX:'## Manual\n\n- 9 pt 以上\n'},'criteria in Test Plan + Matrix')
+        two=rebuild_packet().replace('Test Design Matrix: [m](test-matrices/2026-10-20-lane.md)\n',
+                                     '[a](test-matrices/2026-10-20-lane.md) [b](test-matrices/other.md)\n')
+        cases=[({PKT:rebuild_packet().replace('Test Design Matrix: [m]','合格基準 10 pt。Test Design Matrix: [m]')},'L3 節が変わった'),
+               ({MATRIX:'## Manual\n\n- 10 pt 以上\n'},'L3 節が変わった'),
+               ({'docs/lane.md':'unrelated\n'},None),
+               ({PKT:rebuild_packet(test_plan=False)},'比較対象が取れない'),
+               ({PKT:rebuild_packet(link=False)},'比較対象が取れない'),
+               ({PKT:two},'比較対象が取れない'),
+               ({MATRIX:None},'比較対象が取れない')]
+        for files,reason in cases:
+            with self.subTest(reason=reason,files=sorted(files)):
+                self.reset();self.lane(files)
+                if reason:self.stop(self.old(),reason,kind='r4',packet=PKT)
+                else:self.assertEqual(self.carry()['manual']['source_head'],self.repo.source)
+    def test_rc1_docs_closure(self):
+        self.lane({'docs/lane.md':'p3 typo\n'})
+        record=self.docs(self.old(req=NO_MANUAL))
+        self.assertEqual(record['review']['closure'],dict(head=self.head(),base=self.repo.base,sync_from=self.repo.source))
+        record['manual']=dict(outcome='not-required',evidence=[])
+        self.status_ok(record)
+        # The status recheck still names a later code commit.
+        self.repo.commit({'src/app.ts':'later\n'});record.update(head=self.head());record['review']['closure']['head']=self.head()
+        with self.assertRaisesRegex(g.GateError,'not docs only'):self.status_ok(record)
+    def test_rc1b_manual_free_r3_and_manual_change(self):
+        self.repo.git('reset','-q','--hard',self.repo.base0)
+        self.repo.source=self.repo.commit({PKT:rebuild_packet(form='new',gate=None)},'new form, no L3')
+        self.lane({'docs/lane.md':'p3\n'})
+        self.assertEqual(self.docs(self.old(req=NO_MANUAL))['review']['closure']['sync_from'],self.repo.source)
+        self.reset();self.edit(form='new',gate=None,l3='- added\n')
+        self.docs_stop(self.old(req=NO_MANUAL),'manual の要否')
+    def test_rc2_gate_docs_plan_change_and_evidence(self):
+        l3='- PASS 基準: 9 pt 以上\n'
+        for files,text in (({'docs/DEV_WORKFLOW.md':'gate\n'},'workflow'),
+                           ({PKT:rebuild_packet(l3=l3,scope='- more\n')},'計画の節が変わった: Scope'),
+                           ({PKT:rebuild_packet(l3=l3).replace('- AC1','- AC1 widened')},'Acceptance Criteria'),
+                           ({PKT:rebuild_packet(l3=l3,ledger='| C2 | x | y | z | n |\n')},'Contract Ledger')):
+            with self.subTest(text=text):
+                self.reset();self.lane(files)
+                self.docs_stop(self.old(req=NO_MANUAL),text)
+        self.reset();self.lane({'docs/lane.md':'p3\n'})
+        self.docs_stop(self.old(req=NO_MANUAL),'--evidence',code=2,values=[])
+    def test_rc3_old_l3_basis_change_stops_docs_closure(self):
+        self.repo.git('reset','-q','--hard',self.repo.base0)
+        self.repo.source=self.repo.commit({PKT:rebuild_packet(),MATRIX:'## Manual\n\n- 9 pt\n'},'old manual packet')
+        for files in ({MATRIX:'## Manual\n\n- 10 pt\n'},{PKT:rebuild_packet().replace('Test Design Matrix','基準 10 pt。Test Design Matrix')}):
+            with self.subTest(files=sorted(files)):
+                self.reset();self.lane(files)
+                self.docs_stop(self.old(req=NO_MANUAL),'L3 節が変わった')
+    def test_rc_machine_closure_after_amendment_needs_audit(self):
+        # GA (D-145 (7)) asks for an audited closure: neither the docs nor the sync machine closure may stand in for it.
+        # Final review C4: with the same plan sections the next step is the audited closure, not a fresh broad.
+        self.lane({'docs/lane.md':'p3\n'})
+        amended=NO_MANUAL|dict(amendments=[self.repo.source])
+        closure='a fresh broad is not needed; record --review-stage closure'
+        self.docs_stop(self.old(req=NO_MANUAL),closure,req=amended)
+        for stage in ('sync','docs'):
+            with self.subTest(stage=stage),self.assertRaises(g.GateError) as caught:
+                self.rec(self.old(req=NO_MANUAL),kind='review',req=amended,stage=stage,packet=PKT,
+                         **SYNC|dict(values=['https://example.invalid/p3'] if stage=='docs' else []))
+            self.assertIn(closure,str(caught.exception));self.assertNotIn('fresh broad required',str(caught.exception))
+            self.assertEqual(self.writes,[])
+        # Changed plan sections after the amendment still need a fresh broad.
+        self.reset();self.edit(l3='- PASS 基準: 9 pt 以上\n',scope='- widened\n')
+        self.docs_stop(self.old(req=NO_MANUAL),FRESH_BROAD,req=amended)
+    def test_rc4_r4_rejected(self):
+        self.lane({'docs/lane.md':'p3\n'})
+        self.docs_stop(self.old(req=NO_MANUAL),'needs an R3',req=NO_MANUAL|dict(risk='R4'))
+    # GA1..GA4: a Gated Amendment after the broad keeps it when the plan sections are byte-equal.
+    def ga(self,risk='R3',**kw):
+        self.repo.git('reset','-q','--hard',self.repo.base0)
+        gate='ready,merge,r4' if risk=='R4' else 'ready,merge'
+        broad=self.repo.commit({PKT:rebuild_packet(risk=risk,gate=gate)},'broad head')
+        self.repo.commit({PKT:rebuild_packet(risk=risk,gate=gate,**kw)},'amendment');amended=self.head()
+        record=good_record();record.update(head=self.head(),base=self.repo.base)
+        record['review']['broad'].update(head=broad,base=self.repo.base,plan_commit=P,amendments=[])
+        record['review']['closure']=dict(head=self.head(),base=self.repo.base,audit=dict(model='opus',run_ref='closure',evidence=['https://example.invalid/c']))
+        record['manual']=dict(outcome='not-required',evidence=[]);record['r4']=dict(outcome='not-required',evidence=[])
+        self.gate.args=args(packet=PKT)
+        req=dict(risk=risk,plan_commit=P,amendments=[amended],minimum=2,manual=False,r4=False)
+        return lambda:self.status_ok(record,req)
+    def test_ga1_same_plan_sections_take_closure(self):
+        self.ga(extra='\n## Review Response\n\n- amended wording\n')()
+        # Without a packet (no sections to compare) the amendment still needs a fresh broad.
+        check=self.ga(extra='\n## Review Response\n\n- x\n');self.gate.args=args()
+        with self.assertRaisesRegex(g.GateError,'^'+re.escape(FRESH_BROAD)+'$'):check()
+    def test_ga2_scope_change_or_unreadable_needs_fresh_broad(self):
+        for kw in (dict(scope='- widened\n'),dict(extra='\n## Scope\n\n- duplicated\n')):
+            with self.subTest(kw=kw),self.assertRaisesRegex(g.GateError,'^'+re.escape(FRESH_BROAD)+'$'):self.ga(**kw)()
+    def test_ga3_ledger_change_needs_fresh_broad(self):
+        with self.assertRaisesRegex(g.GateError,'^'+re.escape(FRESH_BROAD)+'$'):self.ga(ledger='| C9 | new | y | z | n |\n')()
+    def test_ga4_r4_recovery_change_needs_fresh_broad(self):
+        self.ga(risk='R4',extra='\n## Review Response\n\n- note\n')()
+        with self.assertRaisesRegex(g.GateError,'^'+re.escape(FRESH_BROAD)+'$'):self.ga(risk='R4',recovery='- new restore\n')()
+
+class NewForm(unittest.TestCase):
+    """MN1..MN5, PH1..PH3 at the parser."""
+    def parse(self,form='new',**kw):return g.parse_packet(rebuild_packet(form=form,**kw),form)
+    def test_mn1_mn3_derived(self):
+        self.assertEqual(self.parse(gate=None,plan=P),dict(risk='R3',plan_commit=P,amendments=[],minimum=2,manual=False,r4=False))
+        self.assertEqual(self.parse(gate=None,risk='R4',plan=P),dict(risk='R4',plan_commit=P,amendments=[],minimum=2,manual=False,r4=True))
+        self.assertTrue(self.parse(gate=None,l3='- PASS\n')['manual'])
+        # A heading inside a code fence is not the L3 section.
+        self.assertFalse(self.parse(gate=None,extra='\n```\n## L3\n```\n')['manual'])
+    def test_mn2_written_minimum_only_raises_and_old_keeps_written(self):
+        text=rebuild_packet(form='new',gate=None).replace('- Amendments: none\n','- Amendments: none\n- Final Review Minimum: 1\n')
+        self.assertEqual(g.parse_packet(text,'new')['minimum'],2)
+        self.assertEqual(self.parse(form='old',minimum='1')['minimum'],1)
+    def test_mn3_mn5_written_gates_are_kept(self):
+        self.assertTrue(self.parse(gate='ready,merge,r4')['r4'])
+        self.assertTrue(self.parse(gate='ready,merge,manual')['manual'])
+        self.assertTrue(self.parse(form='old',gate='ready,merge,r4')['r4'])
+        gate=object.__new__(g.Gate);gate.args=args()
+        record=good_record();record['r4']=dict(outcome='not-required',evidence=[])
+        r4=self.parse(gate='ready,merge,manual,r4',plan=P)['r4']
+        with self.assertRaisesRegex(g.GateError,'r4 incomplete'):
+            gate.nonci(dict(head=H,base=B,requirements=REQ|dict(r4=r4),server=dict(record=record)))
+    def test_mn4_conditions(self):
+        new=g.gate_conditions(rebuild_packet(form='new',gate=None,l3='- x\n'))
+        self.assertEqual(new,{'Risk':'R3','Final Review Minimum':None,'Human Gate':None,'L3 section':True})
+        self.assertNotEqual(new,g.gate_conditions(rebuild_packet(form='new',gate=None)))
+        self.assertNotIn('L3 section',g.gate_conditions(rebuild_packet()))
+    def test_ph1_ph2_pending_and_sha(self):
+        self.assertEqual(self.parse(gate=None)['plan_commit'],'pending')
+        gate=object.__new__(g.Gate);gate.args=args()
+        with self.assertRaisesRegex(g.GateError,'^Plan Gate incomplete$'):
+            gate.nonci(dict(head=H,base=B,requirements=REQ|dict(plan_commit='pending'),server=None))
+        gate.nonci(dict(head=H,base=B,requirements=REQ,server=dict(record=good_record())))
+
+class RebuildCLI(unittest.TestCase):
+    """PH1/PH2/PH7/MN1/MN4 through the CLI, R2N1..R2N5, CI2, RP1/RP2."""
+    setUp=CLI.setUp;tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
+    def new_packet(self,text_fn,files=()):
+        # plan-approve.sh lands on main before the packet: the packet is new-form.
+        (self.repo/'scripts').mkdir(exist_ok=True);(self.repo/g.APPROVE).write_text('#!/bin/sh\n')
+        self.git('add',g.APPROVE);self.git('commit','-qm','plan-approve.sh on main')
+        base=self.git('rev-parse','HEAD');self.state['pr']['base']['sha']=base
+        path=self.repo/PKT;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text_fn('pending'))
+        self.git('add',PKT);self.git('commit','-qm','plan-first');plan=self.git('rev-parse','HEAD')
+        path.write_text(text_fn(plan));self.git('commit','--allow-empty','-qam','plan-approve');self.head=self.git('rev-parse','HEAD')
+        self.state['pr']['head']['sha']=self.head;self.state['runs'][0]['head_sha']=self.head
+        self.state['files']=[dict(filename=f,status='modified') for f in files]+[dict(filename=PKT,status='added')]
+        self.state['contents'][PKT]=text_fn(plan);self.state['snapshots']={plan:{PKT:text_fn('pending')}}
+        self.save();return plan
+    def test_ph1_ph2_new_form_cli(self):
+        self.new_packet(lambda plan:rebuild_packet(form='new',gate=None))
+        status=self.run_cli('status','--packet',PKT)
+        self.assertEqual((status['state'],status['blockers']),('Plan Gate',['Plan Gate incomplete']))
+        self.assertIn('Plan Gate incomplete',self.run_cli('capture','--packet',PKT,expected=1))
+        self.load();self.state['contents'][PKT]=rebuild_packet(form='new',gate=None,plan=P);self.save()
+        self.assertNotIn('Plan Gate incomplete',self.run_cli('status','--packet',PKT)['blockers'])
+    def test_mn1_workflow_and_mn4_l3_removal(self):
+        text=lambda plan,**kw:rebuild_packet(form='new',gate=None,plan=None if plan=='pending' else plan,**kw)
+        plan=self.new_packet(lambda plan:text(plan,l3='- PASS\n'),files=('scripts/pr-gate.py',))
+        captured=json.loads(Path(self.run_cli('capture','--packet',PKT)['capture']).read_text())['requirements']
+        self.assertEqual((captured['minimum'],captured['manual'],captured['r4']),(2,True,False))
+        self.load();self.state['contents'][PKT]=text(plan);self.save()
+        self.assertIn('approved packet condition changed: L3 section',self.run_cli('status','--packet',PKT,expected=1))
+        self.load();self.state['contents'][PKT]=rebuild_packet(form='new',gate='ready,merge,r4',l3='- PASS\n',plan=plan);self.save()
+        self.assertIn('approved packet condition changed: Human Gate',self.run_cli('status','--packet',PKT,expected=1))
+    def test_ph7_phase_line_in_new_form_rejected(self):
+        self.new_packet(lambda plan:rebuild_packet(form='old',plan=None if plan=='pending' else plan))
+        self.assertIn('must not have a Phase line',self.run_cli('status','--packet',PKT,expected=1))
+    def body(self,text):self.load();self.state['pr']['body']=text;self.save()
+    def diff(self,*names):self.load();self.state['files']=[dict(filename=n,status='modified') for n in names];self.save()
+    def test_r2n1_r2n3_r2_route(self):
+        self.body('Risk: R2（目視: 不要）');self.diff('src/features/x/view.tsx')
+        self.assertIn('workflow record missing',self.run_cli('status','--risk','R2')['blockers'])
+        capture=json.loads(Path(self.run_cli('capture','--risk','R2')['capture']).read_text())['requirements']
+        self.assertEqual(capture,dict(risk='R2',plan_commit=None,amendments=[],minimum=1,manual=False,r4=False))
+        self.body('Risk: R2（目視: 要）')
+        capture=self.run_cli('capture','--risk','R2','--manual','required')['capture']
+        self.run_cli('record','--risk','R2','--manual','required','--capture',capture,'--kind','review','--review-stage','broad',
+                     '--pass-model','opus','--run-ref','r','--evidence','https://example.invalid/r','--outcome','pass',
+                     '--reviewed-head',self.head,'--pr-reviews','0')
+        self.assertEqual(self.run_cli('status','--risk','R2','--manual','required')['blockers'],['manual incomplete'])
+    def test_r2n2_r2n4_refused_paths(self):
+        cases=[('R2','docs/DEV_WORKFLOW.md','workflow=true'),('R2','weird/x.bin','unknown=true'),('R0','weird/x.bin','unknown=true'),
+               ('R1','src-tauri/src/db/migration.rs','src-tauri/src/db/migration.rs'),('R2','src-tauri/src/db/schema_v12.rs','schema_v12.rs'),
+               ('R0','src-tauri/src/db/migration_tx.rs','migration_tx.rs'),('R0','package.json','package.json'),('R1','.npmrc','.npmrc'),
+               ('R2','package-lock.json','package-lock.json'),('R1','scripts/pr-gate.py','workflow かつ rust')]
+        for risk,path,reason in cases:
+            with self.subTest(risk=risk,path=path):
+                self.body(f'Risk: {risk}（目視: 不要）');self.diff(path)
+                error=self.run_cli('status','--risk',risk,expected=1)
+                self.assertIn(reason,error);self.assertIn('R3 の packet で起票する',error)
+        for risk,path in (('R2','src-tauri/src/stock.rs'),('R2','src/features/x/view.tsx'),('R0','AGENTS.md'),
+                          ('R1','docs/templates/plan-packet.md'),('R0','.github/pull_request_template.md')):
+            with self.subTest(accepted=path):
+                self.body(f'Risk: {risk}（目視: 不要）');self.diff(path)
+                self.run_cli('status','--risk',risk)
+        self.body('Risk: R2（目視: 不要）');self.load();self.state['files']=[dict(filename=PKT,status='added')];self.save()
+        self.assertIn('R2+ active packet requires --packet',self.run_cli('status','--risk','R2',expected=1))
+    def test_r2n5_body_risk_line(self):
+        for body in ('','Risk: R1（目視: 不要）','Risk: R0（目視: 要）','Risk: R0 (目視: 不要)',
+                     'Risk: R0（目視: 不要）\nRisk: R0（目視: 不要）','Risk: R0（目視: 不要） extra'):
+            with self.subTest(body=body):
+                self.body(body);self.assertIn('Risk',self.run_cli('status',expected=1))
+        self.body('<!-- Risk: R2（目視: 要） -->\nRisk: R0（目視: 不要）\r\n');self.assertEqual(self.run_cli('status')['blockers'],[])
+    def test_ci2_same_head_draft_run(self):
+        self.assertEqual(self.load()['pr']['draft'],True)
+        self.assertEqual(self.run_cli('status')['blockers'],[])  # a Draft pull_request run with Merge gate counts
+        self.load();self.state['runs'][0]['head_sha']='e'*40;self.save()
+        self.assertIn('CI run absent',' '.join(self.run_cli('status')['blockers']))
+        self.load();self.state['runs'][0]['head_sha']=self.head;self.state['checks'][0]['name']='Draft (no merge evidence)';self.save()
+        self.assertIn('Merge gate missing',' '.join(self.run_cli('status')['blockers']))
+    def report(self,text):
+        path=self.root/'report.txt';path.write_text(text);return str(path)
+    def test_rp1_rp2_report(self):
+        self.body('Risk: R2（目視: 不要）');self.diff('src/features/x/view.tsx')
+        common=('--risk','R2','--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','r',
+                '--evidence','https://example.invalid/r','--outcome','pass','--pr-reviews','0')
+        capture=self.run_cli('capture','--risk','R2')['capture']
+        for text in ('summary\n',f'REVIEWED_HEAD={self.head}\nREVIEWED_HEAD={self.head}\n','REVIEWED_HEAD=abc\n',f'REVIEWED_HEAD={self.head.upper()}\n'):
+            with self.subTest(text=text):
+                self.run_cli('record',*common,'--capture',capture,'--report',self.report(text),expected=2)
+        self.run_cli('record',*common,'--capture',capture,'--report',self.report(f'REVIEWED_HEAD={self.head}\n'),'--reviewed-head',self.head,expected=2)
+        self.assertIn('reviewed head differs from capture head',
+                      self.run_cli('record',*common,'--capture',capture,'--report',self.report(f'REVIEWED_HEAD={OLD}\n'),expected=1))
+        self.assertEqual(self.load()['comments'],[])
+        self.run_cli('record',*common,'--capture',capture,'--report',self.report(f'notes\nREVIEWED_HEAD={self.head}\n'))
+        self.assertEqual(len(self.load()['comments']),1)
 
 if __name__=='__main__':unittest.main()

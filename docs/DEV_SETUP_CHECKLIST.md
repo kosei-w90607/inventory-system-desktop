@@ -107,7 +107,7 @@ push 前に以下を `scripts/pre-push.sh` の順に実行し、いずれか失�
 - ⑤ Rust / frontend test / function design / requirements 変更時の traceability check
 - ⑥ frontend 変更時の `npm run generate:routes` / `npm run typecheck` / `npm run lint`
 
-pre-push は push 増分の L0 gate であり、PR 全差分の merge evidence ではない。merge 前の feedback は push ごとに走る Draft の hosted の run（`Draft (no merge evidence)`）で、merge の CI 根拠は Ready 後の run の `Merge gate`。手元で全 gate を回したいときだけ `bash scripts/local-ci.sh full`（任意）を使う。
+pre-push は push 増分の L0 gate であり、PR 全差分の merge evidence ではない。push ごとに走る Draft の hosted の run が `Merge gate` を出し、Ready で回し直さず同じ head の run を merge の CI 根拠にする（D-145 (9)）。手元で全 gate を回したいときだけ `bash scripts/local-ci.sh full`（任意）を使う。
 
 Ready PR への push は stale green 防止のため block する。修正は PR を Draft に戻してから行う。緊急 bypass は raw `--no-verify` ではなく、docs/ci.md が定義する固定 reason token を環境変数で渡して hook を実行し、`.local/quality-check.log` に `BYPASS` を残す。
 

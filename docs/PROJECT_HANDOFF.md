@@ -4,7 +4,7 @@
 
 | 知りたいこと | 正本 |
 |---|---|
-| 現在の作業・phase・blocker・次の行動 | [Plans.md](Plans.md) と対象Plan Packet |
+| 完了・lane の現在地・関門 | 完了は `git log origin/main`、lane の現在地は `gh pr list --state open` と helper の status、導入の前の関門・ブロッカー・製品の未決判断は [Plans.md](Plans.md)（D-145） |
 | 未了候補・保留・受容済みリスク | [Backlog](backlog.md) |
 | 安定した業務・POSの前提 | [project-memory.md](project-memory.md) |
 | 層と依存関係 | [ARCHITECTURE.md](ARCHITECTURE.md) |

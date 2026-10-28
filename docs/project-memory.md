@@ -81,7 +81,7 @@ Keep it factual and stable.
 
 ## Current Work and History
 
-現在のphase・blocker・次の行動は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)。この文書には進行状態を複製しない。
+完了は git log、lane の現在地は helper の status、導入の前の関門・ブロッカー・製品の未決判断は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)（D-145）。この文書には進行状態を複製しない。
 
 旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録)（閉じた記録は [archive の同じ節](archive/2026-10-19-backlog-closed.md#過去memoryの未決記録)）に残し、関係する作業で成立・解消状況を確認する。
 
