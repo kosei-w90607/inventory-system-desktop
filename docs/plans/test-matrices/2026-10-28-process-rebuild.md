@@ -54,6 +54,7 @@ Risk: R3
 | PH8 active な packet の `Plan Commit` が SHA（承認済み）なら、code の差分があっても PH4 の ERROR を出さない | 承認の後の実装が止まる（PH4 の判定の反転を検出する組） | CLI | `workflow-git-checks.test.sh` PH8 | pending の判定を外す・反転する |
 | PH9 起点: `WORKFLOW_BASE_SHA` が空か HEAD と同じ（`workflow_dispatch` の run）なら `origin/main` と HEAD の merge-base を使い、active な packet を正しく数える。それも HEAD と同じ（main の checkout・最初の commit の前の新しい branch）なら active 0 件として通す（今の `check-workflow-git.sh` と同じ）。起点を解決できないときは ERROR（merge-base が一意でないときは PH6） | dispatch の run で起点 = HEAD になり active が 0 件で検査が素通りする／main の checkout で full の検査が ERROR になる | CLI | `workflow-git-checks.test.sh` PH9 | 起点の落とし方が無い、merge-base = HEAD を ERROR にする |
 | PH10 rename と切り直し: 旧形式の lane の packet を本 lane の merge の後の branch で rename する、または新しい main へ cherry-pick で切り直すと、rename の後の path の最初の add で新形式と判定され、`Phase` の行で拒まれる（`--follow` で辿らない）。拒む理由に「旧形式の packet は rename・切り直しをしない」を出す | 規則を知らずに rename した lane が理由の分からない ERROR で止まる | CLI（合成 repo） | `doc-consistency-plan-packet.test.sh` PH10 | 理由を出さない、rename を辿って黙って旧形式にする |
+| PH11（Final Review C1）承認の後に計画の節（Scope・AC・Contract Ledger〈旧形式は Spec Contract・Trace Matrix〉、R4 は Data Safety と Recovery・Rollback の節）が承認の最新の snapshot（Plan Commit、Amendments があれば最後）と違えば、helper（status・capture・ready・record・merge の共通の `requirements`）と `check-workflow-git.sh` が拒み、理由と `plan-approve.sh <packet> --amend` を名指す。旧形式で Phase が kickoff〜plan-gate の packet は SHA があっても承認の前 | 承認の後に Scope を広げ、Amendments を登録せず追補の計画の review なしに Ready・merge へ進む | CLI（fake gh・合成 repo） | `pr-gate.test.py` `test_plan_change_after_approval_rejected`・`test_old_pre_gate_phase_is_not_approved`、`workflow-git-checks.test.sh` の C1 | 計画の節の照合が無い、照合が helper か checker の片方だけ、旧形式の pre-gate の Phase を承認済みと扱う |
 | PH6 起点が解決できない・merge-base が一意でない → active な packet を決められないとして ERROR で止め、理由を出す（全 packet の検査に落とさない） | fail-open／merge 済みの packet で必ず落ちる | CLI | 同 PH6 | 起点が取れないときに 0 件で通す、全 packet を見て merge 済みの packet の PK5 で落ちる |
 | MN1 新形式の packet（Phase の行が無い）: R3 = 2、R4 = 2 と r4、classifier `workflow=true` = 2（packet に Minimum を書かない） | 新形式の R3 が 1 本で通る（TD-484） | unit（`requirements`） | `pr-gate.test.py` MN1 | 導出の表を誤る |
 | MN2 旧形式の packet は書いた `Final Review Minimum` をそのまま使う（R3 で 1 なら 1、同期の後も 2 に上げない。R4・`workflow=true` で 2 を求める今の検査は残す）。新形式で `Final Review Minimum` の行があれば導いた値との大きい方（新形式の R3 に 1 と書いても 2） | 走っている lane の本数が同期の後に上がる／新形式で書いた 1 で下げる | unit | 同 MN2 | 旧形式に導出を当てる、新形式で min を取る |
@@ -173,6 +174,7 @@ workflow の状態（計画・review・L3・CI の証拠）の寿命を並べる
 - If a guard is removed: C2 の L3 節の比較、RC2 の workflow の docs の拒否、GA2 の読めない節の扱い、AR1 の削除の拒否を外すと各 test が red
 - If an output field is omitted: RP1 で reviewed head を落とすと record の照合で red
 - If output order changes: PA3 の Amendments の順
+- If the approval check is removed: `plan_drift` が常に None を返すと PH11 の helper と checker の test が red
 - 実注入（Contract Audit の Mutation / anti-tautology）: 実装の段で Writer が上の 6 つを production 側に注入し、red を報告に残す
 
 ## Residual Test Gaps

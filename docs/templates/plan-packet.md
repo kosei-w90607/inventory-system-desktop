@@ -8,7 +8,7 @@ R3/R4 の packet の最小形（D-145 (10)）。規則は `docs/DEV_WORKFLOW.md`
 - Plan Commit: pending
 - Amendments: none
 
-`Plan Commit`・`Amendments` は `scripts/plan-approve.sh` が書く（手で写さない）。Final Review Minimum と Human Gate は helper が Risk・classifier・`## L3` 節から導く。上げるときだけ `- Final Review Minimum: 2`、明示の承認を足すときだけ `- Human Gate: ready,merge,r4` のように 1 行足す（下げる向きは受けない）。
+`Plan Commit`・`Amendments` は `scripts/plan-approve.sh` が書く（手で写さない）。Final Review Minimum（2）と Human Gate は helper が Risk・classifier・`## L3` 節から導く。明示の承認を足すときだけ `- Human Gate: ready,merge,r4` のように 1 行足す（導いた値から落とす向きは受けない）。
 
 ## Risk
 

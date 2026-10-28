@@ -154,7 +154,7 @@ Project-specific failure modes to test:
 ## Workflow Notes
 
 - Read this profile when project-specific risk or verification boundaries are needed; it is not a mandatory full read for a standalone question. Plan Packet is expected for R3/R4; R0〜R2 use the PR body route (D-145).
-- Design Phase happens before Plan Packet for R2+ work when source design docs may be affected.
+- Design Phase happens before the Plan Packet for R3/R4 work when source design docs may be affected (R0〜R2 use the PR body route, D-145).
 - Plan Packets are implementation planning evidence, not durable design source of truth. Durable design belongs in architecture, DB design, function design, screen/UI design, decision-log, or ADR docs.
 - R3/R4 use the packet `## Test Plan` table; wire contracts are checked by the plan review fixed questions (D-145 (10)).
 - R3/R4 use the Final Review (count per `Final Review Minimum`); R4 also requires human approval (`r4`). This profile does not itself add enforcement.

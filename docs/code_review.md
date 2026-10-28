@@ -6,7 +6,7 @@ Use this alongside [quality/review-checklist.md](quality/review-checklist.md). T
 
 関係する設計正本から契約を確認し、live code・diff・tests・生成物と照合する。対象に応じて ARCHITECTURE / FUNCTION_DESIGN / DB_DESIGN / SCREEN_DESIGN / UI_TECH_STACK の該当節を選び、無関係な設計書の全文を読む順序にはしない。
 
-Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
+Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R3/R4 は対象packetの Design Readiness を確認する（R0〜R2 は packet が無く PR body の 5 行。D-145）。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
 
 店の事実を前提にする判断は、`docs/project-memory.md` の「Store Premises Facts（現場の前提）」と照合する。載っていない事実は owner へ 1 問にして送る。
 

@@ -519,4 +519,22 @@ round 3（上限）の一括是正の確かめ。fresh Opus 5.5 は reject（P2 
 | W7 | Opus N7 | P3 | merge の後の新しい helper で裁かれる packet なしの PR は、PR body に `Risk: R1（目視: 不要）` の行を足す（commit は要らない）と書いた | packet 他の lane との所有と順（#215 の行） |
 | W8 | Codex #1 | P3 | AC8 の「packet を本 branch に写す」検証をやめ、各 lane の worktree で全部の読み手を確かめる形に統一した | packet AC8・「新しい packet の書式」の後の段落 |
 
+### Final Review broad（監査した版 `69738dbd40c1cbcfdfca6c5c96118c30245c66d4`。Codex 側 reject〈P1 1・P2 3・P3 1〉、Claude 側 Fable 5 approve〈P3 5〉）
+
+Coordinator の裁定に従い、次を受理して直した（C = Codex 側の #、F = Fable 側の #）。Scope・AC は変えない。C1 は H2・H7 の「計画の固定」の実装の穴を塞ぐものとして扱う。
+
+| finding | 裁定 | 反映先 |
+|---|---|---|
+| C1（P1）承認の後に計画の節を変えても止まらない。旧形式の `Phase: plan-gate` を承認済みと扱う | 受理 | `pr-gate.py` の `plan_texts`・`plan_drift`・`approval_state`、`requirements`（status・capture・record・ready・merge の共通の判定）、`parse_packet`（旧形式の承認の前の Phase は `pending` と扱う）、`check-workflow-git.sh`（同じ判定で ERROR と次の一手）。test は helper の `test_plan_change_after_approval_rejected`・`test_old_pre_gate_phase_is_not_approved` と checker の C1（先に red を確かめてから直した）。Matrix に PH11 を足した。DEV_WORKFLOW の計画の固定と merge-evidence の状態の節に 1 項 |
+| C2（P2）`plan-approve.sh` が merge の一覧の取得の失敗を「merge なし」と扱う | 受理 | 終了値を確かめ、書く前に拒む。test は plan-approve の C2 |
+| C3（P2）= F2（P3）`packet_form` が `ls-tree` の失敗を旧形式に落とす | 受理 | 成功した空の出力だけを「不在」、失敗は判定不能の ERROR。test は `test_unreadable_parent_tree_is_an_error` |
+| C4（P2）GA の後、計画の節が同じでも機械の closure の拒否が fresh broad を案内する | 受理 | `sync_closure` が監査の closure を案内する。test は `test_rc_machine_closure_after_amendment_needs_audit`（節が変われば fresh broad のまま） |
+| C5（P3）live な旧規則（R2+ の承認済み packet、Plans を現在地とする文） | 受理 | MANUAL §5.6・code_review・project-profile・DOC_STYLE_GUIDE・ARCHITECTURE・merge-evidence の R2+ の文 |
+| F1（P3）新形式の Final Review Minimum の「上げるときだけ 1 行」に上げる先が無い | 受理（文だけ） | DEV_WORKFLOW の Workflow State と plan-packet の template の文。code は変えない |
+| F3（P3）origin/main に落ちたときの ERROR が古い origin/main を名指さない | 受理 | `check-workflow-git.sh` と doc check の FL に「origin/main が古ければ git fetch origin」 |
+| F4（P3）docs の closure の裁定の pointer が record に残らない | 受理（文だけ） | merge-evidence の docs の closure の段に、pointer の実体は PR の comment に置く文 |
+| F5（P3）archive への移送で archive 側の中身を照合しない | 見送り（backlog） | `docs/backlog.md` の保留に 1 項目。archive は証拠でなく安全の境界は壊れない |
+
+C1 の判定は、書き換えた既存の test 2 つにも当たった: workflow-git の D-102 D4 の case は承認済みの packet に `## Scope` を足していたので `## Notes` に移した。Workflow State が 2 つの packet は承認の判定で曖昧として止まるようになったので、その case は「止まる、2 つ目の Evidence Mode は読まない」に書き換えた。
+
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。

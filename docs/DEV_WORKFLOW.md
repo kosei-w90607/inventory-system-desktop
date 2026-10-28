@@ -66,7 +66,7 @@ packet なしの道（R0〜R2）の PR body の Risk の行は `Risk: R<0|1|2>�
 ## Plan Packet Rules
 
 - Plan Packet は計画の成果物で、設計の正本ではない。設計の判断は設計正本・decision-log・ADR に置き、packet は ID で引く。
-- R3/R4 の packet の最小形（新形式）: Workflow State は `Risk`・`Plan Commit`・`Amendments` の `- Key: value` の 3 行（Final Review Minimum を上げるときだけ 1 行足す）。節は `Risk`・`Goal`（Goal Invariant: 最小完了条件・失敗定義・非目的）・`Scope`・`Acceptance Criteria`・`Design Readiness`・`Contract Ledger`・`Test Plan`（表: Contract / Failure Mode / Test Type / Test Name / Would fail if...。runtime の R3 は状態の遷移・negative・mutation の注入を含む）。manual があるときだけ `## L3`（節があること = manual）、R4 は `## Recovery` と `## Data Safety`。PK1 と helper がこの形を確かめる。
+- R3/R4 の packet の最小形（新形式）: Workflow State は `Risk`・`Plan Commit`・`Amendments` の `- Key: value` の 3 行。節は `Risk`・`Goal`（Goal Invariant: 最小完了条件・失敗定義・非目的）・`Scope`・`Acceptance Criteria`・`Design Readiness`・`Contract Ledger`・`Test Plan`（表: Contract / Failure Mode / Test Type / Test Name / Would fail if...。runtime の R3 は状態の遷移・negative・mutation の注入を含む）。manual があるときだけ `## L3`（節があること = manual）、R4 は `## Recovery` と `## Data Safety`。PK1 と helper がこの形を確かめる。
 - Ordinary Operation・登録と生成の義務・Impact Review Lenses・Boundary / Wire Contract・Contract Probe・R3 の Data Safety は packet の節にせず、[計画の review の発注の固定の問い](#review-rules)で確かめる。review の結果と裁定は packet でなく PR の comment に置く（新形式の packet に Review Response・Implementation Results を書かない）。
 - 旧形式の packet（Workflow State に `Phase` の行があるもの。本書の D-145 の版より前に起票した走っている lane）は書き換えず、今までの必須の節（owner の介入の予算の節・Contract Probe・Data Safety・Test Design Matrix の link を含む）のまま受ける。`Phase` の値と担当 4 行・`Branch` は評価しない（非遡及、D-145 (15)）。
 - 形式は機械が決める: packet を最初に足した commit（起点の後の範囲。rename は辿らない）の親の tree に `scripts/plan-approve.sh` が無ければ旧形式、あれば新形式。形式と `Phase` の行の有無が食い違う packet と、新形式で Risk R2 の packet を PK4 と helper が拒む。親が無い・shallow の境で判定できなければ ERROR。
@@ -87,7 +87,7 @@ R3/R4 の packet は `## Workflow State` 節を 1 つ持つ（YAML frontmatter �
 - `Risk`: R3 | R4（`## Risk` 節の `Risk: Rn` と同じ値。食い違えば PK1・helper が止める）
 - `Plan Commit`: `pending`、または計画を承認した版の 40 桁の小文字 hex の SHA。`scripts/plan-approve.sh` が書き、人は写さない
 - `Amendments`: `none`、または Gated Amendment の SHA の列（`plan-approve.sh --amend` が後ろに足す）
-- 任意: `Final Review Minimum`（上げる向きだけ受ける）、`Human Gate`（`r4`・`manual` を書けば導いた値に足す。落とさない）
+- 任意: `Human Gate`（`r4`・`manual` を書けば導いた値に足す。落とさない）。新形式の Final Review Minimum は導く値（2）だけで、書く行は要らない（書いても 2 を下げない）
 
 導く値（helper の `requirements`）: Final Review Minimum は R3・R4・classifier `workflow=true` で 2。Human Gate は `ready,merge` を常に、`r4` は Risk R4、`manual` は `## L3` 節があるとき。旧形式の packet は書いた `Final Review Minimum` と `Human Gate` をそのまま使う（R4・`workflow=true` で 2 を求める検査は今のまま）。承認の後に Risk・`## L3` 節の有無・書いた Minimum と Human Gate（旧形式は Risk・Minimum・Human Gate の 3 field）を変えれば `approved packet condition changed` で止まる。
 
@@ -100,6 +100,7 @@ R3/R4 の packet は `## Workflow State` 節を 1 つ持つ（YAML frontmatter �
 - Plan Review が P1/P2 = 0 になったら、`bash scripts/plan-approve.sh <packet> <reviewer の REVIEWED_HEAD>` を回す。script は SHA が branch の祖先で 40 桁の小文字 hex、`Plan Commit` が `pending`、その SHA の後の lane の commit（first parent、merge を除く）が packet だけ、間の merge が main の単段の同期（#217 の同期だけの条件）、SHA の版と HEAD の版の packet が承認の記録の行を除いて同じ、packet に未 commit の変更が無い、を確かめてから、その行だけを書き換えた packet だけの commit を作る（push はしない）。Gated Amendment は `--amend <SHA>` で `Amendments` の後ろに足す。
 - PK5（D-039）: active な packet の `Plan Commit` は HEAD の祖先で書き換えない。`Amendments` は Plan Commit の子孫かつ HEAD の祖先で、登録列は今の列の prefix のまま。SHA は 40 桁の小文字 hex だけ、重複を拒む。`scripts/check-workflow-git.sh` が pre-push と hosted の docs job（PR head、full history）で確かめる。
 - 先走りの検査（H2、D-145 (3)）: active な packet のどれかが `Plan Commit: pending` のまま、起点からの差分に classifier の `rust`・`frontend`・`generated`・`env`・`unknown` か `scripts/**`・`.github/**` の path があれば、`check-workflow-git.sh` が ERROR にする（plan-first の docs・packet の commit は止めない）。
+- 承認の後の計画の変更: 計画の節（Scope・Acceptance Criteria・Contract Ledger、R4 は Recovery・Data Safety）は承認の最新の snapshot（Plan Commit、Amendments があれば最後）と同じでなければならず、違えば helper と `check-workflow-git.sh` が止める。計画を変えるときは計画の review を受け、`scripts/plan-approve.sh <packet> --amend <REVIEWED_HEAD>` で登録する。旧形式で Phase が承認の前の値（kickoff〜plan-gate）の packet は、SHA があっても承認の前として扱う。
 - main との同期は `origin/main` の単段の merge（`git -c merge.directoryRenames=false merge origin/main`）で、SHA の祖先関係を保つ。
 
 **状態は helper から読む**: 実装の後の現在地は GitHub の PR の native state・専用 record・CI から helper が導き、tracked に書かない。正規の経路は `python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`（R3/R4 は `--packet <active な packet>`、packet なしは `--risk R0|R1|R2 --manual required|not-required`）。helper は PR の base の版でだけ動く（D-099）。

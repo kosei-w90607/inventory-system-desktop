@@ -149,7 +149,7 @@ packet・SHA の無い発注（Explorer の証跡収集など）は、goal に�
 
 本節は、§5.4 の read-only の Reviewer / Explorer への発注書ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
 
-仕様は設計正本、R2+ の変更範囲・AC・commit 条件は承認済み Packet（適用済み Amendment を含む）を参照する。発注書は該当節・ID を指し、条件全文を転記しない。R0/R1 は合意済みの依頼範囲と設計正本を参照し、発注のために Packet を新設しない。食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない。
+仕様は設計正本、R3/R4 の変更範囲・AC・commit 条件は承認済み Packet（適用済み Amendment を含む）を参照する。発注書は該当節・ID を指し、条件全文を転記しない。R0〜R2 は PR body の 5 行（合意済みの依頼範囲）と設計正本を参照し、発注のために Packet を新設しない（D-145）。食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない。
 
 発注には次の情報を置く。これは人が読む構成例であり、機械 parse 用の固定 schema や追加の承認 gate ではない。
 
