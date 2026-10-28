@@ -2,7 +2,7 @@
 //
 // UI-01b 商品登録・修正 page。
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ClipboardCheck } from "lucide-react";
@@ -40,9 +40,10 @@ export interface ProductFormPageProps {
   onNavigateToStocktake?: (search: { product: string; returnTo: string }) => void;
 }
 
-/** 51 の D-118 の節の文（在庫連動を始める拒否） */
+/** 51 の D-118 の節の見出しと文（在庫連動を始める拒否）。画面の語で書き、BIZ の message は出さない */
+const RECOUNT_REQUIRED_TITLE = "「POS販売で在庫を減らす」にできません";
 const RECOUNT_REQUIRED_TEXT =
-  "連動しない間の売上があります。今の数を入れてから在庫連動にしてください";
+  "「減らさない」の間の売上が在庫の数に入っているか確認できません。「今の数を入れる」で棚の数を入れてから、もう一度「減らす」にして保存してください";
 
 export function ProductFormPage({
   mode,
@@ -62,9 +63,15 @@ export function ProductFormPage({
   const [saveError, setSaveError] = useState<string | null>(null);
   // recount_required の回復の導線を出すか（回復先は action によらず 73 の「今の数を入れる」）
   const [recountRequired, setRecountRequired] = useState(false);
+  const recountNoticeRef = useRef<HTMLDivElement>(null);
   const [posSyncTouched, setPosSyncTouched] = useState(false);
   const [pluTargetTouched, setPluTargetTouched] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductWithRelations | null>(null);
+
+  // 案内は保存の button から離れた欄の下に出るので、案内の領域へ focus を移す（51）
+  useEffect(() => {
+    if (recountRequired) recountNoticeRef.current?.focus();
+  }, [recountRequired]);
 
   const productQuery = useQuery({
     queryKey: queryKeys.productForm.product(productCode ?? ""),
@@ -244,29 +251,6 @@ export function ProductFormPage({
           <AlertDescription>部門は必須項目のため、この状態では保存できません。</AlertDescription>
         </Alert>
       ) : null}
-      {recountRequired && productCode !== undefined ? (
-        <Alert variant="warning" aria-label="在庫連動にできません">
-          <AlertTriangle aria-hidden="true" />
-          <AlertTitle>在庫連動にできません</AlertTitle>
-          <AlertDescription className="space-y-3">
-            <p>{RECOUNT_REQUIRED_TEXT}</p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                // route の遷移なので離脱の確認（UI-USW-D1）を通る。baseline を揃えない
-                onNavigateToStocktake?.({
-                  product: productCode,
-                  returnTo: `/products/${productCode}/edit`,
-                });
-              }}
-            >
-              <ClipboardCheck aria-hidden="true" />
-              今の数を入れる
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
       {mode === "edit" ? (
         <div className="max-w-sm space-y-2">
           <label htmlFor="plu-memory-no" className="text-sm font-medium">
@@ -292,6 +276,36 @@ export function ProductFormPage({
         productName={currentProduct?.name}
         isDiscontinued={currentProduct?.is_discontinued ?? false}
         stockRecheck={currentProduct?.stock_recheck ?? false}
+        stockSyncNotice={
+          recountRequired && productCode !== undefined ? (
+            <Alert
+              ref={recountNoticeRef}
+              variant="warning"
+              aria-label={RECOUNT_REQUIRED_TITLE}
+              tabIndex={-1}
+            >
+              <AlertTriangle aria-hidden="true" />
+              <AlertTitle>{RECOUNT_REQUIRED_TITLE}</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{RECOUNT_REQUIRED_TEXT}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    // route の遷移なので離脱の確認（UI-USW-D1）を通る。baseline を揃えない
+                    onNavigateToStocktake?.({
+                      product: productCode,
+                      returnTo: `/products/${productCode}/edit`,
+                    });
+                  }}
+                >
+                  <ClipboardCheck aria-hidden="true" />
+                  今の数を入れる
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : undefined
+        }
         isSaving={createMutation.isPending || updateMutation.isPending}
         isTogglePending={toggleMutation.isPending}
         saveDisabled={saveDisabled}
