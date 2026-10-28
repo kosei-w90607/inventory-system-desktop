@@ -10,7 +10,7 @@ wave に属さない単独の lane。開発の手続き（packet の形・Workfl
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -29,6 +29,7 @@ manual なし: helper・検査・CI と文書の変更で、Windows native で�
 1. kickoff → spec-check（2026-10-28、起草役）: 範囲を v2 の §8.1 の段 2（§6 の H1〜H9・H11〜H14、§7 の tracked の文書、decision-log の新しい D、#204 の目的の H13 での畳み込み）とし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-28、起草役、同じ commit）: 手続きの正本の多くの節を置き換える設計が要る（下の Design Readiness）。
 3. design → plan-draft（2026-10-28、起草役、同じ commit）: 設計の判断を D-145 に置いた。各正本の書き換えの中身は下の Scope の「正本の文の最終形」に節ごとに定め、文そのものは実装の段で書く（理由は Design Readiness）。未解決の設計の問いは無い（決めきれなかった点は Review Focus に挙げ、Plan Review に問う）。
+4. plan-draft → plan-gate（2026-10-28、Coordinator）: packet と Matrix は起票の commit `2efd9426` で commit 済み。`doc-consistency-check.sh --target plan` は全チェック通過。
 
 ## Owner Effort Budget
 
