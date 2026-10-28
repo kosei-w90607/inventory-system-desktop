@@ -31,6 +31,7 @@ manual なし: helper と test と docs の変更で、Windows native で確か�
 5. plan-gate のまま是正（2026-10-28、round 1 の reject を受けて）: round 1 の是正（Review Response 参照）。
 6. plan-gate のまま是正（2026-10-28、round 2 の reject を受けて）: round 2 の是正（Review Response 参照）。
 7. plan-gate のまま是正（2026-10-28、round 3〈上限〉の reject を受けて）: round 3 の是正（Review Response 参照）。
+8. plan-gate のまま是正（2026-10-28、closure の P2 を受けて）: 是正の確かめ（closure）の是正（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -87,7 +88,7 @@ workflow の変更なので、L3 の後の base 同期の通常列を置く。
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | Draft、broad と manual（L3）が pass の record。先行 PR が docs だけを変えて merge | Coordinator が `git -c merge.directoryRenames=false merge origin/main` で同期 → push → `capture` → `record --kind review --review-stage sync --outcome pass` | 1 回の record で closure（`sync_from`）と manual（`source_head`）が新しい head に付く。owner の操作は無い | status の blocker が CI だけ | P1・P4（docs だけの同期は A） |
-| 同上。先行 PR が code を変えて merge | 同期 → push → closure 2 本（座組表の Claude 側と Codex）に L3 の項目への影響も問う → owner に 1 行の承認を諮る → `capture` → `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from SOURCE --reuse-approval POINTER` → `capture` → `record --kind review --review-stage closure`（2 本の証跡を evidence に並べる） | owner は L3 をやり直さず、承認の 1 行だけ | closure が P1/P2 0 で、L3 の項目に影響なし | P2・P3（#197・#209 の型は B。ただし #197・#209 の今の record は旧 helper で closure を先に記録したため manual が pending に戻っていて、A も B も「旧 record の manual が pass」を要るので当たらない。下の `## 後続` の移行の扱い） |
+| 同上。先行 PR が code を変えて merge | 同期 → push → closure 2 本（座組表の Claude 側と Codex）に L3 の項目への影響も問う → owner に 1 行の承認を諮る → `capture` → `record --kind manual --outcome pass --evidence <旧 manual の evidence> --reuse-from SOURCE --reuse-approval POINTER` → `capture` → `record --kind review --review-stage closure`（2 本の証跡を evidence に並べる） | owner は L3 をやり直さず、承認の 1 行だけ | closure が P1/P2 0 で、L3 の項目に影響なし | P2・P3（#197・#209 の型は B。ただし #197・#209 の今の record は旧 helper で closure を先に記録したため manual が pending に戻っていて、A も B も「旧 record の manual が pass」を要るので当たらない。本 lane の merge の後に同期し、その head で L3 をやり直す〈owner の決定 TD-504〉。下の `## 後続` の移行の扱い） |
 | 同上。B の後にさらに docs だけの同期 | 同期 → push → `capture` → `record --kind review --review-stage sync --outcome pass` | 起点は旧 record の head（B で承認した版）なので A で引き継ぐ | 同上 | — |
 | 同期の後に lane の commit がある、または衝突を手で解いた（生成物と `docs/decision-log.md` の union の結果を除く） | `capture` → manual 以外の record | helper が何も書かずに止まり、外れた commit・path と次の一手を出す。同期だけの条件（H2）で外れたので B は案内せず、`record --kind manual --outcome pending --evidence POINTER` だけを出す | L3 をやり直す | — |
 
@@ -264,7 +265,7 @@ Test Design Matrix: [test-matrices/2026-10-27-l3-reuse-after-sync.md](test-matri
 ## 後続
 
 - Coordinator の運用の checklist（repo の外）の base 同期と Ready・merge の手順を MG-D13 に合わせる（Coordinator）。
-- 移行の扱い（round 3）: 旧 helper で manual が pending に戻った PR（#197・#209。`gh api` の record で manual が `pending`・evidence 0 件）は、本 lane の merge の後、同期の前に、owner の判断で今の head に `record --kind manual --outcome pass --evidence <元の L3 の evidence>` を記録する（owner の判断 1 回）か、L3 をやり直すかを owner が決める。helper は変えない。記録すれば、その後の同期で A か B が当たる。
+- 移行の扱い（round 3、closure の是正で改めた）: 旧 helper で manual が pending に戻った PR（#197・#209。`gh api` の record で manual が `pending`・evidence 0 件）は、本 lane の merge の後に同期し、その head で L3 をやり直す（owner の決定 TD-504）。pending の manual に旧 L3 の evidence を `--reuse-from` なしで pass と記録し直すことはしない（使い回しの検査と L3 の版〈`source_head`〉の保持を迂回し、merge-evidence の「pending を CLI の pass 宣言で補完しない」と衝突する）。本 lane の helper の変更（`scripts/pr-gate.py`・`scripts/tests/pr-gate.test.py`）を取り込む最初の同期は classifier で code に分かれる同期なので、旧 pass が残っていても使い回しはどのみち B になる。helper は変えない。
 
 ## Implementation Results
 
@@ -315,4 +316,14 @@ Codex と fresh Opus 5.5 の findings を Coordinator が裁定し、下の表�
 | E3 | Opus #2 | P3 | decision-log の衝突の解き方の command を正本に 1 句 | merge-evidence「同期だけの条件」、DEV_WORKFLOW Wave Operation の L3 の箇条 |
 | E4 | Opus #3 | P3 | 明示の A（`--reuse-from` だけ）は R0/R1 の lane で使うと正本に 1 文 | merge-evidence `## Helperの境界` |
 | E5 | Opus #4 | P3 | 判定不能の次の一手に `git fetch origin`。status は ref と作業 tree を変えない（`merge-tree --write-tree` は object だけを書く） | packet H4、merge-evidence「同期だけの条件」・`## Helperの境界` |
+
+### 是正の確かめ（closure）の表（起点 `ee0386b014a98918105d8480471709afe29f4db0`）
+
+Codex は reject（round 3 の P1 は計画上 closed、是正で足した移行の手順に新しい P2）、Opus は N1・N2（P3）。owner の決定（repo 外の回答台帳 TD-504）で移行の手順を L3 のやり直しに改めた。
+
+| ID | 出所 | 重大度 | 処置 | 直した節 |
+|---|---|---|---|---|
+| F1 | Codex #1 | P2 | 移行の「今の head に manual の pass を `--reuse-from` なしで記録し直す」選択肢を消し、#197・#209 は本 lane の merge の後に同期してその head で L3 をやり直す（TD-504）とした | packet Ordinary Operation の行 2 の注記・`## 後続`、Matrix Residual Test Gaps |
+| N1 | Opus N1 | P3 | 本 lane の helper の変更を取り込む最初の同期は code に触れるので、使い回しはどのみち B になる旨を F1 の文に入れた | packet `## 後続` |
+| N2 | Opus N2 | P3 | `source_head` の無い pass で L3 の版が消える問題は、F1 で記録し直す選択肢ごと消えた | （F1 に同じ） |
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。

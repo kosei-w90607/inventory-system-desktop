@@ -149,4 +149,4 @@ capture / server の race、stale head/base、broad / closure、R4 の扱いは�
 ## Residual Test Gaps
 
 - GitHub の Update branch の merge の実物は試さない（合成の repo は `git merge` だけ。違えば外れる側なので安全）。
-- 実の PR の record での end-to-end（Ready・merge まで）は本 lane の PR 自身では起きない（本 lane は manual を持たない）。最初の manual の lane の同期で Coordinator が確かめる。ただし #197・#209 の今の record は旧 helper で manual が pending に戻っていて、A も B も当たらない。本 lane の merge の後、同期の前に、owner の判断で今の head に `record --kind manual --outcome pass --evidence <元の L3 の evidence>` を記録するか L3 をやり直すかを owner が決める（packet の `## 後続` の移行の扱い。helper は変えない）。
+- 実の PR の record での end-to-end（Ready・merge まで）は本 lane の PR 自身では起きない（本 lane は manual を持たない）。本 lane の merge の後に L3 を pass で記録した manual の lane の、最初の同期で Coordinator が確かめる。#197・#209 は実例にしない（旧 helper で manual が pending に戻っていて A も B も当たらず、本 lane の merge の後に同期してその head で L3 をやり直す。owner の決定 TD-504、packet の `## 後続` の移行の扱い）。
