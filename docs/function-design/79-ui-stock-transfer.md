@@ -1,6 +1,6 @@
 # 79. UI-16: 詰め替え・切り分け（振替）
 
-> **状態**: D-143、proposed・未実装（[decision-log](../decision-log.md) D-143、Plan Packet `docs/plans/2026-10-27-stock-transfer.md`）。画面の語は全て「詰め替え・切り分け」で、「振替」は設計の中の名前（DB の `transfer`・`transfer_record`、BIZ の `create_transfer`）。
+> **状態**: D-143、proposed・未実装（[decision-log](../decision-log.md) D-143、Plan Packet `docs/plans/2026-10-29-stock-transfer.md`）。画面の語は全て「詰め替え・切り分け」で、「振替」は設計の中の名前（DB の `transfer`・`transfer_record`、BIZ の `create_transfer`）。
 >
 > **計数の置き場と在庫の求め直し（D-118）**: この画面の日付の欄の意味は「品を詰め替え・切り分けた日」。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める。振替の movement は入出庫の movement と同じ規則で求め直す（[31](31-biz-inventory-service.md) §12.6b）。同じ日付に既定の計数のある商品は要再確認になり、棚卸しの画面の要再確認の一覧と商品の画面の範囲の表示に出る（ほかの入出庫の画面と同じ。この画面の保存の結果には要再確認の案内を足さない）。
 

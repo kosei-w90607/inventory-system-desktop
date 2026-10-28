@@ -334,4 +334,4 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節の b1 の分を現行に。入出庫の記録の一覧の棚卸しの件数と商品・部門の filter を明細へ、棚卸し詳細の表示を効く計数と完了の後の差に直した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
 | 2026-10-25 | z004-rollback-entry（PR #197） | §65.5a（TRACE-D13）を現行に。§65.10 の 4b の取消の CTA の文を、そのスライスでは置かなかった記録に直した（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
 | 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 2） | §65.5a の「成功」に取消の結果は表示している取込みのものだけであること、「失敗」に取消の応答を待つ間の止め（55 §55.7・§55.11）を足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
-| 2026-10-27 | stock-transfer の起票（D-143） | TRACE-D14（振替の記録の一覧・詳細・相互リンク）と、§65.1・§65.3 の振替の行を proposed・未実装で足した（[Plan Packet](../plans/2026-10-27-stock-transfer.md)） |
+| 2026-10-27 | stock-transfer の起票（D-143） | TRACE-D14（振替の記録の一覧・詳細・相互リンク）と、§65.1・§65.3 の振替の行を proposed・未実装で足した（[Plan Packet](../plans/2026-10-29-stock-transfer.md)） |
