@@ -46,8 +46,12 @@ pub use crate::db::manual_sale_repo::ManualSaleRecordDetail;
 pub use crate::db::receiving_repo::{ReceivingRecordDetail, ReceivingRecordWithSupplier};
 pub use crate::db::return_repo::{ReturnRecordDetail, ReturnRecordSummary};
 // CMD-06 用 re-export
-pub use crate::db::inventory_repo::{MovementQuery, MovementRecord};
+pub use crate::db::inventory_repo::MovementQuery;
+// 業務記録の詳細の wire 型（D-083 の re-export の許可表に載る。在庫変動の画面は StockHistoryItem）
+#[allow(unused_imports)]
+pub use crate::db::inventory_repo::MovementRecord;
 pub use crate::db::product_repo::StockDetail;
+pub use inventory_service::StockHistoryItem;
 
 use std::fmt;
 
@@ -68,6 +72,8 @@ pub enum BizError {
     DatabaseError(DbError),
     /// インポートエラー（BIZ-03 CSV取込みパイプライン）
     ImportError(String),
+    /// 同じ精算の別の版が active（BIZ-03 の順 4 の拒否。文が名指す取込みID を構造でも持つ。32）
+    SettlementConflict { message: String, csv_import_id: i64 },
     /// エクスポートエラー（BIZ-04 PLU書出し）
     ExportError(String),
     /// 同じ冪等キーで異なる内容のリクエスト
@@ -97,6 +103,9 @@ impl fmt::Display for BizError {
             }
             BizError::DatabaseError(e) => write!(f, "データベースエラー: {}", e),
             BizError::ImportError(msg) => write!(f, "インポートエラー: {}", msg),
+            BizError::SettlementConflict { message, .. } => {
+                write!(f, "インポートエラー: {}", message)
+            }
             BizError::ExportError(msg) => write!(f, "エクスポートエラー: {}", msg),
             BizError::IdempotencyConflict(msg) => write!(f, "冪等性キー競合: {}", msg),
             BizError::StocktakeInProgress(msg) => write!(f, "棚卸し進行中: {}", msg),

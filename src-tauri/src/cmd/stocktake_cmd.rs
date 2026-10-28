@@ -486,6 +486,7 @@ mod tests {
                 "message": "棚卸しを完了できません。数え直し・未計数・取り込んでいない精算のある商品があります",
                 "field": null,
                 "error_id": null,
+                "related_csv_import_id": null,
                 "stocktake_recovery": {
                     "code": "completion_blocked",
                     "targets": [{
