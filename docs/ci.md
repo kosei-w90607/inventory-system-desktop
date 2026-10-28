@@ -80,7 +80,7 @@ Rustまたはtraceability分類では`cargo run --bin generate_traceability -- -
 
 正規経路は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。helperはPRのbaseと同じ版でだけ動く（違えば`helper differs from base`でbaseの版を使うcommandを示して止まる）。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
 
-Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanual限定再利用はMG-D6/D7、Actions停止時の扱いは[merge-evidence](agent-guidance/merge-evidence.md)「closeoutとActions停止時」に従う。
+Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanualの使い回しは[merge-evidence](agent-guidance/merge-evidence.md)のMG-D13、Actions停止時の扱いは[merge-evidence](agent-guidance/merge-evidence.md)「closeoutとActions停止時」に従う。
 
 ## Cache Policy
 
