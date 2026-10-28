@@ -274,7 +274,7 @@ L3 Eligibility: (1) MSI は Windows でしか作れず、入った folder の中
 | L3-2 | スタートメニューの「在庫管理システム」から起動する | アプリの窓が開き、ホームの画面が出る。見終わったら閉じる | はい |
 | L3-3 | 用意 1 の clone の root（用意 1 の `core.autocrlf` が `true` なら使い捨ての clone `C:\Users\Owner\dev-bins-l3-clone` の root）で次の 1 行を貼る（手順書の予行演習の準備・z004 の README の Windows の行と同じ debug の `cargo run --manifest-path` の形。debug の build が走る。`--help` は DB を開く前に使い方を出して終わる〈`seed_demo_data.rs` の `parse_args`〉。`generate_bindings` は `src/lib/bindings.ts` を書き直し、`generate_traceability -- --check` は書かない。どちらも path を `CARGO_MANIFEST_DIR` から求め、cwd に依らない）: `cargo run --manifest-path src-tauri\Cargo.toml --bin seed_demo_data -- --help; "exit=$LASTEXITCODE"; cargo run --manifest-path src-tauri\Cargo.toml --bin generate_bindings; "exit=$LASTEXITCODE"; cargo run --manifest-path src-tauri\Cargo.toml --bin generate_traceability -- --check; "exit=$LASTEXITCODE"; git status --porcelain; "status-end"` | 3 つの `exit=` が全部 `exit=0` で、`git status --porcelain` の出力が無く（`status-end` の前に行が無い。生成物の差分なし）、Windows の loader のエラー（例「エントリ ポイントが見つかりません」、`STATUS_ENTRYPOINT_NOT_FOUND`）で止まらない（D-137 の Compatibility: dev-tools の bin は tauri-build の Windows の resource を受けない） | はい。loader のエラーの FAIL なら D-137 の Compatibility の是正（dev-tools に manifest を入れる。外し方は変えない。手段は Gated Amendment で記録してから入れる）を本 lane に足し、L3 を確かめ直して PASS するまで merge しない（AC12） |
 
-順: 用意 1 → 用意 2 → L3-1 → L3-2 → L3-3。L3-1 が FAIL なら L3-2 を行わずに見えた名を控えて Coordinator に戻す（L3 の 2 回目。原因が外し方なら design に戻る）。L3-3 が FAIL なら出た文・3 つの exit・`git status --porcelain` の行・回した clone（用意 1 の clone か使い捨ての clone か）と用意 1 で控えた `core.autocrlf` の値を控えて Coordinator に戻す。FAIL の種類を分ける: bin が自分の出力（使い方の文・bindings の書出し・`traceability check:` の行）を出す前に loader のエラーで止まったときだけが D-137 の Compatibility の是正（manifest）の対象。自分の出力を出した後の非 0 や差分（例: `traceability check: ERROR` の `[T1]`、bindings の差分）は loader の問題でないので manifest を入れず、Coordinator が原因を切り分けて裁定する（改行の違いによる T1 は用意 1 の使い捨ての clone で前もって避ける。repo に `.gitattributes` が無く〈2026-10-24、`cat .gitattributes` が無い〉、generator の `run_check` は読んだ文と生成した文を改行を揃えずに比べる）。どちらも AC12 の PASS の条件は変えず、是正の後の L3 の 2 回目で確かめる。
+順: 用意 1 → L3-3 → 用意 2 → L3-1 → L3-2（2026-10-29 に L3-3 を先にした。PR #188 の L3 の申し送り〈backlog: lib を link する tauri の crate の外の binary が Windows で loader のエラーになった先例〉から L3-3 が FAIL する見込みが相応にあるので、manifest の是正の要否を MSI の build の前に分かるようにする。確かめてから直す形〈D-137 の Compatibility〉は変えない。出所は PR #201 の Final Review の Fable 5 の P3）。L3-3 が FAIL なら用意 2 から先を行わずに戻す。L3-1 が FAIL なら L3-2 を行わずに見えた名を控えて Coordinator に戻す（L3 の 2 回目。原因が外し方なら design に戻る）。L3-3 が FAIL なら出た文・3 つの exit・`git status --porcelain` の行・回した clone（用意 1 の clone か使い捨ての clone か）と用意 1 で控えた `core.autocrlf` の値を控えて Coordinator に戻す。FAIL の種類を分ける: bin が自分の出力（使い方の文・bindings の書出し・`traceability check:` の行）を出す前に loader のエラーで止まったときだけが D-137 の Compatibility の是正（manifest）の対象。自分の出力を出した後の非 0 や差分（例: `traceability check: ERROR` の `[T1]`、bindings の差分）は loader の問題でないので manifest を入れず、Coordinator が原因を切り分けて裁定する（改行の違いによる T1 は用意 1 の使い捨ての clone で前もって避ける。repo に `.gitattributes` が無く〈2026-10-24、`cat .gitattributes` が無い〉、generator の `run_check` は読んだ文と生成した文を改行を揃えずに比べる）。どちらも AC12 の PASS の条件は変えず、是正の後の L3 の 2 回目で確かめる。
 
 ## Review Focus
 
@@ -323,7 +323,9 @@ L3 Eligibility: (1) MSI は Windows でしか作れず、入った folder の中
 
 ## Implementation Results
 
-Fill after implementation.
+- 実装（PR #201）: 開発用の 3 つの bin を workspace の member `src-tauri/dev-tools` へ移し、`default-members` と `default-run` で command の形を保った（S1〜S3）。traceability の generator の repo の root の式を移動に合わせ（D-137 (3)）、doc-consistency の R0・R1 の走査を dev-tools へ広げた（T11）。crate の形を固定する test（`bundle_identity_test`・`workspace_membership_test`）を足した。
+- 確かめ: Final Review の 2 本（Codex・Fable 5、2026-10-29）は approve で、mutation の red と deb の中身（AC11）を独立に実測した。結果は PR #201 の comment と helper の record。L3（L3-1〜L3-3）は未実施。
+- follow-up: `bundle_identity_test` の `[[bin]]` の検査が行末の comment 付きの行を見逃す（Fable 5 の P3。backlog へ）。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
