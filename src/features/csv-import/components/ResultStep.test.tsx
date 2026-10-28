@@ -1,9 +1,39 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
+import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithRouter } from "@/test/render-with-router";
-import type { CountRecoveryTarget } from "@/lib/bindings";
+import { commands } from "@/lib/bindings";
+import type { CountRecoveryTarget, RollbackPreview } from "@/lib/bindings";
 import { ResultStep, RollbackResultCard } from "./ResultStep";
+
+vi.mock("@/lib/bindings", () => ({
+  commands: { previewRollbackCsvImport: vi.fn() },
+}));
+
+const mockPreview = vi.mocked(commands.previewRollbackCsvImport);
+
+function previewOf(overrides: Partial<RollbackPreview> = {}): RollbackPreview {
+  return {
+    csv_import_id: 42,
+    settlement_no: 2,
+    recheck_targets: [],
+    affected_stocktakes: [],
+    ...overrides,
+  };
+}
+
+/** 取消の確認は開いたときに取消の前の読取り（useQuery）を行う */
+function renderWithQuery(ui: ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderWithRouter(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
+beforeEach(() => {
+  mockPreview.mockReset();
+  mockPreview.mockResolvedValue({ status: "ok", data: previewOf() });
+});
 
 // 55 の D-118 の節: 範囲は 55 の例（4〜5）と違う値にし、画面が mock の値を出すことを見る
 function recheckTarget(overrides: Partial<CountRecoveryTarget> = {}): CountRecoveryTarget {
@@ -25,9 +55,10 @@ function recheckTarget(overrides: Partial<CountRecoveryTarget> = {}): CountRecov
 
 it("test_import_result_req401_rollback_dialog_identifies_exact_import_and_sibling_survival", async () => {
   // REQ-401 / I-U7 / SPEC-SDI-D7: rollback対象ID/date/amountとsibling残存をexact表示する。
+  // 55 UI-07-D18（Matrix T2）: 確認は共通の部品で、文は売上と在庫の変動を取り消して在庫を求め直す形
   const user = userEvent.setup();
   const onRollback = vi.fn();
-  renderWithRouter(
+  renderWithQuery(
     <ResultStep
       result={{
         csv_import_id: 42,
@@ -49,7 +80,7 @@ it("test_import_result_req401_rollback_dialog_identifies_exact_import_and_siblin
   await user.click(screen.getByRole("button", { name: "取り消す" }));
   const dialog = screen.getByRole("alertdialog");
   expect(dialog).toHaveTextContent(
-    "この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みによる在庫数も元に戻ります。",
+    "この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みの売上と在庫の変動を取り消し、在庫を記録から求め直します。",
   );
   // UI-07-D14 の規定項目（Scope 2 構造化: ID / 精算日 / filename / 件数 / 金額）が
   // ラベル付きで全て残っていることを確認する（T2）。
@@ -66,8 +97,53 @@ it("test_import_result_req401_rollback_dialog_identifies_exact_import_and_siblin
     "data-variant",
     "destructive",
   );
-  await user.click(screen.getByRole("button", { name: "取り消す" }));
+  expect(await within(dialog).findByText("精算 2")).toBeInTheDocument();
+  await user.click(within(dialog).getByRole("button", { name: "取り消す" }));
   expect(onRollback).toHaveBeenCalledTimes(1);
+});
+
+it("REQ-401: 結果の画面の「取り消す」は共通の確認で、結果の取込みID で読む", async () => {
+  // 55 UI-07-D18（Matrix U7）: 結果の画面の確認も取消の前の読取りを結果の取込みID で行い、精算回数と要再確認の
+  // 一覧を出す。旧い確認の文は残らない
+  const user = userEvent.setup();
+  mockPreview.mockResolvedValue({
+    status: "ok",
+    data: previewOf({
+      csv_import_id: 57,
+      settlement_no: 103,
+      recheck_targets: [recheckTarget({ product_name: "合成の取消の糸" })],
+    }),
+  });
+  renderWithQuery(
+    <ResultStep
+      result={{
+        csv_import_id: 57,
+        status: "completed",
+        total_items: 1,
+        total_amount: 1000,
+        skipped_count: 0,
+        settlement_gaps: [],
+        settlement_date_after_today: false,
+        recheck_targets: [],
+      }}
+      settlementDate="2026-03-22"
+      filename="Z004_0103.CSV"
+      onRollback={vi.fn()}
+      isRollingBack={false}
+    />,
+  );
+  await user.click(await screen.findByRole("button", { name: "取り消す" }));
+  const dialog = screen.getByRole("alertdialog");
+
+  expect(await within(dialog).findByText("精算 103")).toBeInTheDocument();
+  expect(mockPreview).toHaveBeenCalledWith(57);
+  expect(
+    within(dialog).getByText(
+      "取り消した後、次の商品は数え直しが必要です（今すでに必要な商品を含みます）",
+    ),
+  ).toBeInTheDocument();
+  expect(within(dialog).getByText("合成の取消の糸")).toBeInTheDocument();
+  expect(dialog).not.toHaveTextContent("この取込みによる在庫数も元に戻ります。");
 });
 
 it.each([

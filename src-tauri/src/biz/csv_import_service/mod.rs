@@ -42,7 +42,7 @@ pub use list::{get_csv_import_record, list_csv_imports};
 #[allow(unused_imports)]
 pub use parse::parse_and_validate;
 #[allow(unused_imports)]
-pub use rollback::rollback_csv_import;
+pub use rollback::{preview_rollback_csv_import, rollback_csv_import};
 
 use serde::Serialize;
 
@@ -252,4 +252,23 @@ pub struct RollbackResult {
     pub voided_movement_count: usize,
     /// 求め直しの後に要再確認になった商品（40）
     pub recheck_targets: Vec<crate::biz::stocktake_service::CountRecoveryTarget>,
+}
+
+/// preview_rollback_csv_import の結果（取消の前の読取り。何も書かない。32 §15.6b）
+#[derive(Debug, Serialize, specta::Type)]
+pub struct RollbackPreview {
+    pub csv_import_id: i64,
+    /// 取り込み直す精算の番号（この取込みの精算回数）
+    pub settlement_no: i64,
+    /// 取り消した後に要再確認である商品（取消の結果と同じ作り方。取り消す前から要再確認の商品を含む。40）
+    pub recheck_targets: Vec<crate::biz::stocktake_service::CountRecoveryTarget>,
+    /// この取込みの精算が完了の後の比較の範囲に入る完了した棚卸し（範囲による候補。完了の日時の昇順。35）
+    pub affected_stocktakes: Vec<AffectedStocktake>,
+}
+
+/// 取消で記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸し（32 §15.6b）
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+pub struct AffectedStocktake {
+    pub stocktake_id: i64,
+    pub completed_at: String,
 }

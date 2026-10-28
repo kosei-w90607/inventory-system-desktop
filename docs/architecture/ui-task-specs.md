@@ -237,7 +237,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - 日報完了取消し → CMD-12 rollback_daily_report_import
 - Z004商品別CSV選択後 → CMD-07 parse_and_validate_csv（既存トラック）
 - Z004商品別CSV「取り込む」ボタン → CMD-07 commit_csv_import（既存トラック）
-- Z004商品別CSV完了取消し → CMD-07 rollback_csv_import（既存トラック）
+- Z004商品別CSV完了取消し（取込みの結果の画面の「取り消す」と CSV取込みの詳細の「この取込みを取り消す」の 2 つの入口）→ 共通の確認が CMD-07 preview_rollback_csv_import で取り消した後のようすを読み、確定で CMD-07 rollback_csv_import（55 UI-07-D18）
 
 **【利用者操作フロー】**
 1. 既定タブ「日報取込み」で「SD から読む」を押し（CMD-12 scan_register_sd）、読み終えたら SD をレジへ戻す案内と精算の一覧を見て、「取り込めます」の精算を選ぶ（CMD-12 parse_and_validate_daily_report_from_sd、D-111、UI-07-D15）。SD が読めない・過去の分は予備の「ファイルを選んで取り込む」で Z001/Z002/Z005 を 1 つずつ選ぶ（UI-07-D16。dialog の path を `source_path` で送り、SD の上の file なら BIZ-08 が SD の入力として扱う）

@@ -123,6 +123,17 @@
 
 業務記録詳細への遷移元は、入出庫履歴・在庫変動履歴などの一覧、作業画面の recent list、保存結果、操作ログのいずれでもよい。詳細画面の「前の画面へ戻る」は `returnTo` が表す遷移元 URL へ戻し、遷移元が search state を持つ場合はその条件と page も復元する。`returnTo` の送信・検証・fallback は DSR-18 を正とし、欠落、不正、外部 origin に解決される値、解決後の pathname が `//` 始まりの値は遷移先の既定 hub（現行の業務記録詳細では `/inventory/records`）へフォールバックする。戻った一覧は保持した検索条件で再取得するため、記録の取消・訂正・新規追加などで結果件数が変わることは許容する。
 
+## 65.5a CSV取込み詳細からの取消（TRACE-D13）
+
+§65.5 の取消 CTA の表示条件を CSV取込み（Z004）の詳細 `/csv-import/records/$importId` に当てる。取消の command は既存の `rollback_csv_import`（[32](32-biz-csv-import-service.md) の取消、ADR SPEC-STK-CNT-D7）で、新しい取消の種類は作らない。
+
+- 表示: 状態が成功・部分成功（`completed`・`completed_partial`。§65.4.1 の正規化で「有効」）の詳細の header の操作に「この取込みを取り消す」を出す。取消済み（`rolled_back`）には出さず、今の「この取込みは取消済みです」の表示のまま。一覧（§65.8.1）の行には置かない。
+- 確認: [55](55-ui-csv-import.md) UI-07-D18 の確認（取込みの結果の画面の「取り消す」と同じ確認。取り消した後に要再確認である商品、取り込み直す精算、記録の詳細の差異・ロス原価・参考の差が変わることがある完了した棚卸しを名指す）。
+- 成功: Toast（今の取消と同じ表示時間）と D-052 の売上 CSV rollback の entry（C9、`invalidationContract.csvImportRollback`）の再取得で、詳細は取消済みの表示になる。同じ画面に 55 の「取消の結果」（取り消した件数と、要再確認になった商品の一覧。各行から [73](73-ui-stocktake.md) の入れ直しへ）と、取り込み直しの導線「商品別CSV取込み（Z004）を開く」（UI-07-D18 の `/csv-import?tab=z004`）を出す。取消の結果は表示している取込みのものだけで、別の取込みの詳細へ移ると出さない（同じ route の param が変わっても、詳細の state を取込みID で作り直す）。
+- 失敗: Toast「取り消しに失敗しました。もう一度お試しください」を出し、同じ取込みID のまま再試行できる（55 §55.9 の rollback 失敗の UX と同じ）。取消の応答を待つ間は route の移動とリロード等の page の離脱を止め（native の window の close は 55 §55.7 の「止める範囲」のとおり保証しない）、成功・失敗の後に解く（55 §55.7 の「取消の応答を待つ間の block」・§55.11。取込みの結果の画面と同じ共有の hook）。離れた後に失敗すると、知らせが別の画面の Toast だけになり、この画面で再試行できないため。
+- 到達: 入出庫履歴（§65.8.1、種別「CSV取込み」）の行、在庫変動履歴の元記録の link（§65.8.2）、売上データ取込みの Z004 タブの「取り込んだ記録を見る」と、同じ精算の別の版の拒否（32 の表の順 4）の Alert の「取込みID {id} の記録を見る」（UI-07-D18）。新しい route や Sidebar の項目は作らない。
+- 理由: 取り込んだ後に結果の画面を離れてから誤った版に気づいても、アプリの中で取り消して正しい版を取り込み直せる（ADR D7、AGENTS.md の「使い手に押しつけない」、導入の前の関門の項目〈owner の決定、repo 外の回答台帳 TD-380〉）。置き場は §65.5（詳細で確認してから行う）と §65.8.1（一覧の行に取消を置かない）に従った。棄却: Z004 タブに取込みの履歴の一覧を足して行から取り消す案（§65.8.1 と合わず、入出庫履歴と同じ検索を 2 つ持つ）、専用一覧 `/csv-import/records`（§65.3 の完成形。横断検索で探せるので runway のまま）。
+
 ## 65.6 DB 完成形
 
 既存スキーマは業務記録と movement の土台を持つが、取消/訂正/相互追跡には追加設計が必要である。
@@ -275,7 +286,7 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
    - `getReceivingRecord(id)` / `getReturnRecord(id)` / `getManualSaleRecord(id)` を追加し、各詳細は read-only で header、明細、業務サマリ、関連 movements、商品別 movement への導線を表示する。
    - UI-02 / UI-03 / UI-04 の recent list には「すべての履歴を見る」と detail 導線を置く。UI-04 は PR #115 時点では保存結果からの detail 導線のみだったが、作業画面間の一貫性のため後続 follow-up で recent list を追加する。履歴検索は `/inventory/records` に集約し、作成画面内に検索・取消・訂正を持ち込まない。
    - 返品・交換 detail の保存済み receipt image は初回横展開では添付有無と相対パス表示までとし、asset 表示・削除は画像添付 slice で扱う。
-4b. CSV取込み詳細: `getCsvImportRecord(id)` と `/csv-import/records/$importId` 詳細画面を追加し、在庫変動履歴「CSV取込み #n」元記録 link の 404（UI-06c-D7 の未実装 route 表示契約により operator へ露出）を解消する。既存4記録種別の詳細画面と同構造・read-only とし、rollback CTA は置かず（取込み画面 UI-07 の責務のまま）、一覧 `/csv-import/records` と `listCsvImportRecords(query)`、棚卸し詳細 route はこのスライスに含めない。横断検索は slice 4d で充足済み、専用一覧は runway 残置とする。backend 設計は [24-io-csv-import-repo.md](24-io-csv-import-repo.md) §14.13a / [32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6a / [41-cmd-pos.md](41-cmd-pos.md) §17.5 を正とする。
+4b. CSV取込み詳細: `getCsvImportRecord(id)` と `/csv-import/records/$importId` 詳細画面を追加し、在庫変動履歴「CSV取込み #n」元記録 link の 404（UI-06c-D7 の未実装 route 表示契約により operator へ露出）を解消する。既存4記録種別の詳細画面と同構造・read-only とし、このスライスでは取消の CTA を置かなかった（取消の入口は §65.5a）。一覧 `/csv-import/records` と `listCsvImportRecords(query)`、棚卸し詳細 route はこのスライスに含めない。横断検索は slice 4d で充足済み、専用一覧は runway 残置とする。backend 設計は [24-io-csv-import-repo.md](24-io-csv-import-repo.md) §14.13a / [32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6a / [41-cmd-pos.md](41-cmd-pos.md) §17.5 を正とする。
 4c. 棚卸し詳細: `getStocktakeRecord(id)` と `/stocktake/records/$stocktakeId` 詳細画面を追加し、在庫変動履歴「棚卸し #n」元記録 link の 404（UI-06c-D7 の未実装 route 表示契約により operator へ露出。2026-08-26 遷移契約 sweep 起源、owner 裁定 2026-08-27 = slice 4b 同型の詳細先行実装）を解消する。既存 5 記録種別の詳細画面と同構造・read-only とし、取消/訂正 CTA は置かない（§65.5 の表示条件どおり、棚卸しの cancel / correct command は未実装のため非表示）。明細（差異）は補正 movement（確定時 live 在庫基準、[35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.5 / §20.6a 設計ノート）を正として表示し、`system_stock - actual_count` の snapshot 差では定義しない。status は既存 2 値（in_progress / completed）の正規化表示とし、§65.3 の「確定/取消/再開状態」のうち取消・再開は該当機能未実装のため表示対象外。一覧 `/stocktake/records` と `listStocktakeRecords(query)` はこのスライスに含めない。横断検索は slice 4d で充足済み、専用一覧は runway 残置とする。backend 設計は [20-io-product-repo.md](20-io-product-repo.md) §2.11a / [35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.6a / [42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5 を正とする。
 4d. `listInventoryRecords` 6 種対称化: 本 slice は step 4（「4種を業務日付 DESC、記録ID DESC で横断表示する」の記述）の `record_type` 母集団を 6 種へ拡張し、当該記述を supersede する。
    - `record_type` に `csv_import` / `stocktake` を加え、`all` は入庫 / 返品・交換 / 手動販売 / 廃棄・破損 / CSV取込み / 棚卸しの 6 種を横断する。
@@ -319,3 +330,5 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 | 2026-08-27 | 棚卸し詳細 Design Phase | §65.10 に slice 4c（棚卸し詳細 route + `getStocktakeRecord(id)`。2026-08-26 遷移契約 sweep の 404 起票起源、owner 裁定 = 詳細先行実装）を追記し、§65.8.3 の `stocktake` 除外理由を「route 未実装」から「`record_type` producer 0 件」（csv_import と同型）へ差し替え。差異は補正 movement を正とする定義を明記。詳細表示項目・route・command 契約は既存 §65.3 / §65.5 / §65.7.1 を変更せず正とする。 |
 | 2026-08-28 | 6 種対称化 Design Phase | owner 裁定 2026-08-27/28 に基づき、§65.10 slice 4d として `/inventory/records` の CSV取込み / 棚卸し横断合流、status 4 値 filter、検索母集団差の operator 注記、棚卸し差異件数表示を確定。 |
 | 2026-10-23 | stocktake-count-runtime-b1（D-118 の b1） | 冒頭の D-118 の節の b1 の分を現行に。入出庫の記録の一覧の棚卸しの件数と商品・部門の filter を明細へ、棚卸し詳細の表示を効く計数と完了の後の差に直した（[Plan Packet](../archive/plans/2026-10-22-stocktake-count-runtime-b1.md)） |
+| 2026-10-25 | z004-rollback-entry（PR #197） | §65.5a（TRACE-D13）を現行に。§65.10 の 4b の取消の CTA の文を、そのスライスでは置かなかった記録に直した（[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |
+| 2026-10-27 | z004-rollback-entry（PR #197、Gated Amendment 2） | §65.5a の「成功」に取消の結果は表示している取込みのものだけであること、「失敗」に取消の応答を待つ間の止め（55 §55.7・§55.11）を足した（Final Review の差し戻し。[Plan Packet](../plans/2026-10-23-z004-rollback-entry.md)） |

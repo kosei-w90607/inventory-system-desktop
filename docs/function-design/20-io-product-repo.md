@@ -952,3 +952,18 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 **エラーハンドリング**:
 - ヘッダ不存在 → DbError::NotFound
 - SQL実行失敗 → DbError::QueryFailed(詳細)
+
+#### list_completed_stocktake_cutoffs
+
+**関数要求**: 完了した棚卸しの ID・完了日時・完了の時点のカーソルを返す。BIZ-06 の `completed_stocktakes_comparing_settlement`（[35](35-biz-stocktake-service.md) §20.6a の共有の判定）が、BIZ-03 の取消の前の読取り（[32](32-biz-csv-import-service.md) §15.6b）のために完了の後の比較の範囲を判定する
+
+**シグネチャ**:
+```
+pub(crate) fn list_completed_stocktake_cutoffs(conn: &DbConnection) -> Result<Vec<(i64, String, StocktakeCutoff)>, DbError>
+```
+
+**処理ステップ**:
+1. stocktakes のうち `status = 'completed'` の行の id・completed_at・cutoff_import_id・cutoff_count_id・cutoff_movement_id を ORDER BY completed_at, id で返す（書かない）
+
+**エラーハンドリング**:
+- SQL実行失敗 → DbError::QueryFailed(詳細)
