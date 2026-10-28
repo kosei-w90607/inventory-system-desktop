@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SPEC-MERGE-EVIDENCE / MG-D5..D8. Owner-operated PR evidence; gh + stdlib only."""
+"""SPEC-MERGE-EVIDENCE / MG-D5..D8, MG-D13. Owner-operated PR evidence; gh + stdlib only."""
 import argparse
 import base64
 import copy
@@ -24,6 +24,13 @@ FRESH_BROAD = ('broad Plan contract changed; fresh broad required: record --revi
                ' (a closure cannot carry this broad)')
 BROAD_REQUIRED = ('broad required: record --review-stage broad at the current head until it has Final Review Minimum audits'
                   ' (no usable broad on the server; a closure cannot replace it)')
+# MG-D13: the only paths a sync may regenerate. They are exactly the paths the hosted drift checks
+# re-derive from source (scripts/ci/classify-changes.sh `generated` case, .github/workflows/ci.yml
+# `rust_drift` job). Kept as a constant, never parsed from the classifier; src/routeTree.gen.ts is untracked.
+GENERATED = frozenset({'src/lib/bindings.ts', 'docs/function-design/90-traceability.md'})
+# MG-D13 / D-144: tail appends of parallel lanes may conflict here; only the union result is accepted.
+UNION = 'docs/decision-log.md'
+CODE_FLAGS = ('rust', 'frontend', 'env', 'unknown')
 FIELDS = {'Phase', 'Risk', 'Plan Commit', 'Amendments', 'Coordinator', 'Writer', 'Plan Reviewer',
           'Final Reviewer', 'Final Review Minimum', 'Human Gate'}
 
@@ -39,17 +46,31 @@ def require(condition, message, code=1):
         raise GateError(message, code)
 
 
-def command(argv, *, data=None, binary=False):
+def command(argv, *, data=None, binary=False, status=False):
+    # status=True: exit 0/1 is a verdict (merge-tree conflict, is-ancestor) returned with stdout; others fail.
     try:
         result = subprocess.run(argv, input=data, capture_output=True, text=not binary, check=False)
     except OSError:
         raise GateError(f'command unavailable: {argv[0]}', 2) from None
-    require(result.returncode == 0, f'command failed: {argv[0]} (exit {result.returncode})', 2)
-    return result.stdout
+    require(result.returncode in ((0, 1) if status else (0,)), f'command failed: {argv[0]} (exit {result.returncode})', 2)
+    return (result.returncode, result.stdout) if status else result.stdout
 
 
-def git(*args, binary=False):
-    return command(['git', *args], binary=binary)
+def git(*args, binary=False, status=False):
+    return command(['git', *args], binary=binary, status=status)
+
+
+def changed(left, right):
+    # MG-D13: renames count on both sides, so a rename into a generated path is a deletion elsewhere.
+    return {path for path in git('diff', '--name-only', '--no-renames', '-z', left, right, '--').split('\0') if path}
+
+
+def classify(classifier, paths):
+    output = command(['bash', '-c', classifier, 'classify-changes', '--files-from-stdin'], data='\n'.join(paths)+'\n')
+    flags = dict(line.split('=', 1) for line in output.splitlines())
+    expected = set('rust rust_drift frontend docs env generated traceability workflow unknown'.split())
+    require(set(flags) == expected and all(v in ('true','false') for v in flags.values()), 'invalid main classifier', 2)
+    return flags
 
 
 def unique_object(pairs):
@@ -126,10 +147,16 @@ def validate_record(value, pr):
         refs = [item['run_ref'] for item in broad['audits']]
         require(len(refs) == len(set(refs)), 'duplicate audit run_ref')
     if closure is not None:
-        keys(closure, {'head', 'base', 'audit'})
-        sha(closure['head']); sha(closure['base']); audit(closure['audit'])
-        require(broad is not None and closure['audit']['run_ref'] not in [a['run_ref'] for a in broad['audits']],
-                'closure must be an independent run')
+        # MG-D13: an audited closure {head, base, audit} or a helper sync closure {head, base, sync_from}, never both.
+        form = 'sync_from' if isinstance(closure, dict) and 'sync_from' in closure else 'audit'
+        keys(closure, {'head', 'base', form})
+        sha(closure['head']); sha(closure['base'])
+        require(broad is not None, 'closure needs the broad it continues')
+        if form == 'audit':
+            audit(closure['audit'])
+            require(closure['audit']['run_ref'] not in [a['run_ref'] for a in broad['audits']], 'closure must be an independent run')
+        else:
+            sha(closure['sync_from'])
     if review['outcome'] == 'not-required':
         require(broad is None and closure is None, 'unneeded review must have null audits')
     for kind in ('manual', 'r4'):
@@ -138,10 +165,13 @@ def validate_record(value, pr):
         require(result['outcome'] in OUTCOMES, 'unknown outcome', 2)
         evidence(result['evidence'])
         require(result['outcome'] != 'pass' or result['evidence'], f'{kind} pass needs evidence')
-        require(('source_head' in result) == ('reuse_approval' in result), 'incomplete manual reuse')
+        # MG-D13: source_head alone is A (code-free sync); with reuse_approval it is B. Approval alone is incomplete.
+        require('reuse_approval' not in result or 'source_head' in result, 'incomplete manual reuse')
         if 'source_head' in result:
-            sha(result['source_head']); pointer(result['reuse_approval'])
+            sha(result['source_head'])
             require(result['outcome'] == 'pass', 'only passed manual evidence may be reused')
+        if 'reuse_approval' in result:
+            pointer(result['reuse_approval'])
     return value
 
 
@@ -227,11 +257,7 @@ class Gate:
         require(0 < len(items) < 3000, 'PR diff unavailable or truncated')
         paths = [path for item in items for path in (item['filename'], item.get('previous_filename', item['filename']))]
         # Use current main, not the PR's classifier, to determine review requirements.
-        classifier = self.contents('scripts/ci/classify-changes.sh', base)
-        output = command(['bash', '-c', classifier, 'classify-changes', '--files-from-stdin'], data='\n'.join(paths)+'\n')
-        flags = dict(line.split('=', 1) for line in output.splitlines())
-        expected = set('rust rust_drift frontend docs env generated traceability workflow unknown'.split())
-        require(set(flags) == expected and all(v in ('true','false') for v in flags.values()), 'invalid main classifier', 2)
+        flags = classify(self.contents('scripts/ci/classify-changes.sh', base), paths)
         # The PR binds to the active packets its own diff touches, not to every packet in head:
         # merged lanes awaiting closeout stay in docs/plans without blocking other PRs.
         active = re.compile(r'docs/plans/\d{4}-\d\d-\d\d-[^/]*\.md')
@@ -329,14 +355,117 @@ class Gate:
         else:
             require(closure is not None and (closure['head'], closure['base']) == (head, base), 'current closure missing')
 
-    def reuse_geometry(self, old_head, old_base, head, base):
-        require(old_head != head, 'reuse source must be previous head')
-        require(git('show', '-s', '--format=%P', head).strip().split() == [old_head, base], 'not a single main merge')
-        for left, right in ((old_base,old_head),(base,head)):
-            require(len(git('merge-base', '--all', left, right).splitlines()) == 1, 'ambiguous merge-base')
-        args = ('diff', '--binary', '--full-index', '--no-ext-diff', '--no-textconv')
-        require(git(*args, f'{old_base}...{old_head}', '--', binary=True) == git(*args, f'{base}...{head}', '--', binary=True),
-                'PR diff changed; manual reuse forbidden')
+    def sync_merges(self, origin, head, base):
+        """MG-D13 sync-only condition: head reaches origin by first parents through sync merges and
+        generated-only regenerations. Returns the merges oldest first as (merge, first, second, merge_base)."""
+        merges, commit = [], head
+        while commit != origin:
+            parents = git('rev-list', '--parents', '-n', '1', commit).split()[1:]
+            if len(parents) == 2:
+                merges.append(self.sync_merge(commit, *parents, base))
+            else:
+                require(len(parents) == 1, f'commit {commit} is neither a sync merge nor a regeneration; source {origin} not reached')
+                lane = sorted(changed(parents[0], commit) - GENERATED)
+                require(not lane, f'lane commit {commit} after source {origin} changes {", ".join(lane)}')
+            commit = parents[0]
+        require(merges, f'no sync merge between source {origin} and head {head}')
+        require(merges[0][2] == base, f'last sync merge {merges[0][0]} takes {merges[0][2]}, not the current base {base}; sync again')
+        return merges[::-1]
+
+    def sync_merge(self, commit, first, second, base):
+        code, _ = git('merge-base', '--is-ancestor', second, base, status=True)
+        require(code == 0, f'merge {commit} takes {second}, which is not in main (not an ancestor of base {base})')
+        bases = git('merge-base', '--all', first, second).split()
+        require(len(bases) == 1, f'merge {commit} has an ambiguous merge-base ({len(bases)} bases)')
+        _, output = git('-c', 'merge.directoryRenames=false', 'merge-tree', '--write-tree', '--name-only', '-z',
+                        first, second, status=True)
+        fields = [field for field in output.partition('\0\0')[0].split('\0') if field]
+        require(fields and SHA.fullmatch(fields[0]), 'command failed: git merge-tree (no tree)', 2)
+        paths = changed(fields[0], commit) | set(fields[1:])
+        if UNION in paths:
+            union = git('merge-file', '-p', '--union', '--object-id', f'{first}:{UNION}', f'{bases[0]}:{UNION}',
+                        f'{second}:{UNION}', binary=True)
+            require(union == git('cat-file', 'blob', f'{commit}:{UNION}', binary=True),
+                    f'merge {commit} resolves {UNION} differently from the union of both sides')
+        lane = sorted(paths - GENERATED - {UNION})
+        require(not lane, f'merge {commit} differs from the automatic merge (conflict or edit) at {", ".join(lane)}')
+        return commit, first, second, bases[0]
+
+    def code_paths(self, merges, base):
+        """MG-D13 code-free condition: main-side paths of every sync merge, classified by current main."""
+        paths = sorted(set().union(*(changed(merge_base, second) for _, _, second, merge_base in merges)))
+        if not paths:
+            return []
+        classifier = self.contents('scripts/ci/classify-changes.sh', base)
+        touches = lambda names: any(classify(classifier, names)[flag] == 'true' for flag in CODE_FLAGS)
+        if not touches(paths):
+            return []
+        return [path for path in paths if touches([path])] or paths
+
+    def reusable(self, origin, head, base, code=True):
+        """Sync-only (and, if asked, code-free) check from origin; returns the code paths the sync brings."""
+        try:
+            merges = self.sync_merges(origin, head, base)
+            return self.code_paths(merges, base) if code else []
+        except GateError as error:
+            if error.code == 2:
+                raise GateError(f'{error}; reuse undecidable: run git fetch origin and retry', 2) from None
+            raise
+
+    def cli(self, *extra):
+        a = self.args
+        scope = ['--packet', a.packet] if a.packet else ['--risk', a.risk or 'R0', '--manual', a.manual or 'required']
+        return shlex.join(['python3', 'scripts/pr-gate.py', 'record', '--pr', str(a.pr), *scope, '--capture', a.capture, *extra])
+
+    def carry_manual(self, old, snap):
+        """MG-D13 A: carry the server manual pass to a new head, or stop before any write with the next step."""
+        manual, head, base = old['manual'], snap['head'], snap['base']
+        source = manual.get('source_head', old['head'])
+        pending = self.cli('--kind', 'manual', '--outcome', 'pending', '--evidence', 'POINTER')
+        require(old['head'] != head,
+                f'base が進んだ。先に同期する: head {head} is unchanged but base moved from {old["base"]} to {base};'
+                ' run git -c merge.directoryRenames=false merge origin/main, push, capture, then record. Nothing written')
+        try:
+            code = self.reusable(old['head'], head, base)
+        except GateError as error:
+            if error.code == 2:
+                raise GateError(f'{error}; or redo L3: {pending}', 2) from None
+            raise GateError(f'manual pass not reusable: {error}. Nothing written; next: redo L3: {pending}') from None
+        if code:
+            evidence = [item for value in manual['evidence'] for item in ('--evidence', value)]
+            b = self.cli('--kind', 'manual', '--outcome', 'pass', *evidence, '--reuse-from', source, '--reuse-approval', 'POINTER')
+            raise GateError(f'manual pass not carried: the sync brings code {", ".join(code)}. Nothing written; next is one of:'
+                            f' (B, needs two sync closures and the owner\'s one-line approval) {b} | (redo L3) {pending}')
+        result = dict(outcome='pass', evidence=list(manual['evidence']), source_head=source)
+        if 'reuse_approval' in manual:
+            result['reuse_approval'] = manual['reuse_approval']
+        return result
+
+    def posted_reviews(self, head):
+        return [r for page in api(f'{self.endpoint}/pulls/{self.args.pr}/reviews?per_page=100', pages=True) for r in page
+                if r['commit_id'] == head and (r['body'] or '').strip()]
+
+    def sync_closure(self, old, current, record, req, snap):
+        """MG-D13: the helper records {head, base, sync_from} instead of an audited closure for a code-free sync."""
+        closure_step = 'record --review-stage closure (監査の closure を要る)'
+        require(not current, '--review-stage sync works only in the first record at a new head (新しい head での最初の record'
+                ' でだけ使える); a record at this head/base exists, so ' + closure_step)
+        require(old and old['review']['outcome'] == 'pass', 'sync closure needs a passed review on the server record; ' + closure_step)
+        broad = old['review']['broad']
+        require(broad and (broad['plan_commit'], broad['amendments']) == (req['plan_commit'], req['amendments']), FRESH_BROAD)
+        closure = old['review']['closure']
+        origin = broad['head'] if closure is None else closure.get('sync_from', closure['head'])
+        bodies = self.posted_reviews(snap['head'])
+        require(not bodies, f'the current head has {len(bodies)} PR reviews with a body; read each, then record --review-stage closure'
+                f' --pr-reviews {len(bodies)}: ' + ', '.join(f"id={r['id']} submitted_at={r.get('submitted_at') or 'not-submitted'}" for r in bodies))
+        try:
+            code = self.reusable(origin, snap['head'], snap['base'])
+        except GateError as error:
+            if error.code == 2:
+                raise
+            raise GateError(f'sync closure not allowed: {error}; {closure_step}') from None
+        require(not code, f'sync closure not allowed: the sync brings code {", ".join(code)}; {closure_step}')
+        return dict(outcome='pass', broad=record['review']['broad'], closure=dict(head=snap['head'], base=snap['base'], sync_from=origin))
 
     def nonci(self, snap):
         server, req = snap['server'], snap['requirements']
@@ -354,13 +483,14 @@ class Gate:
         self.validate_review(record, req, snap['head'], snap['base'])
         for kind in ('manual','r4'):
             require(record[kind]['outcome'] == ('pass' if req[kind] else 'not-required'), f'{kind} incomplete')
-        manual = record['manual']
+        # MG-D13: the source pass was checked against the server when recording; recheck the sync from its origin.
+        manual, closure = record['manual'], record['review']['closure']
         if 'source_head' in manual:
-            # Source pass was checked against the server when recording; verify geometry again.
-            old_base = git('rev-parse', f"{snap['head']}^1^{{commit}}").strip()
-            require(old_base == manual['source_head'], 'manual reuse source parent changed')
-            require(len(git('show', '-s', '--format=%P', snap['head']).split()) == 2, 'manual reuse needs merge')
-            require(git('rev-parse', f"{snap['head']}^2").strip() == snap['base'], 'manual reuse base changed')
+            code = self.reusable(manual['source_head'], snap['head'], snap['base'], code='reuse_approval' not in manual)
+            require(not code, f"manual reuse from {manual['source_head']} brings code without approval: {', '.join(code)}")
+        if closure and 'sync_from' in closure:
+            code = self.reusable(closure['sync_from'], snap['head'], snap['base'])
+            require(not code, f"sync closure from {closure['sync_from']} brings code: {', '.join(code)}")
 
     def rules(self, pr):
         desired = decode_json(self.contents(POLICY, pr['base']['sha']))
@@ -456,7 +586,16 @@ class Gate:
                 broad=old['review']['broad']
                 if (broad['plan_commit'],broad['amendments']) == (req['plan_commit'],req['amendments']):
                     record['review']['broad']=copy.deepcopy(broad)
-        if args.kind == 'review':
+            # MG-D13 A: a manual record without --reuse-from writes its own manual, so it skips this check.
+            if old and req['manual'] and old['manual']['outcome'] == 'pass' and args.kind != 'manual':
+                record['manual']=self.carry_manual(old,snap)
+        if args.kind == 'review' and args.review_stage == 'sync':
+            require(req['minimum'] and args.outcome == 'pass' and not (args.pass_model or args.run_ref or args.evidence
+                    or args.reviewed_head or args.pr_reviews is not None),
+                    '--review-stage sync takes only --outcome pass (no --pass-model/--run-ref/--evidence/--reviewed-head/--pr-reviews)', 2)
+            record['review']=self.sync_closure(old,current,record,req,snap)
+            self.validate_review(record,req,snap['head'],snap['base'])
+        elif args.kind == 'review':
             require(req['minimum'] and args.review_stage and args.pass_model and args.run_ref and args.evidence,
                     'review needs stage/model/run-ref/evidence', 2)
             # SPEC-WF-HARNESS5-D8: the audited head must be the captured head, for broad and closure alike.
@@ -466,8 +605,7 @@ class Gate:
             # D-107 (4): before any write, the declared count must equal the reviewed head's PR reviews with a body.
             require(args.pr_reviews is not None and args.pr_reviews >= 0,
                     'review needs --pr-reviews (count of PR reviews with a body on the reviewed head)', 2)
-            bodies = [r for page in api(f'{self.endpoint}/pulls/{args.pr}/reviews?per_page=100', pages=True) for r in page
-                      if r['commit_id'] == snap['head'] and (r['body'] or '').strip()]
+            bodies = self.posted_reviews(snap['head'])
             require(len(bodies) == args.pr_reviews,
                     f'--pr-reviews {args.pr_reviews} but the reviewed head has {len(bodies)} PR reviews with a body; read each before recording: '
                     + ', '.join(f"id={r['id']} submitted_at={r.get('submitted_at') or 'not-submitted'}" for r in bodies))
@@ -489,13 +627,20 @@ class Gate:
             if args.outcome == 'pass':
                 self.validate_review(record,req,snap['head'],snap['base'])
         else:
-            require((args.reuse_from is None) == (args.reuse_approval is None), 'reuse needs source and owner approval', 2)
+            require(args.reuse_approval is None or args.reuse_from is not None, '--reuse-approval needs --reuse-from', 2)
             result=dict(outcome=args.outcome,evidence=args.evidence)
             if args.reuse_from:
+                # MG-D13: B with --reuse-approval; explicit A (code-free) without it. A reused manual may be reused again.
                 require(args.kind == 'manual' and args.outcome == 'pass' and old and old['manual']['outcome'] == 'pass', 'server manual pass required')
-                require('source_head' not in old['manual'] and args.reuse_from == old['head'] and args.evidence == old['manual']['evidence'], 'manual source/evidence mismatch')
-                self.reuse_geometry(sha(args.reuse_from),old['base'],snap['head'],snap['base'])
-                result.update(source_head=args.reuse_from,reuse_approval=pointer(args.reuse_approval))
+                source=old['manual'].get('source_head',old['head'])
+                require(sha(args.reuse_from) == source and args.evidence == old['manual']['evidence'], 'manual source/evidence mismatch')
+                code=self.reusable(old['head'],snap['head'],snap['base'],code=args.reuse_approval is None)
+                require(not code, f"the sync brings code {', '.join(code)}; --reuse-from alone needs a code-free sync"
+                        ' (B: add --reuse-approval POINTER after two sync closures and the owner\'s approval)')
+                approval=args.reuse_approval or old['manual'].get('reuse_approval')
+                result['source_head']=source
+                if approval:
+                    result['reuse_approval']=pointer(approval)
             require(args.outcome != 'not-required' or not req[args.kind], f'{args.kind} is required')
             record[args.kind]=result
         validate_record(record,args.pr)
@@ -543,7 +688,7 @@ def main():
     parser.add_argument('--kind',choices=('review','manual','r4'))
     parser.add_argument('--outcome',choices=sorted(OUTCOMES))
     parser.add_argument('--evidence',action='append',default=[])
-    parser.add_argument('--review-stage',choices=('broad','closure'))
+    parser.add_argument('--review-stage',choices=('broad','closure','sync'))
     parser.add_argument('--pass-model')
     parser.add_argument('--run-ref')
     parser.add_argument('--reviewed-head')
