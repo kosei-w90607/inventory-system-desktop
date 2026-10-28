@@ -1,6 +1,6 @@
 # Backlog
 
-未了作業・保留・受容済みリスクの参照先。作業を選ぶときに読む。現在の進行状態と active packet は [Plans.md](Plans.md) が所有する。
+未了作業・保留・受容済みリスクの参照先。作業を選ぶときに読む。完了は git log、lane の現在地は helper の status、導入の前の関門・ブロッカー・製品の未決判断は [Plans.md](Plans.md) が持つ（D-145）。
 
 元の本文・未決判断・参照先を移送した。L8-2・L8-5 等の製品の記録は [Plansの該当節](Plans.md#製品の未決判断) が指す。古い記載だけで現在の未実装や blocker と断定せず、着手時に関係する正本と実装を照合する。履歴は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md) を参照。閉じた項目は [閉じた項目の archive](archive/2026-10-19-backlog-closed.md)（2026-10-19）へ移した。
 
@@ -168,6 +168,7 @@
 - 在庫詳細→取引画面の prefill（61/63/64: productCode/direction 事前入力、現行は商品再検索が必要）。
 - Lane 4 GA4 の残余（Final Review Opus P3、2026-09-07）: 件数帯の `z-20` は箱の外では dead CSS（撤去 + selector を `data-list-summary-band` へ、test 5 箇所の churn あり）/ `ff655efd` の時点で `docs/design-system/reference/mockup-d-lists.html:112` の「箱内スクロール `max-height:56vh` は不採用」記述が GA4b で stale。次に ListShell / mockup を触る lane で同期、S
 - 最小ウィンドウ（`docs/SCREEN_DESIGN.md` の 1024×720）の縦の大きさの下限をもう少し小さくできるとありがたいという要望（ノート PC で画面が小さいため、owner 2026-08-20）。寸法の変更は設計判断で、ここでは記録だけ。
+- **CSV取込みの記録の詳細と商品の一括インポートの見た目の 2 点**（owner の決定 2026-10-28、repo 外の回答台帳 TD-509・TD-510。出所は PR #197・#209 の Windows native の L3。後のデザインの刷新で直す）: (1) `src/features/inventory-records/CsvImportRecordDetailPage.tsx` のヘッダで「この取込みを取り消す」が「前の画面へ戻る」より下にずれ、隙間なく並ぶ。`src/features/csv-import/components/RollbackConfirmDialog.tsx` の確認の窓で、説明の下の区切り線が短い。(2) `src/features/products/ProductImportPage.tsx` のエラー行の表で、長い文が右端で切れて横スクロールで読む。折り返して全部見せる。
 
 #### 機能・運用
 
