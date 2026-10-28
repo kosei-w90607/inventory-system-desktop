@@ -247,17 +247,30 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   const productSuggestRef = useRef<ProductAddSuggestController | null>(null);
   // 「今の数を入れる」の欄の商品（route が別の商品へ変われば読込みの前からその商品）。遅い保存の応答の照合に使う（73）
   const standaloneCodeRef = useRef<string | null>(null);
-  // 今の欄に出ている商品。route の product の読込みが失敗したら照合をこれへ戻す（73）
+  // 今の欄に出ている商品。route の product の読込みが失敗するか route の product が外れたら照合をこれへ戻す（73）
   const standaloneFieldCodeRef = useRef<string | null>(null);
   // 欄の商品の保存が、route の別の商品の読込みの決着より先に成功したときの後始末（閉じる・戻る）。
-  // 読込みが失敗して欄がその商品のまま決まれば実行し、別の商品の欄が開けば捨てる（73）
+  // 読込みが失敗するか route の product が外れて欄がその商品のまま決まれば実行し、別の商品の欄が開けば捨てる（73）
   const standalonePendingCloseRef = useRef<{ productCode: string; finish: () => void } | null>(
     null,
   );
   // 欄の読込み（route の product・「入れ直す」）は最後の操作の応答だけを当てる（73）
   const standaloneSeqRef = useRef(0);
+  // 保存の成功の後始末を行う時点の route の product と、画面が mount 中か（73）
+  const routeProductRef = useRef(search.product);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    // StrictMode の dev は cleanup の後に effect をもう一度走らせるので、body でも立てる
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // route の product の effect より前に置く（その effect が実行する閉じ待ちが新しい route を読む）
+  useEffect(() => {
+    routeProductRef.current = search.product;
     setEffectiveSearch(search);
   }, [search]);
 
@@ -294,7 +307,13 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
   // 73「今の数を入れる」（商品を受けて開く）: 棚卸しの有無によらず fresh な計数の欄を開く。
   // stocktake_item_id は進行中の棚卸しにその商品の明細があるときだけ送る
   useEffect(() => {
-    if (searchProduct === undefined || !statusLoaded) return;
+    if (!statusLoaded) return;
+    // route の product が外れても欄は残す（途中の読込みの応答は前の cleanup で捨てた）。
+    // 欄は今の商品のまま決まるので、その商品の閉じ待ちがあれば実行する（73）
+    if (searchProduct === undefined) {
+      settleStandaloneField();
+      return;
+    }
     standaloneCodeRef.current = searchProduct;
     const seq = ++standaloneSeqRef.current;
     const isStale = () => seq !== standaloneSeqRef.current;
@@ -311,7 +330,10 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
         const target = await loadStandaloneTarget(searchProduct, itemId);
         if (!isStale()) setStandaloneTarget(target);
       } catch (error) {
-        if (!isStale()) settleStandaloneLoadFailure(error);
+        if (!isStale()) {
+          setErrorMessage(describeError(error));
+          settleStandaloneField();
+        }
       }
     })();
     return () => {
@@ -324,11 +346,10 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     onSearchChange(updater);
   }
 
-  // 欄の読込み（route の product・「入れ直す」）の最後の操作が失敗したら、欄は前の商品のままなので、
+  // 欄が今の商品のまま決まったら（欄の読込み〈route の product・「入れ直す」〉の最後の操作が失敗した、route の product が外れた）、
   // 遅い保存の応答の照合を今の欄の商品へ戻し、その商品の閉じ待ちがあれば実行する（73）
-  function settleStandaloneLoadFailure(error: unknown) {
+  function settleStandaloneField() {
     standaloneCodeRef.current = standaloneFieldCodeRef.current;
-    setErrorMessage(describeError(error));
     const pending = standalonePendingCloseRef.current;
     standalonePendingCloseRef.current = null;
     if (pending !== null && pending.productCode === standaloneCodeRef.current) pending.finish();
@@ -341,7 +362,10 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
       const loaded = await loadStandaloneTarget(target.product_code, target.stocktake_item_id);
       if (seq === standaloneSeqRef.current) setStandaloneTarget(loaded);
     } catch (error) {
-      if (seq === standaloneSeqRef.current) settleStandaloneLoadFailure(error);
+      if (seq === standaloneSeqRef.current) {
+        setErrorMessage(describeError(error));
+        settleStandaloneField();
+      }
     }
   }
 
@@ -370,7 +394,14 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
     const back = allowedReturnTo(search.returnTo, search.product);
     await handleSaved(productCode);
     const finish = () => {
-      if (back !== null && productCode === search.product) {
+      // 画面を離れた後は何もしない（戻る・閉じるの route の更新は、離れた先から連れ戻す。73）
+      if (!mountedRef.current) return;
+      // 実行する時点で route の product が外れていれば、保存の時の戻り先へ戻らずに留まる（73）
+      if (
+        back !== null &&
+        productCode === search.product &&
+        routeProductRef.current !== undefined
+      ) {
         setStandaloneTarget(null);
         onReturnTo?.(back);
         return;
@@ -382,7 +413,7 @@ export function StocktakePage({ search, onSearchChange, onReturnTo }: StocktakeP
       return;
     }
     // 保存の応答の保留中に欄が別の商品へ変わっていれば、その欄（未保存の入力）を閉じない・戻らない。
-    // 欄がこの商品のまま別の商品の読込みを待っているなら、その読込みが失敗した時点で閉じる
+    // 欄がこの商品のまま別の商品の読込みを待っているなら、その読込みが失敗するか route の product が外れた時点で閉じる
     if (standaloneFieldCodeRef.current === productCode) {
       standalonePendingCloseRef.current = { productCode, finish };
     }
@@ -1466,8 +1497,11 @@ export function StocktakeItemList({
                     >
                       {formatDifference(diff, item.stock_unit)}
                     </TableCell>
+                    {/* 効く計数の業務日。未入力・業務日 null は「—」で、保存の時刻へ戻さない（73 UI-10-D10） */}
                     <TableCell className="text-muted-foreground">
-                      {formatCountedAt(item.counted_at)}
+                      {item.actual_count === null || item.count_business_date === null
+                        ? "—"
+                        : item.count_business_date}
                     </TableCell>
                   </TableRow>
                 );

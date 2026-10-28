@@ -13,6 +13,7 @@ import { invalidateByContract, invalidationContract } from "@/lib/invalidation-c
 import { CMD_ERROR_KIND, InvokeError, isInvokeError, unwrapResult } from "@/lib/invoke";
 import { csvImportReducer } from "../reducer";
 import type { CsvImportState, ErrorRecoverTo } from "../types";
+import { useRollbackCsvImport } from "./useRollbackCsvImport";
 
 const INITIAL_STATE: CsvImportState = { status: "idle" };
 
@@ -119,25 +120,11 @@ export function useCsvImportFlow(): UseCsvImportFlowResult {
     },
   });
 
-  const rollbackMutation = useMutation({
-    mutationFn: (args: { csvImportId: number; settlementDate: string }) =>
-      unwrapResult(commands.rollbackCsvImport(args.csvImportId), {
-        source: "commands",
-        cmd: "rollback_csv_import",
-      }),
-    retry: 0,
-    onSuccess: async (result) => {
+  // 取消の Toast・再取得・失敗の Toast は共有の hook（55 UI-07-D18）。ここは成功の後の dispatch と結果の保持だけ
+  const rollbackMutation = useRollbackCsvImport({
+    onSuccess: (result) => {
       setRollbackResult(result);
       dispatch({ type: "rollback_succeeded" });
-      // Scope 7(a) UI 表示磨き batch: 取消は破壊的操作の完了通知であり、既定 3 秒
-      // (RootLayout.tsx の Toaster duration) では非IT高齢operatorが読み切れない
-      // おそれがあるため、この通知だけ個別に長く表示する（Toaster 全体設定は不変）。
-      toast.success("取込みを取り消しました", { duration: 8000 });
-      await invalidateByContract(queryClient, invalidationContract.csvImportRollback());
-    },
-    onError: () => {
-      // §55.9 rollback 失敗の UX: トーストのみ + state 据え置き (result variant 維持して再試行可能)
-      toast.error("取り消しに失敗しました。もう一度お試しください");
     },
   });
 
@@ -165,12 +152,9 @@ export function useCsvImportFlow(): UseCsvImportFlowResult {
 
   const rollback = useCallback(
     (csvImportId: number) => {
-      // §55.2 設計: rollback は result state からのみ valid (settlementDate を pre-capture)
+      // §55.2 設計: rollback は result state からのみ valid
       if (state.status !== "result") return;
-      rollbackMutation.mutate({
-        csvImportId,
-        settlementDate: state.settlementDate,
-      });
+      rollbackMutation.mutate(csvImportId);
     },
     [state, rollbackMutation],
   );

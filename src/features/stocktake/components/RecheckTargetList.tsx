@@ -2,6 +2,7 @@
 //
 // 要再確認の商品の一覧（73 の棚卸しの画面の上部、55 の取込みと取消の結果）。
 // 各行は商品・範囲（単位どおり）・理由。状態は文字と icon で示し、色だけにしない。
+// `renderAction` を渡さないとき（取消の確認の中。55 UI-07-D18）は「操作」列と入れ直しの文を出さない。
 
 import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
@@ -22,7 +23,7 @@ import { formatRecountReasons, formatStockOrRange } from "../lib/stocktake-forma
 export interface RecheckTargetListProps {
   title: string;
   targets: readonly CountRecoveryTarget[];
-  renderAction: (target: CountRecoveryTarget) => ReactNode;
+  renderAction?: (target: CountRecoveryTarget) => ReactNode;
 }
 
 export function RecheckTargetList({ title, targets, renderAction }: RecheckTargetListProps) {
@@ -33,14 +34,14 @@ export function RecheckTargetList({ title, targets, renderAction }: RecheckTarge
         <AlertTriangle aria-hidden="true" className="size-5" />
         {title}
       </h2>
-      <p className="text-sm">棚の数を確かめて入れ直してください。</p>
+      {renderAction ? <p className="text-sm">棚の数を確かめて入れ直してください。</p> : null}
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>商品</TableHead>
             <TableHead className="text-right">在庫</TableHead>
             <TableHead>理由</TableHead>
-            <TableHead className="text-right">操作</TableHead>
+            {renderAction ? <TableHead className="text-right">操作</TableHead> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -64,7 +65,9 @@ export function RecheckTargetList({ title, targets, renderAction }: RecheckTarge
               <TableCell className="whitespace-normal">
                 {formatRecountReasons(target.recount_reasons).join("。")}
               </TableCell>
-              <TableCell className="text-right">{renderAction(target)}</TableCell>
+              {renderAction ? (
+                <TableCell className="text-right">{renderAction(target)}</TableCell>
+              ) : null}
             </TableRow>
           ))}
         </TableBody>

@@ -54,6 +54,8 @@ export interface ProductFormProps {
   isDiscontinued?: boolean;
   /** 修正の画面の「現在庫」の隣に「要再確認」の badge を出す（写しの stock_recheck。51） */
   stockRecheck?: boolean;
+  /** 在庫の節の「数量単位」「POS販売で在庫を減らす」の行のすぐ下に出す案内（在庫連動を始める拒否。51） */
+  stockSyncNotice?: React.ReactNode;
   isSaving: boolean;
   isTogglePending?: boolean;
   saveDisabled?: boolean;
@@ -88,6 +90,7 @@ export function ProductForm({
   productName,
   isDiscontinued = false,
   stockRecheck = false,
+  stockSyncNotice,
   isSaving,
   isTogglePending = false,
   saveDisabled = false,
@@ -460,6 +463,7 @@ export function ProductForm({
             update("posStockSync", checked);
           }}
         />
+        {stockSyncNotice}
       </FormSection>
 
       {mode === "edit" && productCodeLabel !== undefined ? (

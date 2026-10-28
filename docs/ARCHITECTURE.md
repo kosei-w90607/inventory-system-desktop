@@ -215,7 +215,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 ### 実装順序（依存関係に基づく）
 
-以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は [Plans](Plans.md) を参照する。
+以下は初期の段階的な開発順序であり、現在の実行時呼出し図や未了作業の一覧ではない。段階の行の tag（`v0.7.0-ui-foundation`〜`v1.0.0`）は計画の時点の名で、作った tag は履歴境界の前の private archive の記録（public repo に tag は無い。[引き継ぎ案内](PROJECT_HANDOFF.md) の履歴境界の節）。v1.0 の release は自動在庫連動の完成まで待つ（D-070）。実行時の関係は [現行構造図](diagrams/current-system.md)、作業の現在地は helper の status と git log、導入の前の関門は [Plans](Plans.md) を参照する（D-145）。
 
 ```
 第1段階: 基盤

@@ -17,7 +17,7 @@ export function formatListDifference(difference: number | null): string {
 }
 
 /**
- * 最終カウント日時を表示する。null は「—」、値ありは `T` 区切りをスペースに変換する
+ * 棚卸しの日時（開始・完了）を表示する。null は「—」、値ありは `T` 区切りをスペースに変換する
  * （`src/features/stock-movements/lib/movement-formatters.ts` の `formatMovementDateTime` と同じ変換）。
  */
 export function formatCountedAt(value: string | null): string {

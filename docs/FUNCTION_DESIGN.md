@@ -126,7 +126,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 ### BIZ層（ビジネスロジック）
 - [BIZ-01: 商品管理ロジック](function-design/30-biz-product-service.md) — create/update/toggle/search/generate_code + preview_import/commit_import
 - [BIZ-02: 在庫変動ロジック](function-design/31-biz-inventory-service.md) — apply_stock_change, create_receiving/return/manual_sale/disposal
-- [BIZ-03: Z004商品別CSV取込みパイプライン](function-design/32-biz-csv-import-service.md) — parse_and_validate, commit_csv_import, rollback_csv_import
+- [BIZ-03: Z004商品別CSV取込みパイプライン](function-design/32-biz-csv-import-service.md) — parse_and_validate, commit_csv_import, rollback_csv_import, preview_rollback_csv_import
 - [BIZ-04: PLU書出しロジック](function-design/33-biz-plu-export-service.md) — prepare_plu_export, confirm_plu_export_saved, list_plu_dirty
 - [BIZ-05: 売上集計ロジック](function-design/34-biz-sales-service.md) — get_daily_sales, get_monthly_sales
 - [BIZ-06: 棚卸しロジック](function-design/35-biz-stocktake-service.md) — start_stocktake, update_count, complete_stocktake
