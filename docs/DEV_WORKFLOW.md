@@ -182,7 +182,7 @@ Wave Operation は、互いに干渉しない複数 change を Draft PR まで�
 - Plan Reviewer と Final Reviewer は lane ごとの独立 fresh context とし、一次レビューは並列に実行できるが、相互修正案の `裁定は Coordinator が直列`に行う。Review Rules の Findings Freeze と workflow gate change の Double Audit を lane ごとに適用する。
 - Draft PR までは lane を並列に進める。`Ready 化は merge train 先頭の lane のみ`とし、owner は batch Ready 承認時に train 順序を指定する。Coordinator は既定案として review 通過順を提示する。
 - 先頭 lane の merge 後、後続 lane は main との同期を `origin/main` の単段 merge（`git -c merge.directoryRenames=false merge origin/main`）で行い（[Stacked train](#stacked-train)）、`Plan Commit`・`Amendments` と Phase を変えない。conflict の解消が内容を変えた場合は通常の再検証と現在版の closure を行う。
-- L3（manual）は train の順を待たずに頼んでよい。L3 の後の base 同期で manual を使い回せるのは [merge-evidence](agent-guidance/merge-evidence.md) MG-D13 の同期だけの条件を満たす版で、取り込んだ main 側の変更が code に触れなければ helper が自動で引き継ぎ、触れれば同期の closure の 2 本と owner の承認で使い回す。L3 の後に lane の編集（生成物の再生成を除く）を入れたら L3 をやり直す（D-144。D-124 の先頭で頼む既定と束ねる手順を置き換えた）。
+- L3（manual）は train の順を待たずに頼んでよい。L3 の後の base 同期で manual を使い回せるのは [merge-evidence](agent-guidance/merge-evidence.md) MG-D13 の同期だけの条件を満たす版で、取り込んだ main 側の変更が code に触れなければ helper が自動で引き継ぎ、触れれば同期の closure の 2 本と owner の承認で使い回す。L3 の後に lane の編集（生成物の再生成を除く）を入れたら L3 をやり直す（D-144。D-124 の先頭で頼む既定と束ねる手順を置き換えた）。先に merge する PR と生成物・`docs/decision-log.md` の外で衝突する見込みがある PR（`git -c merge.directoryRenames=false merge-tree --write-tree --name-only <この PR の head> <先の PR の head>` で確かめる）は、同期の衝突で L3 が外れるので、その merge と同期の後に L3 を頼む（`docs/decision-log.md` の末尾の追記どうしの衝突は union の結果なら MG-D13 が受ける）。
 - owner は 1 回の train 承認で全 lane の Ready 遷移実行を Coordinator に委任できるが、[Owner Effort Budget](#owner-effort-budget) の lane ごとの decision point 計上と、各 lane の merge gate は省略できない。
 
 ### Stacked train
