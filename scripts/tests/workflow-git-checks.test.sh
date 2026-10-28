@@ -616,14 +616,18 @@ sed -i '/^## Workflow State/a\\n- Phase: implementing' "$packet"
 echo "PASS: workflow state marker; Phase not evaluated"
 
 # D-102 D4: Evidence Mode is read only from the first `## Workflow State` h2 section.
-printf '%s\n' '' '## Scope' '' '- Evidence Mode: legacy の語' >> "$packet"
+printf '%s\n' '' '## Notes' '' '- Evidence Mode: legacy の語' >> "$packet"
 capture_check "$repo" output
 [[ "$CHECK_STATUS" == 0 ]] || fail "body bullets outside Workflow State were read: $output"
 cp "$packet" "$tmp/d4-packet.md"
-sed -i 's/^## Scope$/## Workflow State\n\n- Evidence Mode: legacy\n\n## Scope/' "$packet"
+sed -i 's/^## Notes$/## Workflow State\n\n- Evidence Mode: legacy\n\n## Notes/' "$packet"
 capture_check "$repo" output
-[[ "$CHECK_STATUS" == 0 ]] || fail "Evidence Mode in a second Workflow State section was counted: $output"
-echo "PASS: only the first Workflow State section is read"
+# Final review C1 (rewritten): two Workflow State sections are ambiguous for the approval judgement (the helper's rule),
+# and the second section's Evidence Mode is still not what stops it.
+[[ "$CHECK_STATUS" != 0 ]] || fail "two Workflow State sections were accepted"
+assert_contains "$output" "missing/ambiguous" "ambiguous Workflow State reason missing"
+assert_not_contains "$output" "Evidence Mode は廃止" "Evidence Mode in a second Workflow State section was counted"
+echo "PASS: a second Workflow State section is ambiguous, its Evidence Mode is not read"
 cp "$tmp/d4-packet.md" "$packet"
 commit_all "$repo" "restore" > /dev/null
 
@@ -719,3 +723,23 @@ commit_all "$repo" "docs: closeout X" > /dev/null
 capture_check "$repo" output
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "AR5: archive move rejected: $output"
 echo "PASS: AR5"
+
+# Final review C1: after approval, the plan sections must equal the latest approved snapshot (or register --amend).
+repo="$tmp/plan-drift"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+base_commit "$repo"
+write_packet "$repo" "2026-02-02-drift.md" "pending" "none"
+printf '\n## Scope\n\n- reviewed item\n' >> "$repo/docs/plans/2026-02-02-drift.md"
+plan_sha="$(commit_all "$repo" "docs(plans): plan-first")"
+sed -i "s/^- Plan Commit: pending$/- Plan Commit: $plan_sha/; s/^- Phase: plan-gate$/- Phase: implementing/" "$repo/docs/plans/2026-02-02-drift.md"
+commit_all "$repo" "docs(plans): Plan Commit を固定する" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "C1: unchanged plan after approval rejected: $output"
+printf -- '- unreviewed item\n' >> "$repo/docs/plans/2026-02-02-drift.md"
+commit_all "$repo" "docs(plans): widen scope silently" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "C1: plan change after approval accepted"
+assert_contains "$output" "計画の節が承認の後に変わった" "C1: reason missing"
+assert_contains "$output" "plan-approve.sh docs/plans/2026-02-02-drift.md --amend" "C1: next step missing"
+echo "PASS: C1 plan change after approval"

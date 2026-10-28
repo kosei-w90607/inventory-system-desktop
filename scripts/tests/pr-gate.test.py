@@ -680,6 +680,25 @@ class CLI(unittest.TestCase):
                 self.assertIn('approved packet condition changed: '+key,result)
                 self.run_cli('ready','--packet',packet,expected=1)
 
+    def test_plan_change_after_approval_rejected(self):
+        # Final review C1 (D-145 H2/H7): the plan sections of the latest approved snapshot bind HEAD; a Scope edit
+        # without a Gated Amendment stops status, capture and Ready, and names the --amend route.
+        packet,fields=self.configure_packet()
+        scope=lambda text:text+'\n## Scope\n\n- reviewed item\n'
+        self.state['snapshots'][self.plan_ref][packet]=scope(self.state['snapshots'][self.plan_ref][packet])
+        self.state['contents'][packet]=scope(self.packet_text(fields));self.save()
+        self.assertNotIn('approved plan changed',' '.join(self.run_cli('status','--packet',packet)['blockers']))
+        self.state['contents'][packet]=self.packet_text(fields)+'\n## Scope\n\n- reviewed item\n- unreviewed item\n';self.save()
+        for action in ('status','capture','ready'):
+            with self.subTest(action=action):
+                error=self.run_cli(action,'--packet',packet,expected=1)
+                for text in ('approved plan changed','Scope','plan-approve.sh '+packet+' --amend'):self.assertIn(text,error)
+    def test_old_pre_gate_phase_is_not_approved(self):
+        # Final review C1: an old packet still at a pre-gate Phase is not approved even with a SHA (the old rule).
+        packet,fields=self.configure_packet(Phase='plan-gate')
+        status=self.run_cli('status','--packet',packet)
+        self.assertEqual(status['blockers'],['Plan Gate incomplete'])
+        self.assertIn('Plan Gate incomplete',self.run_cli('capture','--packet',packet,expected=1))
     def test_execution_mode_change_is_not_a_gate_condition(self):
         # T-H6: approved snapshot carries Execution Mode; current changes or drops it without a condition error.
         for current in ('dual-vendor-no-fable',None):
@@ -1305,6 +1324,15 @@ class PacketForm(SyncCase):
         self.repo.move(PKT,'docs/plans/2026-10-22-renamed.md');self.repo.git('commit','-qm','rename')
         self.assertEqual(g.packet_form('docs/plans/2026-10-22-renamed.md',old_origin,self.head()),'new')
         with self.assertRaisesRegex(g.GateError,'never renamed or re-cut'):g.parse_packet(rebuild_packet(),'new')
+    def test_unreadable_parent_tree_is_an_error(self):
+        # Final review C3: a failed ls-tree of the add's parent is undecidable, never 'old'.
+        self.add(rebuild_packet())
+        real=self.repo.bridge
+        def failing(*args,**kw):
+            if args and args[0]=='ls-tree':raise g.GateError('command failed: git (exit 128)',2)
+            return real(*args,**kw)
+        with patch.object(g,'git',side_effect=failing),self.assertRaisesRegex(g.GateError,'tree を読めず'):self.form()
+        self.assertEqual(self.form(),'old')  # a successful empty listing is the absence of plan-approve.sh
     def test_root_add_and_missing_add_are_errors(self):
         with self.assertRaisesRegex(g.GateError,'commit が見つからない'):self.form()
         self.repo.git('checkout','-q','--orphan','root');self.repo.git('rm','-rqf','.')
@@ -1405,12 +1433,20 @@ class PacketReuse(SyncCase):
                 self.docs_stop(self.old(req=NO_MANUAL),'L3 節が変わった')
     def test_rc_machine_closure_after_amendment_needs_audit(self):
         # GA (D-145 (7)) asks for an audited closure: neither the docs nor the sync machine closure may stand in for it.
+        # Final review C4: with the same plan sections the next step is the audited closure, not a fresh broad.
         self.lane({'docs/lane.md':'p3\n'})
         amended=NO_MANUAL|dict(amendments=[self.repo.source])
+        closure='a fresh broad is not needed; record --review-stage closure'
+        self.docs_stop(self.old(req=NO_MANUAL),closure,req=amended)
+        for stage in ('sync','docs'):
+            with self.subTest(stage=stage),self.assertRaises(g.GateError) as caught:
+                self.rec(self.old(req=NO_MANUAL),kind='review',req=amended,stage=stage,packet=PKT,
+                         **SYNC|dict(values=['https://example.invalid/p3'] if stage=='docs' else []))
+            self.assertIn(closure,str(caught.exception));self.assertNotIn('fresh broad required',str(caught.exception))
+            self.assertEqual(self.writes,[])
+        # Changed plan sections after the amendment still need a fresh broad.
+        self.reset();self.edit(l3='- PASS 基準: 9 pt 以上\n',scope='- widened\n')
         self.docs_stop(self.old(req=NO_MANUAL),FRESH_BROAD,req=amended)
-        with self.assertRaises(g.GateError) as caught:
-            self.rec(self.old(req=NO_MANUAL),kind='review',req=amended,stage='sync',packet=PKT,**SYNC)
-        self.assertEqual((str(caught.exception),self.writes),(FRESH_BROAD,[]))
     def test_rc4_r4_rejected(self):
         self.lane({'docs/lane.md':'p3\n'})
         self.docs_stop(self.old(req=NO_MANUAL),'needs an R3',req=NO_MANUAL|dict(risk='R4'))

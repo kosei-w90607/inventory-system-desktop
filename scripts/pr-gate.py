@@ -263,12 +263,50 @@ def parse_packet(text, form=None):
     if written == 'old':
         require(fields['Risk'] != 'R4' or (r4 and minimum == '2'), 'R4 gates missing')
         minimum = int(minimum)
+        if fields['Phase'] in PRE_GATE:
+            plan = 'pending'  # Final review C1: a pre-gate old packet is not approved, whatever its Plan Commit says
     else:
         # TD-484: R3 and R4 take 2; a written minimum only raises; written r4/manual are never dropped.
         minimum = max(2, int(minimum or 0))
         r4 = r4 or fields['Risk'] == 'R4'
         manual = manual or 'L3' in sections(text)
     return dict(risk=fields['Risk'], plan_commit=plan, amendments=amendments, minimum=minimum, manual=manual, r4=r4)
+
+
+# An old packet still at one of these Phases is not approved even when it carries a SHA (the old helper's rule).
+PRE_GATE = ('kickoff', 'spec-check', 'design', 'plan-draft', 'plan-gate')
+
+
+def plan_texts(text, risk):
+    """Every plan section present (the plan_sections names, both Ledger forms, R4 recovery headings)."""
+    found = sections(text)
+    names = ['Scope', 'Acceptance Criteria', 'Contract Ledger', 'Spec Contract', 'Trace Matrix']
+    if risk == 'R4':
+        names += [n for n in found if n == 'Data Safety' or 'Recovery' in n or 'Rollback' in n]
+    return {name: found[name] for name in names if name in found}
+
+
+def plan_drift(path, approved_text, current_text, risk):
+    """Final review C1 (D-145 (2)(7)): the plan sections must equal the latest approved snapshot; returns the refusal."""
+    old, new = plan_texts(approved_text, risk), plan_texts(current_text, risk)
+    names = sorted(name for name in set(old) | set(new) if old.get(name) != new.get(name))
+    if not names:
+        return None
+    return (f'approved plan changed: 計画の節が承認の後に変わった（{", ".join(names)}）。計画の review を受け、'
+            f'scripts/plan-approve.sh {path} --amend <REVIEWED_HEAD> で登録する')
+
+
+def approval_state(path, text):
+    """For the git check: ('pending', None) or ('approved', refusal or None) against the latest approved snapshot."""
+    fields = workflow_fields(text)
+    plan, amendments = fields.get('Plan Commit', 'pending'), fields.get('Amendments', 'none').strip()
+    if plan == 'pending' or (packet_format(text) == 'old' and fields.get('Phase') in PRE_GATE):
+        return 'pending', None
+    ref = re.split(r'[,\s]+', amendments)[-1] if amendments not in ('', 'none') else plan
+    approved = try_git('show', f'{ref}:{path}')
+    if approved is None:
+        return 'approved', f'{path}: 承認の版 {ref} の packet を読めない（git fetch origin）'
+    return 'approved', plan_drift(path, approved, text, fields.get('Risk'))
 
 
 def gate_conditions(text):
@@ -365,7 +403,9 @@ def packet_form(path, origin, head='HEAD'):
     raw = re.findall(r'^parent ([0-9a-f]{40})$', try_git('cat-file', '-p', adds[-1]) or '', flags=re.M)
     require(raw == parents and try_git('cat-file', '-e', f'{parents[0]}^{{commit}}') is not None,
             f'{path}: packet を足した commit {adds[-1]} が shallow の境にあり、形式を判定できない（full history で取り直す）')
-    return 'new' if (try_git('ls-tree', '--name-only', parents[0], '--', APPROVE) or '').strip() else 'old'
+    listed = try_git('ls-tree', '--name-only', parents[0], '--', APPROVE)
+    require(listed is not None, f'{path}: 親 {parents[0]} の tree を読めず、形式を判定できない（git fetch origin）')
+    return 'new' if listed.strip() else 'old'
 
 
 def workflow_scope(env_base, names):
@@ -438,9 +478,12 @@ class Gate:
             result = parse_packet(packet_text, form)
             if result['plan_commit'] != 'pending':
                 approved_ref = result['amendments'][-1] if result['amendments'] else result['plan_commit']
-                approved = gate_conditions(self.contents(self.args.packet, approved_ref))
+                approved_text = self.contents(self.args.packet, approved_ref)
+                approved = gate_conditions(approved_text)
                 for field, value in gate_conditions(packet_text).items():
                     require(approved.get(field) == value, f'approved packet condition changed: {field}')
+                drift = plan_drift(self.args.packet, approved_text, packet_text, result['risk'])
+                require(not drift, drift)
         else:
             require(not active, 'R2+ active packet requires --packet')
             require(self.args.risk in ('R0','R1','R2') and self.args.manual in ('required','not-required'),
@@ -698,7 +741,10 @@ class Gate:
         require(old and old['review']['outcome'] == 'pass', f'{stage} closure needs a passed review on the server record; ' + closure_step)
         broad = old['review']['broad']
         # A Gated Amendment needs an audited closure (D-145 (7)); the machine closures take the same Plan contract only.
-        require(broad and (broad['plan_commit'], broad['amendments']) == (req['plan_commit'], req['amendments']), FRESH_BROAD)
+        same = broad and (broad['plan_commit'], broad['amendments']) == (req['plan_commit'], req['amendments'])
+        require(same or not (broad and self.plan_same(broad, req, snap['head'])),
+                f'Gated Amendment after the broad with the same plan sections: a fresh broad is not needed; {closure_step}')
+        require(same, FRESH_BROAD)
         closure = old['review']['closure']
         origin = broad['head'] if closure is None else closure.get('sync_from', closure['head'])
         bodies = self.posted_reviews(snap['head'])

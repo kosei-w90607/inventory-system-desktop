@@ -152,19 +152,29 @@ import importlib.util, os, sys
 spec = importlib.util.spec_from_file_location('pr_gate', sys.argv[1])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 names = [f'docs/plans/{n}' for n in sorted(os.listdir('docs/plans'))] if os.path.isdir('docs/plans') else []
+# \x1f: a non-whitespace separator, so an empty field never shifts the next one into its place.
 try:
     origin = m.plan_origin(sys.argv[2] or None)
-    print('origin\t' + (origin or ''))
+    print('origin\x1f' + (origin or ''))
     for path in m.active_packets(origin, names):
-        print('active\t' + path)
+        try:
+            state, problem = m.approval_state(path, open(path, encoding='utf-8').read())
+        except m.GateError as error:
+            state, problem = 'approved', f'{path}: Workflow State を読めない（{error}）'
+        print(f'active\x1f{path}\x1f{state}\x1f{problem or ""}')
 except m.GateError as error:
-    print(f'error\t{error}')
+    print(f'error\x1f{error}')
 PY
-)" || scope=$'error\tpython3 と scripts/pr-gate.py が必要'
-    while IFS=$'\t' read -r kind value; do
+)" || scope=$'error\x1fpython3 と scripts/pr-gate.py が必要'
+    local state problem
+    local -a pending=() drifts=()
+    while IFS=$'\x1f' read -r kind value state problem; do
         case "$kind" in
             origin) origin="$value" ;;
-            active) active+=("$value") ;;
+            active)
+                active+=("$value")
+                [[ "$state" == pending ]] && pending+=("$value")
+                [[ -n "$problem" ]] && drifts+=("$problem") ;;
             error)
                 echo "❌ [workflow-git] active な packet を決められない: $value"
                 exit 1 ;;
@@ -189,7 +199,12 @@ PY
         done < <(find "$PLAN_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | sort)
     fi
 
-    local pending=()
+    # Final review C1: the plan sections after approval equal the latest approved snapshot (or a registered --amend).
+    for problem in "${drifts[@]}"; do
+        echo "❌ [workflow-git] $problem"
+        FAIL=1
+    done
+
     for file in "${active[@]}"; do
         # Evidence Mode は最初の `## Workflow State` の h2 の節だけから読む（helper と同じ範囲、D-102 D4）。
         local ws_section
@@ -198,9 +213,6 @@ PY
             [[ "$(sed -n 's/^- Evidence Mode: *//p' <<<"$ws_section" | sed -E 's/[[:space:]]+$//')" != "github" ]]; then
             echo "❌ [workflow-git] Evidence Mode は廃止。書くなら github: $file"
             FAIL=1
-        fi
-        if [[ "$(sed -n 's/^- Plan Commit: *//p' <<<"$ws_section" | sed -E 's/[[:space:]]+$//' | head -1)" == "pending" ]]; then
-            pending+=("$file")
         fi
         check_plan_commit_ancestry "$file"
     done
@@ -224,6 +236,8 @@ PY
 
     if [[ "$FAIL" -eq 0 ]]; then
         echo "✅ [workflow-git] PK5・先走りの検査 OK（active な packet ${#active[@]} 件）"
+    elif [[ -z "${WORKFLOW_BASE_SHA:-}" ]]; then
+        echo "ℹ️  [workflow-git] 起点は origin/main と HEAD の merge-base。origin/main が古ければ git fetch origin してから回し直す"
     fi
 
     exit "$FAIL"

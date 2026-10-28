@@ -138,4 +138,16 @@ before="$(git -C "$repo" rev-parse HEAD)"
 approve "$PKT" "$reviewed"; refused "PA5 side branch" "not a sync of main" "$before"
 echo "PASS: PA5"
 
+# Final review C2: a failure to list the merges stops before any write (never read as "no merge").
+new_repo pa-c2
+shim="$tmp/fail-merge-list"; mkdir -p "$shim"
+printf '#!/usr/bin/env bash\nfor a in "$@"; do [[ "$a" == --merges ]] && exit 2; done\nexec %q "$@"\n' "$(command -v git)" > "$shim/git"
+chmod +x "$shim/git"
+before="$(git -C "$repo" rev-parse HEAD)"
+set +e
+out="$(cd "$repo" && PATH="$shim:$PATH" bash scripts/plan-approve.sh "$PKT" "$reviewed" 2>&1)"; status=$?
+set -e
+refused "C2 merge list failure" "cannot list the merges" "$before"
+echo "PASS: C2"
+
 echo "PASS: plan-approve"

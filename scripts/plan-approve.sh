@@ -87,7 +87,10 @@ paths = {p for p in lane.stdout.splitlines() if p}
 if lane.returncode or paths - {packet}:
     stop(f'lane commits after {reviewed} change {", ".join(sorted(paths - {packet})) or "(git log failed)"}; '
          'the reviewer must read the current plan')
-merges = git('rev-list', '--first-parent', '--merges', f'{reviewed}..HEAD').stdout.split()
+listed = git('rev-list', '--first-parent', '--merges', f'{reviewed}..HEAD')
+if listed.returncode:
+    stop(f'cannot list the merges after {reviewed} (git rev-list exit {listed.returncode}); run git fetch origin and retry')
+merges = listed.stdout.split()
 if merges:
     main = git('rev-parse', '--verify', '-q', 'origin/main^{commit}').stdout.strip()
     if not main:

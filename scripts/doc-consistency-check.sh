@@ -1683,6 +1683,9 @@ check_new_file_line_references() {
         while IFS= read -r line; do
             error "FL: 生きた docs に path:行 の引用を新しく足した（節名・symbol・決定 ID で引く。D-125）-> $line"
         done <<< "$hits"
+        if [ -z "${WORKFLOW_BASE_SHA:-}" ]; then
+            info "FL: 起点は origin/main と HEAD の merge-base。origin/main が古ければ git fetch origin してから回し直す（他の lane の file が出るときの原因）"
+        fi
     fi
     if [ "$ERRORS" -eq "$before" ]; then
         info "FL: 新しい path:行 の引用なし"
