@@ -23,6 +23,7 @@ Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R3/R4 
 - UI route/search state, daily operator workflow, Japanese labels, query invalidation, import/unsaved guards, or Windows native behavior drift.
 - Missing tests for changed contracts, negative paths, compatibility, data safety, or main wiring.
 - 保守者として読めるか（命名、理由の comment、賢い圧縮より退屈な構造、関数の長さ）。読めない変更は P2（owner 2026-09-07）。
+- 作り込みすぎ（既にある helper・標準機能の再実装、使わない柔軟さ、実装が 1 つの抽象、承認済みの要件に無い依存・推測の機能。D-147）。finding は削る所と置き換えを名指し、同じ振舞いと安全が保てる根拠を添える。重大度は P3。作り込みすぎだけを理由に P2 にしない（保守者が読めない具体〈どこが・なぜ〉を示せるときは上の P2 の規則による）。
 
 ## Finding Severity
 

@@ -94,6 +94,6 @@ Non-scope: `.claude/agents/reviewer.md`・`reviewer-fable5.md`・`consult-fable5
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| plugin を project で切る | settings の `ponytail@ponytail` が `true` に戻る・消えて user global の `true` が効く | CLI（既存の検査に足す） | `scripts/tests/claude-hooks.test.sh` の `validate_inventory` と mutant | 検査の行を消す、mutant を `true` にしても通す |
+| plugin を project で切る | settings の `ponytail@ponytail` が `true` に戻る・消えて user global の `true` が効く | CLI（既存の検査に足す） | `scripts/tests/claude-hooks.test.sh` の `validate_inventory` と mutant（`D-147 ponytail true`・`D-147 ponytail missing`） | 検査の行を消す、mutant を `true` にしても通す |
 | agent の定義の形 | 本文の追記で frontmatter が壊れる・hooks を持つ | CLI（既存） | `scripts/tests/claude-hooks.test.sh` | writer.md の frontmatter を壊す、hooks の key を足す |
 | docs の形 | link・見出し・packet の形が壊れる | CLI（既存） | `scripts/doc-consistency-check.sh`（PK1・PK4 ほか） | packet の節や Workflow State を壊す |
