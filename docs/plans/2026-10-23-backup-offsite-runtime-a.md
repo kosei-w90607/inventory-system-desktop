@@ -57,13 +57,13 @@ wave に属さない単独の lane。D-114（design lane = PR #155、[packet](..
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（既定 6 から上げた。理由: R4 の lane で L3 が要り、Contract Probe を Windows の実機で owner に流してもらう decision point が 1 つ増える。起票の時の予備 1〈L3 の FAIL の後の 2 回目の round〉は、Plan Review round 1 で足した P9・P10 の流し直しに使った）。Plan Review round 2 で exFAT の probe（下の Contract Probe の exFAT の段、owner の決定 TD-399）が 1 回増え、見込みが 8 になる。予備が無いので、上限を 8 へ改める判断を exFAT の probe の依頼（次の owner への依頼）と同じ 1 回で諮る（`docs/DEV_WORKFLOW.md` Owner Effort Budget の「判断と上限の改定を同じ 1 回で諮る」）
-- 実働時間上限: 30 分（既定。見込み〈未実測〉: Contract Probe 10 分〈P7・P8 と P9・P10 の 2 回はどちらも script 1 行。exFAT の段は予備の USB の format と script 1 行〉、L3 15 分〈compile の段と目視の段〉、判断と承認 10 分。計 35 分の見込みで上限を超えるので、介入の上限と同じ 1 回で 35 分への改定を諮る）
+- 介入回数上限: 8（既定 6 から 7 へ上げ、2026-10-31 に 8 へ改めた。7 へ上げた理由: R4 の lane で L3 が要り、Contract Probe を Windows の実機で owner に流してもらう decision point が 1 つ増える。起票の時の予備 1〈L3 の FAIL の後の 2 回目の round〉は、Plan Review round 1 で足した P9・P10 の流し直しに使った）。Plan Review round 2 で exFAT の probe（下の Contract Probe の exFAT の段、owner の決定 TD-399）が 1 回増え、見込みが 8 になる。予備が無いので上限を 8 へ改めた（2026-10-31、owner、TD-538。exFAT の probe の依頼と同じ回で諮るはずが漏れ、結果の受領の後に諮った）
+- 実働時間上限: 35 分（2026-10-31 に既定の 30 分から改めた、TD-538。見込み〈未実測〉: Contract Probe 10 分〈P7・P8 と P9・P10 の 2 回はどちらも script 1 行。exFAT の段は予備の USB の format と script 1 行〉、L3 15 分〈compile の段と目視の段〉、判断と承認 10 分。計 35 分の見込み）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 7（8 への改定を exFAT の probe の依頼と同じ 1 回で諮る） | 3（2026-10-23: owner の判断事項 J1〈TD-390〉、Contract Probe の P7・P8 の依頼〈結果の受領は同じ decision point〉、P9・P10 の流し直し〈同〉。TD-384 は lane の選択の前の決定で本 lane に数えない）。2026-10-31: exFAT の probe 1（依頼と結果の受領。上限の改定は同じ回で諮れず、結果の受領の後に諮る）で 4 | 4（L3 1〈compile の段と目視の段を同じ依頼で、下の Test Plan〉、R4 の承認と Ready 1〈目視の省略の受理を同じ依頼で取る、下の human visual confirmation〉、merge 1） | 0（L3 が FAIL して 2 回目の round が要るときは、その判断と上限の改定を同じ 1 回で諮る、`docs/DEV_WORKFLOW.md` Owner Effort Budget） | 8 = 4 + 4 + 0（改定の後の上限 8） |
+| 介入 | 8（2026-10-31 に 7 から改めた。TD-538） | 3（2026-10-23: owner の判断事項 J1〈TD-390〉、Contract Probe の P7・P8 の依頼〈結果の受領は同じ decision point〉、P9・P10 の流し直し〈同〉。TD-384 は lane の選択の前の決定で本 lane に数えない）。2026-10-31: exFAT の probe 1（依頼と結果の受領。上限の改定は同じ回で諮れず、結果の受領の後に諮った〈TD-538〉。改定の問いは同じ decision point として数えない）で 4 | 4（R4 の計画の承認 1、L3 1〈compile の段と目視の段を同じ依頼で、下の Test Plan〉、R4 の承認と Ready 1〈目視の省略の受理を同じ依頼で取る、下の human visual confirmation〉、merge 1） | 0（L3 が FAIL して 2 回目の round が要るときは、その判断と上限の改定を同じ 1 回で諮る、`docs/DEV_WORKFLOW.md` Owner Effort Budget） | 8 = 4 + 4 + 0 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。owner は 2026-10-21 から数日、手が使いにくい（左手だけ）。問いは記号か短文で答えられる形にする（下の owner の判断事項、Contract Probe の段取り）。
