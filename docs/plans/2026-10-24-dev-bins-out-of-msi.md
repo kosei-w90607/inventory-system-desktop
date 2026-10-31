@@ -42,7 +42,7 @@ wave に属さない単独の lane。導入の前の関門 5（[Plans の導入�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（2026-10-24。TD-417 は lane を選ぶ前の決定で本 lane に数えない） | 3（L3 1〈L3-1〜L3-3 を同じ回で〉、Ready 1、merge 1） | 3（L3 の 2 回目 1〈L3-1 の FAIL、または L3-3 の FAIL の後の是正の確かめ直し〉、実装の head の AC11 が外れたときの owner escalation 1〈外し方の変更と天井の改定を同じ 1 回で諮る〉、Plan Review の天井の disposition 1） | 6 = 0 + 3 + 3 |
+| 介入 | 6 | 1（2026-10-29、L3 の 1 回目。TD-417 は lane を選ぶ前の決定で本 lane に数えない） | 3（L3 の 2 回目 1〈Gated Amendment 1 の是正の確かめ。L3-1〜L3-3 を同じ回で〉、Ready 1、merge 1） | 2（実装の head の AC11 が外れたときの owner escalation 1〈外し方の変更と天井の改定を同じ 1 回で諮る〉、Plan Review の天井の disposition 1） | 6 = 1 + 3 + 2 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。L3 は Claude Code の sandbox から Windows の PowerShell を呼べないので、Coordinator が貼り付ける command の一覧を返答の本文に inline で渡し、owner は貼って PASS / FAIL と見えた名を返す（CLAUDE.md の D-127 の項）。
@@ -282,7 +282,7 @@ Test Design Matrix: [2026-10-24-dev-bins-out-of-msi](test-matrices/2026-10-24-de
 
 ### L3（Windows の実機）
 
-L3 Eligibility: (1) MSI は Windows でしか作れず、入った folder の中身は Windows の実機でしか見られない。dev-tools の bin が Windows の resource 無しで起動するかも Windows でしか見られない（L3-3）。(2) 新しい道具は要らない（手順書の流れ 1・2 と PowerShell の `Get-ChildItem`）。(3) 故障を注入する手順は無い。
+L3 Eligibility: (1) MSI は Windows でしか作れず、入った folder の中身は Windows の実機でしか見られない。独自の manifest を build script で入れた dev-tools の bin の起動も Windows でしか見られない（L3-3）。(2) 新しい道具は要らない（手順書の流れ 1・2 と PowerShell の `Get-ChildItem`）。(3) 故障を注入する手順は無い。
 
 到達経路と用意（Coordinator が用意し、owner に貼り付ける command の一覧を返答の本文に inline で渡す。Claude Code の sandbox から Windows の PowerShell を呼べないので、build と導入は owner が貼る）:
 
@@ -352,6 +352,8 @@ L3 の 2 回目（Gated Amendment 1 の是正の head。1 回目は 2026-10-29 �
 - 実装（PR #201）: 開発用の 3 つの bin を workspace の member `src-tauri/dev-tools` へ移し、`default-members` と `default-run` で command の形を保った（S1〜S3）。traceability の generator の repo の root の式を移動に合わせ（D-137 (3)）、doc-consistency の R0・R1 の走査を dev-tools へ広げた（T11）。crate の形を固定する test（`bundle_identity_test`・`workspace_membership_test`）を足した。
 - 確かめ: Final Review の 2 本（Codex・Fable 5、2026-10-29）は approve で、mutation の red と deb の中身（AC11）を独立に実測した。結果は PR #201 の comment と helper の record。
 - L3 の 1 回目（owner、Windows、2026-10-29）: L3-3 が FAIL（`generate_bindings` が自分の出力の前に `STATUS_ENTRYPOINT_NOT_FOUND`〈`TaskDialogIndirect`〉。`seed_demo_data -- --help` と `generate_traceability -- --check` は `exit=0`、`git status --porcelain` は空）。L3-1・L3-2 は未実施。結果は [PR #201 の comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/201#issuecomment-6478208695)。是正は Gated Amendment 1。
+- Gated Amendment 1 の実装（2026-10-31）: `src-tauri/dev-tools/build.rs` を足した（`std` だけ。Windows の MSVC の target のときだけ `cargo::rustc-link-arg` で `/MANIFEST:EMBED` と Common Controls v6 の `/MANIFESTDEPENDENCY` を出す）。`src-tauri/dev-tools/Cargo.toml` と `Cargo.lock` は変えていない。AC8（`Cargo.lock` の追加は dev-tools の `[[package]]` の塊だけ、`build-dependencies`・`build =` の hit なし）・AC14（Linux の `cargo build -vv` が exit 0、dev-tools の `build-script-build` が走り、`rustc-link-arg`・`/MANIFEST` の hit なし）・T12（条件を外すと `rust-lld: error: cannot open /MANIFEST:EMBED` で exit 非 0、戻した）を Linux で確かめた。Windows の MSVC での効き目は L3 の 2 回目（L3-3）で見る。
+- Scope の中なので直さない記録 2 点: (i) Gated Amendment 1 が引く `LinkArgTarget::applies_to` の置き場は、`rust-lang/cargo` の `master`（`31d3246e` と、2026-10-31 に引いた `809bcc52`）では `src/compiler/custom_build.rs` で、Scope に書いた `src/cargo/core/compiler/custom_build.rs` ではない（GitHub の contents API で確かめた。中身の `Bin => target.is_bin()` は Scope の記述と同じ）。(ii) 上流の tauri 2.11.1 の crate の `build.rs` も同じ問題の workaround を持つ: `STATUS_ENTRYPOINT_NOT_FOUND` を避けるため、tauri の workspace の中（`__TAURI_WORKSPACE__`）で Windows の MSVC のときだけ `embed_manifest_for_tests`（`build.rs:277`〜`:283` の呼出し、`:487`〜`:504` の本体）が `cargo:rustc-link-arg=/MANIFEST:EMBED` と、tauri-build の `windows-app-manifest.xml`（Common Controls v6）を指す `/MANIFESTINPUT:` と `/WX` を test の実行 file を含む target へ渡す（`~/.cargo/registry` の tauri-2.11.1 の実物を読んだ）。本 lane は manifest の file を持たない `/MANIFESTDEPENDENCY` の形で、同じ依存を入れる。
 - follow-up: `bundle_identity_test` の `[[bin]]` の検査が行末の comment 付きの行を見逃す（Fable 5 の P3。backlog へ）。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
