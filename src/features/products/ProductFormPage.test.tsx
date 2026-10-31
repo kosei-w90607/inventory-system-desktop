@@ -631,6 +631,33 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
     expect(screen.getByDisplayValue(NAME)).toBeInTheDocument();
   });
 
+  it("U2 REQ-101 / UI-01b-D26 keeps the buttons outside a height-capped scroll box when many products use the JAN", async () => {
+    // 合成の 20 件。jsdom は layout を測らないので、上限と scroll の class・構造だけを見る（見えるかは L3-1）
+    const manyUsers = Array.from(
+      { length: 20 },
+      (_, i) =>
+        `P-${String(900 + i)}「長い名前の布 ${String(i + 1)} 色目」（POS販売で在庫を減らす）`,
+    ).join("、");
+    const manyMessage = `この JAN（${JAN}）はほかの商品が使っています: ${manyUsers}`;
+    mockCreateProduct.mockResolvedValueOnce(cmdError("duplicate", manyMessage, "jan_code"));
+    renderCreate();
+    await submitWithJan("布（独自コード可）");
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveClass("flex", "max-h-[90vh]", "flex-col");
+    const scrollBox = within(dialog).getByText(manyMessage).parentElement;
+    expect(scrollBox).toHaveClass("min-h-0", "overflow-y-auto");
+    // 題を持つ header も縮められる（縮めないと文の箱に上限が掛からない）
+    expect(scrollBox?.parentElement).toHaveClass("flex", "min-h-0", "flex-col");
+    expect(scrollBox).toContainElement(within(dialog).getByText(THIRD_TEXT));
+    for (const name of ["戻る", "独自コードで登録する"]) {
+      expect(scrollBox).not.toContainElement(within(dialog).getByRole("button", { name }));
+    }
+    expect(scrollBox).not.toContainElement(
+      within(dialog).getByRole("heading", { name: "この JAN はほかの商品が使っています" }),
+    );
+  });
+
   it("U3 REQ-101 / UI-01b-D26 resends with shared_jan_custom_code and pos_stock_sync false, toasts warnings, invalidates C23", async () => {
     mockCreateProduct
       .mockResolvedValueOnce(cmdError("duplicate", JAN_IN_USE_MESSAGE, "jan_code"))
@@ -638,7 +665,14 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
         status: "ok",
         data: { product_code: "HZ-0012", warnings: [WARNING] },
       });
-    const { invalidateSpy, onNavigateToList } = renderCreate();
+    // UI-USW-D1: 遷移の時点で baseline が同期済み（離脱の確認に渡る dirty が false）
+    unsavedDirty.length = 0;
+    let dirtyAtNavigate: boolean | undefined;
+    const { invalidateSpy, onNavigateToList } = renderCreate(
+      vi.fn(() => {
+        dirtyAtNavigate = unsavedDirty[unsavedDirty.length - 1];
+      }),
+    );
     const user = await submitWithJan("布（独自コード可）");
     const dialog = await screen.findByRole("alertdialog");
     // 在庫連動の checkbox は on のまま
@@ -649,6 +683,7 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
     await waitFor(() => {
       expect(onNavigateToList).toHaveBeenCalled();
     });
+    expect(dirtyAtNavigate).toBe(false);
     expect(mockCreateProduct).toHaveBeenCalledTimes(2);
     const first = mockCreateProduct.mock.calls[0][0];
     expect(first).toMatchObject({
