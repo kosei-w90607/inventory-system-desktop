@@ -308,7 +308,7 @@ Test Design Matrix: `docs/plans/test-matrices/2026-10-27-jan-dup-custom-code.md`
 - data safety checks: test の JAN は合成（既存の test の `jan(n)` の helper、30 BIZ-01-D1 の golden の `4901234567887`）。
 - main wiring/integration checks: `ProductFormPage.test.tsx` が `commands.createProduct` の mock の 2 回の呼出しと `invalidateByContract` の引数を確かめる（U3）。
 - L3（Human Gate `manual`。Writer は AC14 の `cargo check --release` を済ませてから頼む）。到達経路は全て商品一覧 → 「新規登録」。入力物は無い（L3-1 の最初に owner がフォームで 1 商品を登録する）。依存する既知 backlog は無い。owner の操作の回数を減らす工夫: 3 項目を 1 回の起動で続けて行い（合計約 5 分）、同じ便に商品フォームを触る他の lane（#193 b2）の L3 があれば、先に merge する順を守ったうえで 1 回の依頼に並べる（束ねられる条件は `docs/DEV_WORKFLOW.md` Wave Operation の L3 の束ね方）。
-  - L3-1（画面: 商品登録 `/products/new`）: 合成の JAN `4901234567887`・独自コードの部門で 1 商品を登録し、もう一度「新規登録」で別の名前・同じ JAN・独自コードの部門を入れて「登録する」。合格: ダイアログが開き、1 つ目の商品の商品コードと名前と「（POS販売で在庫を減らす）」が読め、2 段目の「この商品と、JAN が同じ商品は全て「POS販売で在庫を減らす」が「減らさない」になります」を含む文の 3 段と 2 つの button が日本語で読め、どの欄が変わるかが分かる。Tab で button を移れ、Esc で閉じて入力が残る。window の高さを画面の半分ほどに縮めても、ダイアログの中を scroll して 1 つ目の商品の行と 2 つの button に届き、Tab でも button に移れる（文の箱にも Tab で移れ、矢印の key で scroll できる。Final Review の是正、Codex F1。商品が多い・名前が長いときに説明と button が画面の外へ出ないことの代わりの観測）。
+  - L3-1（画面: 商品登録 `/products/new`）: 合成の JAN `4901234567887`・独自コードの部門で 1 商品を登録し、もう一度「新規登録」で別の名前・同じ JAN・独自コードの部門を入れて「登録する」。合格: ダイアログが開き、1 つ目の商品の商品コードと名前と「（POS販売で在庫を減らす）」が読め、2 段目の「この商品と、JAN が同じ商品は全て「POS販売で在庫を減らす」が「減らさない」になります」を含む文の 3 段と 2 つの button が日本語で読め、どの欄が変わるかが分かる。Tab で button を移れ、Esc で閉じて入力が残る。ダイアログの本文（使っている商品と 3 段の文）の箱に Tab（と Shift+Tab）で入れて focus の ring が見え、矢印の key で動き（本文が箱に収まって overflow が無ければ動かないのは期待どおり）、2 つの button にも Tab で移れる（Final Review とその closure の是正、Codex F1。overflow したときの見え方は window の最小の高さで保証できないので、自動 test の構造と Matrix の Residual Test Gaps に置く）。
   - L3-2（同じ画面）: もう一度「登録する」→「独自コードで登録する」。合格: toast に独自コード（接頭辞つき）と「同じ JAN の商品 4901234567887「…」の「POS販売で在庫を減らす」を「減らさない」にしました」が出て一覧へ戻る。一覧に 2 商品があり、1 つ目の修正の画面で「POS販売で在庫を減らす」が「減らさない」になっている。
   - L3-3（同じ画面）: 独自コードの接頭辞が無い部門を選び、同じ JAN で「登録する」。合格: ダイアログに「独自コードで登録する」が無く、部門の名前を挙げた文が出る。「戻る」で入力が残る。
 
@@ -369,7 +369,7 @@ exact-HEAD の SHA と test の本数は写さない（Evidence Ownership、D-03
 
 - 実装（発注 678）: `948bb671`〜`6faff008`。BIZ の `JanInUse` と手順 3a・3a2（同じ JAN の群の在庫連動を外し、求め直し、操作ログ、warnings を同じ TX で）、CMD の kind `duplicate`・field `jan_code` の変換、wire の `shared_jan_custom_code`、商品フォームの `SharedJanCustomCodeDialog` と送り直し、D-052 の entry `productCreateSharedJan`（C23）、bindings と traceability の再生成。Matrix の B1〜B10・C1・U1〜U7・I1。M1〜M11 が assertion で red になることは Final Review の Codex も実測した（PR #212 の comment）。
 - Final Review（2 本、https://github.com/kosei-w90607/inventory-system-desktop/pull/212#issuecomment-6543042258）: Codex は request changes（P2 2・P3 1）、Fable 5 は approve（P3 2）。裁定は全件受理。
-- 是正（発注 685）: ダイアログの高さを viewport の中に収め、文だけを scroll し、title と button を scroll の外に固定した（F1。U2 の多数の商品の case、L3-1 に低い window の観測を足した）。U3 に遷移の時点の dirty が false の assert を足した（F2。M13）。設計正本の「未実装」の印を「D-141 proposed・実装済み（PR #212、L3 待ち）」にし、本節と Review Response を埋めた（F3 と Fable 5 の P3）。
+- 是正（発注 685）: ダイアログの高さを viewport の中に収め、文だけを scroll し、title と button を scroll の外に固定した（F1。U2 の多数の商品の case）。Final の closure（発注 689、Codex P2）を受け、本文の箱を名前の付いた scroll の region（`tabIndex={0}`）にし、Tab と Shift+Tab で入れることを U2 で確かめ、L3-1 を本文の region の focus と矢印の key の観測に書き直した。U3 に遷移の時点の dirty が false の assert を足した（F2。M13）。設計正本の「未実装」の印を「D-141 proposed・実装済み（PR #212、L3 待ち）」にし、本節と Review Response を埋めた（F3 と Fable 5 の P3）。
 - 残り: L3-1〜L3-3（AC15、Human Gate `manual`）と closure の review。D-141 の Status は owner の Q1〜Q3 の確認まで proposed のまま。
 
 ## Review Response
@@ -382,7 +382,7 @@ exact-HEAD の SHA と test の本数は写さない（Evidence Ownership、D-03
 
 | finding | 採否 | 是正 |
 |---|---|---|
-| Codex F1（P2）ダイアログに高さの上限と scroll が無く、商品が多い・window が低いと説明と button に届かない | 受理 | `SharedJanCustomCodeDialog.tsx`: AlertDialogContent を `flex max-h-[90vh] flex-col`、header を縮められる flex にし、文の 3 段の箱だけを `overflow-y-auto`（keyboard の scroll は Chromium の scroll の箱の自動の focus に頼り、`ponytail:` comment に限界を書いた。L3-1 で確かめる）。title と button は scroll の外（DSR-24 の picker dialog の先例）。共通の AlertDialog は変えない。Matrix U2 に合成 20 件の case と M12、L3-1 に低い window の観測、51 UI-01b-D26 に形を足した |
+| Codex F1（P2）ダイアログに高さの上限と scroll が無く、商品が多い・window が低いと説明と button に届かない | 受理 | `SharedJanCustomCodeDialog.tsx`: AlertDialogContent を `flex max-h-[90vh] flex-col`、header を縮められる flex にし、文の 3 段の箱だけを `overflow-y-auto`。title と button は scroll の外（DSR-24 の picker dialog の先例）。共通の AlertDialog は変えない。Matrix U2 に合成 20 件の case と M12、51 UI-01b-D26 に形を足した。closure（発注 689、Codex P2: 箱が `tabIndex -1` で Radix の FocusScope の Tab の循環に入らず、Chromium の自動の Tab の対象化も保証にならない）を受け、箱を `role="region"`・`aria-label="使っている商品と変わる所"`・`tabIndex={0}` にした（`jsx-a11y/no-noninteractive-tabindex` はこの 1 か所だけ理由付きの disable）。U2 に Tab・Shift+Tab で region に入る assert と M14、L3-1 を region の focus・矢印の key・button への Tab に書き直した |
 | Codex F2（P2）U3 が成功時の遷移の前の baseline の同期（UI-USW-D1）を確かめない | 受理 | U3 で `onNavigateToList` の呼ばれた時点の dirty を記録し `false` を assert。create の成功の `setSavedValues` を消す mutation で、足す前は green・足した後は red、戻して green を確かめた（Matrix M13） |
 | Codex F3（P3）・Fable 5 P3 1 本目 実装済みなのに「未実装」の印が残る | 受理 | 51 UI-01b-D26 と §7.2 の file tree、SCREEN_DESIGN、UI_TECH_STACK の冒頭の段落、master-tables の例外の項を「D-141 proposed・実装済み（PR #212、L3 待ち）」にした。D-141 の Status と D-052 の道標は変えない。51 の変更履歴に 1 行 |
 | Fable 5 P3 2 本目 Implementation Results・Review Response が空欄 | 受理 | 本節と上の Implementation Results を埋めた（SHA・件数は写さない） |
