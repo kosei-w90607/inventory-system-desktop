@@ -118,6 +118,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -252,6 +253,7 @@ mod tests {
             source_line_no: None,
             reason: None,
             note: None,
+            stock_linked: false,
         };
         sales_repo::insert_sale_record(&conn, &record).unwrap();
 
@@ -299,6 +301,7 @@ mod tests {
                 net_amount: Some(11000),
                 status: "completed".to_string(),
                 note: None,
+                settlement_no: None,
             },
         )
         .unwrap();
@@ -334,6 +337,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         };
 
         let conn = state.db.lock().unwrap();
@@ -353,6 +357,7 @@ mod tests {
             db: Mutex::new(conn),
             preview_cache: Mutex::new(HashMap::new()),
             daily_report_preview_cache: Mutex::new(HashMap::new()),
+            register_sd_scan_cache: Mutex::new(HashMap::new()),
         };
 
         // Mutex を poison させる

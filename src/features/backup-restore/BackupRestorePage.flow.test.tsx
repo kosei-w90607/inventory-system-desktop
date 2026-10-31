@@ -78,7 +78,7 @@ function ok<T>(data: T) {
 function cmdError(message: string, kind: CmdErrorKind = "internal") {
   return {
     status: "error" as const,
-    error: { kind, message, field: null, error_id: null },
+    error: { kind, message, field: null, error_id: null, stocktake_recovery: null },
   };
 }
 
@@ -135,6 +135,9 @@ function makeProduct(productCode: string, stockQuantity: number): ProductWithRel
     department_name: "synthetic-department",
     supplier_name: null,
     plu_memory_no: null,
+    stock_recheck: false,
+    stock_range_low: null,
+    stock_range_high: null,
   };
 }
 

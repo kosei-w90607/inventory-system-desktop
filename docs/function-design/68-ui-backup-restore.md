@@ -75,7 +75,7 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 ### 実効保存先の常時表示（PR #144 follow-up）
 
 1. 画面表示時に `getEffectiveBackupDir` を読み、バックアップ設定カード内の `backup_path` 導線の近くに「現在の保存先」として常時表示する。
-2. `backup_path` が空（未設定）の場合、実効パスはアプリ既定フォルダ（Windows では `AppData/Roaming/com.kosei.inventory/backups` 相当）になるため、「保存先が未設定のためアプリ既定フォルダに保存されます」を補足表示する。
+2. `backup_path` が空（未設定）の場合、実効パスはアプリ既定フォルダ（Windows では `AppData/Roaming/com.inventory-system.desktop/backups` 相当）になるため、「保存先が未設定のためアプリ既定フォルダに保存されます」を補足表示する。
 3. 取得失敗時は表示行そのものを出さない。手動バックアップ・復元等の他機能は取得失敗の影響を受けない。
 4. `backup_path` 保存成功後は本 query を invalidate し、新しい実効保存先へ表示を追随させる。
 

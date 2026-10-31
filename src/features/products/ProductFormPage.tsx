@@ -2,9 +2,10 @@
 //
 // UI-01b 商品登録・修正 page。
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +18,7 @@ import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
-import { unwrapResult } from "@/lib/invoke";
+import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
 import { ProductForm } from "./components/ProductForm";
 import { useProductFormOptions } from "./hooks/useProductFormOptions";
@@ -35,13 +36,21 @@ export interface ProductFormPageProps {
   productCode?: string;
   returnTo?: string;
   onNavigateToList: (returnTo: string) => void;
+  /** 51 の D-118 の節: 在庫連動を始める拒否（`recount_required`）の「今の数を入れる」の導線（73 の入口） */
+  onNavigateToStocktake?: (search: { product: string; returnTo: string }) => void;
 }
+
+/** 51 の D-118 の節の見出しと文（在庫連動を始める拒否）。画面の語で書き、BIZ の message は出さない */
+const RECOUNT_REQUIRED_TITLE = "「POS販売で在庫を減らす」にできません";
+const RECOUNT_REQUIRED_TEXT =
+  "「減らさない」の間の売上が在庫の数に入っているか確認できません。「今の数を入れる」で棚の数を入れてから、もう一度「減らす」にして保存してください";
 
 export function ProductFormPage({
   mode,
   productCode,
   returnTo,
   onNavigateToList,
+  onNavigateToStocktake,
 }: ProductFormPageProps) {
   const queryClient = useQueryClient();
   const safeReturnTo = sanitizeProductListReturnTo(returnTo);
@@ -52,9 +61,17 @@ export function ProductFormPage({
     {},
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+  // recount_required の回復の導線を出すか（回復先は action によらず 73 の「今の数を入れる」）
+  const [recountRequired, setRecountRequired] = useState(false);
+  const recountNoticeRef = useRef<HTMLDivElement>(null);
   const [posSyncTouched, setPosSyncTouched] = useState(false);
   const [pluTargetTouched, setPluTargetTouched] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductWithRelations | null>(null);
+
+  // 案内は保存の button から離れた欄の下に出るので、案内の領域へ focus を移す（51）
+  useEffect(() => {
+    if (recountRequired) recountNoticeRef.current?.focus();
+  }, [recountRequired]);
 
   const productQuery = useQuery({
     queryKey: queryKeys.productForm.product(productCode ?? ""),
@@ -151,6 +168,15 @@ export function ProductFormPage({
     },
     onError: (error) => {
       if (error instanceof Error && error.message === "validation") return;
+      // 型で分岐し message を解析しない。未知の code は通常の error として出す（40）
+      if (
+        isInvokeError(error) &&
+        error.cmdError.kind === "stocktake_guard" &&
+        error.cmdError.stocktake_recovery?.code === "recount_required"
+      ) {
+        setRecountRequired(true);
+        return;
+      }
       setSaveError(describeError(error));
     },
   });
@@ -249,6 +275,37 @@ export function ProductFormPage({
         productCodeLabel={currentProduct?.product_code}
         productName={currentProduct?.name}
         isDiscontinued={currentProduct?.is_discontinued ?? false}
+        stockRecheck={currentProduct?.stock_recheck ?? false}
+        stockSyncNotice={
+          recountRequired && productCode !== undefined ? (
+            <Alert
+              ref={recountNoticeRef}
+              variant="warning"
+              aria-label={RECOUNT_REQUIRED_TITLE}
+              tabIndex={-1}
+            >
+              <AlertTriangle aria-hidden="true" />
+              <AlertTitle>{RECOUNT_REQUIRED_TITLE}</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{RECOUNT_REQUIRED_TEXT}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    // route の遷移なので離脱の確認（UI-USW-D1）を通る。baseline を揃えない
+                    onNavigateToStocktake?.({
+                      product: productCode,
+                      returnTo: `/products/${productCode}/edit`,
+                    });
+                  }}
+                >
+                  <ClipboardCheck aria-hidden="true" />
+                  今の数を入れる
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : undefined
+        }
         isSaving={createMutation.isPending || updateMutation.isPending}
         isTogglePending={toggleMutation.isPending}
         saveDisabled={saveDisabled}
@@ -260,6 +317,7 @@ export function ProductFormPage({
         onPluTargetTouchedChange={setPluTargetTouched}
         onSubmit={() => {
           setSaveError(null);
+          setRecountRequired(false);
           if (mode === "create") {
             createMutation.mutate();
           } else {

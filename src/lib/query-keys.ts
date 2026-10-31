@@ -64,6 +64,9 @@ export const queryKeys = {
       ["inventory-records", "disposal-detail", { recordId }] as const,
     csvImportDetail: (importId: number) =>
       ["inventory-records", "csv-import-detail", { importId }] as const,
+    // 55 UI-07-D18: 取消の前の読取り（開くたびに読む。C9 の inventoryRecords.root() が含む）
+    csvImportRollbackPreview: (importId: number) =>
+      ["inventory-records", "csv-import-rollback-preview", { importId }] as const,
     stocktakeDetailRoot: () => ["inventory-records", "stocktake-detail"] as const,
     stocktakeDetail: (stocktakeId: number) =>
       ["inventory-records", "stocktake-detail", { stocktakeId }] as const,
@@ -138,5 +141,7 @@ export const queryKeys = {
       ["stocktake", "items", { stocktakeId, ...search }] as const,
     departments: () => ["stocktake", "departments"] as const,
     lastCompleted: () => ["stocktake", "last-completed"] as const,
+    // 要再確認の一覧（D-118、UI_TECH_STACK の D-118 の段落）
+    recheckList: () => ["stocktake", "recheck-list"] as const,
   },
 } as const;
