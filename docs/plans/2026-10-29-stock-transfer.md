@@ -7,7 +7,7 @@ wave に属さない単独の lane（PR #216、branch `agent/stock-transfer`）�
 ## Workflow State
 
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 4dd2ca2415ceeac81b60b4253eaa0cbf0344b9de
 - Amendments: none
 
 ## Risk
