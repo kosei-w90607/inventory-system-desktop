@@ -632,7 +632,7 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
   });
 
   it("U2 REQ-101 / UI-01b-D26 keeps the buttons outside a height-capped scroll box when many products use the JAN", async () => {
-    // 合成の 20 件。jsdom は layout を測らないので、上限と scroll の class・構造だけを見る（見えるかは L3-1）
+    // 合成の 20 件。happy-dom は layout を測らないので、上限と scroll の class・構造と focus の順だけを見る
     const manyUsers = Array.from(
       { length: 20 },
       (_, i) =>
@@ -641,7 +641,7 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
     const manyMessage = `この JAN（${JAN}）はほかの商品が使っています: ${manyUsers}`;
     mockCreateProduct.mockResolvedValueOnce(cmdError("duplicate", manyMessage, "jan_code"));
     renderCreate();
-    await submitWithJan("布（独自コード可）");
+    const user = await submitWithJan("布（独自コード可）");
 
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveClass("flex", "max-h-[90vh]", "flex-col");
@@ -656,6 +656,23 @@ describe("ProductFormPage の JAN を他の商品が使っているときのダ�
     expect(scrollBox).not.toContainElement(
       within(dialog).getByRole("heading", { name: "この JAN はほかの商品が使っています" }),
     );
+    // 本文の箱は名前の付いた region で、Tab と Shift+Tab で入れる（矢印の key の scroll は L3-1）
+    expect(within(dialog).getByRole("region", { name: "使っている商品と変わる所" })).toBe(
+      scrollBox,
+    );
+    const back = within(dialog).getByRole("button", { name: "戻る" });
+    const confirm = within(dialog).getByRole("button", { name: "独自コードで登録する" });
+    await waitFor(() => {
+      expect(back).toHaveFocus();
+    });
+    await user.tab({ shift: true });
+    expect(scrollBox).toHaveFocus();
+    await user.tab();
+    expect(back).toHaveFocus();
+    await user.tab();
+    expect(confirm).toHaveFocus();
+    await user.tab();
+    expect(scrollBox).toHaveFocus();
   });
 
   it("U3 REQ-101 / UI-01b-D26 resends with shared_jan_custom_code and pos_stock_sync false, toasts warnings, invalidates C23", async () => {

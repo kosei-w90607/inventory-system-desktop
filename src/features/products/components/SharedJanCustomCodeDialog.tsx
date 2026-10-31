@@ -56,16 +56,20 @@ export function SharedJanCustomCodeDialog({
     >
       {/* 1 段目は使っている商品を省略せず並べるため長くなる。高さを viewport の中に収め、
           文だけを scroll し、題と button は scroll の外に固定する（先例: SupplierPickerDialog）。
-          focus は scroll-area と同じ ring で示す。
-          ponytail: 文の箱を keyboard で scroll できるのは、focus できる子の無い scroll の箱を
-          Chromium 130 以降が自動で Tab の対象にすることに頼る（WebView2 は evergreen。
-          tabIndex は jsx-a11y が非対話の要素に禁じる）。WebView2 を 130 より前に固定する配布にする、
-          または L3-1 で文の箱に Tab で移れなければ、箱を role と名前の付いた focus できる region にする */}
+          文の箱は名前の付いた scroll の region にし、tabIndex 0 で Tab・Shift+Tab で入れて
+          矢印の key で読めるようにする（Radix の FocusScope は tabIndex >= 0 だけを Tab の循環に入れる）。
+          focus は scroll-area と同じ ring で示す */}
       <AlertDialogContent className="flex max-h-[90vh] flex-col">
         <AlertDialogHeader className="flex min-h-0 flex-col">
           <AlertDialogTitle>この JAN はほかの商品が使っています</AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <div className="min-h-0 space-y-2 overflow-y-auto rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+            <div
+              role="region"
+              aria-label="使っている商品と変わる所"
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll できる region を keyboard で読むため（WAI の scrollable region）
+              tabIndex={0}
+              className="min-h-0 space-y-2 overflow-y-auto rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+            >
               <p>{message}</p>
               <p>{SECOND_TEXT}</p>
               <p>{THIRD_TEXT}</p>
