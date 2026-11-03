@@ -364,6 +364,7 @@ fn scan_register_sd_daily_reports(
     conn: &DbConnection,
     selection: DailyReportSdSelection, // BIZ-08 の型（下）。IO-09 の型にしない
     today: NaiveDate,
+    app_data_dir: Option<&Path>,       // 写しの置き場所（手順 2a の片付け、§37.12）。CMD-12 が得られなければ None（45 §45.6a 手順 1a）
 ) -> Result<DailyReportSdScanResult, BizError>
 ```
 
@@ -385,6 +386,7 @@ struct DailyReportSdScan {
     scanned_from: String,                  // YYYY-MM-DD（手順 2 の窓の始まり）
     candidates: Vec<DailyReportSdCandidate>,
     skipped_unknown_count: i64,            // 名前の規則に合わず読まなかった file の数（IO-09-D2）
+    tidy_failure: Option<RegisterSdTidyFailure>, // 手順 2a の片付けの失敗（§37.12）。None = 移す物が無い・全部移せた・片付けない（Selected）
 }
 
 struct DailyReportSdCandidate {
@@ -414,6 +416,7 @@ struct DailyReportSdScanSnapshot {
 
 1. root を決める。`Auto` は IO-09 `find_register_sd_roots`。0 件は `BizError::ImportError("SD が見つかりません。レジの SD をこの PC に差してから、もう一度読んでください。")`、2 件以上は `BizError::ImportError("SD が 2 枚以上見つかりました。売上を読む SD だけを差してください。")`。`Selected` は IO-09 `resolve_register_sd_root`、`NotRegisterSd` は `BizError::ImportError("選んだ場所はレジの SD ではありません。SD の中の CASIO の folder か、SD そのものを選んでください。")`。`MissingSalesArea` は `BizError::ImportError("SD に売上の folder（XZ）がありません。レジの SD か確かめてください。")`。
 2. 読む範囲（窓）の始まり `from` を決める: `completed` の日報取込みがあれば、その `report_date` の最大と `today` − 30 日の早い方、無ければ `today` − 30 日。30 日は店の EJ の取込みの間隔（店の回答は月 1 回）を目安にした値で、日報の取込みを 1 か月以上空けても窓は最後の取込みの日まで戻るので、日報の候補は落ちない（2026-10 の見直しの事実の一覧の訂正: CV17 の EJ の取込みのログでは遅れの最大は 31 日で 30 日を 1 日越え、32 日以上空いた間隔が 2 回あった。以前の「最大 31 日の遅れを覆う」は数として合わなかった。窓の始まりの規則は変えない）。窓より前の分は候補に出ない（過去の分はファイルを選ぶ経路、UI-07-D16）。
+2a. `selection` が `Auto` のときだけ、取り込んだ精算の Z を片付ける（BIZ-08-D11、§37.12）。`app_data_dir` が `Some` なら §37.12 `tidy_register_sd_imported` を呼び、返り値を `DailyReportSdScan.tidy_failure` に入れる。`None` なら呼ばず `Some(Other)`（診断 WARN。写しの置き場所が無いと移せないが、読取りは止めない。BIZ-08-D11 の「片付けの失敗は取込みを止めない」）。`Selected` は呼ばずに `None`。手順 3 の列挙は片付けの後に行うので、移した file は `XZ_BKUP` の側で列挙され、候補の状態は同じ規則（同じ bytes なら `Imported`）で決まる。
 3. IO-09 `list_register_sd_entries(root, from)`。`Io` は `BizError::ImportError("SD を読めませんでした。SD を差し直して、もう一度読んでください。")`、`InvalidPath`（root の下の link・junction が SD の外を指す、29 IO-09-D5。差し直しでは直らないので `Io` と文を分ける）は `BizError::ImportError("SD の中に、SD の外の場所を指す folder かファイル（リンク）があるため、読みませんでした。レジの SD そのものを差して読むか、リンクの無い SD の写しを選んでください。")` にし、どちらも途中までの候補を返さない（以下の手順 5 の読取りも同じ）。
 4. Z001 / Z002 / Z005 の entry を (area、相対 folder、日、接尾字、連番) が同じものごとに組にする（`Z00k_` より後ろが同じ 3 本は同じ精算だった。IO-07-D3。名前は組分けにだけ使い、同じ精算かは手順 5 の中身で決める）。3 系列が 1 本ずつそろわない組は `Incomplete`（読まない）。Z004・Z006 等の系列と EJ は組にしない（Z004 の業務の取込みは BIZ-03、EJ は EJ の取込みの lane。Z004 は PLU の占有の照合のためだけに手順 10 で読む。§37.9 の末尾。写しの規則 BIZ-08-D5 もそれぞれの lane が同じ IO-10 で引き継ぐ）。`Unknown` は数えるだけ。
 5. そろった組ごとに IO-09 `read_register_sd_file` で 3 本を読む（上限は CMD-12 の 1 file 20MB と同じ値）。1 本でも `TooLarge`、または形が CP932 strict・BOM 無し・CRLF だけ・最終改行ありのどれかを外れたら `Unreadable`（IO-09-D4。推測で読まない）。そろえば IO-07 `parse_daily_report_bundle` を呼び、`parse_errors` があれば `Unreadable`（BIZ-08-D1 の診断 WARN を記録。利用者向けには出さない）。無ければ §37.3 手順 5 と同じ式で `bundle_hash` を作る。
@@ -568,6 +571,7 @@ enum RegisterSdBulkOutcome {
 - (b) の lane への約束: 取込み済みかは中身（日報は active な〈completed の〉取込みの束の hash と各 file の hash〈`source_files_json`〉、Z004 は active な〈completed / completed_partial の〉取込みの hash、EJ は記録の番号と文）で決め、SD の上の名前・置き場所に依らないので、(b) が file を移しても見分けは変わらない。(b) は、移す file が取込み済みかをこの記録で決められる。EJ の file の全記録の番号と文が保存済みと一致するのは、§37.11 `plan_ej_records` をその file だけに当てて `new_records` が空・`conflict_count` が 0・`held_count` が 0・`unreadable_files` が空のときだけ（比べ方を 2 本にしない。保留した記録〈§37.11 手順 2〉は plan の新しい記録に入らないので、`held_count` を見ないと `[保存済み, 未保存の最後の記録]` を一致と誤る）。伸びうる file（§37.11 手順 2 の判定。`XZ` 直下の `EJyymmdd.TXT`）は最後の記録が未保存なら `held_count` が 1 以上で、この条件を満たさない。保留した記録をいつ確定し、移す操作とどちらを先にするか（移してから `XZ_BKUP` の file として取り込む、等）は (b) が決める（backlog の申し送り）。conflict を含む `XZ` 直下の EJ も同じく移せず `XZ` に残り続けるので、その扱い（移さずに知らせる等）も (b) が決める。EJ の取込み（§37.11）が入る前に (b) を入れるなら、EJ の file は移さない（移すと CV17 と違い、アプリが控えを持たないまま `XZ` から消える）。
 - 理由: CV17 の取込みの有無・順でアプリの結果が変わらないようにする。D-111 の運用の制約と (b) の lane の設計（`_nnnn` の改名・途中の失敗）を本 lane で先取りしない。
 - 保証の範囲: アプリが先に読み、CV17 の取込みで原本の bytes が変わった場合（SD-23 の前提が外れた場合）も、日報・Z004 は精算回数で止まり、EJ は記録の文が違えば保存済みを上書きせず知らせる（§37.11 の conflict）。
+- (b) の lane の答え（D-149、§37.12 BIZ-08-D11）: 日報の 3 系列は上の約束のとおり各 file の hash で決め、同じ精算の名前の組の Z001・Z002・Z005 の全部が当たるときだけ組ごと移す（一部だけを移すと束が割れる）。Z004 は取込み済みでなく、その組に付けて一緒に移す（Z004 の取込みが main に無く、取込み済みを条件にすると `XZ` に溜まるため。D-149 の Why。owner の決定 TD-576 の J1）。EJ は EJ の取込み（§37.11）の前なので移さない（上の約束の最後の文のとおり）。保留した記録の確定と移す順、conflict を含む EJ の扱いは、EJ を片付けの対象へ足すときに決める（D-149 の Revisit）。
 
 ### 37.11 EJ の記録の取込みと閲覧（BIZ-08-D9、D-121、proposed・未実装）
 
@@ -698,6 +702,53 @@ struct EjRecordDetail {
 - 保証の範囲: 保存するのは手順 1 を通った file の、見出しのある記録だけ。先頭断片（最初の file の見出しの形に当たらない記録）は保存しない。伸びうるかは名前だけで決めるので、利用者が伸びない file を連番つきでない名前に変えて選ぶと最後の記録が保留され（結果で名指しされ、移された元の file を読めば入る）、伸びうる file を連番つきの名前に変えて選ぶと書きかけが保存されうる（名前の付け替えは CV17 と利用者の手でしか起きない）。保留した記録は普段は最大の番号の後なので欠けに出ないが、古い伸びうる file を後から選んだときは欠けとして出て、移された file を選べば埋まる。欠けの知らせは保存した番号の最小から最大の間だけで、アプリを使い始める前の記録は欠けに数えない。窓（§37.9 手順 2）は日報の最後の取込みの日まで戻るが、日報だけを 1 件ずつの経路（行の「確認する」か手で選ぶ経路）で取り込み、一括取込み（EJ）を 30 日より長く使わなかった後は、窓より前の `XZ_BKUP` の EJ を読まないので欠けとして出る（手で file を選んで埋める。UI-09c）。`XZ` 直下の EJ は新しい記録のある日ごとに file 全体を写す（IO-10 は違う bytes を別の名前で足す）ので、写しは約 1 か月分の file が日ごとに 1 本ずつ増える（保持と削除は D-111 の未決 A）。同じ番号の記録が別の 4 桁の欄（別のレジ）にあれば別の記録として持つ。
 - 再検討: レジの設定で記録の番号が精算ごとに戻るようになったとき（鍵に日付か精算を足す）。6 桁の番号が 999999 から 000000 へ一周したとき（一周の後の記録は、保存済みの同じ番号と文が違えば (a) の conflict で保存されず、欠けも保存した番号の最小と最大の間で誤って出る。鍵に周回か日付を足す）。控えを金額・商品名で探す要望が出たとき（repo 外の回答台帳の問い。UI-09c の Open Questions）。レジの機種が変わるとき（IO-08 を取り替え、`ej_records` の鍵と伸びうるかの名前の判定を見直す）。CV17 か `XZ_BKUP` へ移す操作の名前の付け方が変わったとき（伸びうるかの判定）。
 
+### 37.12 取り込んだ精算の Z を SD の `XZ_BKUP` へ移す（BIZ-08-D11、D-149）
+
+本節は D-111 (1) の (b) の設計（Plan Packet `docs/plans/2026-11-02-xz-bkup-move.md`。実装は `src-tauri/src/biz/daily_report_import_service/tidy.rs`）。§37.9 の scan は手順 2a で本関数を呼ぶ（引数 `app_data_dir` と `DailyReportSdScan.tidy_failure` も §37.9）。owner は packet の判断事項 J1〜J4 に推奨の既定どおりに答えた（repo 外の回答台帳 TD-576。D-149 の owner の決定の行）。
+
+**関数要求**: 自動で見つけたレジの SD（IO-09）の `XZ` から、前に取り込んだ精算の Z を、同じ精算の名前の組（同じ folder・同じ日・同じ接尾字）ごとに `XZ_BKUP` へ CV17 と同じ形の名前で移す（片付ける）。移す前に、移す file の bytes を PC の写し（IO-10）に置く。DB へは書かない。失敗しても `Err` を返さず、scan を止めない（片付けは取込みに要らない）。
+
+**シグネチャ**:
+
+```rust
+fn tidy_register_sd_imported(
+    conn: &DbConnection,
+    root: &RegisterSdRoot,  // IO-09。§37.9 手順 1 で `Auto` から決めた root だけ
+    from: NaiveDate,        // §37.9 手順 2 の窓の始まり
+    app_data_dir: &Path,    // 写しの置き場所（IO-10）
+) -> Option<RegisterSdTidyFailure> // None = 移す物が無かった・全部移せた・列挙できなかった
+```
+
+**型（wire。45 §45.6a で `DailyReportSdScan` に載る）**:
+
+```rust
+enum RegisterSdTidyFailure { // 画面の固定の文を選ぶだけ（55 UI-07-D15 (7)）。数と path は診断ログ
+    SdWrite, // SD の側の書込みの失敗（IO-11 の Io・移した後の確かめの食い違い）
+    PcCopy,  // IO-10 の写しの失敗（原因は空き容量・権限・path の長さ・写しの名前の衝突のどれでもありうる）
+    Other,   // DB の読取りの失敗、写しの置き場所（`app_data_dir`）を得られない、IO-11 の InvalidPath・NameRule・NoFreeSequence
+}
+```
+
+**処理ステップ**:
+
+1. IO-09 `list_register_sd_entries(root, from)`。`Err` なら何もせず `None`（診断 WARN。続く §37.9 手順 3 の列挙が同じ失敗を利用者に出すので、ここで重ねて出さない）。
+2. 移す組を決める（SD に書く前に全部を決める）:
+   - `XZ` の Z001・Z002・Z004・Z005（`RegisterSdEntryKind::Z`、area `Sales`）を (相対 folder, 日, 接尾字) で組に分ける。それ以外（EJ、ほかの系列、`Unknown`、`XZ_BKUP` の file）は組に入れず、移さない。
+   - 組の Z001・Z002・Z005 が 1 本以上あり、その全部を IO-09 `read_register_sd_file`（上限は §37.9 手順 5 と同じ）で読めて、各 file の SHA-256 で 24 §14.18d `exists_completed_daily_report_source_file_hash` が `true` のときだけ、その組を移す。組の Z004 は同じく読めればその組に入れて一緒に移す（owner の決定 TD-576 の J1 の案 B。Z004 は取込み済みかを見ない）。組の Z001・Z002・Z005 の 1 本でも `false` か読めない（`Io`・`TooLarge`。診断 WARN）なら、その組は 1 本も移さない（Z004 が読めないときは、その Z004 を除いて組を移す）。Z001・Z002・Z005 が 1 本も無い組（Z004 だけ）は移さない。
+   - DB の `Err` なら何も移さず `Some(Other)`。
+3. 組を (相対 folder, 日, 接尾字) の順に 1 組ずつ:
+   a. 組の各 file を IO-10 `save_pos_source_copy(app_data_dir, relative_path, bytes)`（手順 2 で読んだ bytes。同じ bytes があれば書かない）。1 本でも `Err` なら、この組と以後の組を移さず `Some(PcCopy)`。
+   b. IO-11 `move_register_sd_group_to_backup(root, 組)`（29 §29.9）。組の中の順は Z004 を先に、続けて Z001・Z002・Z005。`moved` の各 file は診断ログに元と先の相対 path を残す（INFO。中身は残さない）。`error` が `Some(Io | Verify)` なら以後の組を移さず `Some(SdWrite)`、ほかの `Some` なら以後の組を移さず `Some(Other)`。
+4. 全部移せたか移す組が 0 なら `None`。止めたときは、移した本数と残した本数と最初の失敗を診断 WARN に残す。
+
+**BIZ-08-D11（取り込んだ精算の Z を読取りの中で、組ごとに移す）**:
+
+- 決定: 自動で見つけた SD を読むたびに、候補を作る前に、同じ精算の名前の組の Z001・Z002・Z005 の全部の file の hash が completed の日報取込みの file と同じときだけ、その組（同じ名前の Z004 を含む）を PC に写してから `XZ_BKUP` へ 1 つの連番で移す。EJ は移さない。1 本でも失敗したら残りを移さず、読取りは続け、画面に原因と直し方を出す。写しの置き場所が得られないときは片付けを飛ばして失敗として出し、読取りは続ける。
+- 理由: D-149 の Why。取込み済みの見分けは BIZ-08-D10 の約束（中身の hash。名前・置き場所に依らない）のとおり。組ごとに決めるのは、scan が束を (folder, 日, 接尾字) と連番で組むので、組の一部だけを移すと `XZ` と `XZ_BKUP` に割れた 2 つの束がどちらも「ファイルがそろっていません」になるため（例: 精算回数が同じで Z001 だけ bytes の違う `SameSettlementImported` の束で、Z002・Z005 だけが取込み済みの bytes に当たる）。組の判定に束の `bundle_hash` でなく各 file の hash を使うのは、途中で止まって組の一部だけが `XZ` に残っても、残りの各 file が前の読取りで当たったのと同じ bytes のまま当たり、次の読取りで残りを移せるため（束の hash では一部だけの組を見分けられない。Z001・Z002・Z005 の全部が `XZ` にあることを条件にしないのも同じ理由）。Z004 を先に移すのは、Z004 は判定に入らないので、Z004 だけが `XZ` に残ると二度と移らないため（Z001・Z002・Z005 のどれかが残る限り、組は次の読取りでまた移る）。残りは IO-11 の手順 4 (a) が移した分と同じ連番に揃える。対象を先に全部決めてから書くのは、DB の読取りの失敗で途中まで移した状態を作らないため。失敗で残りを止めるのは、SD を抜いた・書込み禁止の SD に書き続けないため。写しの置き場所が無いときに scan を止めないのは、片付けが取込みに要らないため。
+- 棄却案: D-149 の Alternatives。file ごとに hash で決める（上の割れる束）、束の `bundle_hash` で決める（上の理由）、§37.9 の候補の状態（`Imported`）を流用して候補を作った後に移す（移した file が一覧の上で `XZ` のまま出る。また `Incomplete` の行が移せず残る）、片付けの失敗や写しの置き場所が無いことを `Err` にして scan を止める。
+- 保証の範囲: D-149 の Guarantee range。DB は読むだけで、移した記録を DB に持たない（SD の状態は SD が正本で、次の読取りがその時の SD を見る）。restore で DB が古い版に戻ると、その版より後の取込みの file は既に `XZ_BKUP` にあり、scan が窓の中で読むので取り込み直せる（移し戻さない）。組の途中で止まった読取りでは、その scan の一覧に `XZ` の残りと `XZ_BKUP` の移した分が別の「ファイルがそろっていません」の行で出る（片付けの失敗の文と一緒。次の読取りで残りが同じ連番で移れば 1 つの「取込み済み」の行に戻る）。Z001・Z002・Z005 の一部が無い組（途中で止まった組の残りと見分けない）も、残りの全部が当たれば移す（同じ bytes は取込み済みなので失うものは無い）。
+- 再検討: D-149 の Revisit。
+
 ### 更新履歴
 
 | 日付 | PR | 内容 |
@@ -716,3 +767,6 @@ struct EjRecordDetail {
 | 2026-10-24 | sd-direct-read-runtime（実装、PR #172） | §37.4 手順 6 の「今の」の注記と、lane で内部の型に替える旨の注記を、実装の内部の型 `StoredSourceFile` の記述に直した。 |
 | 2026-10-29 | 日報の紙の runtime（Plan Review round 1 の是正、D-142） | §37.3 手順 3 に BIZ-08-D2a（数の上限の越え〈IO-07-D6 の `number_too_large`〉の利用者向けの文。帳票と列を名指し、値・file 名・行番号を出さない）と §37.7 の行を proposed で足した。 |
 | 2026-10-31 | 日報の紙の runtime（実装、D-142） | BIZ-08-D2a と §37.7 の行の proposed の注記を外した。 |
+| 2026-11-02 | xz-bkup-move（起票、D-149） | §37.12（BIZ-08-D11 取り込んだ精算の Z を読取りの中で `XZ_BKUP` へ移す）と、§37.9 に足すもの（手順 2a・`app_data_dir`・`tidy_failure`）を proposed で足した。§37.9 の本文は runtime が直す。 |
+| 2026-11-02 | xz-bkup-move（Plan Review round 1 の是正、D-149） | §37.12 手順 2・3 と BIZ-08-D11 を、同じ精算の名前の組の Z001・Z002・Z005 の全部が hash で当たるときだけ組ごと移す形に直した（組の中は Z004 を先に、IO-11 の組の関数へ渡す）。§37.9 に足すものの `app_data_dir` を `Option` にし、得られなければ片付けを飛ばして `Some(Other)` にした。§37.10 の (b) の答えの行を合わせた。 |
+| 2026-11-02 | xz-bkup-move（実装、D-149） | §37.12 の「§37.9 に足すもの」を §37.9 の本文（シグネチャの `app_data_dir`、`DailyReportSdScan.tidy_failure`、手順 2a）へ移して消し、§37.10 の (b) の答えの行と §37.12 の proposed の注記を外した。 |
